@@ -1,5 +1,4 @@
 .card {
-  position: absolute;
   width: 240px;
   container-type: inline-size;
   background: var(--color-card-bg);

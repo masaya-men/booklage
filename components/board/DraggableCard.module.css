@@ -1,0 +1,15 @@
+/* ── DraggableCard wrapper ─────────────────────────────────── */
+
+.wrapper {
+  position: absolute;
+  cursor: grab;
+}
+
+.wrapper:active {
+  cursor: grabbing;
+}
+
+.dragging {
+  box-shadow: var(--shadow-drag) !important;
+  z-index: 50 !important;
+}
