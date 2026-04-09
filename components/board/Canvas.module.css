@@ -1,0 +1,14 @@
+.canvas {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background: var(--canvas-bg, var(--color-bg-primary));
+  background-image: var(--canvas-pattern, none);
+  background-size: var(--canvas-pattern-size, auto);
+}
+
+.inner {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
