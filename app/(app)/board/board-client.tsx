@@ -8,8 +8,9 @@ import {
   getCardsByFolder,
   addFolder,
   getAllFolders,
+  updateCard,
 } from '@/lib/storage/indexeddb'
-import type { BookmarkRecord, CardRecord } from '@/lib/storage/indexeddb'
+import type { BookmarkRecord, CardRecord, FolderRecord } from '@/lib/storage/indexeddb'
 
 /** Database instance type derived from initDB return value */
 type BooklageDB = Awaited<ReturnType<typeof initDB>>
@@ -20,6 +21,8 @@ import { Canvas } from '@/components/board/Canvas'
 import { BookmarkCard } from '@/components/board/BookmarkCard'
 import { TweetCard } from '@/components/board/TweetCard'
 import { UrlInput } from '@/components/board/UrlInput'
+import { DraggableCard } from '@/components/board/DraggableCard'
+import { FolderNav } from '@/components/board/FolderNav'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,10 +46,13 @@ type CardWithBookmark = {
  * - Loads bookmark + card pairs for the current folder.
  * - Handles URL submission: detects type, fetches OGP metadata, saves to DB.
  * - Renders cards inside a Canvas with the UrlInput overlay.
+ * - Cards are draggable via GSAP Draggable, with position persistence.
+ * - FolderNav allows switching between and creating folders.
  */
 export function BoardClient(): React.ReactElement {
   // ── State ────────────────────────────────────────────────────
   const [db, setDb] = useState<BooklageDB | null>(null)
+  const [folders, setFolders] = useState<FolderRecord[]>([])
   const [currentFolder, setCurrentFolder] = useState<string | null>(null)
   const [items, setItems] = useState<CardWithBookmark[]>([])
   const [loading, setLoading] = useState(false)
@@ -62,16 +68,22 @@ export function BoardClient(): React.ReactElement {
       if (cancelled) return
       setDb(database)
 
-      const folders = await getAllFolders(database)
-      if (folders.length === 0) {
+      const allFolders = await getAllFolders(database)
+      if (allFolders.length === 0) {
         const created = await addFolder(database, {
           name: 'My Collage',
           color: FOLDER_COLORS[5], // blue
           order: 0,
         })
-        if (!cancelled) setCurrentFolder(created.id)
+        if (!cancelled) {
+          setFolders([created])
+          setCurrentFolder(created.id)
+        }
       } else {
-        if (!cancelled) setCurrentFolder(folders[0].id)
+        if (!cancelled) {
+          setFolders(allFolders)
+          setCurrentFolder(allFolders[0].id)
+        }
       }
     }
 
@@ -107,6 +119,41 @@ export function BoardClient(): React.ReactElement {
     void loadItems()
     return () => { cancelled = true }
   }, [db, currentFolder])
+
+  // ── Drag end handler (persists position to IndexedDB) ────────
+  const handleDragEnd = useCallback(
+    async (cardId: string, x: number, y: number): Promise<void> => {
+      if (!db) return
+      await updateCard(db, cardId, { x, y })
+    },
+    [db],
+  )
+
+  // ── Folder selection handler ─────────────────────────────────
+  const handleSelectFolder = useCallback(
+    (folder: FolderRecord): void => {
+      setCurrentFolder(folder.id)
+    },
+    [],
+  )
+
+  // ── Add folder handler ───────────────────────────────────────
+  const handleAddFolder = useCallback(
+    async (name: string): Promise<void> => {
+      if (!db) return
+      const colorIndex = folders.length % FOLDER_COLORS.length
+      const color = FOLDER_COLORS[colorIndex]
+      const order = folders.length
+
+      const created = await addFolder(db, { name, color, order })
+
+      // Reload all folders and switch to the new one
+      const allFolders = await getAllFolders(db)
+      setFolders(allFolders)
+      setCurrentFolder(created.id)
+    },
+    [db, folders.length],
+  )
 
   // ── URL submit handler ───────────────────────────────────────
   const handleUrlSubmit = useCallback(
@@ -184,11 +231,16 @@ export function BoardClient(): React.ReactElement {
   // ── Render ───────────────────────────────────────────────────
   return (
     <>
+      <FolderNav
+        folders={folders}
+        currentFolderId={currentFolder}
+        onSelectFolder={handleSelectFolder}
+        onAddFolder={handleAddFolder}
+      />
+
       <Canvas bgTheme="dark" canvasRef={canvasRef}>
         {items.map(({ card, bookmark }) => {
-          const cardStyle: React.CSSProperties = {
-            left: card.x,
-            top: card.y,
+          const innerStyle: React.CSSProperties = {
             zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
             ['--card-rotation' as string]: `${card.rotation}deg`,
             ['--float-delay' as string]: `${(Math.random() * FLOAT_DELAY_MAX).toFixed(2)}s`,
@@ -200,20 +252,34 @@ export function BoardClient(): React.ReactElement {
 
           if (tweetId) {
             return (
-              <TweetCard
+              <DraggableCard
                 key={card.id}
-                tweetId={tweetId}
-                style={cardStyle}
-              />
+                cardId={card.id}
+                initialX={card.x}
+                initialY={card.y}
+                onDragEnd={handleDragEnd}
+              >
+                <TweetCard
+                  tweetId={tweetId}
+                  style={innerStyle}
+                />
+              </DraggableCard>
             )
           }
 
           return (
-            <BookmarkCard
+            <DraggableCard
               key={card.id}
-              bookmark={bookmark}
-              style={cardStyle}
-            />
+              cardId={card.id}
+              initialX={card.x}
+              initialY={card.y}
+              onDragEnd={handleDragEnd}
+            >
+              <BookmarkCard
+                bookmark={bookmark}
+                style={innerStyle}
+              />
+            </DraggableCard>
           )
         })}
 
