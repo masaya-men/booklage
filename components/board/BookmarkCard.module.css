@@ -1,0 +1,126 @@
+.card {
+  position: absolute;
+  width: 240px;
+  container-type: inline-size;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  animation: float var(--float-duration, 4s) var(--ease-in-out) infinite;
+  animation-delay: var(--float-delay, 0s);
+  cursor: grab;
+  transition:
+    transform var(--duration-fast) var(--ease-out-expo),
+    box-shadow var(--duration-fast) var(--ease-out-expo);
+  user-select: none;
+}
+
+.card:hover {
+  transform: scale(1.03);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+/* ── Thumbnail variant ──────────────────────────────────────── */
+
+.thumbnailWrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.91 / 1;
+  overflow: hidden;
+}
+
+.thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-3);
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.75) 0%,
+    rgba(0, 0, 0, 0) 60%
+  );
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out-expo);
+}
+
+.card:hover .overlay {
+  opacity: 1;
+}
+
+.overlayTitle {
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── No-thumbnail variant ───────────────────────────────────── */
+
+.noThumbBody {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.largeFavicon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+}
+
+.noThumbTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  line-height: var(--leading-tight);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Info bar (favicon + siteName) ──────────────────────────── */
+
+.info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-card-border);
+}
+
+.favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.siteName {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

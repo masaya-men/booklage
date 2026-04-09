@@ -1,0 +1,29 @@
+.card {
+  position: absolute;
+  width: 300px;
+  container-type: inline-size;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  animation: float var(--float-duration, 4s) var(--ease-in-out) infinite;
+  animation-delay: var(--float-delay, 0s);
+  cursor: grab;
+  transition:
+    transform var(--duration-fast) var(--ease-out-expo),
+    box-shadow var(--duration-fast) var(--ease-out-expo);
+  user-select: none;
+}
+
+.card:hover {
+  transform: scale(1.03);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+/* Override react-tweet's default styles to fit our dark theme */
+.card [data-theme="light"] {
+  color-scheme: dark;
+}
