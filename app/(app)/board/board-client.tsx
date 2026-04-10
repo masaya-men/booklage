@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteCanvas } from '@/lib/canvas/use-infinite-canvas'
 import {
   initDB,
@@ -17,7 +17,7 @@ import type { BookmarkRecord, CardRecord, FolderRecord } from '@/lib/storage/ind
 type BooklageDB = Awaited<ReturnType<typeof initDB>>
 import { detectUrlType, extractTweetId } from '@/lib/utils/url'
 import { fetchOgp } from '@/lib/scraper/ogp'
-import { FLOAT_DELAY_MAX, FLOAT_DURATION, FOLDER_COLORS, Z_INDEX } from '@/lib/constants'
+import { CARD_WIDTH, FLOAT_DELAY_MAX, FLOAT_DURATION, FOLDER_COLORS, GRID_GAP, Z_INDEX } from '@/lib/constants'
 import { Canvas } from '@/components/board/Canvas'
 import { BookmarkCard } from '@/components/board/BookmarkCard'
 import { TweetCard } from '@/components/board/TweetCard'
@@ -28,6 +28,12 @@ import { ExportButton } from '@/components/board/ExportButton'
 import { ThemeSelector } from '@/components/board/ThemeSelector'
 import { RandomPick } from '@/components/board/RandomPick'
 import { ColorSuggest } from '@/components/board/ColorSuggest'
+import { ViewModeToggle, type ViewMode } from '@/components/board/ViewModeToggle'
+import {
+  calculateMasonryPositions,
+  calculateResponsiveColumns,
+  estimateCardHeight,
+} from '@/lib/canvas/auto-layout'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,9 +68,26 @@ export function BoardClient(): React.ReactElement {
   const [items, setItems] = useState<CardWithBookmark[]>([])
   const [loading, setLoading] = useState(false)
   const [bgTheme, setBgTheme] = useState('dark')
+  const [viewMode, setViewMode] = useState<ViewMode>('collage')
 
   const worldRef = useRef<HTMLDivElement | null>(null)
   const canvas = useInfiniteCanvas()
+
+  // ── Compute grid positions ─────────────────────────────────
+  const gridPositions = useMemo(() => {
+    if (viewMode !== 'grid' || items.length === 0) return new Map<string, { x: number; y: number }>()
+
+    const columns = calculateResponsiveColumns(
+      typeof window !== 'undefined' ? window.innerWidth : 1200,
+    )
+    const cardDimensions = items.map(({ card, bookmark }) => ({
+      id: card.id,
+      width: CARD_WIDTH,
+      height: estimateCardHeight(bookmark.type, bookmark.thumbnail.length > 0),
+    }))
+    const positions = calculateMasonryPositions(cardDimensions, columns, CARD_WIDTH, GRID_GAP)
+    return new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]))
+  }, [viewMode, items])
 
   // ── DB & folder init ─────────────────────────────────────────
   useEffect(() => {
@@ -247,11 +270,21 @@ export function BoardClient(): React.ReactElement {
 
       <Canvas bgTheme={bgTheme} canvas={canvas} worldRef={worldRef}>
         {items.map(({ card, bookmark }) => {
+          const isGrid = viewMode === 'grid'
+          const gridPos = gridPositions.get(card.id)
+          const displayX = isGrid && gridPos ? gridPos.x : card.x
+          const displayY = isGrid && gridPos ? gridPos.y : card.y
+          const displayRotation = isGrid ? 0 : card.rotation
+
           const innerStyle: React.CSSProperties = {
             zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
-            ['--card-rotation' as string]: `${card.rotation}deg`,
+            ['--card-rotation' as string]: `${displayRotation}deg`,
             ['--float-delay' as string]: `${(Math.random() * FLOAT_DELAY_MAX).toFixed(2)}s`,
             ['--float-duration' as string]: `${FLOAT_DURATION}s`,
+            boxShadow: isGrid
+              ? 'var(--shadow-grid-card)'
+              : 'var(--shadow-collage-card)',
+            animationPlayState: isGrid ? 'paused' : 'running',
           }
 
           const tweetId =
@@ -262,10 +295,11 @@ export function BoardClient(): React.ReactElement {
               <DraggableCard
                 key={card.id}
                 cardId={card.id}
-                initialX={card.x}
-                initialY={card.y}
+                initialX={displayX}
+                initialY={displayY}
                 zoom={canvas.state.zoom}
                 onDragEnd={handleDragEnd}
+                draggable={!isGrid}
               >
                 <TweetCard
                   tweetId={tweetId}
@@ -279,10 +313,11 @@ export function BoardClient(): React.ReactElement {
             <DraggableCard
               key={card.id}
               cardId={card.id}
-              initialX={card.x}
-              initialY={card.y}
+              initialX={displayX}
+              initialY={displayY}
               zoom={canvas.state.zoom}
               onDragEnd={handleDragEnd}
+              draggable={!isGrid}
             >
               <BookmarkCard
                 bookmark={bookmark}
@@ -310,6 +345,7 @@ export function BoardClient(): React.ReactElement {
         )}
       </Canvas>
 
+      <ViewModeToggle mode={viewMode} onToggle={setViewMode} />
       <ExportButton canvasRef={worldRef} />
       <RandomPick cardIds={items.map(({ card }) => card.id)} />
       <ColorSuggest cardColors={new Map(items.map(({ card }, i) => [card.id, FOLDER_COLORS[i % FOLDER_COLORS.length]]))} />
