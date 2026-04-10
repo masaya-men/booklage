@@ -134,13 +134,13 @@ export function Canvas({
   )
 
   // ── Touch events: 2-finger pan + pinch-to-zoom ──────────────
-  const getTouchDistance = (t1: Touch, t2: Touch): number => {
+  const getTouchDistance = (t1: React.Touch, t2: React.Touch): number => {
     const dx = t1.clientX - t2.clientX
     const dy = t1.clientY - t2.clientY
     return Math.sqrt(dx * dx + dy * dy)
   }
 
-  const getTouchCenter = (t1: Touch, t2: Touch): { x: number; y: number } => ({
+  const getTouchCenter = (t1: React.Touch, t2: React.Touch): { x: number; y: number } => ({
     x: (t1.clientX + t2.clientX) / 2,
     y: (t1.clientY + t2.clientY) / 2,
   })
