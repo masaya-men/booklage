@@ -13,31 +13,45 @@ type DraggableCardProps = {
   children: React.ReactNode
   /** Unique card identifier */
   cardId: string
-  /** Initial X position on the canvas */
+  /** X position in world coordinates */
   initialX: number
-  /** Initial Y position on the canvas */
+  /** Y position in world coordinates */
   initialY: number
-  /** Called when drag finishes with the new position */
+  /** Current canvas zoom factor (used to convert pixel deltas to world coords) */
+  zoom: number
+  /** Called when drag finishes with the new world-space position */
   onDragEnd: (cardId: string, x: number, y: number) => void
 }
 
 /**
  * Wraps card content in a GSAP Draggable container.
  *
- * - Applies position: absolute with initialX / initialY.
- * - On drag start: adds shadow, scales up.
- * - On drag end: removes shadow, scales back, persists position via onDragEnd.
- * - Cleans up the Draggable instance on unmount.
+ * - Positioned absolutely in world space (left/top = world coords).
+ * - GSAP Draggable tracks pixel deltas; we divide by zoom to get world deltas.
+ * - Drag start: deeper shadow, slight scale up.
+ * - Drag end: restore shadow, persist new world position.
  */
 export function DraggableCard({
   children,
   cardId,
   initialX,
   initialY,
+  zoom,
   onDragEnd,
 }: DraggableCardProps): React.ReactElement {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const draggableRef = useRef<Draggable[]>([])
+
+  // Store latest values in refs so GSAP callbacks can read them
+  // without re-creating the Draggable instance.
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+  const initialXRef = useRef(initialX)
+  initialXRef.current = initialX
+  const initialYRef = useRef(initialY)
+  initialYRef.current = initialY
+  const onDragEndRef = useRef(onDragEnd)
+  onDragEndRef.current = onDragEnd
 
   useEffect(() => {
     const el = wrapperRef.current
@@ -58,13 +72,15 @@ export function DraggableCard({
           ease: 'back.out(1.7)',
         })
 
-        // Calculate final position: initial offset + GSAP transform delta
-        const deltaX = this.endX ?? 0
-        const deltaY = this.endY ?? 0
-        const finalX = initialX + deltaX
-        const finalY = initialY + deltaY
+        // GSAP reports pixel deltas; divide by zoom for world-space delta
+        const pixelDeltaX = this.endX ?? 0
+        const pixelDeltaY = this.endY ?? 0
+        const worldDeltaX = pixelDeltaX / zoomRef.current
+        const worldDeltaY = pixelDeltaY / zoomRef.current
+        const finalX = initialXRef.current + worldDeltaX
+        const finalY = initialYRef.current + worldDeltaY
 
-        onDragEnd(cardId, finalX, finalY)
+        onDragEndRef.current(cardId, finalX, finalY)
       },
     })
 
@@ -75,10 +91,6 @@ export function DraggableCard({
         instance.kill()
       }
     }
-    // We intentionally omit onDragEnd / initialX / initialY from deps
-    // to avoid re-creating Draggable on every render.
-    // Position updates happen through re-mount when items reload.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardId])
 
   return (
