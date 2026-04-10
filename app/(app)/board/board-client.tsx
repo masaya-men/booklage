@@ -24,6 +24,7 @@ import { UrlInput } from '@/components/board/UrlInput'
 import { DraggableCard } from '@/components/board/DraggableCard'
 import { FolderNav } from '@/components/board/FolderNav'
 import { ExportButton } from '@/components/board/ExportButton'
+import { ThemeSelector } from '@/components/board/ThemeSelector'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,6 +58,7 @@ export function BoardClient(): React.ReactElement {
   const [currentFolder, setCurrentFolder] = useState<string | null>(null)
   const [items, setItems] = useState<CardWithBookmark[]>([])
   const [loading, setLoading] = useState(false)
+  const [bgTheme, setBgTheme] = useState('dark')
 
   const canvasRef = useRef<HTMLDivElement | null>(null)
 
@@ -239,7 +241,7 @@ export function BoardClient(): React.ReactElement {
         onAddFolder={handleAddFolder}
       />
 
-      <Canvas bgTheme="dark" canvasRef={canvasRef}>
+      <Canvas bgTheme={bgTheme} canvasRef={canvasRef}>
         {items.map(({ card, bookmark }) => {
           const innerStyle: React.CSSProperties = {
             zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
@@ -303,6 +305,7 @@ export function BoardClient(): React.ReactElement {
       </Canvas>
 
       <ExportButton canvasRef={canvasRef} />
+      <ThemeSelector currentTheme={bgTheme} onSelectTheme={setBgTheme} />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />
     </>
   )
