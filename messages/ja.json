@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Bookmark × Collage"
+  },
+  "board": {
+    "urlPlaceholder": "URLをペースト...",
+    "save": "保存",
+    "exportImage": "画像として保存",
+    "shareX": "Xでシェア",
+    "randomPick": "ランダムピック",
+    "bgTheme": "背景テーマ",
+    "newFolder": "+ 新しいフォルダ",
+    "folderNamePlaceholder": "フォルダ名...",
+    "emptyState": "URLをペーストしてブックマークを追加しましょう"
+  },
+  "share": {
+    "defaultText": "ブックマークでコラージュ作ったら最高になった✨ #Booklage"
+  }
+}
