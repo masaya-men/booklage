@@ -25,6 +25,8 @@ import { DraggableCard } from '@/components/board/DraggableCard'
 import { FolderNav } from '@/components/board/FolderNav'
 import { ExportButton } from '@/components/board/ExportButton'
 import { ThemeSelector } from '@/components/board/ThemeSelector'
+import { RandomPick } from '@/components/board/RandomPick'
+import { ColorSuggest } from '@/components/board/ColorSuggest'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -305,6 +307,8 @@ export function BoardClient(): React.ReactElement {
       </Canvas>
 
       <ExportButton canvasRef={canvasRef} />
+      <RandomPick cardIds={items.map(({ card }) => card.id)} />
+      <ColorSuggest cardColors={new Map(items.map(({ card }, i) => [card.id, FOLDER_COLORS[i % FOLDER_COLORS.length]]))} />
       <ThemeSelector currentTheme={bgTheme} onSelectTheme={setBgTheme} />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />
     </>

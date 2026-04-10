@@ -1,0 +1,24 @@
+.wrapper {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.dot {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform var(--duration-instant), border-color var(--duration-instant);
+}
+
+.dot:hover {
+  transform: scale(1.3);
+}
+
+.dotActive {
+  composes: dot;
+  border-color: white;
+  transform: scale(1.3);
+}
