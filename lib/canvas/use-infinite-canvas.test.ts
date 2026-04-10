@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { screenToWorld, worldToScreen, clampZoom } from './use-infinite-canvas'
+import { renderHook, act } from '@testing-library/react'
+import { screenToWorld, worldToScreen, clampZoom, useInfiniteCanvas } from './use-infinite-canvas'
 import {
   CANVAS_ZOOM_MIN,
   CANVAS_ZOOM_MAX,
@@ -60,5 +61,56 @@ describe('clampZoom', () => {
 
   it('handles default zoom', () => {
     expect(clampZoom(CANVAS_ZOOM_DEFAULT)).toBe(CANVAS_ZOOM_DEFAULT)
+  })
+})
+
+describe('useInfiniteCanvas', () => {
+  it('initializes with default state', () => {
+    const { result } = renderHook(() => useInfiniteCanvas())
+    expect(result.current.state.panX).toBe(0)
+    expect(result.current.state.panY).toBe(0)
+    expect(result.current.state.zoom).toBe(CANVAS_ZOOM_DEFAULT)
+  })
+
+  it('zoomAtPoint zooms toward cursor position', () => {
+    const { result } = renderHook(() => useInfiniteCanvas())
+    act(() => {
+      result.current.zoomAtPoint(1.5, 200, 200)
+    })
+    expect(result.current.state.zoom).toBe(1.5)
+    // Pan adjusts: panX = 200 - 200*1.5 = -100
+    expect(result.current.state.panX).toBe(-100)
+    expect(result.current.state.panY).toBe(-100)
+  })
+
+  it('pan updates offset', () => {
+    const { result } = renderHook(() => useInfiniteCanvas())
+    act(() => {
+      result.current.pan(50, -30)
+    })
+    expect(result.current.state.panX).toBe(50)
+    expect(result.current.state.panY).toBe(-30)
+  })
+
+  it('clamps zoom to allowed range', () => {
+    const { result } = renderHook(() => useInfiniteCanvas())
+    act(() => {
+      result.current.zoomAtPoint(999, 0, 0)
+    })
+    expect(result.current.state.zoom).toBe(CANVAS_ZOOM_MAX)
+  })
+
+  it('resetView returns to defaults', () => {
+    const { result } = renderHook(() => useInfiniteCanvas())
+    act(() => {
+      result.current.pan(100, 200)
+      result.current.zoomAtPoint(2, 0, 0)
+    })
+    act(() => {
+      result.current.resetView()
+    })
+    expect(result.current.state.panX).toBe(0)
+    expect(result.current.state.panY).toBe(0)
+    expect(result.current.state.zoom).toBe(CANVAS_ZOOM_DEFAULT)
   })
 })
