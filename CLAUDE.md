@@ -15,6 +15,25 @@
 
 ---
 
+## セッション管理
+
+### 開始時
+`docs/TODO.md` を読む。他のドキュメントは該当タスクに着手するときに読む。
+詳細なワークフローは `.claude/rules/session-workflow.md` を参照。
+
+### 会話中の記録
+アイデア・方針・設計判断は即座に `docs/TODO.md` に追記する。指示されなくても自動的にやること。
+
+### 重要ドキュメント（該当タスク着手時に読む）
+- `docs/TODO.md` — 現在の状態・タスク一覧（毎セッション必読）
+- `docs/DESIGN_DECISIONS.md` — 確定済み設計方針（将来作成予定）
+- `MYCOLLAGE_FULL_SPEC.md` — 要件定義書
+
+### コンパクション時
+When compacting, always preserve: 現在のタスク、変更中のファイルパス、docs/TODO.mdの「現在の状態」内容。
+
+---
+
 ## プロジェクト概要
 
 あらゆるWebサイト（Twitter/X, YouTube, TikTok, Instagram, 一般サイト等）のブックマークを
