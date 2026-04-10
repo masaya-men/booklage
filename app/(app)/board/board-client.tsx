@@ -17,7 +17,8 @@ import type { BookmarkRecord, CardRecord, FolderRecord } from '@/lib/storage/ind
 type BooklageDB = Awaited<ReturnType<typeof initDB>>
 import { detectUrlType, extractTweetId } from '@/lib/utils/url'
 import { fetchOgp } from '@/lib/scraper/ogp'
-import { CARD_WIDTH, FLOAT_DELAY_MAX, FLOAT_DURATION, FOLDER_COLORS, GRID_GAP, Z_INDEX } from '@/lib/constants'
+import { gsap } from 'gsap'
+import { CARD_WIDTH, FLOAT_DELAY_MAX, FLOAT_DURATION, FOLDER_COLORS, GRID_GAP, VIEW_SWITCH_DURATION, VIEW_SWITCH_STAGGER, VIEW_SWITCH_EASE, Z_INDEX } from '@/lib/constants'
 import { Canvas } from '@/components/board/Canvas'
 import { BookmarkCard } from '@/components/board/BookmarkCard'
 import { TweetCard } from '@/components/board/TweetCard'
@@ -88,6 +89,70 @@ export function BoardClient(): React.ReactElement {
     const positions = calculateMasonryPositions(cardDimensions, columns, CARD_WIDTH, GRID_GAP)
     return new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]))
   }, [viewMode, items])
+
+  // ── Animate view mode switch ────────────────────────────────
+  const prevViewModeRef = useRef<ViewMode>(viewMode)
+  const isFirstRenderRef = useRef(true)
+
+  useEffect(() => {
+    // Skip animation on first render
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false
+      prevViewModeRef.current = viewMode
+      return
+    }
+
+    // Skip if mode hasn't actually changed
+    if (prevViewModeRef.current === viewMode) return
+    prevViewModeRef.current = viewMode
+
+    // Animate all card wrappers
+    const wrappers = document.querySelectorAll<HTMLElement>('[data-card-wrapper]')
+    if (wrappers.length === 0) return
+
+    // Capture current rendered positions before React updates
+    const currentPositions = new Map<string, { left: number; top: number }>()
+    wrappers.forEach((el) => {
+      const id = el.getAttribute('data-card-wrapper') ?? ''
+      currentPositions.set(id, {
+        left: parseFloat(el.style.left) || 0,
+        top: parseFloat(el.style.top) || 0,
+      })
+    })
+
+    // After a microtask (React has re-rendered), animate from old to new
+    requestAnimationFrame(() => {
+      const updatedWrappers = document.querySelectorAll<HTMLElement>('[data-card-wrapper]')
+      const tl = gsap.timeline()
+
+      updatedWrappers.forEach((el, index) => {
+        const id = el.getAttribute('data-card-wrapper') ?? ''
+        const prev = currentPositions.get(id)
+        if (!prev) return
+
+        const newLeft = parseFloat(el.style.left) || 0
+        const newTop = parseFloat(el.style.top) || 0
+
+        if (prev.left === newLeft && prev.top === newTop) return
+
+        // Reset any GSAP Draggable transforms
+        gsap.set(el, { x: 0, y: 0 })
+
+        // Set element to old position and animate to new
+        gsap.set(el, { left: prev.left, top: prev.top })
+        tl.to(
+          el,
+          {
+            left: newLeft,
+            top: newTop,
+            duration: VIEW_SWITCH_DURATION,
+            ease: VIEW_SWITCH_EASE,
+          },
+          index * VIEW_SWITCH_STAGGER,
+        )
+      })
+    })
+  }, [viewMode, items, gridPositions])
 
   // ── DB & folder init ─────────────────────────────────────────
   useEffect(() => {
