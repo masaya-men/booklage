@@ -1,14 +1,34 @@
-.canvas {
+/* ── Infinite Canvas ──────────────────────────────────────── */
+
+.viewport {
   position: relative;
   flex: 1;
   overflow: hidden;
   background: var(--canvas-bg, var(--color-bg-primary));
   background-image: var(--canvas-pattern, none);
   background-size: var(--canvas-pattern-size, auto);
+  /* Prevent browser default touch gestures (we handle them) */
+  touch-action: none;
+  /* Prevent text selection during pan */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.inner {
+.world {
   position: absolute;
-  inset: 0;
-  overflow: auto;
+  top: 0;
+  left: 0;
+  /* Width/height are intentionally unset — this is infinite space.
+     Children use position: absolute with x,y coords. */
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Cursor states */
+.viewport[data-panning="true"] {
+  cursor: grabbing;
+}
+
+.viewport[data-panning="false"] {
+  cursor: default;
 }
