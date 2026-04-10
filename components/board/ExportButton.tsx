@@ -1,7 +1,6 @@
 'use client'
 
 import { type RefObject } from 'react'
-import domtoimage from 'dom-to-image-more'
 import styles from './ExportButton.module.css'
 
 type ExportButtonProps = {
@@ -13,6 +12,7 @@ type ExportButtonProps = {
 export function ExportButton({ canvasRef }: ExportButtonProps): React.ReactElement {
   async function handleExport(): Promise<void> {
     if (!canvasRef.current) return
+    const domtoimage = (await import('dom-to-image-more')).default
     const dataUrl = await domtoimage.toPng(canvasRef.current, { scale: 2 })
     const link = document.createElement('a')
     link.download = `booklage-${Date.now()}.png`
