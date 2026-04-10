@@ -39,5 +39,17 @@ export const DB_NAME = 'booklage-db'
 /** IndexedDB schema version */
 export const DB_VERSION = 1
 
-/** Days before shared snapshots expire on R2 */
-export const SHARE_SNAPSHOT_TTL_DAYS = 90
+/** Minimum zoom level (zoomed out — see full overview) */
+export const CANVAS_ZOOM_MIN = 0.1
+
+/** Maximum zoom level (zoomed in — card detail) */
+export const CANVAS_ZOOM_MAX = 3.0
+
+/** Default zoom level */
+export const CANVAS_ZOOM_DEFAULT = 1.0
+
+/** Zoom speed multiplier for mouse wheel */
+export const CANVAS_ZOOM_SENSITIVITY = 0.001
+
+/** Zoom speed multiplier for pinch gesture */
+export const CANVAS_PINCH_SENSITIVITY = 0.01
