@@ -74,6 +74,17 @@ export function BoardClient(): React.ReactElement {
   const worldRef = useRef<HTMLDivElement | null>(null)
   const canvas = useInfiniteCanvas()
 
+  // ── Stable float delay per card (avoids re-randomizing on re-render) ──
+  const floatDelays = useRef(new Map<string, string>())
+  const getFloatDelay = useCallback((cardId: string): string => {
+    let delay = floatDelays.current.get(cardId)
+    if (!delay) {
+      delay = `${(Math.random() * FLOAT_DELAY_MAX).toFixed(2)}s`
+      floatDelays.current.set(cardId, delay)
+    }
+    return delay
+  }, [])
+
   // ── Compute grid positions ─────────────────────────────────
   const gridPositions = useMemo(() => {
     if (viewMode !== 'grid' || items.length === 0) return new Map<string, { x: number; y: number }>()
@@ -152,7 +163,7 @@ export function BoardClient(): React.ReactElement {
         )
       })
     })
-  }, [viewMode, items, gridPositions])
+  }, [viewMode, items]) // eslint-disable-line react-hooks/exhaustive-deps -- gridPositions is derived from viewMode+items; including it causes double-fire
 
   // ── DB & folder init ─────────────────────────────────────────
   useEffect(() => {
@@ -219,7 +230,7 @@ export function BoardClient(): React.ReactElement {
   const handleDragEnd = useCallback(
     async (cardId: string, x: number, y: number): Promise<void> => {
       if (!db) return
-      await updateCard(db, cardId, { x, y })
+      await updateCard(db, cardId, { x, y, isManuallyPlaced: true })
     },
     [db],
   )
@@ -344,7 +355,7 @@ export function BoardClient(): React.ReactElement {
           const innerStyle: React.CSSProperties = {
             zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
             ['--card-rotation' as string]: `${displayRotation}deg`,
-            ['--float-delay' as string]: `${(Math.random() * FLOAT_DELAY_MAX).toFixed(2)}s`,
+            ['--float-delay' as string]: getFloatDelay(card.id),
             ['--float-duration' as string]: `${FLOAT_DURATION}s`,
             boxShadow: isGrid
               ? 'var(--shadow-grid-card)'
