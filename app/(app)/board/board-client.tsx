@@ -23,6 +23,7 @@ import { TweetCard } from '@/components/board/TweetCard'
 import { UrlInput } from '@/components/board/UrlInput'
 import { DraggableCard } from '@/components/board/DraggableCard'
 import { FolderNav } from '@/components/board/FolderNav'
+import { ExportButton } from '@/components/board/ExportButton'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -301,6 +302,7 @@ export function BoardClient(): React.ReactElement {
         )}
       </Canvas>
 
+      <ExportButton canvasRef={canvasRef} />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />
     </>
   )
