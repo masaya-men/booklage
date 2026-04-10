@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Bookmark × Collage"
+  },
+  "board": {
+    "urlPlaceholder": "Paste URL...",
+    "save": "Save",
+    "exportImage": "Save as Image",
+    "shareX": "Share on X",
+    "randomPick": "Random Pick",
+    "bgTheme": "Background Theme",
+    "newFolder": "+ New Folder",
+    "folderNamePlaceholder": "Folder name...",
+    "emptyState": "Paste a URL to add your first bookmark"
+  },
+  "share": {
+    "defaultText": "Made a bookmark collage and it's amazing ✨ #Booklage"
+  }
+}
