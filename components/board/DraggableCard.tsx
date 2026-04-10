@@ -21,15 +21,16 @@ type DraggableCardProps = {
   zoom: number
   /** Called when drag finishes with the new world-space position */
   onDragEnd: (cardId: string, x: number, y: number) => void
+  /** Whether drag is enabled (false in grid mode) */
+  draggable?: boolean
 }
 
 /**
- * Wraps card content in a GSAP Draggable container.
+ * Wraps card content in an absolutely positioned container.
  *
- * - Positioned absolutely in world space (left/top = world coords).
+ * - When draggable=true (default): GSAP Draggable is created.
+ * - When draggable=false: positioned statically, no drag interaction.
  * - GSAP Draggable tracks pixel deltas; we divide by zoom to get world deltas.
- * - Drag start: deeper shadow, slight scale up.
- * - Drag end: restore shadow, persist new world position.
  */
 export function DraggableCard({
   children,
@@ -38,12 +39,11 @@ export function DraggableCard({
   initialY,
   zoom,
   onDragEnd,
+  draggable = true,
 }: DraggableCardProps): React.ReactElement {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const draggableRef = useRef<Draggable[]>([])
 
-  // Store latest values in refs so GSAP callbacks can read them
-  // without re-creating the Draggable instance.
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
   const initialXRef = useRef(initialX)
@@ -55,7 +55,7 @@ export function DraggableCard({
 
   useEffect(() => {
     const el = wrapperRef.current
-    if (!el) return
+    if (!el || !draggable) return
 
     const instances = Draggable.create(el, {
       type: 'x,y',
@@ -72,7 +72,6 @@ export function DraggableCard({
           ease: 'back.out(1.7)',
         })
 
-        // GSAP reports pixel deltas; divide by zoom for world-space delta
         const pixelDeltaX = this.endX ?? 0
         const pixelDeltaY = this.endY ?? 0
         const worldDeltaX = pixelDeltaX / zoomRef.current
@@ -90,13 +89,14 @@ export function DraggableCard({
       for (const instance of instances) {
         instance.kill()
       }
+      draggableRef.current = []
     }
-  }, [cardId])
+  }, [cardId, draggable])
 
   return (
     <div
       ref={wrapperRef}
-      className={styles.wrapper}
+      className={draggable ? styles.wrapper : styles.wrapperStatic}
       data-card-wrapper={cardId}
       style={{
         left: initialX,

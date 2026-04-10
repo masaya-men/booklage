@@ -9,6 +9,11 @@
   cursor: grabbing;
 }
 
+.wrapperStatic {
+  position: absolute;
+  cursor: default;
+}
+
 .dragging {
   box-shadow: var(--shadow-drag) !important;
   z-index: 50 !important;
