@@ -183,6 +183,12 @@ ol {
   --duration-normal: 300ms;
   --duration-slow: 500ms;
   --duration-dramatic: 800ms;
+
+  /* ── Grid / Collage Layout ── */
+  --grid-gap: 16px;
+  --collage-rotation-range: 5deg;
+  --shadow-grid-card: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-collage-card: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Light Mode Overrides ──────────────────────────────────── */
@@ -216,6 +222,9 @@ ol {
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16);
   --shadow-drag: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 30px var(--color-card-glow);
   --shadow-glow: 0 0 20px var(--color-card-glow), 0 0 60px rgba(107, 70, 245, 0.06);
+
+  --shadow-grid-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-collage-card: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Float Animation (Core "ふわふわ浮遊") ─────────────────── */
