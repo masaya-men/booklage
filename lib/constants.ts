@@ -37,7 +37,7 @@ export const FLOAT_DURATION = 4
 export const DB_NAME = 'booklage-db'
 
 /** IndexedDB schema version */
-export const DB_VERSION = 1
+export const DB_VERSION = 2
 
 /** Minimum zoom level (zoomed out — see full overview) */
 export const CANVAS_ZOOM_MIN = 0.1

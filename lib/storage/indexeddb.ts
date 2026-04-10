@@ -52,16 +52,20 @@ export interface CardRecord {
   bookmarkId: string
   /** Parent folder ID (denormalized for efficient queries) */
   folderId: string
-  /** X position on canvas */
+  /** X position on canvas (collage mode) */
   x: number
-  /** Y position on canvas */
+  /** Y position on canvas (collage mode) */
   y: number
-  /** Rotation in degrees */
+  /** Rotation in degrees (collage mode) */
   rotation: number
   /** Scale factor */
   scale: number
   /** Stacking order */
   zIndex: number
+  /** Position index for grid mode ordering (auto-assigned) */
+  gridIndex: number
+  /** Whether user manually placed this card (vs auto-scatter) */
+  isManuallyPlaced: boolean
 }
 
 /** Settings record — user preferences */
@@ -137,29 +141,38 @@ function randomPosition(): { x: number; y: number } {
  */
 export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
   return openDB<BooklageDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      // Bookmarks store
-      if (!db.objectStoreNames.contains('bookmarks')) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
+      // ── v0 → v1: initial schema ──
+      if (oldVersion < 1) {
         const bookmarkStore = db.createObjectStore('bookmarks', { keyPath: 'id' })
         bookmarkStore.createIndex('by-folder', 'folderId')
         bookmarkStore.createIndex('by-date', 'savedAt')
-      }
 
-      // Folders store
-      if (!db.objectStoreNames.contains('folders')) {
         db.createObjectStore('folders', { keyPath: 'id' })
-      }
 
-      // Cards store
-      if (!db.objectStoreNames.contains('cards')) {
         const cardStore = db.createObjectStore('cards', { keyPath: 'id' })
         cardStore.createIndex('by-folder', 'folderId')
         cardStore.createIndex('by-bookmark', 'bookmarkId')
+
+        db.createObjectStore('settings', { keyPath: 'key' })
       }
 
-      // Settings store
-      if (!db.objectStoreNames.contains('settings')) {
-        db.createObjectStore('settings', { keyPath: 'key' })
+      // ── v1 → v2: add gridIndex + isManuallyPlaced to cards ──
+      if (oldVersion < 2) {
+        const cardStore = transaction.objectStore('cards')
+        void cardStore.openCursor().then(function addFields(
+          cursor: Awaited<ReturnType<typeof cardStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          const card: CardRecord = {
+            ...cursor.value,
+            gridIndex: (cursor.value as CardRecord & { gridIndex?: number }).gridIndex ?? 0,
+            isManuallyPlaced:
+              (cursor.value as CardRecord & { isManuallyPlaced?: boolean }).isManuallyPlaced ?? false,
+          }
+          void cursor.update(card)
+          return cursor.continue().then(addFields)
+        })
       }
     },
   })
@@ -233,6 +246,10 @@ export async function addBookmark(
   const tx = db.transaction(['bookmarks', 'cards'], 'readwrite')
   await tx.objectStore('bookmarks').put(bookmark)
 
+  // Count existing cards to determine gridIndex
+  const existingCards = await tx.objectStore('cards').index('by-folder').getAll(bookmark.folderId)
+  const gridIndex = existingCards.length
+
   const pos = randomPosition()
   const card: CardRecord = {
     id: uuid(),
@@ -243,6 +260,8 @@ export async function addBookmark(
     rotation: randomRotation(),
     scale: 1,
     zIndex: 1,
+    gridIndex,
+    isManuallyPlaced: false,
   }
   await tx.objectStore('cards').put(card)
   await tx.done
