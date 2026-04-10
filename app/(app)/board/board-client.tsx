@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useInfiniteCanvas } from '@/lib/canvas/use-infinite-canvas'
 import {
   initDB,
   addBookmark,
@@ -62,7 +63,8 @@ export function BoardClient(): React.ReactElement {
   const [loading, setLoading] = useState(false)
   const [bgTheme, setBgTheme] = useState('dark')
 
-  const canvasRef = useRef<HTMLDivElement | null>(null)
+  const worldRef = useRef<HTMLDivElement | null>(null)
+  const canvas = useInfiniteCanvas()
 
   // ── DB & folder init ─────────────────────────────────────────
   useEffect(() => {
@@ -243,7 +245,7 @@ export function BoardClient(): React.ReactElement {
         onAddFolder={handleAddFolder}
       />
 
-      <Canvas bgTheme={bgTheme} canvasRef={canvasRef}>
+      <Canvas bgTheme={bgTheme} canvas={canvas} worldRef={worldRef}>
         {items.map(({ card, bookmark }) => {
           const innerStyle: React.CSSProperties = {
             zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
@@ -262,6 +264,7 @@ export function BoardClient(): React.ReactElement {
                 cardId={card.id}
                 initialX={card.x}
                 initialY={card.y}
+                zoom={canvas.state.zoom}
                 onDragEnd={handleDragEnd}
               >
                 <TweetCard
@@ -278,6 +281,7 @@ export function BoardClient(): React.ReactElement {
               cardId={card.id}
               initialX={card.x}
               initialY={card.y}
+              zoom={canvas.state.zoom}
               onDragEnd={handleDragEnd}
             >
               <BookmarkCard
@@ -306,7 +310,7 @@ export function BoardClient(): React.ReactElement {
         )}
       </Canvas>
 
-      <ExportButton canvasRef={canvasRef} />
+      <ExportButton canvasRef={worldRef} />
       <RandomPick cardIds={items.map(({ card }) => card.id)} />
       <ColorSuggest cardColors={new Map(items.map(({ card }, i) => [card.id, FOLDER_COLORS[i % FOLDER_COLORS.length]]))} />
       <ThemeSelector currentTheme={bgTheme} onSelectTheme={setBgTheme} />
