@@ -365,6 +365,19 @@ ol {
     0 12px 12px -6px rgba(0, 0, 0, 0.08);
 }
 
+/* ── Card Landing Ripple ───────────────────────────────────── */
+
+@keyframes card-ripple {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
 /* ── Reduced Motion ────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
