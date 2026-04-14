@@ -1,6 +1,7 @@
 'use client'
 
 import { type RefObject } from 'react'
+import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import styles from './ExportButton.module.css'
 
 type ExportButtonProps = {
@@ -10,6 +11,8 @@ type ExportButtonProps = {
 
 /** Toolbar with PNG export and X (Twitter) share buttons */
 export function ExportButton({ canvasRef }: ExportButtonProps): React.ReactElement {
+  const glass = useLiquidGlass({ id: 'export-toolbar', strength: 'strong', fixedSize: true })
+
   async function handleExport(): Promise<void> {
     if (!canvasRef.current) return
     const domtoimage = (await import('dom-to-image-more')).default
@@ -27,7 +30,11 @@ export function ExportButton({ canvasRef }: ExportButtonProps): React.ReactEleme
   }
 
   return (
-    <div className={styles.toolbar}>
+    <div
+      ref={glass.ref as React.RefCallback<HTMLDivElement>}
+      className={`${styles.toolbar} ${glass.className}`}
+      style={glass.style}
+    >
       <button className={styles.button} onClick={handleExport}>
         画像として保存
       </button>

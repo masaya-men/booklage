@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { CANVAS_ZOOM_SENSITIVITY } from '@/lib/constants'
 import type { InfiniteCanvasControls } from '@/lib/canvas/use-infinite-canvas'
+import { LiquidGlassProvider } from '@/lib/glass/LiquidGlassProvider'
 import styles from './Canvas.module.css'
 
 /** Props for the Canvas component */
@@ -202,25 +203,27 @@ export function Canvas({
   )
 
   return (
-    <div
-      ref={viewportRef}
-      className={styles.viewport}
-      data-bg-theme={bgTheme}
-      data-panning={canvas.isPanning}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <LiquidGlassProvider>
       <div
-        ref={worldRef}
-        className={styles.world}
-        style={{ transform: canvas.worldTransform }}
+        ref={viewportRef}
+        className={styles.viewport}
+        data-bg-theme={bgTheme}
+        data-panning={canvas.isPanning}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
-        {children}
+        <div
+          ref={worldRef}
+          className={styles.world}
+          style={{ transform: canvas.worldTransform }}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </LiquidGlassProvider>
   )
 }

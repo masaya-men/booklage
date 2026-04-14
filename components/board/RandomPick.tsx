@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react'
 import { gsap } from 'gsap'
+import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import styles from './RandomPick.module.css'
 
 type RandomPickProps = {
@@ -11,6 +12,8 @@ type RandomPickProps = {
 
 /** Randomly highlights one card and dims the rest for 3 seconds */
 export function RandomPick({ cardIds }: RandomPickProps): React.ReactElement {
+  const glass = useLiquidGlass({ id: 'random-pick', strength: 'strong', fixedSize: true })
+
   const handlePick = useCallback(() => {
     if (cardIds.length === 0) return
     const chosen = cardIds[Math.floor(Math.random() * cardIds.length)]
@@ -41,8 +44,14 @@ export function RandomPick({ cardIds }: RandomPickProps): React.ReactElement {
   }, [cardIds])
 
   return (
-    <button className={styles.button} onClick={handlePick} disabled={cardIds.length === 0}>
-      ランダムピック
-    </button>
+    <div
+      ref={glass.ref as React.RefCallback<HTMLDivElement>}
+      className={`${styles.wrapper} ${glass.className}`}
+      style={glass.style}
+    >
+      <button className={styles.button} onClick={handlePick} disabled={cardIds.length === 0}>
+        ランダムピック
+      </button>
+    </div>
   )
 }

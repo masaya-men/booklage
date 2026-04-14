@@ -1,5 +1,6 @@
 'use client'
 
+import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import styles from './ViewModeToggle.module.css'
 
 /** View mode for the canvas */
@@ -21,8 +22,14 @@ export function ViewModeToggle({
   mode,
   onToggle,
 }: ViewModeToggleProps): React.ReactElement {
+  const glass = useLiquidGlass({ id: 'view-mode-toggle', strength: 'strong', fixedSize: true })
+
   return (
-    <div className={styles.container}>
+    <div
+      ref={glass.ref as React.RefCallback<HTMLDivElement>}
+      className={`${styles.container} ${glass.className}`}
+      style={glass.style}
+    >
       <button
         className={mode === 'grid' ? styles.buttonActive : styles.button}
         onClick={() => onToggle('grid')}
