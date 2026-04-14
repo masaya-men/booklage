@@ -28,7 +28,7 @@ export function BookmarkletBanner(): React.ReactElement {
     a.href = bookmarkletUri
     a.className = styles.dragLink
     a.title = 'ブックマークバーにドラッグしてください'
-    a.textContent = '📌 Booklage に保存'
+    a.textContent = 'Booklage'
     a.addEventListener('click', (e) => e.preventDefault())
 
     container.appendChild(a)

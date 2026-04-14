@@ -1,5 +1,6 @@
 .card {
-  width: 300px;
+  width: 350px;
+  height: 450px;
   container-type: inline-size;
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -18,7 +19,8 @@
   box-shadow: var(--shadow-lg), var(--shadow-glow);
 }
 
-/* Override react-tweet's default styles to fit our dark theme */
-.card [data-theme="light"] {
-  color-scheme: dark;
+.iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
 }

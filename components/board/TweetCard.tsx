@@ -1,6 +1,5 @@
 'use client'
 
-import { Tweet } from 'react-tweet'
 import styles from './TweetCard.module.css'
 
 /** Props for the TweetCard component */
@@ -12,13 +11,20 @@ type TweetCardProps = {
 }
 
 /**
- * Renders an embedded tweet using react-tweet.
- * Wrapped in a floating card with hover effects.
+ * Renders an embedded tweet using Twitter's iframe embed.
+ * This allows full interactivity including video playback.
+ * widgets.js is sandboxed inside the iframe (doesn't affect main page).
  */
 export function TweetCard({ tweetId, style }: TweetCardProps): React.ReactElement {
   return (
     <div className={styles.card} style={style}>
-      <Tweet id={tweetId} />
+      <iframe
+        className={styles.iframe}
+        src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
+        title={`Tweet ${tweetId}`}
+        allowFullScreen
+        sandbox="allow-scripts allow-same-origin allow-popups"
+      />
     </div>
   )
 }
