@@ -49,6 +49,7 @@ import { getColorModeForTheme } from '@/lib/theme/theme-utils'
 import { useFrameMonitor } from '@/lib/interactions/use-frame-monitor'
 import { LiquidGlassProvider } from '@/lib/glass/LiquidGlassProvider'
 import { BookmarkletBanner } from '@/components/bookmarklet/BookmarkletBanner'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import { ResizeHandle } from '@/components/board/ResizeHandle'
 
@@ -814,6 +815,7 @@ export function BoardClient(): React.ReactElement {
         onChangeDefaultAspectRatio={handleDefaultAspectRatioChange}
       />
       <BookmarkletBanner />
+      <InstallPrompt />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />
     </LiquidGlassProvider>
   )
