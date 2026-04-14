@@ -1,0 +1,118 @@
+/* components/marketing/sections/StyleSwitchSection.module.css */
+
+.section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16) var(--space-6);
+}
+
+.heading {
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--space-12);
+  opacity: 0;
+}
+
+.showcase {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 700px;
+}
+
+.styleCard {
+  width: 150px;
+  padding: var(--space-5) var(--space-3);
+  text-align: center;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
+  background: var(--color-card-bg);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+.styleCard:hover {
+  border-color: var(--color-accent-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.stylePreview {
+  width: 80px;
+  height: 56px;
+  margin: 0 auto var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.previewGlass {
+  composes: stylePreview;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.previewPolaroid {
+  composes: stylePreview;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+
+.previewPolaroid::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: #fff;
+  border-radius: 0 0 2px 2px;
+}
+
+.previewNewspaper {
+  composes: stylePreview;
+  background: #f5f0e8;
+  border: 1px solid #d4c9b4;
+  border-radius: 2px;
+}
+
+.previewMagnet {
+  composes: stylePreview;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 3px 0 #bbb;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.magnetPin {
+  width: 24px;
+  height: 4px;
+  background: #ff6b6b;
+  border-radius: 2px;
+}
+
+.styleName {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-heading);
+}
+
+@media (max-width: 767px) {
+  .showcase {
+    gap: var(--space-4);
+  }
+
+  .styleCard {
+    width: 140px;
+  }
+}

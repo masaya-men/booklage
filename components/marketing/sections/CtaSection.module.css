@@ -1,0 +1,61 @@
+/* components/marketing/sections/CtaSection.module.css */
+
+.section {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-20) var(--space-6);
+}
+
+.headline {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: var(--weight-extrabold);
+  margin-bottom: var(--space-3);
+  opacity: 0;
+}
+
+.headlineGradient {
+  background: linear-gradient(135deg, var(--color-accent-primary), #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sub {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-8);
+  opacity: 0;
+}
+
+.ctaBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-4) var(--space-10);
+  background: linear-gradient(135deg, var(--color-accent-primary), #9f7aea);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  text-decoration: none;
+  box-shadow: 0 4px 24px rgba(124, 92, 252, 0.4);
+  transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+  opacity: 0;
+}
+
+.ctaBtn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 36px rgba(124, 92, 252, 0.5);
+}
+
+.privacy {
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  opacity: 0;
+}
