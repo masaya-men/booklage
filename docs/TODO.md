@@ -8,9 +8,10 @@
 
 - **ブランチ**: `feat/s3-design-polish`（masterから分岐）
 - **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S3（デザイン磨き）ほぼ完了 — 全機能再接続+磨き済み
-- **仕様書**: `docs/superpowers/specs/2026-04-14-s3-design-polish.md`
-- **実装計画**: `docs/superpowers/plans/2026-04-14-s3-design-polish.md`
+- **進捗**: S3 完了 → **S5（ブックマークレットUI）の実装に着手する**
+- **S5 設計書**: `docs/superpowers/specs/2026-04-14-s5-bookmarklet.md`
+- **S5 実装計画**: `docs/superpowers/plans/2026-04-14-s5-bookmarklet.md`（コード全部入り、5タスク）
+- **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（リポジトリ未作成）
 
 ### 重要な技術判断（確定済み）
 
