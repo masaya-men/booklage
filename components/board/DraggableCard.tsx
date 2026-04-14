@@ -1,10 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { Draggable } from 'gsap/Draggable'
 import styles from './DraggableCard.module.css'
-import { useCardTilt } from '@/lib/interactions/use-card-tilt'
 import { createRipple } from '@/lib/interactions/ripple'
 import { ResizeHandle } from './ResizeHandle'
 
@@ -62,16 +61,6 @@ export function DraggableCard({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const draggableRef = useRef<Draggable[]>([])
 
-  const tilt = useCardTilt({ enabled: draggable && enableTilt })
-
-  const combinedRef = useCallback(
-    (el: HTMLDivElement | null) => {
-      wrapperRef.current = el
-      tilt.ref(el)
-    },
-    [tilt],
-  )
-
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
   const initialXRef = useRef(initialX)
@@ -83,6 +72,7 @@ export function DraggableCard({
   const onDragRef = useRef(onDrag)
   onDragRef.current = onDrag
 
+  // GSAP Draggable setup
   useEffect(() => {
     const el = wrapperRef.current
     if (!el || !draggable) return
@@ -151,9 +141,65 @@ export function DraggableCard({
     }
   }, [cardId, draggable])
 
+  // Tilt effect — separate useEffect using wrapperRef directly (no combinedRef instability)
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el || !draggable || !enableTilt) return
+
+    let rafId = 0
+    let isHovering = false
+
+    const onMouseEnter = (): void => {
+      isHovering = true
+    }
+
+    const onMouseLeave = (): void => {
+      isHovering = false
+      if (rafId) cancelAnimationFrame(rafId)
+      el.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+      el.style.transform = ''
+      el.style.setProperty('--spotlight-opacity', '0')
+      el.style.setProperty('--tilt-shadow', '')
+      setTimeout(() => {
+        if (el) el.style.transition = ''
+      }, 400)
+    }
+
+    const onMouseMove = (e: MouseEvent): void => {
+      if (!isHovering || el.dataset.dragging === 'true') return
+      if (rafId) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        if (!el || el.dataset.dragging === 'true') return
+        const rect = el.getBoundingClientRect()
+        const cx = rect.left + rect.width / 2
+        const cy = rect.top + rect.height / 2
+        const nx = Math.max(-1, Math.min(1, (e.clientX - cx) / (rect.width / 2)))
+        const ny = Math.max(-1, Math.min(1, (e.clientY - cy) / (rect.height / 2)))
+        const rx = -ny * 5
+        const ry = nx * 5
+        el.style.transform = `perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.03)`
+        el.style.setProperty('--spotlight-x', `${((nx + 1) / 2) * 100}%`)
+        el.style.setProperty('--spotlight-y', `${((ny + 1) / 2) * 100}%`)
+        el.style.setProperty('--spotlight-opacity', '1')
+        el.style.setProperty('--tilt-shadow', `${nx * 8}px ${ny * 8 + 12}px 24px rgba(0,0,0,0.3)`)
+      })
+    }
+
+    el.addEventListener('mouseenter', onMouseEnter, { passive: true })
+    el.addEventListener('mouseleave', onMouseLeave, { passive: true })
+    el.addEventListener('mousemove', onMouseMove, { passive: true })
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      el.removeEventListener('mouseenter', onMouseEnter)
+      el.removeEventListener('mouseleave', onMouseLeave)
+      el.removeEventListener('mousemove', onMouseMove)
+    }
+  }, [draggable, enableTilt])
+
   return (
     <div
-      ref={combinedRef}
+      ref={wrapperRef}
       className={draggable ? styles.wrapper : styles.wrapperStatic}
       data-card-wrapper={cardId}
       style={{
