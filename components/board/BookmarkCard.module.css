@@ -1,5 +1,5 @@
 .card {
-  width: 240px;
+  width: var(--card-width, 240px);
   container-type: inline-size;
   background: var(--color-card-bg);
   border: 1px solid var(--color-card-border);
