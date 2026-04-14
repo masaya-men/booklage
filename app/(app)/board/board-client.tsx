@@ -248,6 +248,30 @@ export function BoardClient(): React.ReactElement {
     [db, resetRepulsion],
   )
 
+  // ── Resize end handler (persists dimensions to IndexedDB) ────
+  const handleResizeEnd = useCallback(
+    async (cardId: string, width: number, height: number): Promise<void> => {
+      if (!db || !currentFolder) return
+      await updateCard(db, cardId, { width, height })
+
+      // Reload items to reflect new dimensions
+      const [bookmarks, cards] = await Promise.all([
+        getBookmarksByFolder(db, currentFolder),
+        getCardsByFolder(db, currentFolder),
+      ])
+      const bookmarkMap = new Map(bookmarks.map((b) => [b.id, b]))
+      const paired: CardWithBookmark[] = []
+      for (const card of cards) {
+        const bookmark = bookmarkMap.get(card.bookmarkId)
+        if (bookmark) {
+          paired.push({ card, bookmark })
+        }
+      }
+      setItems(paired)
+    },
+    [db, currentFolder],
+  )
+
   // ── Folder selection handler ─────────────────────────────────
   const handleSelectFolder = useCallback(
     (folder: FolderRecord): void => {
@@ -390,6 +414,9 @@ export function BoardClient(): React.ReactElement {
                 onDrag={handleDrag}
                 onDragEnd={handleDragEnd}
                 draggable={!isGrid}
+                cardWidth={card.width}
+                cardHeight={card.height}
+                onResizeEnd={handleResizeEnd}
               >
                 <TweetCard
                   tweetId={tweetId}
@@ -409,6 +436,9 @@ export function BoardClient(): React.ReactElement {
               onDrag={handleDrag}
               onDragEnd={handleDragEnd}
               draggable={!isGrid}
+              cardWidth={card.width}
+              cardHeight={card.height}
+              onResizeEnd={handleResizeEnd}
             >
               <BookmarkCard
                 bookmark={bookmark}
