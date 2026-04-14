@@ -11,38 +11,26 @@ gsap.registerPlugin(Draggable)
 
 /** Props for the DraggableCard wrapper */
 type DraggableCardProps = {
-  /** Card content to render inside the draggable wrapper */
   children: React.ReactNode
-  /** Unique card identifier */
   cardId: string
-  /** X position in world coordinates */
   initialX: number
-  /** Y position in world coordinates */
   initialY: number
-  /** Current canvas zoom factor (used to convert pixel deltas to world coords) */
   zoom: number
-  /** Called during drag with the current world-space position (used for repulsion) */
   onDrag?: (cardId: string, x: number, y: number) => void
-  /** Called when drag finishes with the new world-space position */
   onDragEnd: (cardId: string, x: number, y: number) => void
-  /** Whether drag is enabled (false in grid mode) */
   draggable?: boolean
-  /** Whether 3D tilt + spotlight effect is enabled on hover (default true) */
   enableTilt?: boolean
-  /** Current card width in pixels (enables resize handle when provided with onResizeEnd) */
   cardWidth?: number
-  /** Current card height in pixels (enables resize handle when provided with onResizeEnd) */
   cardHeight?: number
-  /** Called when resize ends with final width and height */
   onResizeEnd?: (cardId: string, width: number, height: number) => void
 }
 
 /**
  * Wraps card content in an absolutely positioned container.
  *
- * - When draggable=true (default): GSAP Draggable is created.
- * - When draggable=false: positioned statically, no drag interaction.
- * - GSAP Draggable tracks pixel deltas; we divide by zoom to get world deltas.
+ * Architecture: OUTER div = drag target (GSAP Draggable controls transform)
+ *               INNER div = tilt target (CSS transform for 3D tilt + spotlight)
+ * This separation prevents GSAP Draggable and tilt from fighting over transform.
  */
 export function DraggableCard({
   children,
@@ -59,6 +47,7 @@ export function DraggableCard({
   onResizeEnd,
 }: DraggableCardProps): React.ReactElement {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const tiltRef = useRef<HTMLDivElement | null>(null)
   const draggableRef = useRef<Draggable[]>([])
 
   const zoomRef = useRef(zoom)
@@ -72,22 +61,20 @@ export function DraggableCard({
   const onDragRef = useRef(onDrag)
   onDragRef.current = onDrag
 
-  // GSAP Draggable setup
+  // ── GSAP Draggable on OUTER wrapper ─────────────────────────
   useEffect(() => {
     const el = wrapperRef.current
     if (!el || !draggable) return
-
     const instances = Draggable.create(el, {
       type: 'x,y',
       zIndexBoost: false,
       onDragStart() {
         el.classList.add(styles.dragging)
-        // Disable tilt during drag: clear any tilt transform so GSAP owns the element
-        el.dataset.dragging = 'true'
-        el.style.transform = ''
-        el.style.transition = ''
-        el.style.setProperty('--spotlight-opacity', '0')
-        gsap.to(el, { scale: 1.05, duration: 0.2, ease: 'power2.out' })
+        const tiltEl = tiltRef.current
+        if (tiltEl) {
+          tiltEl.style.transform = ''
+          tiltEl.style.setProperty('--spotlight-opacity', '0')
+        }
       },
       onDrag() {
         const pixelDeltaX = this.x ?? 0
@@ -100,15 +87,12 @@ export function DraggableCard({
       },
       onDragEnd() {
         el.classList.remove(styles.dragging)
-        // Re-enable tilt: tilt will naturally re-apply on next mousemove
-        el.dataset.dragging = 'false'
         gsap.to(el, {
           scale: 1.0,
           duration: 0.4,
           ease: 'back.out(1.7)',
         })
 
-        // Ripple effect on landing
         const worldEl = el.closest('[class*="world"]') as HTMLElement | null
         if (worldEl) {
           const rect = el.getBoundingClientRect()
@@ -134,24 +118,26 @@ export function DraggableCard({
     draggableRef.current = instances
 
     return () => {
-      for (const instance of instances) {
+      for (const instance of draggableRef.current) {
         instance.kill()
       }
       draggableRef.current = []
+      // Reset GSAP internal state so a fresh Draggable can take over (React Strict Mode workaround)
+      gsap.set(el, { clearProps: 'transform' })
     }
   }, [cardId, draggable])
 
-  // Tilt effect — separate useEffect using wrapperRef directly (no combinedRef instability)
+  // ── Tilt + Spotlight on INNER div ───────────────────────────
   useEffect(() => {
-    const el = wrapperRef.current
-    if (!el || !draggable || !enableTilt) return
+    const el = tiltRef.current
+    const dragEl = wrapperRef.current
+    if (!el || !dragEl || !draggable || !enableTilt) return
 
     let rafId = 0
     let isHovering = false
+    let isDragging = false
 
-    const onMouseEnter = (): void => {
-      isHovering = true
-    }
+    const onMouseEnter = (): void => { isHovering = true }
 
     const onMouseLeave = (): void => {
       isHovering = false
@@ -160,16 +146,19 @@ export function DraggableCard({
       el.style.transform = ''
       el.style.setProperty('--spotlight-opacity', '0')
       el.style.setProperty('--tilt-shadow', '')
-      setTimeout(() => {
-        if (el) el.style.transition = ''
-      }, 400)
+      setTimeout(() => { if (el) el.style.transition = '' }, 400)
+    }
+
+    const onMouseDown = (): void => { isDragging = true }
+    const onMouseUp = (): void => {
+      setTimeout(() => { isDragging = false }, 100)
     }
 
     const onMouseMove = (e: MouseEvent): void => {
-      if (!isHovering || el.dataset.dragging === 'true') return
+      if (!isHovering || isDragging) return
       if (rafId) cancelAnimationFrame(rafId)
       rafId = requestAnimationFrame(() => {
-        if (!el || el.dataset.dragging === 'true') return
+        if (!el || isDragging) return
         const rect = el.getBoundingClientRect()
         const cx = rect.left + rect.width / 2
         const cy = rect.top + rect.height / 2
@@ -185,15 +174,20 @@ export function DraggableCard({
       })
     }
 
-    el.addEventListener('mouseenter', onMouseEnter, { passive: true })
-    el.addEventListener('mouseleave', onMouseLeave, { passive: true })
-    el.addEventListener('mousemove', onMouseMove, { passive: true })
+    // Listen on the outer drag wrapper for hover/move, apply to inner tilt div
+    dragEl.addEventListener('mouseenter', onMouseEnter, { passive: true })
+    dragEl.addEventListener('mouseleave', onMouseLeave, { passive: true })
+    dragEl.addEventListener('mousemove', onMouseMove, { passive: true })
+    dragEl.addEventListener('mousedown', onMouseDown, { passive: true })
+    document.addEventListener('mouseup', onMouseUp, { passive: true })
 
     return () => {
       if (rafId) cancelAnimationFrame(rafId)
-      el.removeEventListener('mouseenter', onMouseEnter)
-      el.removeEventListener('mouseleave', onMouseLeave)
-      el.removeEventListener('mousemove', onMouseMove)
+      dragEl.removeEventListener('mouseenter', onMouseEnter)
+      dragEl.removeEventListener('mouseleave', onMouseLeave)
+      dragEl.removeEventListener('mousemove', onMouseMove)
+      dragEl.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('mouseup', onMouseUp)
     }
   }, [draggable, enableTilt])
 
@@ -202,12 +196,11 @@ export function DraggableCard({
       ref={wrapperRef}
       className={draggable ? styles.wrapper : styles.wrapperStatic}
       data-card-wrapper={cardId}
-      style={{
-        left: initialX,
-        top: initialY,
-      }}
+      style={{ left: initialX, top: initialY }}
     >
-      {children}
+      <div ref={tiltRef} className={styles.tiltInner}>
+        {children}
+      </div>
       {draggable && onResizeEnd !== undefined && cardWidth !== undefined && cardHeight !== undefined && (
         <ResizeHandle
           cardId={cardId}

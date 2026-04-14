@@ -142,8 +142,9 @@ function randomRotation(): number {
  */
 function randomPosition(): { x: number; y: number } {
   return {
-    x: Math.floor(Math.random() * 600) + 50,
-    y: Math.floor(Math.random() * 400) + 50,
+    // Start x at 220 to avoid overlapping with FolderNav (left panel, ~200px wide)
+    x: Math.floor(Math.random() * 600) + 220,
+    y: Math.floor(Math.random() * 400) + 80,
   }
 }
 

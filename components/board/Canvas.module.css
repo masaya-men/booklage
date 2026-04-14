@@ -4,13 +4,9 @@
   position: relative;
   flex: 1;
   overflow: hidden;
-  /* Background is controlled by [data-bg-theme] in globals.css.
-     Do NOT set background or background-image here — it would override
-     the texture/gradient rules from the theme attribute selector. */
-  background-color: var(--color-bg-primary);
-  /* Prevent browser default touch gestures (we handle them) */
+  /* Background is fully controlled by [data-bg-theme] in globals.css.
+     No background properties here to avoid specificity conflicts. */
   touch-action: none;
-  /* Prevent text selection during pan */
   user-select: none;
   -webkit-user-select: none;
 }

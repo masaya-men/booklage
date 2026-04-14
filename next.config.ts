@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Disable React Strict Mode — GSAP Draggable doesn't survive kill+recreate cycle
+  // TODO: Find a proper workaround and re-enable
+  reactStrictMode: false,
 };
 
 export default nextConfig;
