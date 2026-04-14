@@ -40,6 +40,22 @@ export function extractTweetId(url: string): string | null {
 }
 
 /**
+ * Extracts the YouTube video ID from a URL.
+ * Supports youtube.com/watch?v=, youtu.be/, and youtube.com/embed/ formats.
+ * @param url - The YouTube URL
+ * @returns The 11-character video ID, or null if not found
+ */
+export function extractYoutubeId(url: string): string | null {
+  const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/)
+  if (watchMatch) return watchMatch[1]
+  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)
+  if (shortMatch) return shortMatch[1]
+  const embedMatch = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/)
+  if (embedMatch) return embedMatch[1]
+  return null
+}
+
+/**
  * Extracts the first HTTP/HTTPS URL from a text string.
  * Used by Web Share Target to extract URLs from shared text.
  * @param text - The text to search for URLs

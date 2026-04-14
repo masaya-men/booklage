@@ -19,7 +19,7 @@ import type { BookmarkRecord, CardRecord, FolderRecord } from '@/lib/storage/ind
 
 /** Database instance type derived from initDB return value */
 type BooklageDB = Awaited<ReturnType<typeof initDB>>
-import { detectUrlType, extractTweetId, extractUrlFromText, isValidUrl } from '@/lib/utils/url'
+import { detectUrlType, extractTweetId, extractYoutubeId, extractUrlFromText, isValidUrl } from '@/lib/utils/url'
 import { fetchOgp } from '@/lib/scraper/ogp'
 import { gsap } from 'gsap'
 import { Draggable } from 'gsap/Draggable'
@@ -28,6 +28,7 @@ gsap.registerPlugin(Draggable)
 import { CARD_WIDTH, FLOAT_DELAY_MAX, FLOAT_DURATION, FOLDER_COLORS, GRID_GAP, VIEW_SWITCH_DURATION, VIEW_SWITCH_STAGGER, VIEW_SWITCH_EASE, Z_INDEX } from '@/lib/constants'
 import { Canvas } from '@/components/board/Canvas'
 import { BookmarkCard } from '@/components/board/BookmarkCard'
+import { VideoEmbed } from '@/components/board/VideoEmbed'
 import { TweetCard } from '@/components/board/TweetCard'
 import { UrlInput } from '@/components/board/UrlInput'
 import { FolderNav } from '@/components/board/FolderNav'
@@ -95,6 +96,18 @@ function CardPortalContent({
   const glass = useLiquidGlass({ id: `card-${card.id}`, strength: 'subtle', borderRadius: 12 })
 
   const tweetId = bookmark.type === 'tweet' ? extractTweetId(bookmark.url) : null
+  const youtubeId = bookmark.type === 'youtube' ? extractYoutubeId(bookmark.url) : null
+
+  /** Render the appropriate card content based on bookmark type */
+  function renderCardContent(): React.ReactElement {
+    if (tweetId) {
+      return <TweetCard tweetId={tweetId} style={innerStyle} />
+    }
+    if (youtubeId) {
+      return <VideoEmbed videoId={youtubeId} title={bookmark.title} style={innerStyle} width={card.width} />
+    }
+    return <BookmarkCard bookmark={bookmark} style={innerStyle} width={card.width} height={card.height} />
+  }
 
   return (
     <div ref={tiltRef} data-tilt>
@@ -104,11 +117,7 @@ function CardPortalContent({
         magnetColor={folderColor}
         liquidGlass={cardStyle === 'glass' ? glass : undefined}
       >
-        {tweetId ? (
-          <TweetCard tweetId={tweetId} style={innerStyle} />
-        ) : (
-          <BookmarkCard bookmark={bookmark} style={innerStyle} width={card.width} height={card.height} />
-        )}
+        {renderCardContent()}
       </CardStyleWrapper>
       {!isGrid && (
         <ResizeHandle
