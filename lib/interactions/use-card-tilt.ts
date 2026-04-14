@@ -24,11 +24,15 @@ export function useCardTilt({
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!elementRef.current || !isHoveringRef.current) return
+      // Skip tilt updates while GSAP Draggable is controlling the element
+      if (elementRef.current.dataset.dragging === 'true') return
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
 
       rafRef.current = requestAnimationFrame(() => {
         const el = elementRef.current
         if (!el) return
+        // Double-check dragging state inside rAF (may have changed)
+        if (el.dataset.dragging === 'true') return
 
         const rect = el.getBoundingClientRect()
         const centerX = rect.left + rect.width / 2

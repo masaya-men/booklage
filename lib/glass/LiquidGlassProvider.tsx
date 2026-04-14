@@ -49,6 +49,8 @@ type FilterEntry = {
   borderRadius: number
   strength: GlassStrength
   dataUrl: string
+  specularUrl: string
+  maxDisplacement: number
 }
 
 export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): React.ReactElement {
@@ -70,8 +72,22 @@ export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): Rea
     ): string => {
       const filterId = `liquid-glass-${id}`
       if (!filtersRef.current.has(filterId)) {
-        const dataUrl = getDisplacementMap(width, height, borderRadius, strength)
-        const entry: FilterEntry = { id: filterId, width, height, borderRadius, strength, dataUrl }
+        const { displacement, specular, maxDisplacement } = getDisplacementMap(
+          width,
+          height,
+          borderRadius,
+          strength,
+        )
+        const entry: FilterEntry = {
+          id: filterId,
+          width,
+          height,
+          borderRadius,
+          strength,
+          dataUrl: displacement,
+          specularUrl: specular,
+          maxDisplacement,
+        }
         filtersRef.current.set(filterId, entry)
         setFilters(Array.from(filtersRef.current.values()))
       }
@@ -96,6 +112,7 @@ export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): Rea
           <defs>
             {filters.map((f) => (
               <filter key={f.id} id={f.id} x="0" y="0" width="100%" height="100%">
+                {/* Refraction displacement */}
                 <feImage
                   href={f.dataUrl}
                   x="0"
@@ -107,10 +124,21 @@ export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): Rea
                 <feDisplacementMap
                   in="SourceGraphic"
                   in2="displacement_map"
-                  scale={f.strength === 'strong' ? 24 : f.strength === 'medium' ? 16 : 8}
+                  scale={f.maxDisplacement}
                   xChannelSelector="R"
                   yChannelSelector="G"
+                  result="refracted"
                 />
+                {/* Specular highlight overlay */}
+                <feImage
+                  href={f.specularUrl}
+                  x="0"
+                  y="0"
+                  width={f.width}
+                  height={f.height}
+                  result="specular"
+                />
+                <feBlend in="refracted" in2="specular" mode="screen" />
               </filter>
             ))}
           </defs>

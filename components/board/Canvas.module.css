@@ -4,9 +4,10 @@
   position: relative;
   flex: 1;
   overflow: hidden;
-  background: var(--canvas-bg, var(--color-bg-primary));
-  background-image: var(--canvas-pattern, none);
-  background-size: var(--canvas-pattern-size, auto);
+  /* Background is controlled by [data-bg-theme] in globals.css.
+     Do NOT set background or background-image here — it would override
+     the texture/gradient rules from the theme attribute selector. */
+  background-color: var(--color-bg-primary);
   /* Prevent browser default touch gestures (we handle them) */
   touch-action: none;
   /* Prevent text selection during pan */
