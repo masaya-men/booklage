@@ -8,9 +8,10 @@
 
 - **ブランチ**: `feat/s3-design-polish`（masterから分岐）
 - **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S3 完了 → **S5 完了（ブックマークレットUI）** → 次は S4 or S6
-- **S5 設計書**: `docs/superpowers/specs/2026-04-14-s5-bookmarklet.md`
-- **S5 実装計画**: `docs/superpowers/plans/2026-04-14-s5-bookmarklet.md`（全5タスク完了）
+- **進捗**: S3 → S5 → **S7 完了（LP）** → 次は S8（静的ページ）or S6（PWA）
+- **S7 設計書**: `docs/superpowers/specs/2026-04-14-s7-landing-page.md`
+- **S7 実装計画**: `docs/superpowers/plans/2026-04-14-s7-landing-page.md`（全9タスク完了）
+- **新規依存**: `lenis`（スムーズスクロール）— GSAP ScrollTriggerも活用中
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（リポジトリ未作成）
 
 ### 重要な技術判断（確定済み）
@@ -60,6 +61,33 @@
 - `lib/utils/bookmarklet.ts` — インラインOGP抽出方式に全面改修
 - `tests/lib/bookmarklet.test.ts` — テスト5件に拡張
 - `app/(app)/board/board-client.tsx` — BookmarkletBanner追加
+
+### S7 完了済み
+
+- [x] Lenis スムーズスクロール + GSAP ScrollTrigger 基盤Hook
+- [x] LandingPage シェル（ノイズテクスチャ背景）
+- [x] HeroSection（グラデーションキャッチ + 浮遊ガラスカード + ブラー入場アニメーション）
+- [x] SaveDemoSection（ブックマークレット3ステップフロー、ScrollTrigger連動）
+- [x] CollageDemoSection（カード5枚が四方から飛来してコラージュ組み上げ）
+- [x] StyleSwitchSection（Glass/Polaroid/Newspaper/Magnetプレビュー）
+- [x] ShareDemoSection（コラージュ→PNG→SNS共有フロー）
+- [x] CtaSection（"Make it yours." + 最終CTA）
+- [x] Playwrightブラウザテスト全通過
+
+**S7 新規作成ファイル:**
+- `lib/scroll/use-smooth-scroll.ts` — Lenis初期化Hook
+- `lib/scroll/use-scroll-trigger.ts` — ScrollTrigger初期化Hook
+- `components/marketing/LandingPage.tsx` + `.module.css` — LP全体シェル
+- `components/marketing/sections/HeroSection.tsx` + `.module.css`
+- `components/marketing/sections/SaveDemoSection.tsx` + `.module.css`
+- `components/marketing/sections/CollageDemoSection.tsx` + `.module.css`
+- `components/marketing/sections/StyleSwitchSection.tsx` + `.module.css`
+- `components/marketing/sections/ShareDemoSection.tsx` + `.module.css`
+- `components/marketing/sections/CtaSection.tsx` + `.module.css`
+
+**S7 変更ファイル:**
+- `app/page.tsx` — LandingPageコンポーネントに置き換え
+- `package.json` — lenis追加
 
 ### 次にやること（S3の仕上げ — 後でブラッシュアップ）
 
@@ -116,7 +144,7 @@
 - [ ] S4: 広告基盤
 - [x] S5: ブックマークレットUI ✅
 - [ ] S6: PWA + スマホ保存
-- [ ] S7: LP
+- [x] S7: LP（デモ型6セクション）✅
 - [ ] S8: 静的ページ
 - [ ] Cloudflare Pagesデプロイ
 
