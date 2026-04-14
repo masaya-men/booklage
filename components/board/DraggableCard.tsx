@@ -5,6 +5,7 @@ import { gsap } from 'gsap'
 import { Draggable } from 'gsap/Draggable'
 import styles from './DraggableCard.module.css'
 import { useCardTilt } from '@/lib/interactions/use-card-tilt'
+import { createRipple } from '@/lib/interactions/ripple'
 
 gsap.registerPlugin(Draggable)
 
@@ -20,6 +21,8 @@ type DraggableCardProps = {
   initialY: number
   /** Current canvas zoom factor (used to convert pixel deltas to world coords) */
   zoom: number
+  /** Called during drag with the current world-space position (used for repulsion) */
+  onDrag?: (cardId: string, x: number, y: number) => void
   /** Called when drag finishes with the new world-space position */
   onDragEnd: (cardId: string, x: number, y: number) => void
   /** Whether drag is enabled (false in grid mode) */
@@ -41,6 +44,7 @@ export function DraggableCard({
   initialX,
   initialY,
   zoom,
+  onDrag,
   onDragEnd,
   draggable = true,
   enableTilt = true,
@@ -66,6 +70,8 @@ export function DraggableCard({
   initialYRef.current = initialY
   const onDragEndRef = useRef(onDragEnd)
   onDragEndRef.current = onDragEnd
+  const onDragRef = useRef(onDrag)
+  onDragRef.current = onDrag
 
   useEffect(() => {
     const el = wrapperRef.current
@@ -80,6 +86,15 @@ export function DraggableCard({
         el.style.setProperty('--spotlight-opacity', '0')
         gsap.to(el, { scale: 1.05, duration: 0.2, ease: 'power2.out' })
       },
+      onDrag() {
+        const pixelDeltaX = this.x ?? 0
+        const pixelDeltaY = this.y ?? 0
+        const worldDeltaX = pixelDeltaX / zoomRef.current
+        const worldDeltaY = pixelDeltaY / zoomRef.current
+        const currentX = initialXRef.current + worldDeltaX
+        const currentY = initialYRef.current + worldDeltaY
+        onDragRef.current?.(cardId, currentX, currentY)
+      },
       onDragEnd() {
         el.classList.remove(styles.dragging)
         gsap.to(el, {
@@ -87,6 +102,18 @@ export function DraggableCard({
           duration: 0.4,
           ease: 'back.out(1.7)',
         })
+
+        // Ripple effect on landing
+        const worldEl = el.closest('[class*="world"]') as HTMLElement | null
+        if (worldEl) {
+          const rect = el.getBoundingClientRect()
+          const worldRect = worldEl.getBoundingClientRect()
+          createRipple(
+            rect.left - worldRect.left + rect.width / 2,
+            rect.top - worldRect.top + rect.height / 2,
+            worldEl,
+          )
+        }
 
         const pixelDeltaX = this.endX ?? 0
         const pixelDeltaY = this.endY ?? 0

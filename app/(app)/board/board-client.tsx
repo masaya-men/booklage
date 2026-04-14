@@ -35,6 +35,7 @@ import {
   calculateResponsiveColumns,
   estimateCardHeight,
 } from '@/lib/canvas/auto-layout'
+import { useCardRepulsion } from '@/lib/interactions/use-card-repulsion'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -226,13 +227,25 @@ export function BoardClient(): React.ReactElement {
     return () => { cancelled = true }
   }, [db, currentFolder])
 
+  // ── Card repulsion ───────────────────────────────────────────
+  const { applyRepulsion, resetRepulsion } = useCardRepulsion()
+
+  const handleDrag = useCallback(
+    (cardId: string, x: number, y: number): void => {
+      const positions = items.map(({ card }) => ({ id: card.id, x: card.x, y: card.y }))
+      applyRepulsion(cardId, x, y, positions)
+    },
+    [items, applyRepulsion],
+  )
+
   // ── Drag end handler (persists position to IndexedDB) ────────
   const handleDragEnd = useCallback(
     async (cardId: string, x: number, y: number): Promise<void> => {
+      resetRepulsion()
       if (!db) return
       await updateCard(db, cardId, { x, y, isManuallyPlaced: true })
     },
-    [db],
+    [db, resetRepulsion],
   )
 
   // ── Folder selection handler ─────────────────────────────────
@@ -374,6 +387,7 @@ export function BoardClient(): React.ReactElement {
                 initialX={displayX}
                 initialY={displayY}
                 zoom={canvas.state.zoom}
+                onDrag={handleDrag}
                 onDragEnd={handleDragEnd}
                 draggable={!isGrid}
               >
@@ -392,6 +406,7 @@ export function BoardClient(): React.ReactElement {
               initialX={displayX}
               initialY={displayY}
               zoom={canvas.state.zoom}
+              onDrag={handleDrag}
               onDragEnd={handleDragEnd}
               draggable={!isGrid}
             >
