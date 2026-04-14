@@ -319,6 +319,52 @@ ol {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+/* ── Liquid Glass Base ────────────────────────────────────── */
+
+.liquid-glass-active,
+.liquid-glass-fallback {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background var(--duration-fast) var(--ease-out-expo);
+}
+
+.liquid-glass-active:hover,
+.liquid-glass-fallback:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.liquid-glass-fallback {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.16),
+    0 1px 1px -0.5px rgba(0, 0, 0, 0.18),
+    0 3px 3px -1.5px rgba(0, 0, 0, 0.18),
+    0 6px 6px -3px rgba(0, 0, 0, 0.18),
+    0 12px 12px -6px rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="light"] .liquid-glass-active,
+[data-theme="light"] .liquid-glass-fallback {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .liquid-glass-active:hover,
+[data-theme="light"] .liquid-glass-fallback:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="light"] .liquid-glass-fallback {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 1px 1px -0.5px rgba(0, 0, 0, 0.08),
+    0 3px 3px -1.5px rgba(0, 0, 0, 0.08),
+    0 6px 6px -3px rgba(0, 0, 0, 0.08),
+    0 12px 12px -6px rgba(0, 0, 0, 0.08);
+}
+
 /* ── Reduced Motion ────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

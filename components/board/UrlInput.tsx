@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { isValidUrl } from '@/lib/utils/url'
+import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import styles from './UrlInput.module.css'
 
 /** Props for the UrlInput component */
@@ -19,6 +20,7 @@ type UrlInputProps = {
 export function UrlInput({ onSubmit, disabled = false }: UrlInputProps): React.ReactElement {
   const [value, setValue] = useState('')
   const isValid = isValidUrl(value.trim())
+  const glass = useLiquidGlass({ id: 'url-input', strength: 'strong', fixedSize: true })
 
   const handleSubmit = useCallback(
     (e: React.FormEvent): void => {
@@ -32,7 +34,12 @@ export function UrlInput({ onSubmit, disabled = false }: UrlInputProps): React.R
   )
 
   return (
-    <form className={styles.wrapper} onSubmit={handleSubmit}>
+    <form
+      ref={glass.ref as React.RefCallback<HTMLFormElement>}
+      className={`${styles.wrapper} ${glass.className}`}
+      style={glass.style}
+      onSubmit={handleSubmit}
+    >
       <input
         className={styles.input}
         type="url"

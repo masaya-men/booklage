@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import type { FolderRecord } from '@/lib/storage/indexeddb'
+import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import styles from './FolderNav.module.css'
 
 /** Props for the FolderNav component */
@@ -32,6 +33,7 @@ export function FolderNav({
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const glass = useLiquidGlass({ id: 'folder-nav', strength: 'strong', fixedSize: false })
 
   /** Submit the new folder name */
   const handleSubmit = (): void => {
@@ -54,7 +56,11 @@ export function FolderNav({
   }
 
   return (
-    <nav className={styles.panel}>
+    <nav
+      ref={glass.ref as React.RefCallback<HTMLElement>}
+      className={`${styles.panel} ${glass.className}`}
+      style={glass.style}
+    >
       {folders.map((folder) => {
         const isActive = folder.id === currentFolderId
         return (
