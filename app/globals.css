@@ -433,3 +433,154 @@ ol {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Static Pages (Marketing) ────────────────────────────── */
+
+.static-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.static-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-glass-border);
+}
+
+.static-logo {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-accent-primary);
+}
+
+.static-nav {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.static-nav a {
+  color: var(--color-text-secondary);
+  transition: color var(--duration-fast) ease;
+}
+
+.static-nav a:hover {
+  color: var(--color-text-primary);
+}
+
+.static-main {
+  flex: 1;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-6);
+}
+
+.static-main h1 {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--space-2);
+}
+
+.static-main h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  margin-top: var(--space-8);
+  margin-bottom: var(--space-3);
+}
+
+.static-main h3 {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-2);
+}
+
+.static-main p {
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-4);
+}
+
+.static-main ul,
+.static-main ol {
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-4);
+  padding-left: var(--space-6);
+}
+
+.static-main ul { list-style: disc; }
+.static-main ol { list-style: decimal; }
+
+.static-main li {
+  margin-bottom: var(--space-2);
+}
+
+.static-main a {
+  color: var(--color-accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.static-main a:hover {
+  color: var(--color-accent-primary-hover);
+}
+
+.static-main .updated {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-8);
+}
+
+.static-footer {
+  border-top: 1px solid var(--color-glass-border);
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.static-footer nav {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+}
+
+.static-footer a {
+  color: var(--color-text-tertiary);
+  transition: color var(--duration-fast) ease;
+}
+
+.static-footer a:hover {
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 767px) {
+  .static-header {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .static-nav {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3);
+  }
+
+  .static-main {
+    padding: var(--space-8) var(--space-4);
+  }
+}
