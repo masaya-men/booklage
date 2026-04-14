@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactPortal } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useInfiniteCanvas } from '@/lib/canvas/use-infinite-canvas'
 import {
@@ -30,7 +30,6 @@ import { Canvas } from '@/components/board/Canvas'
 import { BookmarkCard } from '@/components/board/BookmarkCard'
 import { TweetCard } from '@/components/board/TweetCard'
 import { UrlInput } from '@/components/board/UrlInput'
-import { DraggableCard } from '@/components/board/DraggableCard'
 import { FolderNav } from '@/components/board/FolderNav'
 import { ExportButton } from '@/components/board/ExportButton'
 import { SettingsPanel } from '@/components/board/SettingsPanel'
@@ -44,9 +43,13 @@ import {
   estimateCardHeight,
 } from '@/lib/canvas/auto-layout'
 import { useCardRepulsion } from '@/lib/interactions/use-card-repulsion'
+import { useCardTilt } from '@/lib/interactions/use-card-tilt'
+import { createRipple } from '@/lib/interactions/ripple'
 import { getColorModeForTheme } from '@/lib/theme/theme-utils'
 import { useFrameMonitor } from '@/lib/interactions/use-frame-monitor'
 import { LiquidGlassProvider } from '@/lib/glass/LiquidGlassProvider'
+import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
+import { ResizeHandle } from '@/components/board/ResizeHandle'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,6 +59,66 @@ import { LiquidGlassProvider } from '@/lib/glass/LiquidGlassProvider'
 type CardWithBookmark = {
   card: CardRecord
   bookmark: BookmarkRecord
+}
+
+// ---------------------------------------------------------------------------
+// Card portal content — rendered inside DOM-managed wrappers via createPortal
+// ---------------------------------------------------------------------------
+
+type CardPortalContentProps = {
+  card: CardRecord
+  bookmark: BookmarkRecord
+  cardStyle: CardStyle
+  folderColor: string | undefined
+  enableTilt: boolean
+  isGrid: boolean
+  innerStyle: React.CSSProperties
+  zoom: number
+  onResizeEnd: (cardId: string, width: number, height: number) => void
+}
+
+/** Card content with 3D tilt, spotlight, liquid glass, and resize handle */
+function CardPortalContent({
+  card,
+  bookmark,
+  cardStyle,
+  folderColor,
+  enableTilt,
+  isGrid,
+  innerStyle,
+  zoom,
+  onResizeEnd,
+}: CardPortalContentProps): React.ReactElement {
+  const { ref: tiltRef } = useCardTilt({ enabled: enableTilt && !isGrid })
+  const glass = useLiquidGlass({ id: `card-${card.id}`, strength: 'subtle', borderRadius: 12 })
+
+  const tweetId = bookmark.type === 'tweet' ? extractTweetId(bookmark.url) : null
+
+  return (
+    <div ref={tiltRef} data-tilt>
+      <CardStyleWrapper
+        cardStyle={cardStyle}
+        title={bookmark.title}
+        magnetColor={folderColor}
+        liquidGlass={cardStyle === 'glass' ? glass : undefined}
+      >
+        {tweetId ? (
+          <TweetCard tweetId={tweetId} style={innerStyle} />
+        ) : (
+          <BookmarkCard bookmark={bookmark} style={innerStyle} width={card.width} height={card.height} />
+        )}
+      </CardStyleWrapper>
+      {!isGrid && (
+        <ResizeHandle
+          cardId={card.id}
+          currentWidth={card.width}
+          currentHeight={card.height}
+          zoom={zoom}
+          onResizeEnd={onResizeEnd}
+        />
+      )}
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -305,6 +368,13 @@ export function BoardClient(): React.ReactElement {
         el.style.top = `${y}px`
       }
 
+      // Landing ripple at card center
+      if (el && worldRef.current) {
+        const cx = x + (el.offsetWidth / 2) / canvas.state.zoom
+        const cy = y + (el.offsetHeight / 2) / canvas.state.zoom
+        createRipple(cx, cy, worldRef.current)
+      }
+
       resetRepulsion()
 
       if (!db) return
@@ -432,12 +502,40 @@ export function BoardClient(): React.ReactElement {
     const instances = Draggable.create(el, {
       type: 'x,y',
       zIndexBoost: false,
+      onDragStart() {
+        // Cursor + tilt freeze
+        el.style.cursor = 'grabbing'
+        const tiltEl = el.querySelector<HTMLElement>('[data-tilt]')
+        if (tiltEl) tiltEl.dataset.dragging = 'true'
+        // Pickup animation: lift + shadow
+        el.style.zIndex = String(Z_INDEX.CANVAS_CARD_DRAGGING)
+        gsap.to(el, {
+          scale: 1.06,
+          boxShadow: 'var(--shadow-drag)',
+          duration: 0.25,
+          ease: 'back.out(1.7)',
+          overwrite: 'auto',
+        })
+      },
       onDrag() {
         const px = this.x ?? 0
         const py = this.y ?? 0
         handleDrag(cardId, cardX + px / canvas.state.zoom, cardY + py / canvas.state.zoom)
       },
       onDragEnd() {
+        // Cursor + tilt unfreeze
+        el.style.cursor = 'grab'
+        const tiltEl = el.querySelector<HTMLElement>('[data-tilt]')
+        if (tiltEl) delete tiltEl.dataset.dragging
+        // Landing animation: settle back
+        gsap.to(el, {
+          scale: 1,
+          boxShadow: '',
+          duration: 0.35,
+          ease: 'back.out(1.4)',
+          overwrite: 'auto',
+          onComplete() { el.style.zIndex = '' },
+        })
         const px = this.endX ?? 0
         const py = this.endY ?? 0
         handleDragEnd(cardId, cardX + px / canvas.state.zoom, cardY + py / canvas.state.zoom)
@@ -654,20 +752,23 @@ export function BoardClient(): React.ReactElement {
           animationPlayState: isGrid ? 'paused' : 'running',
         }
 
-        const tweetId = bookmark.type === 'tweet' ? extractTweetId(bookmark.url) : null
         const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
 
-        const content = tweetId ? (
-          <CardStyleWrapper cardStyle={cardStyle} title={bookmark.title} magnetColor={folderColor}>
-            <TweetCard tweetId={tweetId} style={innerStyle} />
-          </CardStyleWrapper>
-        ) : (
-          <CardStyleWrapper cardStyle={cardStyle} title={bookmark.title} magnetColor={folderColor}>
-            <BookmarkCard bookmark={bookmark} style={innerStyle} width={card.width} height={card.height} />
-          </CardStyleWrapper>
+        return createPortal(
+          <CardPortalContent
+            card={card}
+            bookmark={bookmark}
+            cardStyle={cardStyle}
+            folderColor={folderColor}
+            enableTilt={enableTilt}
+            isGrid={isGrid}
+            innerStyle={innerStyle}
+            zoom={canvas.state.zoom}
+            onResizeEnd={handleResizeEnd}
+          />,
+          target,
+          card.id,
         )
-
-        return createPortal(content, target, card.id)
       })}
 
       <ViewModeToggle mode={viewMode} onToggle={setViewMode} />

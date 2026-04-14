@@ -8,20 +8,18 @@
   box-shadow: var(--shadow-md);
   animation: float var(--float-duration, 4s) var(--ease-in-out) infinite;
   animation-delay: var(--float-delay, 0s);
-  cursor: grab;
+  cursor: inherit;
   transition:
     transform var(--duration-fast) var(--ease-out-expo),
-    box-shadow var(--duration-fast) var(--ease-out-expo);
+    box-shadow var(--duration-fast) var(--ease-out-expo),
+    border-color var(--duration-fast) ease;
   user-select: none;
 }
 
 .card:hover {
-  transform: scale(1.03);
+  transform: scale(1.02);
   box-shadow: var(--shadow-lg), var(--shadow-glow);
-}
-
-.card:active {
-  cursor: grabbing;
+  border-color: var(--color-accent-primary, rgba(124, 92, 252, 0.3));
 }
 
 /* ── Thumbnail variant ──────────────────────────────────────── */
