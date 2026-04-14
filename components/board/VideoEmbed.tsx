@@ -26,6 +26,7 @@ export function VideoEmbed({ videoId, title, style, width }: VideoEmbedProps): R
 
   return (
     <div className={styles.card} style={style}>
+      <div className={styles.dragHandle}>⋮⋮</div>
       <div className={styles.iframeWrapper} style={{ height: iframeHeight }}>
         <iframe
           className={styles.iframe}
