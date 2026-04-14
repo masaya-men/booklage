@@ -397,6 +397,16 @@ export const DEFAULT_PREFERENCES: UserPreferencesRecord = {
 }
 
 /**
+ * Check if user has saved preferences (vs first-time defaults).
+ */
+export async function hasSavedPreferences(
+  db: IDBPDatabase<BooklageDB>,
+): Promise<boolean> {
+  const prefs = await db.get('preferences', 'main')
+  return prefs !== undefined
+}
+
+/**
  * Get user preferences, returning defaults if not yet saved.
  * @param db - The database instance
  * @returns The stored UserPreferencesRecord or DEFAULT_PREFERENCES
