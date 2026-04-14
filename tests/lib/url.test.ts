@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { detectUrlType, extractTweetId, isValidUrl } from '@/lib/utils/url'
+import { detectUrlType, extractTweetId, extractUrlFromText, isValidUrl } from '@/lib/utils/url'
 
 describe('isValidUrl', () => {
   it('accepts valid HTTP URLs', () => {
@@ -42,5 +42,41 @@ describe('extractTweetId', () => {
   })
   it('returns null for non-tweet URLs', () => {
     expect(extractTweetId('https://example.com')).toBeNull()
+  })
+})
+
+describe('extractUrlFromText', () => {
+  it('extracts URL from plain text', () => {
+    expect(extractUrlFromText('Check this out https://example.com/page')).toBe(
+      'https://example.com/page',
+    )
+  })
+
+  it('returns the URL when text is just a URL', () => {
+    expect(extractUrlFromText('https://example.com')).toBe('https://example.com')
+  })
+
+  it('extracts first URL when multiple URLs present', () => {
+    expect(extractUrlFromText('https://a.com and https://b.com')).toBe('https://a.com')
+  })
+
+  it('returns null when no URL found', () => {
+    expect(extractUrlFromText('no url here')).toBeNull()
+  })
+
+  it('returns null for empty string', () => {
+    expect(extractUrlFromText('')).toBeNull()
+  })
+
+  it('handles URL with query params and hash', () => {
+    expect(extractUrlFromText('Watch https://youtube.com/watch?v=abc123#t=10')).toBe(
+      'https://youtube.com/watch?v=abc123#t=10',
+    )
+  })
+
+  it('handles http URL', () => {
+    expect(extractUrlFromText('Visit http://legacy-site.com/path')).toBe(
+      'http://legacy-site.com/path',
+    )
   })
 })
