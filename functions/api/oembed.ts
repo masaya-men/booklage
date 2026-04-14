@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+interface PagesContext {
+  request: Request
+}
 
-export const runtime = 'edge'
-
-/** oEmbedプロバイダーのエンドポイントマッピング */
 const OEMBED_ENDPOINTS: Record<string, string> = {
   youtube: 'https://www.youtube.com/oembed',
   tiktok: 'https://www.tiktok.com/oembed',
@@ -18,21 +17,25 @@ function detectProvider(url: string): string | null {
   return null
 }
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
-  const url = req.nextUrl.searchParams.get('url')
+function jsonResponse(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+  })
+}
+
+export async function onRequest(context: PagesContext): Promise<Response> {
+  const url = new URL(context.request.url).searchParams.get('url')
   if (!url) {
-    return NextResponse.json(
-      { error: 'url parameter required' },
-      { status: 400 },
-    )
+    return jsonResponse({ error: 'url parameter required' }, 400)
   }
 
   const provider = detectProvider(url)
   if (!provider) {
-    return NextResponse.json(
-      { error: 'Unsupported oEmbed provider' },
-      { status: 400 },
-    )
+    return jsonResponse({ error: 'Unsupported oEmbed provider' }, 400)
   }
 
   const endpoint = OEMBED_ENDPOINTS[provider]
@@ -44,21 +47,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     })
 
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `oEmbed failed: ${res.status}` },
-        { status: 502 },
-      )
+      return jsonResponse({ error: `oEmbed failed: ${res.status}` }, 502)
     }
 
     const data: unknown = await res.json()
 
-    return NextResponse.json(data, {
-      headers: {
-        'Cache-Control': 'public, max-age=86400, s-maxage=86400',
-      },
+    return jsonResponse(data, 200, {
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400',
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return jsonResponse({ error: message }, 500)
   }
 }
