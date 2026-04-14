@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-
-export const runtime = 'edge'
+interface PagesContext {
+  request: Request
+}
 
 function extractMeta(html: string, property: string): string {
-  // Try og: property first (property="og:...")
   const ogMatch = html.match(
     new RegExp(
       `<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']*)["']`,
@@ -12,7 +11,6 @@ function extractMeta(html: string, property: string): string {
   )
   if (ogMatch) return ogMatch[1]
 
-  // Try reversed attribute order (content before property)
   const ogReversed = html.match(
     new RegExp(
       `<meta[^>]+content=["']([^"']*)["'][^>]+property=["']${property}["']`,
@@ -21,7 +19,6 @@ function extractMeta(html: string, property: string): string {
   )
   if (ogReversed) return ogReversed[1]
 
-  // Try name= fallback (name="description" etc.)
   const nameMatch = html.match(
     new RegExp(
       `<meta[^>]+name=["']${property}["'][^>]+content=["']([^"']*)["']`,
@@ -30,7 +27,6 @@ function extractMeta(html: string, property: string): string {
   )
   if (nameMatch) return nameMatch[1]
 
-  // Try reversed name fallback
   const nameReversed = html.match(
     new RegExp(
       `<meta[^>]+content=["']([^"']*)["'][^>]+name=["']${property}["']`,
@@ -61,22 +57,26 @@ function extractFavicon(html: string, baseUrl: string): string {
   return `${new URL(baseUrl).origin}/favicon.ico`
 }
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
-  const url = req.nextUrl.searchParams.get('url')
+function jsonResponse(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+  })
+}
+
+export async function onRequest(context: PagesContext): Promise<Response> {
+  const url = new URL(context.request.url).searchParams.get('url')
   if (!url) {
-    return NextResponse.json(
-      { error: 'url parameter required' },
-      { status: 400 },
-    )
+    return jsonResponse({ error: 'url parameter required' }, 400)
   }
 
   try {
     new URL(url)
   } catch {
-    return NextResponse.json(
-      { error: 'Invalid URL format' },
-      { status: 400 },
-    )
+    return jsonResponse({ error: 'Invalid URL format' }, 400)
   }
 
   try {
@@ -89,10 +89,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     })
 
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `Fetch failed: ${res.status}` },
-        { status: 502 },
-      )
+      return jsonResponse({ error: `Fetch failed: ${res.status}` }, 502)
     }
 
     const html = await res.text()
@@ -107,13 +104,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       url,
     }
 
-    return NextResponse.json(data, {
-      headers: {
-        'Cache-Control': 'public, max-age=86400, s-maxage=86400',
-      },
+    return jsonResponse(data, 200, {
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400',
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return jsonResponse({ error: message }, 500)
   }
 }
