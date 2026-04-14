@@ -6,6 +6,7 @@ import { Draggable } from 'gsap/Draggable'
 import styles from './DraggableCard.module.css'
 import { useCardTilt } from '@/lib/interactions/use-card-tilt'
 import { createRipple } from '@/lib/interactions/ripple'
+import { ResizeHandle } from './ResizeHandle'
 
 gsap.registerPlugin(Draggable)
 
@@ -29,6 +30,12 @@ type DraggableCardProps = {
   draggable?: boolean
   /** Whether 3D tilt + spotlight effect is enabled on hover (default true) */
   enableTilt?: boolean
+  /** Current card width in pixels (enables resize handle when provided with onResizeEnd) */
+  cardWidth?: number
+  /** Current card height in pixels (enables resize handle when provided with onResizeEnd) */
+  cardHeight?: number
+  /** Called when resize ends with final width and height */
+  onResizeEnd?: (cardId: string, width: number, height: number) => void
 }
 
 /**
@@ -48,6 +55,9 @@ export function DraggableCard({
   onDragEnd,
   draggable = true,
   enableTilt = true,
+  cardWidth,
+  cardHeight,
+  onResizeEnd,
 }: DraggableCardProps): React.ReactElement {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const draggableRef = useRef<Draggable[]>([])
@@ -147,6 +157,15 @@ export function DraggableCard({
       }}
     >
       {children}
+      {draggable && onResizeEnd !== undefined && cardWidth !== undefined && cardHeight !== undefined && (
+        <ResizeHandle
+          cardId={cardId}
+          currentWidth={cardWidth}
+          currentHeight={cardHeight}
+          zoom={zoom}
+          onResizeEnd={onResizeEnd}
+        />
+      )}
     </div>
   )
 }
