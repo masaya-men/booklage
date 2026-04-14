@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactPortal } from 'react'
+import { createPortal } from 'react-dom'
 import { useInfiniteCanvas } from '@/lib/canvas/use-infinite-canvas'
 import {
   initDB,
@@ -21,6 +22,9 @@ type BooklageDB = Awaited<ReturnType<typeof initDB>>
 import { detectUrlType, extractTweetId } from '@/lib/utils/url'
 import { fetchOgp } from '@/lib/scraper/ogp'
 import { gsap } from 'gsap'
+import { Draggable } from 'gsap/Draggable'
+
+gsap.registerPlugin(Draggable)
 import { CARD_WIDTH, FLOAT_DELAY_MAX, FLOAT_DURATION, FOLDER_COLORS, GRID_GAP, VIEW_SWITCH_DURATION, VIEW_SWITCH_STAGGER, VIEW_SWITCH_EASE, Z_INDEX } from '@/lib/constants'
 import { Canvas } from '@/components/board/Canvas'
 import { BookmarkCard } from '@/components/board/BookmarkCard'
@@ -293,9 +297,27 @@ export function BoardClient(): React.ReactElement {
   // ── Drag end handler (persists position to IndexedDB) ────────
   const handleDragEnd = useCallback(
     async (cardId: string, x: number, y: number): Promise<void> => {
+      // Update the DOM element's position directly and reset GSAP transform
+      const el = document.querySelector<HTMLElement>(`[data-card-wrapper="${cardId}"]`)
+      if (el) {
+        gsap.set(el, { x: 0, y: 0 })
+        el.style.left = `${x}px`
+        el.style.top = `${y}px`
+      }
+
       resetRepulsion()
+
       if (!db) return
       await updateCard(db, cardId, { x, y, isManuallyPlaced: true })
+
+      // Update items state so React knows the new position
+      setItems((prev) =>
+        prev.map((item) =>
+          item.card.id === cardId
+            ? { ...item, card: { ...item.card, x, y, isManuallyPlaced: true } }
+            : item,
+        ),
+      )
     },
     [db, resetRepulsion],
   )
@@ -323,6 +345,106 @@ export function BoardClient(): React.ReactElement {
     },
     [db, currentFolder],
   )
+
+  // ── GSAP Draggable management via DOM API ────────────────────
+  // React's DOM reconciliation breaks GSAP Draggable. Instead, we create
+  // wrapper divs outside React's tree via DOM API, attach GSAP Draggable,
+  // and render card content via createPortal.
+  const isGrid = viewMode === 'grid'
+  const cardWrappersRef = useRef<Map<string, { el: HTMLElement; draggable: Draggable | null }>>(new Map())
+  const [portalTargets, setPortalTargets] = useState<Map<string, HTMLElement>>(new Map())
+
+  useEffect(() => {
+    const world = worldRef.current
+    if (!world) return
+
+    const currentIds = new Set(items.map(({ card }) => card.id))
+
+    // Remove wrappers for deleted cards
+    cardWrappersRef.current.forEach((entry, id) => {
+      if (!currentIds.has(id)) {
+        entry.draggable?.kill()
+        entry.el.remove()
+        cardWrappersRef.current.delete(id)
+      }
+    })
+
+    // Create/update wrappers for each card
+    items.forEach(({ card }) => {
+      const existing = cardWrappersRef.current.get(card.id)
+
+      if (existing) {
+        // Update position (reset GSAP transform + move via CSS)
+        gsap.set(existing.el, { x: 0, y: 0 })
+        const gridPos = gridPositions.get(card.id)
+        const displayX = isGrid && gridPos ? gridPos.x : card.x
+        const displayY = isGrid && gridPos ? gridPos.y : card.y
+        existing.el.style.left = `${displayX}px`
+        existing.el.style.top = `${displayY}px`
+        existing.el.style.cursor = isGrid ? 'default' : 'grab'
+
+        // Enable/disable draggable
+        if (isGrid && existing.draggable) {
+          existing.draggable.kill()
+          existing.draggable = null
+        } else if (!isGrid && !existing.draggable) {
+          const inst = createDraggableForCard(existing.el, card.id, card.x, card.y)
+          existing.draggable = inst
+        }
+        return
+      }
+
+      // Create new wrapper
+      const el = document.createElement('div')
+      const gridPos = gridPositions.get(card.id)
+      const displayX = isGrid && gridPos ? gridPos.x : card.x
+      const displayY = isGrid && gridPos ? gridPos.y : card.y
+      el.style.cssText = `position:absolute;left:${displayX}px;top:${displayY}px;cursor:${isGrid ? 'default' : 'grab'};`
+      el.setAttribute('data-card-wrapper', card.id)
+      world.appendChild(el)
+
+      let inst: Draggable | null = null
+      if (!isGrid) {
+        const d = createDraggableForCard(el, card.id, card.x, card.y)
+        inst = d
+      }
+
+      cardWrappersRef.current.set(card.id, { el, draggable: inst })
+    })
+
+    // Update portal targets so React renders content into the wrappers
+    const targets = new Map<string, HTMLElement>()
+    cardWrappersRef.current.forEach((entry, id) => targets.set(id, entry.el))
+    setPortalTargets(targets)
+
+    return () => {
+      // Cleanup all on unmount
+      cardWrappersRef.current.forEach((entry) => {
+        entry.draggable?.kill()
+        entry.el.remove()
+      })
+      cardWrappersRef.current.clear()
+    }
+  }, [items, isGrid, gridPositions]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Helper: create GSAP Draggable for a card wrapper */
+  function createDraggableForCard(el: HTMLElement, cardId: string, cardX: number, cardY: number): Draggable {
+    const instances = Draggable.create(el, {
+      type: 'x,y',
+      zIndexBoost: false,
+      onDrag() {
+        const px = this.x ?? 0
+        const py = this.y ?? 0
+        handleDrag(cardId, cardX + px / canvas.state.zoom, cardY + py / canvas.state.zoom)
+      },
+      onDragEnd() {
+        const px = this.endX ?? 0
+        const py = this.endY ?? 0
+        handleDragEnd(cardId, cardX + px / canvas.state.zoom, cardY + py / canvas.state.zoom)
+      },
+    })
+    return instances[0]
+  }
 
   // ── Folder selection handler ─────────────────────────────────
   const handleSelectFolder = useCallback(
@@ -499,90 +621,6 @@ export function BoardClient(): React.ReactElement {
       />
 
       <Canvas bgTheme={bgTheme} canvas={canvas} worldRef={worldRef}>
-        {items.map(({ card, bookmark }) => {
-          const isGrid = viewMode === 'grid'
-          const gridPos = gridPositions.get(card.id)
-          const displayX = isGrid && gridPos ? gridPos.x : card.x
-          const displayY = isGrid && gridPos ? gridPos.y : card.y
-          const displayRotation = isGrid ? 0 : card.rotation
-
-          const innerStyle: React.CSSProperties = {
-            zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
-            ['--card-rotation' as string]: `${displayRotation}deg`,
-            ['--float-delay' as string]: getFloatDelay(card.id),
-            ['--float-duration' as string]: `${FLOAT_DURATION}s`,
-            boxShadow: isGrid
-              ? 'var(--shadow-grid-card)'
-              : 'var(--shadow-collage-card)',
-            animationPlayState: isGrid ? 'paused' : 'running',
-          }
-
-          const tweetId =
-            bookmark.type === 'tweet' ? extractTweetId(bookmark.url) : null
-
-          const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
-
-          if (tweetId) {
-            return (
-              <DraggableCard
-                key={card.id}
-                cardId={card.id}
-                initialX={displayX}
-                initialY={displayY}
-                zoom={canvas.state.zoom}
-                onDrag={handleDrag}
-                onDragEnd={handleDragEnd}
-                draggable={!isGrid}
-                enableTilt={enableTilt}
-                cardWidth={card.width}
-                cardHeight={card.height}
-                onResizeEnd={handleResizeEnd}
-              >
-                <CardStyleWrapper
-                  cardStyle={cardStyle}
-                  title={bookmark.title}
-                  magnetColor={folderColor}
-                >
-                  <TweetCard
-                    tweetId={tweetId}
-                    style={innerStyle}
-                  />
-                </CardStyleWrapper>
-              </DraggableCard>
-            )
-          }
-
-          return (
-            <DraggableCard
-              key={card.id}
-              cardId={card.id}
-              initialX={displayX}
-              initialY={displayY}
-              zoom={canvas.state.zoom}
-              onDrag={handleDrag}
-              onDragEnd={handleDragEnd}
-              draggable={!isGrid}
-              enableTilt={enableTilt}
-              cardWidth={card.width}
-              cardHeight={card.height}
-              onResizeEnd={handleResizeEnd}
-            >
-              <CardStyleWrapper
-                cardStyle={cardStyle}
-                title={bookmark.title}
-                magnetColor={folderColor}
-              >
-                <BookmarkCard
-                  bookmark={bookmark}
-                  style={innerStyle}
-                  width={card.width}
-                  height={card.height}
-                />
-              </CardStyleWrapper>
-            </DraggableCard>
-          )
-        })}
-
         {items.length === 0 && !loading && (
           <div
             style={{
@@ -600,6 +638,37 @@ export function BoardClient(): React.ReactElement {
           </div>
         )}
       </Canvas>
+
+      {/* Card content rendered via portals into DOM-managed wrappers */}
+      {items.map(({ card, bookmark }) => {
+        const target = portalTargets.get(card.id)
+        if (!target) return null
+
+        const displayRotation = isGrid ? 0 : card.rotation
+        const innerStyle: React.CSSProperties = {
+          zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
+          ['--card-rotation' as string]: `${displayRotation}deg`,
+          ['--float-delay' as string]: getFloatDelay(card.id),
+          ['--float-duration' as string]: `${FLOAT_DURATION}s`,
+          boxShadow: isGrid ? 'var(--shadow-grid-card)' : 'var(--shadow-collage-card)',
+          animationPlayState: isGrid ? 'paused' : 'running',
+        }
+
+        const tweetId = bookmark.type === 'tweet' ? extractTweetId(bookmark.url) : null
+        const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
+
+        const content = tweetId ? (
+          <CardStyleWrapper cardStyle={cardStyle} title={bookmark.title} magnetColor={folderColor}>
+            <TweetCard tweetId={tweetId} style={innerStyle} />
+          </CardStyleWrapper>
+        ) : (
+          <CardStyleWrapper cardStyle={cardStyle} title={bookmark.title} magnetColor={folderColor}>
+            <BookmarkCard bookmark={bookmark} style={innerStyle} width={card.width} height={card.height} />
+          </CardStyleWrapper>
+        )
+
+        return createPortal(content, target, card.id)
+      })}
 
       <ViewModeToggle mode={viewMode} onToggle={setViewMode} />
       <ExportButton canvasRef={worldRef} />
