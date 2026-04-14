@@ -38,3 +38,14 @@ export function extractTweetId(url: string): string | null {
   const match = url.match(/status\/(\d+)/)
   return match?.[1] ?? null
 }
+
+/**
+ * Extracts the first HTTP/HTTPS URL from a text string.
+ * Used by Web Share Target to extract URLs from shared text.
+ * @param text - The text to search for URLs
+ * @returns The first URL found, or null if none
+ */
+export function extractUrlFromText(text: string): string | null {
+  const match = text.match(/https?:\/\/[^\s]+/)
+  return match ? match[0] : null
+}
