@@ -115,3 +115,6 @@
 - 方眼紙は白系背景に黒い格子パターンも追加
 - もっと多くのカードスタイル（ネオン、布、羊皮紙等）
 - 音フィードバック（ホバー/クリック時の微かな音）
+- Twitterの共有ボタンから直接Booklageに保存（Web Share Target / PWA）
+- Twitterブックマーク一括取り込み（Twitter API / OAuth認証が必要）
+- YouTube高評価・あとで見る動画の一括取り込み（YouTube Data API / OAuth認証が必要）
