@@ -10,6 +10,8 @@ import {
   addFolder,
   getAllFolders,
   updateCard,
+  getPreferences,
+  savePreferences,
 } from '@/lib/storage/indexeddb'
 import type { BookmarkRecord, CardRecord, FolderRecord } from '@/lib/storage/indexeddb'
 
@@ -26,7 +28,7 @@ import { UrlInput } from '@/components/board/UrlInput'
 import { DraggableCard } from '@/components/board/DraggableCard'
 import { FolderNav } from '@/components/board/FolderNav'
 import { ExportButton } from '@/components/board/ExportButton'
-import { ThemeSelector } from '@/components/board/ThemeSelector'
+import { SettingsPanel } from '@/components/board/SettingsPanel'
 import { RandomPick } from '@/components/board/RandomPick'
 import { ColorSuggest } from '@/components/board/ColorSuggest'
 import { ViewModeToggle, type ViewMode } from '@/components/board/ViewModeToggle'
@@ -37,6 +39,8 @@ import {
   estimateCardHeight,
 } from '@/lib/canvas/auto-layout'
 import { useCardRepulsion } from '@/lib/interactions/use-card-repulsion'
+import { getColorModeForTheme } from '@/lib/theme/theme-utils'
+import { useFrameMonitor } from '@/lib/interactions/use-frame-monitor'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,6 +77,9 @@ export function BoardClient(): React.ReactElement {
   const [bgTheme, setBgTheme] = useState('dark')
   const [viewMode, setViewMode] = useState<ViewMode>('collage')
   const [cardStyle, setCardStyle] = useState<CardStyle>('glass')
+  const [uiTheme, setUiTheme] = useState<'auto' | 'dark' | 'light'>('auto')
+  const [defaultCardSize, setDefaultCardSize] = useState('random')
+  const [defaultAspectRatio, setDefaultAspectRatio] = useState('random')
 
   const worldRef = useRef<HTMLDivElement | null>(null)
   const canvas = useInfiniteCanvas()
@@ -194,6 +201,16 @@ export function BoardClient(): React.ReactElement {
           setCurrentFolder(allFolders[0].id)
         }
       }
+
+      // Load persisted preferences
+      const prefs = await getPreferences(database)
+      if (!cancelled) {
+        setBgTheme(prefs.bgTheme)
+        setCardStyle(prefs.cardStyle)
+        setUiTheme(prefs.uiTheme)
+        setDefaultCardSize(prefs.defaultCardSize)
+        setDefaultAspectRatio(prefs.defaultAspectRatio)
+      }
     }
 
     void init()
@@ -228,6 +245,27 @@ export function BoardClient(): React.ReactElement {
     void loadItems()
     return () => { cancelled = true }
   }, [db, currentFolder])
+
+  // ── Performance tier ─────────────────────────────────────────
+  const perfTier = useFrameMonitor(items.length)
+  const enableTilt = perfTier === 'full' || perfTier === 'reduced-spotlight'
+
+  // ── Theme auto-mapping effects ────────────────────────────────
+  // bgTheme → data-theme (dark/light color mode)
+  useEffect(() => {
+    const colorMode = getColorModeForTheme(bgTheme)
+    document.documentElement.setAttribute('data-theme', colorMode)
+  }, [bgTheme])
+
+  // uiTheme → data-ui-theme
+  useEffect(() => {
+    document.documentElement.setAttribute('data-ui-theme', uiTheme)
+  }, [uiTheme])
+
+  // cardStyle → data-card-style
+  useEffect(() => {
+    document.documentElement.setAttribute('data-card-style', cardStyle)
+  }, [cardStyle])
 
   // ── Card repulsion ───────────────────────────────────────────
   const { applyRepulsion, resetRepulsion } = useCardRepulsion()
@@ -298,6 +336,47 @@ export function BoardClient(): React.ReactElement {
       setCurrentFolder(created.id)
     },
     [db, folders.length],
+  )
+
+  // ── Settings change handlers (persist to IndexedDB) ──────────
+  const handleBgThemeChange = useCallback(
+    async (theme: string): Promise<void> => {
+      setBgTheme(theme)
+      if (db) await savePreferences(db, { bgTheme: theme })
+    },
+    [db],
+  )
+
+  const handleCardStyleChange = useCallback(
+    async (style: CardStyle): Promise<void> => {
+      setCardStyle(style)
+      if (db) await savePreferences(db, { cardStyle: style })
+    },
+    [db],
+  )
+
+  const handleUiThemeChange = useCallback(
+    async (theme: 'auto' | 'dark' | 'light'): Promise<void> => {
+      setUiTheme(theme)
+      if (db) await savePreferences(db, { uiTheme: theme })
+    },
+    [db],
+  )
+
+  const handleDefaultCardSizeChange = useCallback(
+    async (size: string): Promise<void> => {
+      setDefaultCardSize(size)
+      if (db) await savePreferences(db, { defaultCardSize: size as 'random' | 'S' | 'M' | 'L' | 'XL' })
+    },
+    [db],
+  )
+
+  const handleDefaultAspectRatioChange = useCallback(
+    async (ratio: string): Promise<void> => {
+      setDefaultAspectRatio(ratio)
+      if (db) await savePreferences(db, { defaultAspectRatio: ratio as 'random' | 'auto' | '1:1' | '16:9' | '3:4' })
+    },
+    [db],
   )
 
   // ── URL submit handler ───────────────────────────────────────
@@ -418,6 +497,7 @@ export function BoardClient(): React.ReactElement {
                 onDrag={handleDrag}
                 onDragEnd={handleDragEnd}
                 draggable={!isGrid}
+                enableTilt={enableTilt}
                 cardWidth={card.width}
                 cardHeight={card.height}
                 onResizeEnd={handleResizeEnd}
@@ -446,6 +526,7 @@ export function BoardClient(): React.ReactElement {
               onDrag={handleDrag}
               onDragEnd={handleDragEnd}
               draggable={!isGrid}
+              enableTilt={enableTilt}
               cardWidth={card.width}
               cardHeight={card.height}
               onResizeEnd={handleResizeEnd}
@@ -488,7 +569,18 @@ export function BoardClient(): React.ReactElement {
       <ExportButton canvasRef={worldRef} />
       <RandomPick cardIds={items.map(({ card }) => card.id)} />
       <ColorSuggest cardColors={new Map(items.map(({ card }, i) => [card.id, FOLDER_COLORS[i % FOLDER_COLORS.length]]))} />
-      <ThemeSelector currentTheme={bgTheme} onSelectTheme={setBgTheme} />
+      <SettingsPanel
+        bgTheme={bgTheme}
+        onChangeBgTheme={handleBgThemeChange}
+        cardStyle={cardStyle}
+        onChangeCardStyle={handleCardStyleChange}
+        uiTheme={uiTheme}
+        onChangeUiTheme={handleUiThemeChange}
+        defaultCardSize={defaultCardSize}
+        onChangeDefaultCardSize={handleDefaultCardSizeChange}
+        defaultAspectRatio={defaultAspectRatio}
+        onChangeDefaultAspectRatio={handleDefaultAspectRatioChange}
+      />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />
     </>
   )
