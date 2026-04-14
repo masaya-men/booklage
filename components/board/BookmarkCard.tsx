@@ -9,6 +9,10 @@ type BookmarkCardProps = {
   bookmark: BookmarkRecord
   /** Inline styles for positioning, rotation, etc. */
   style?: React.CSSProperties
+  /** Card width in pixels (sets --card-width CSS variable) */
+  width?: number
+  /** Card height in pixels (reserved for future use) */
+  height?: number
 }
 
 /**
@@ -17,11 +21,16 @@ type BookmarkCardProps = {
  * - When a thumbnail exists: shows the image prominently with title on hover.
  * - When no thumbnail: shows a large favicon with title and site name.
  */
-export function BookmarkCard({ bookmark, style }: BookmarkCardProps): React.ReactElement {
+export function BookmarkCard({ bookmark, style, width, height: _height }: BookmarkCardProps): React.ReactElement {
   const hasThumbnail = bookmark.thumbnail.length > 0
 
+  const cardStyle: React.CSSProperties = {
+    ...style,
+    ...(width !== undefined ? { ['--card-width' as string]: `${width}px` } : {}),
+  }
+
   return (
-    <div className={styles.card} style={style}>
+    <div className={styles.card} style={cardStyle}>
       {hasThumbnail ? (
         <>
           <div className={styles.thumbnailWrapper}>

@@ -413,6 +413,8 @@ export function BoardClient(): React.ReactElement {
               <BookmarkCard
                 bookmark={bookmark}
                 style={innerStyle}
+                width={card.width}
+                height={card.height}
               />
             </DraggableCard>
           )
