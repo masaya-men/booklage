@@ -378,20 +378,14 @@ export function BoardClient(): React.ReactElement {
   )
 
   // ── Drag end handler (persists position to IndexedDB) ────────
+  // DOM position + animation is handled in onDragEnd. This just persists + updates state.
   const handleDragEnd = useCallback(
     async (cardId: string, x: number, y: number): Promise<void> => {
-      // Update the DOM element's position directly and reset GSAP transform
-      const el = document.querySelector<HTMLElement>(`[data-card-wrapper="${cardId}"]`)
-      if (el) {
-        gsap.set(el, { x: 0, y: 0 })
-        el.style.left = `${x}px`
-        el.style.top = `${y}px`
-      }
-
       // Landing ripple at card center
+      const el = document.querySelector<HTMLElement>(`[data-card-wrapper="${cardId}"]`)
       if (el && worldRef.current) {
-        const cx = x + (el.offsetWidth / 2) / canvas.state.zoom
-        const cy = y + (el.offsetHeight / 2) / canvas.state.zoom
+        const cx = x + el.offsetWidth / 2
+        const cy = y + el.offsetHeight / 2
         createRipple(cx, cy, worldRef.current)
       }
 
@@ -580,11 +574,10 @@ export function BoardClient(): React.ReactElement {
         if (Math.abs(px) > CLICK_THRESHOLD || Math.abs(py) > CLICK_THRESHOLD) {
           dragMoved = true
         }
-        // Read current position from DOM (not stale closure)
+        // GSAP Draggable auto-compensates for parent scale, so no zoom division
         const baseX = parseFloat(el.style.left) || 0
         const baseY = parseFloat(el.style.top) || 0
-        const zoom = zoomRef.current
-        handleDrag(cardId, baseX + px / zoom, baseY + py / zoom)
+        handleDrag(cardId, baseX + px, baseY + py)
       },
       onDragEnd() {
         // Cursor + tilt unfreeze
@@ -593,33 +586,39 @@ export function BoardClient(): React.ReactElement {
         if (tiltEl) delete tiltEl.dataset.dragging
 
         // If barely moved, treat as click → open URL in new tab
+        // Skip for video/tweet cards (those have interactive iframes)
         if (!dragMoved) {
-          gsap.to(el, { scale: 1, boxShadow: '', duration: 0.2, overwrite: 'auto', onComplete() { el.style.zIndex = '' } })
-          gsap.set(el, { x: 0, y: 0 })
-          // Use ref for latest items (Draggable closures go stale)
+          gsap.to(el, { x: 0, y: 0, scale: 1, boxShadow: '', duration: 0.2, overwrite: true, onComplete() { el.style.zIndex = '' } })
           const bookmark = itemsRef.current.find((item) => item.card.id === cardId)?.bookmark
-          if (bookmark) {
+          if (bookmark && bookmark.type !== 'tweet' && bookmark.type !== 'youtube') {
             window.open(bookmark.url, '_blank', 'noopener')
           }
           return
         }
 
-        // Landing animation: settle back
+        // Calculate new position FIRST, then animate
+        // GSAP Draggable auto-compensates for parent scale — no zoom division
+        const baseX = parseFloat(el.style.left) || 0
+        const baseY = parseFloat(el.style.top) || 0
+        const px = this.endX ?? 0
+        const py = this.endY ?? 0
+        const newX = baseX + px
+        const newY = baseY + py
+
+        // Set CSS position immediately, then animate transform back to 0
+        el.style.left = `${newX}px`
+        el.style.top = `${newY}px`
         gsap.to(el, {
+          x: 0, y: 0,
           scale: 1,
           boxShadow: '',
           duration: 0.35,
           ease: 'back.out(1.4)',
-          overwrite: 'auto',
+          overwrite: true,
           onComplete() { el.style.zIndex = '' },
         })
-        // Read current position from DOM (not stale closure), use ref for zoom
-        const baseX = parseFloat(el.style.left) || 0
-        const baseY = parseFloat(el.style.top) || 0
-        const zoom = zoomRef.current
-        const px = this.endX ?? 0
-        const py = this.endY ?? 0
-        handleDragEnd(cardId, baseX + px / zoom, baseY + py / zoom)
+
+        handleDragEnd(cardId, newX, newY)
       },
     })
     return instances[0]

@@ -13,7 +13,11 @@ import styles from './BookmarkletBanner.module.css'
  * We bypass React entirely by creating the <a> element with raw DOM API.
  */
 export function BookmarkletBanner(): React.ReactElement {
-  const bookmarkletUri = useMemo(() => generateBookmarkletCode(APP_URL), [])
+  // Use current origin so the bookmarklet works on any deployment (not hardcoded localhost)
+  const bookmarkletUri = useMemo(
+    () => (typeof window !== 'undefined' ? generateBookmarkletCode(window.location.origin) : ''),
+    [],
+  )
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

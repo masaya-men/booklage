@@ -6,6 +6,23 @@
   cursor: inherit;
 }
 
+.dragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 4px;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
 .iframeWrapper {
   position: relative;
   width: 100%;

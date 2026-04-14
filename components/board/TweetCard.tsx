@@ -14,10 +14,12 @@ type TweetCardProps = {
  * Renders an embedded tweet using Twitter's iframe embed.
  * This allows full interactivity including video playback.
  * widgets.js is sandboxed inside the iframe (doesn't affect main page).
+ * The drag handle at the top lets users move the card without interfering with the iframe.
  */
 export function TweetCard({ tweetId, style }: TweetCardProps): React.ReactElement {
   return (
     <div className={styles.card} style={style}>
+      <div className={styles.dragHandle}>⋮⋮</div>
       <iframe
         className={styles.iframe}
         src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
