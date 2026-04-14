@@ -499,12 +499,18 @@ export function BoardClient(): React.ReactElement {
     }
   }, [items, isGrid, gridPositions]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Threshold in pixels — movement below this is treated as a click, not a drag */
+  const CLICK_THRESHOLD = 5
+
   /** Helper: create GSAP Draggable for a card wrapper */
   function createDraggableForCard(el: HTMLElement, cardId: string, cardX: number, cardY: number): Draggable {
+    let dragMoved = false
+
     const instances = Draggable.create(el, {
       type: 'x,y',
       zIndexBoost: false,
       onDragStart() {
+        dragMoved = false
         // Cursor + tilt freeze
         el.style.cursor = 'grabbing'
         const tiltEl = el.querySelector<HTMLElement>('[data-tilt]')
@@ -522,6 +528,9 @@ export function BoardClient(): React.ReactElement {
       onDrag() {
         const px = this.x ?? 0
         const py = this.y ?? 0
+        if (Math.abs(px) > CLICK_THRESHOLD || Math.abs(py) > CLICK_THRESHOLD) {
+          dragMoved = true
+        }
         handleDrag(cardId, cardX + px / canvas.state.zoom, cardY + py / canvas.state.zoom)
       },
       onDragEnd() {
@@ -529,6 +538,18 @@ export function BoardClient(): React.ReactElement {
         el.style.cursor = 'grab'
         const tiltEl = el.querySelector<HTMLElement>('[data-tilt]')
         if (tiltEl) delete tiltEl.dataset.dragging
+
+        // If barely moved, treat as click → open URL in new tab
+        if (!dragMoved) {
+          gsap.to(el, { scale: 1, boxShadow: '', duration: 0.2, overwrite: 'auto', onComplete() { el.style.zIndex = '' } })
+          gsap.set(el, { x: 0, y: 0 })
+          const bookmark = items.find((item) => item.card.id === cardId)?.bookmark
+          if (bookmark) {
+            window.open(bookmark.url, '_blank', 'noopener')
+          }
+          return
+        }
+
         // Landing animation: settle back
         gsap.to(el, {
           scale: 1,
