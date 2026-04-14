@@ -8,7 +8,7 @@
 
 - **ブランチ**: `master`
 - **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S1, S2, S3, S5, S7, S8, **デプロイ完了** → 次は S6（PWA）or S4（広告）
+- **進捗**: S1, S2, S3, S5, S6, S7, S8, **デプロイ完了** → 次は S4（広告）or S9（一括インポート）
 - **本番URL**: `https://booklage.pages.dev`
 - **新規依存**: `lenis`（スムーズスクロール）、`wrangler`（Cloudflare CLI、devDep）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public、push済み）
@@ -90,6 +90,30 @@
 - `app/page.tsx` — LandingPageコンポーネントに置き換え
 - `package.json` — lenis追加
 
+### S6 完了済み
+
+- [x] `extractUrlFromText` ユーティリティ（URL抽出 + テスト7件）
+- [x] PWAアイコン生成スクリプト（`scripts/generate-pwa-icons.mjs`）+ icon-192/512.png
+- [x] manifest.json に `purpose: "any maskable"` 追加
+- [x] Service Worker（プリキャッシュ + キャッシュ戦略）
+- [x] SW登録（layout.tsx）+ apple-touch-icon
+- [x] Web Share Target 受け取り処理（board-client.tsx）
+- [x] InstallPrompt コンポーネント（beforeinstallprompt + ガラス風バナー）
+
+**S6 新規作成ファイル:**
+- `scripts/generate-pwa-icons.mjs` — アイコン生成スクリプト
+- `public/icon-192.png`, `public/icon-512.png` — PWAアイコン
+- `public/sw.js` — Service Worker
+- `components/pwa/InstallPrompt.tsx` + `.module.css` — インストール促進UI
+
+**S6 変更ファイル:**
+- `public/manifest.json` — purpose追加
+- `app/layout.tsx` — SW登録 + apple-touch-icon
+- `lib/utils/url.ts` — extractUrlFromText追加
+- `tests/lib/url.test.ts` — テスト7件追加
+- `lib/constants.ts` — Z_INDEX.INSTALL_PROMPT追加
+- `app/(app)/board/board-client.tsx` — Web Share Target + InstallPrompt統合
+
 ### 次にやること（S3の仕上げ — 後でブラッシュアップ）
 
 1. **最終確認** — 各テーマ×各スタイルの組み合わせ確認
@@ -144,7 +168,7 @@
 
 - [ ] S4: 広告基盤
 - [x] S5: ブックマークレットUI ✅
-- [ ] S6: PWA + スマホ保存
+- [x] S6: PWA + スマホ保存 ✅
 - [x] S7: LP（デモ型6セクション）✅
 - [x] S8: 静的ページ（Privacy, Terms, FAQ, About, Contact）✅
 - [x] Cloudflare Pagesデプロイ ✅（booklage.pages.dev）
@@ -156,7 +180,6 @@
 - [ ] Remotionプロモ動画
 - [ ] OGP画像生成（Satori）
 - [ ] PiPドロップゾーン（v1.2）
-- [ ] Web Share Target（PWA共有）
 
 ## アイデア・やりたいこと
 
