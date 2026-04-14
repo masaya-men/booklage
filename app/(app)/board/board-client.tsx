@@ -11,6 +11,7 @@ import {
   getAllFolders,
   updateCard,
   getPreferences,
+  hasSavedPreferences,
   savePreferences,
 } from '@/lib/storage/indexeddb'
 import type { BookmarkRecord, CardRecord, FolderRecord } from '@/lib/storage/indexeddb'
@@ -68,11 +69,6 @@ type CardWithBookmark = {
  * - FolderNav allows switching between and creating folders.
  */
 export function BoardClient(): React.ReactElement {
-  // ── Force dark theme immediately (before DB prefs load) ──────
-  if (typeof document !== 'undefined') {
-    document.documentElement.setAttribute('data-theme', 'dark')
-  }
-
   // ── State ────────────────────────────────────────────────────
   const [db, setDb] = useState<BooklageDB | null>(null)
   const [folders, setFolders] = useState<FolderRecord[]>([])
@@ -207,14 +203,24 @@ export function BoardClient(): React.ReactElement {
         }
       }
 
-      // Load persisted preferences
-      const prefs = await getPreferences(database)
-      if (!cancelled) {
-        setBgTheme(prefs.bgTheme)
-        setCardStyle(prefs.cardStyle)
-        setUiTheme(prefs.uiTheme)
-        setDefaultCardSize(prefs.defaultCardSize)
-        setDefaultAspectRatio(prefs.defaultAspectRatio)
+      // Load preferences: saved → use them, first visit → detect OS preference
+      const hasSaved = await hasSavedPreferences(database)
+      if (hasSaved) {
+        const prefs = await getPreferences(database)
+        if (!cancelled) {
+          setBgTheme(prefs.bgTheme)
+          setCardStyle(prefs.cardStyle)
+          setUiTheme(prefs.uiTheme)
+          setDefaultCardSize(prefs.defaultCardSize)
+          setDefaultAspectRatio(prefs.defaultAspectRatio)
+        }
+      } else {
+        // First visit: pick initial theme based on OS preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        const initialBg = prefersDark ? 'dark' : 'minimal-white'
+        if (!cancelled) {
+          setBgTheme(initialBg)
+        }
       }
     }
 
