@@ -169,6 +169,10 @@ export function BoardClient(): React.ReactElement {
   itemsRef.current = items
   const canvas = useInfiniteCanvas()
 
+  // Ref for zoom — always points to latest value, used inside GSAP Draggable closures
+  const zoomRef = useRef(canvas.state.zoom)
+  zoomRef.current = canvas.state.zoom
+
   // ── Stable float delay per card (avoids re-randomizing on re-render) ──
   const floatDelays = useRef(new Map<string, string>())
   const getFloatDelay = useCallback((cardId: string): string => {
@@ -408,6 +412,34 @@ export function BoardClient(): React.ReactElement {
     [db, resetRepulsion],
   )
 
+  // ── Gather all cards back to visible area ────────────────────
+  const handleGatherCards = useCallback(
+    async (): Promise<void> => {
+      if (!db || !currentFolder || items.length === 0) return
+
+      // Reset canvas view to origin
+      canvas.resetView()
+
+      // Arrange cards in a loose grid near center
+      const cols = Math.ceil(Math.sqrt(items.length))
+      const spacing = 280
+
+      const updates: Promise<void>[] = []
+      const newItems = items.map((item, i) => {
+        const col = i % cols
+        const row = Math.floor(i / cols)
+        const x = 240 + col * spacing
+        const y = 100 + row * spacing
+        updates.push(updateCard(db, item.card.id, { x, y }))
+        return { ...item, card: { ...item.card, x, y } }
+      })
+
+      setItems(newItems)
+      await Promise.all(updates)
+    },
+    [db, currentFolder, items, canvas],
+  )
+
   // ── Resize end handler (persists dimensions to IndexedDB) ────
   const handleResizeEnd = useCallback(
     async (cardId: string, width: number, height: number): Promise<void> => {
@@ -551,7 +583,8 @@ export function BoardClient(): React.ReactElement {
         // Read current position from DOM (not stale closure)
         const baseX = parseFloat(el.style.left) || 0
         const baseY = parseFloat(el.style.top) || 0
-        handleDrag(cardId, baseX + px / canvas.state.zoom, baseY + py / canvas.state.zoom)
+        const zoom = zoomRef.current
+        handleDrag(cardId, baseX + px / zoom, baseY + py / zoom)
       },
       onDragEnd() {
         // Cursor + tilt unfreeze
@@ -580,12 +613,13 @@ export function BoardClient(): React.ReactElement {
           overwrite: 'auto',
           onComplete() { el.style.zIndex = '' },
         })
-        // Read current position from DOM (not stale closure)
+        // Read current position from DOM (not stale closure), use ref for zoom
         const baseX = parseFloat(el.style.left) || 0
         const baseY = parseFloat(el.style.top) || 0
+        const zoom = zoomRef.current
         const px = this.endX ?? 0
         const py = this.endY ?? 0
-        handleDragEnd(cardId, baseX + px / canvas.state.zoom, baseY + py / canvas.state.zoom)
+        handleDragEnd(cardId, baseX + px / zoom, baseY + py / zoom)
       },
     })
     return instances[0]
@@ -845,6 +879,30 @@ export function BoardClient(): React.ReactElement {
 
       <ViewModeToggle mode={viewMode} onToggle={setViewMode} />
       <ExportButton canvasRef={worldRef} />
+      {items.length > 0 && (
+        <button
+          onClick={handleGatherCards}
+          style={{
+            position: 'fixed',
+            bottom: 20,
+            left: 20,
+            zIndex: Z_INDEX.TOOLBAR,
+            padding: '8px 16px',
+            borderRadius: '999px',
+            border: '1px solid var(--color-glass-border)',
+            background: 'var(--color-glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-heading)',
+            fontSize: 'var(--text-sm)',
+            cursor: 'pointer',
+          }}
+          type="button"
+        >
+          📍 カードを集める
+        </button>
+      )}
       <RandomPick cardIds={items.map(({ card }) => card.id)} />
       <ColorSuggest cardColors={new Map(items.map(({ card }, i) => [card.id, FOLDER_COLORS[i % FOLDER_COLORS.length]]))} />
       <SettingsPanel
