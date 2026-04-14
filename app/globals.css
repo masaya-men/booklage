@@ -373,6 +373,41 @@ ol {
     0 8px 16px rgba(0, 0, 0, 0.06);
 }
 
+/* ── Card 3D Tilt + Spotlight ──────────────────────────────── */
+
+[data-tilt] {
+  position: relative;
+  border-radius: inherit;
+}
+
+[data-tilt]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 60%
+  );
+  opacity: var(--spotlight-opacity, 0);
+  transition: opacity var(--duration-fast, 200ms) ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Card Drag State ───────────────────────────────────────── */
+
+[data-tilt][data-dragging="true"] {
+  /* Freeze tilt transforms during drag */
+  transform: none !important;
+}
+
+[data-tilt][data-dragging="true"]::after {
+  /* Hide spotlight during drag */
+  opacity: 0 !important;
+}
+
 /* ── Card Landing Ripple ───────────────────────────────────── */
 
 @keyframes card-ripple {
