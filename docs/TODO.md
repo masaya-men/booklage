@@ -6,11 +6,14 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master`（feat/s3-design-polish マージ済み）
+- **ブランチ**: `master`
 - **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S1, S2, S3, S5, S7, S8 完了 → 次は **Cloudflare Pagesデプロイ** or S6（PWA）
-- **新規依存**: `lenis`（スムーズスクロール）— GSAP ScrollTriggerも活用中
+- **進捗**: S1, S2, S3, S5, S7, S8, **デプロイ完了** → 次は S6（PWA）or S4（広告）
+- **本番URL**: `https://booklage.pages.dev`
+- **新規依存**: `lenis`（スムーズスクロール）、`wrangler`（Cloudflare CLI、devDep）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public、push済み）
+- **API**: Next.js API Route → Cloudflare Pages Functions に移行済み（`functions/api/ogp.ts`, `functions/api/oembed.ts`）
+- **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
 
 ### 重要な技術判断（確定済み）
 
@@ -144,7 +147,7 @@
 - [ ] S6: PWA + スマホ保存
 - [x] S7: LP（デモ型6セクション）✅
 - [x] S8: 静的ページ（Privacy, Terms, FAQ, About, Contact）✅
-- [ ] Cloudflare Pagesデプロイ
+- [x] Cloudflare Pagesデプロイ ✅（booklage.pages.dev）
 - [ ] S9: 一括インポート機能（ブラウザブックマーク、Twitter/X、YouTube等）
 
 ## 未着手（将来）
