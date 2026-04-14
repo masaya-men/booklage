@@ -92,7 +92,10 @@ export function DraggableCard({
       zIndexBoost: false,
       onDragStart() {
         el.classList.add(styles.dragging)
-        // Reset tilt during drag
+        // Disable tilt during drag: clear any tilt transform so GSAP owns the element
+        el.dataset.dragging = 'true'
+        el.style.transform = ''
+        el.style.transition = ''
         el.style.setProperty('--spotlight-opacity', '0')
         gsap.to(el, { scale: 1.05, duration: 0.2, ease: 'power2.out' })
       },
@@ -107,6 +110,8 @@ export function DraggableCard({
       },
       onDragEnd() {
         el.classList.remove(styles.dragging)
+        // Re-enable tilt: tilt will naturally re-apply on next mousemove
+        el.dataset.dragging = 'false'
         gsap.to(el, {
           scale: 1.0,
           duration: 0.4,
