@@ -57,6 +57,11 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
     <html lang="ja" data-theme="dark" data-card-style="glass" data-ui-theme="auto">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+          }
+        `}} />
       </head>
       <body className={`${inter.variable} ${outfit.variable} ${caveat.variable}`}>
         {children}
