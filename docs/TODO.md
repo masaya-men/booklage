@@ -8,7 +8,7 @@
 
 - **ブランチ**: `feat/s3-design-polish`（masterから分岐）
 - **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S3 → S5 → **S7 完了（LP）** → 次は S8（静的ページ）or S6（PWA）
+- **進捗**: S3 → S5 → S7 → **S8 完了（静的ページ）** → 次は S6（PWA）or デプロイ
 - **S7 設計書**: `docs/superpowers/specs/2026-04-14-s7-landing-page.md`
 - **S7 実装計画**: `docs/superpowers/plans/2026-04-14-s7-landing-page.md`（全9タスク完了）
 - **新規依存**: `lenis`（スムーズスクロール）— GSAP ScrollTriggerも活用中
@@ -145,7 +145,7 @@
 - [x] S5: ブックマークレットUI ✅
 - [ ] S6: PWA + スマホ保存
 - [x] S7: LP（デモ型6セクション）✅
-- [ ] S8: 静的ページ
+- [x] S8: 静的ページ（Privacy, Terms, FAQ, About, Contact）✅
 - [ ] Cloudflare Pagesデプロイ
 
 ## 未着手（将来）
