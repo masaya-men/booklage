@@ -8,9 +8,9 @@
 
 - **ブランチ**: `feat/s3-design-polish`（masterから分岐）
 - **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S3 完了 → **S5（ブックマークレットUI）の実装に着手する**
+- **進捗**: S3 完了 → **S5 完了（ブックマークレットUI）** → 次は S4 or S6
 - **S5 設計書**: `docs/superpowers/specs/2026-04-14-s5-bookmarklet.md`
-- **S5 実装計画**: `docs/superpowers/plans/2026-04-14-s5-bookmarklet.md`（コード全部入り、5タスク）
+- **S5 実装計画**: `docs/superpowers/plans/2026-04-14-s5-bookmarklet.md`（全5タスク完了）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（リポジトリ未作成）
 
 ### 重要な技術判断（確定済み）
@@ -42,6 +42,24 @@
 - [x] **ホバーエフェクト磨き**（border-colorアクセント、scale調整）
 - [x] **カーソル統一**（wrapper→grab/grabbing、子要素はinherit）
 - [x] **FPS監視バグ修正** — useFrameMonitorが一時的FPS低下で永久劣化していた。閾値緩和（30fps→degrade、45fps以上×3回→recover）
+
+### S5 完了済み
+
+- [x] ブックマークレットJS URI改修（OGP抽出+window.openインライン方式）
+- [x] `/save` ページルート（Server Component + Suspense）
+- [x] SavePopupコンポーネント（プレビュー、フォルダ選択、新規フォルダ作成、IndexedDB保存、自動クローズ）
+- [x] BookmarkletBanner（boardページ左下にドラッグ可能リンク配置）
+- [x] Playwrightブラウザテスト全通過（/save保存フロー、パラメータなし案内、boardバナー表示）
+
+**S5 新規作成ファイル:**
+- `app/(app)/save/page.tsx` — /saveルート
+- `components/bookmarklet/SavePopup.tsx` + `.module.css` — ポップアップUI
+- `components/bookmarklet/BookmarkletBanner.tsx` + `.module.css` — 取得バナー
+
+**S5 変更ファイル:**
+- `lib/utils/bookmarklet.ts` — インラインOGP抽出方式に全面改修
+- `tests/lib/bookmarklet.test.ts` — テスト5件に拡張
+- `app/(app)/board/board-client.tsx` — BookmarkletBanner追加
 
 ### 次にやること（S3の仕上げ — 後でブラッシュアップ）
 
@@ -96,7 +114,7 @@
 ## 未着手（S3後にやること）
 
 - [ ] S4: 広告基盤
-- [ ] S5: ブックマークレットUI
+- [x] S5: ブックマークレットUI ✅
 - [ ] S6: PWA + スマホ保存
 - [ ] S7: LP
 - [ ] S8: 静的ページ

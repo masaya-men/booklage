@@ -48,6 +48,7 @@ import { createRipple } from '@/lib/interactions/ripple'
 import { getColorModeForTheme } from '@/lib/theme/theme-utils'
 import { useFrameMonitor } from '@/lib/interactions/use-frame-monitor'
 import { LiquidGlassProvider } from '@/lib/glass/LiquidGlassProvider'
+import { BookmarkletBanner } from '@/components/bookmarklet/BookmarkletBanner'
 import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import { ResizeHandle } from '@/components/board/ResizeHandle'
 
@@ -787,6 +788,7 @@ export function BoardClient(): React.ReactElement {
         defaultAspectRatio={defaultAspectRatio}
         onChangeDefaultAspectRatio={handleDefaultAspectRatioChange}
       />
+      <BookmarkletBanner />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />
     </LiquidGlassProvider>
   )
