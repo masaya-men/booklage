@@ -6,11 +6,9 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `feat/s3-design-polish`（masterから分岐）
+- **ブランチ**: `master`（feat/s3-design-polish マージ済み）
 - **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S3 → S5 → S7 → **S8 完了（静的ページ）** → 次は S6（PWA）or デプロイ
-- **S7 設計書**: `docs/superpowers/specs/2026-04-14-s7-landing-page.md`
-- **S7 実装計画**: `docs/superpowers/plans/2026-04-14-s7-landing-page.md`（全9タスク完了）
+- **進捗**: S1, S2, S3, S5, S7, S8 完了 → 次は **Cloudflare Pagesデプロイ** or S6（PWA）
 - **新規依存**: `lenis`（スムーズスクロール）— GSAP ScrollTriggerも活用中
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public、push済み）
 
@@ -147,6 +145,7 @@
 - [x] S7: LP（デモ型6セクション）✅
 - [x] S8: 静的ページ（Privacy, Terms, FAQ, About, Contact）✅
 - [ ] Cloudflare Pagesデプロイ
+- [ ] S9: 一括インポート機能（ブラウザブックマーク、Twitter/X、YouTube等）
 
 ## 未着手（将来）
 
@@ -162,6 +161,3 @@
 - 方眼紙は白系背景に黒い格子パターンも追加
 - もっと多くのカードスタイル（ネオン、布、羊皮紙等）
 - 音フィードバック（ホバー/クリック時の微かな音）
-- Twitterの共有ボタンから直接Booklageに保存（Web Share Target / PWA）
-- Twitterブックマーク一括取り込み（Twitter API / OAuth認証が必要）
-- YouTube高評価・あとで見る動画の一括取り込み（YouTube Data API / OAuth認証が必要）
