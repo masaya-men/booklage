@@ -12,7 +12,7 @@
 - **S7 設計書**: `docs/superpowers/specs/2026-04-14-s7-landing-page.md`
 - **S7 実装計画**: `docs/superpowers/plans/2026-04-14-s7-landing-page.md`（全9タスク完了）
 - **新規依存**: `lenis`（スムーズスクロール）— GSAP ScrollTriggerも活用中
-- **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（リポジトリ未作成）
+- **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public、push済み）
 
 ### 重要な技術判断（確定済み）
 
