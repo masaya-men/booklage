@@ -14,13 +14,14 @@
   cursor: default;
 }
 
-.dragging {
-  box-shadow: var(--shadow-drag) !important;
-  z-index: 50 !important;
+/* Inner div for tilt effect — separate from drag wrapper to avoid transform conflicts */
+.tiltInner {
+  position: relative;
+  border-radius: inherit;
 }
 
-/* Spotlight effect overlay */
-.wrapper::after {
+/* Spotlight overlay on the tilt inner div */
+.tiltInner::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -35,3 +36,9 @@
   pointer-events: none;
   z-index: 1;
 }
+
+.dragging {
+  box-shadow: var(--shadow-drag) !important;
+  z-index: 50 !important;
+}
+

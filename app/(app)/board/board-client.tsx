@@ -42,6 +42,7 @@ import {
 import { useCardRepulsion } from '@/lib/interactions/use-card-repulsion'
 import { getColorModeForTheme } from '@/lib/theme/theme-utils'
 import { useFrameMonitor } from '@/lib/interactions/use-frame-monitor'
+import { LiquidGlassProvider } from '@/lib/glass/LiquidGlassProvider'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -489,7 +490,7 @@ export function BoardClient(): React.ReactElement {
 
   // ── Render ───────────────────────────────────────────────────
   return (
-    <>
+    <LiquidGlassProvider>
       <FolderNav
         folders={folders}
         currentFolderId={currentFolder}
@@ -617,6 +618,6 @@ export function BoardClient(): React.ReactElement {
         onChangeDefaultAspectRatio={handleDefaultAspectRatioChange}
       />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />
-    </>
+    </LiquidGlassProvider>
   )
 }
