@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Outfit } from 'next/font/google'
+import { Inter, Outfit, Caveat } from 'next/font/google'
 import { APP_NAME, APP_URL } from '@/lib/constants'
 import './globals.css'
 
@@ -12,6 +12,12 @@ const inter = Inter({
 const outfit = Outfit({
   subsets: ['latin'],
   variable: '--font-outfit',
+  display: 'swap',
+})
+
+const caveat = Caveat({
+  subsets: ['latin'],
+  variable: '--font-handwriting',
   display: 'swap',
 })
 
@@ -48,11 +54,11 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps): React.ReactElement {
   return (
-    <html lang="ja" data-theme="dark" data-card-style="solid">
+    <html lang="ja" data-theme="dark" data-card-style="glass" data-ui-theme="auto">
       <head>
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={`${inter.variable} ${outfit.variable}`}>
+      <body className={`${inter.variable} ${outfit.variable} ${caveat.variable}`}>
         {children}
       </body>
     </html>

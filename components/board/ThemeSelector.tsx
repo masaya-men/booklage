@@ -8,6 +8,7 @@ const THEMES = [
   { id: 'minimal-white', label: 'ホワイト', bg: '#fafafa' },
   { id: 'grid', label: '方眼紙', bg: '#fafafa' },
   { id: 'cork', label: 'コルク', bg: '#c4956a' },
+  { id: 'cardboard', label: '厚紙', bg: '#d2c8ba' },
   { id: 'space', label: '宇宙', bg: 'linear-gradient(135deg, #0a0a2e, #1a0a3e)' },
   { id: 'forest', label: '森', bg: '#1a3a1a' },
   { id: 'ocean', label: '海', bg: 'linear-gradient(180deg, #0a2a4a, #0a4a6a)' },
