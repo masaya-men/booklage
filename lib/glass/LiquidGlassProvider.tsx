@@ -2,7 +2,17 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { getDisplacementMap, type GlassStrength } from './displacement-map'
+
+// navigator.userAgentData is not yet in the standard TypeScript lib types
+declare global {
+  interface Navigator {
+    userAgentData?: {
+      brands?: Array<{ brand: string; version: string }>
+    }
+  }
+}
 
 type LiquidGlassContextValue = {
   supportsLiquidGlass: boolean
@@ -26,15 +36,19 @@ export function useLiquidGlassContext(): LiquidGlassContextValue {
 
 function detectSvgBackdropFilterSupport(): boolean {
   if (typeof window === 'undefined') return false
-  const testEl = document.createElement('div')
-  testEl.style.cssText = 'backdrop-filter: url(#test); -webkit-backdrop-filter: url(#test);'
-  document.body.appendChild(testEl)
-  const computed =
-    getComputedStyle(testEl).backdropFilter ||
-    // Cast to access webkit-prefixed property not in standard CSSStyleDeclaration
-    (getComputedStyle(testEl) as unknown as Record<string, string>)['-webkit-backdrop-filter']
-  document.body.removeChild(testEl)
-  return typeof computed === 'string' && computed.includes('url(')
+
+  // SVG backdrop-filter (url(#id) syntax) is only supported in Chromium-based browsers.
+  // Check 1: basic backdrop-filter support
+  const hasBackdropFilter = CSS.supports('backdrop-filter', 'blur(1px)')
+  if (!hasBackdropFilter) return false
+
+  // Check 2: Chromium detection (Chrome, Edge, Opera, Brave, Arc, etc.)
+  // Chromium exposes `window.chrome` or the "Chromium" brand in userAgentData.
+  const isChromium =
+    'chrome' in window ||
+    (navigator.userAgentData?.brands?.some((b) => b.brand === 'Chromium') ?? false)
+
+  return isChromium
 }
 
 type LiquidGlassProviderProps = {
@@ -103,47 +117,56 @@ export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): Rea
 
   return (
     <LiquidGlassContext.Provider value={contextValue}>
-      {supported && filters.length > 0 && (
-        <svg
-          style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
-          colorInterpolationFilters="sRGB"
-          aria-hidden="true"
-        >
-          <defs>
-            {filters.map((f) => (
-              <filter key={f.id} id={f.id} x="0" y="0" width="100%" height="100%">
-                {/* Refraction displacement */}
-                <feImage
-                  href={f.dataUrl}
-                  x="0"
-                  y="0"
-                  width={f.width}
-                  height={f.height}
-                  result="displacement_map"
-                />
-                <feDisplacementMap
-                  in="SourceGraphic"
-                  in2="displacement_map"
-                  scale={f.maxDisplacement}
-                  xChannelSelector="R"
-                  yChannelSelector="G"
-                  result="refracted"
-                />
-                {/* Specular highlight overlay */}
-                <feImage
-                  href={f.specularUrl}
-                  x="0"
-                  y="0"
-                  width={f.width}
-                  height={f.height}
-                  result="specular"
-                />
-                <feBlend in="refracted" in2="specular" mode="screen" />
-              </filter>
-            ))}
-          </defs>
-        </svg>
-      )}
+      {supported && filters.length > 0 && typeof document !== 'undefined' &&
+        createPortal(
+          <svg
+            style={{
+              position: 'absolute',
+              width: 0,
+              height: 0,
+              overflow: 'hidden',
+              pointerEvents: 'none',
+            }}
+            colorInterpolationFilters="sRGB"
+            aria-hidden="true"
+          >
+            <defs>
+              {filters.map((f) => (
+                <filter key={f.id} id={f.id} x="0" y="0" width="100%" height="100%">
+                  {/* Refraction displacement */}
+                  <feImage
+                    href={f.dataUrl}
+                    x="0"
+                    y="0"
+                    width={f.width}
+                    height={f.height}
+                    result="displacement_map"
+                  />
+                  <feDisplacementMap
+                    in="SourceGraphic"
+                    in2="displacement_map"
+                    scale={f.maxDisplacement}
+                    xChannelSelector="R"
+                    yChannelSelector="G"
+                    result="refracted"
+                  />
+                  {/* Specular highlight overlay */}
+                  <feImage
+                    href={f.specularUrl}
+                    x="0"
+                    y="0"
+                    width={f.width}
+                    height={f.height}
+                    result="specular"
+                  />
+                  <feBlend in="refracted" in2="specular" mode="screen" />
+                </filter>
+              ))}
+            </defs>
+          </svg>,
+          document.body,
+        )
+      }
       {children}
     </LiquidGlassContext.Provider>
   )
