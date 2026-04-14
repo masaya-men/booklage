@@ -68,6 +68,11 @@ type CardWithBookmark = {
  * - FolderNav allows switching between and creating folders.
  */
 export function BoardClient(): React.ReactElement {
+  // ── Force dark theme immediately (before DB prefs load) ──────
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', 'dark')
+  }
+
   // ── State ────────────────────────────────────────────────────
   const [db, setDb] = useState<BooklageDB | null>(null)
   const [folders, setFolders] = useState<FolderRecord[]>([])
@@ -451,6 +456,30 @@ export function BoardClient(): React.ReactElement {
     },
     [db, currentFolder],
   )
+
+  // ── Temporary: test data shortcut (Ctrl+Shift+T) ────────────
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent): Promise<void> => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        if (!db || !currentFolder) return
+        const testUrls = [
+          'https://github.com',
+          'https://www.youtube.com',
+          'https://twitter.com',
+          'https://www.figma.com',
+          'https://vercel.com',
+          'https://nextjs.org',
+          'https://react.dev',
+          'https://developer.mozilla.org',
+        ]
+        for (const url of testUrls) {
+          await handleUrlSubmit(url)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [db, currentFolder, handleUrlSubmit])
 
   // ── Render ───────────────────────────────────────────────────
   return (
