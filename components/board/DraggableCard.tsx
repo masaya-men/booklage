@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { Draggable } from 'gsap/Draggable'
 import styles from './DraggableCard.module.css'
+import { useCardTilt } from '@/lib/interactions/use-card-tilt'
 
 gsap.registerPlugin(Draggable)
 
@@ -23,6 +24,8 @@ type DraggableCardProps = {
   onDragEnd: (cardId: string, x: number, y: number) => void
   /** Whether drag is enabled (false in grid mode) */
   draggable?: boolean
+  /** Whether 3D tilt + spotlight effect is enabled on hover (default true) */
+  enableTilt?: boolean
 }
 
 /**
@@ -40,9 +43,20 @@ export function DraggableCard({
   zoom,
   onDragEnd,
   draggable = true,
+  enableTilt = true,
 }: DraggableCardProps): React.ReactElement {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const draggableRef = useRef<Draggable[]>([])
+
+  const tilt = useCardTilt({ enabled: draggable && enableTilt })
+
+  const combinedRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      wrapperRef.current = el
+      tilt.ref(el)
+    },
+    [tilt],
+  )
 
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
@@ -62,6 +76,8 @@ export function DraggableCard({
       zIndexBoost: false,
       onDragStart() {
         el.classList.add(styles.dragging)
+        // Reset tilt during drag
+        el.style.setProperty('--spotlight-opacity', '0')
         gsap.to(el, { scale: 1.05, duration: 0.2, ease: 'power2.out' })
       },
       onDragEnd() {
@@ -95,7 +111,7 @@ export function DraggableCard({
 
   return (
     <div
-      ref={wrapperRef}
+      ref={combinedRef}
       className={draggable ? styles.wrapper : styles.wrapperStatic}
       data-card-wrapper={cardId}
       style={{

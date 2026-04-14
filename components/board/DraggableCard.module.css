@@ -18,3 +18,20 @@
   box-shadow: var(--shadow-drag) !important;
   z-index: 50 !important;
 }
+
+/* Spotlight effect overlay */
+.wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 60%
+  );
+  opacity: var(--spotlight-opacity, 0);
+  transition: opacity var(--duration-fast, 200ms) ease;
+  pointer-events: none;
+  z-index: 1;
+}
