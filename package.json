@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "preview": "next build && wrangler pages dev out"
   },
   "dependencies": {
     "dom-to-image-more": "^3.7.2",
@@ -33,6 +34,7 @@
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.0.2",
     "typescript": "^5",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "wrangler": "^4.82.2"
   }
 }
