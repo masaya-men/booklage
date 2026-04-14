@@ -30,6 +30,7 @@ import { ThemeSelector } from '@/components/board/ThemeSelector'
 import { RandomPick } from '@/components/board/RandomPick'
 import { ColorSuggest } from '@/components/board/ColorSuggest'
 import { ViewModeToggle, type ViewMode } from '@/components/board/ViewModeToggle'
+import { CardStyleWrapper, type CardStyle } from '@/components/board/card-styles/CardStyleWrapper'
 import {
   calculateMasonryPositions,
   calculateResponsiveColumns,
@@ -71,6 +72,7 @@ export function BoardClient(): React.ReactElement {
   const [loading, setLoading] = useState(false)
   const [bgTheme, setBgTheme] = useState('dark')
   const [viewMode, setViewMode] = useState<ViewMode>('collage')
+  const [cardStyle, setCardStyle] = useState<CardStyle>('glass')
 
   const worldRef = useRef<HTMLDivElement | null>(null)
   const canvas = useInfiniteCanvas()
@@ -403,6 +405,8 @@ export function BoardClient(): React.ReactElement {
           const tweetId =
             bookmark.type === 'tweet' ? extractTweetId(bookmark.url) : null
 
+          const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
+
           if (tweetId) {
             return (
               <DraggableCard
@@ -418,10 +422,16 @@ export function BoardClient(): React.ReactElement {
                 cardHeight={card.height}
                 onResizeEnd={handleResizeEnd}
               >
-                <TweetCard
-                  tweetId={tweetId}
-                  style={innerStyle}
-                />
+                <CardStyleWrapper
+                  cardStyle={cardStyle}
+                  title={bookmark.title}
+                  magnetColor={folderColor}
+                >
+                  <TweetCard
+                    tweetId={tweetId}
+                    style={innerStyle}
+                  />
+                </CardStyleWrapper>
               </DraggableCard>
             )
           }
@@ -440,12 +450,18 @@ export function BoardClient(): React.ReactElement {
               cardHeight={card.height}
               onResizeEnd={handleResizeEnd}
             >
-              <BookmarkCard
-                bookmark={bookmark}
-                style={innerStyle}
-                width={card.width}
-                height={card.height}
-              />
+              <CardStyleWrapper
+                cardStyle={cardStyle}
+                title={bookmark.title}
+                magnetColor={folderColor}
+              >
+                <BookmarkCard
+                  bookmark={bookmark}
+                  style={innerStyle}
+                  width={card.width}
+                  height={card.height}
+                />
+              </CardStyleWrapper>
             </DraggableCard>
           )
         })}
