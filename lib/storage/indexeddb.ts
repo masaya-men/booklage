@@ -1,6 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb'
 import { DB_NAME, DB_VERSION, FLOAT_ROTATION_RANGE } from '@/lib/constants'
 import type { UrlType } from '@/lib/utils/url'
+import { generateCardDimensions } from '@/lib/canvas/card-sizing'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,6 +67,20 @@ export interface CardRecord {
   gridIndex: number
   /** Whether user manually placed this card (vs auto-scatter) */
   isManuallyPlaced: boolean
+  /** Card width in pixels */
+  width: number
+  /** Card height in pixels */
+  height: number
+}
+
+export interface UserPreferencesRecord {
+  key: 'main'
+  bgTheme: string
+  cardStyle: 'glass' | 'polaroid' | 'newspaper' | 'magnet'
+  uiTheme: 'auto' | 'dark' | 'light'
+  defaultCardSize: 'random' | 'S' | 'M' | 'L' | 'XL'
+  defaultAspectRatio: 'random' | 'auto' | '1:1' | '16:9' | '3:4'
+  reducedMotion: boolean
 }
 
 /** Settings record — user preferences */
@@ -101,6 +116,7 @@ interface BooklageDB {
   folders: FolderRecord
   cards: CardRecord
   settings: SettingsRecord
+  preferences: UserPreferencesRecord
 }
 
 type BooklageIDB = IDBPDatabase<BooklageDB>
@@ -172,6 +188,25 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
           }
           void cursor.update(card)
           return cursor.continue().then(addFields)
+        })
+      }
+
+      // ── v2 → v3: add preferences store + width/height to cards ──
+      if (oldVersion < 3) {
+        db.createObjectStore('preferences', { keyPath: 'key' })
+
+        const cardStore = transaction.objectStore('cards')
+        void cardStore.openCursor().then(function addSizeFields(
+          cursor: Awaited<ReturnType<typeof cardStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          const card = {
+            ...cursor.value,
+            width: (cursor.value as CardRecord & { width?: number }).width ?? 240,
+            height: (cursor.value as CardRecord & { height?: number }).height ?? 180,
+          }
+          void cursor.update(card)
+          return cursor.continue().then(addSizeFields)
         })
       }
     },
@@ -251,6 +286,7 @@ export async function addBookmark(
   const gridIndex = existingCards.length
 
   const pos = randomPosition()
+  const dimensions = generateCardDimensions('random', 'random')
   const card: CardRecord = {
     id: uuid(),
     bookmarkId: bookmark.id,
@@ -262,6 +298,8 @@ export async function addBookmark(
     zIndex: 1,
     gridIndex,
     isManuallyPlaced: false,
+    width: dimensions.width,
+    height: dimensions.height,
   }
   await tx.objectStore('cards').put(card)
   await tx.done
@@ -342,4 +380,43 @@ export async function updateCard(
   }
   const updated: CardRecord = { ...existing, ...updates }
   await db.put('cards', updated)
+}
+
+// ---------------------------------------------------------------------------
+// Preferences CRUD
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_PREFERENCES: UserPreferencesRecord = {
+  key: 'main',
+  bgTheme: 'dark',
+  cardStyle: 'glass',
+  uiTheme: 'auto',
+  defaultCardSize: 'random',
+  defaultAspectRatio: 'random',
+  reducedMotion: false,
+}
+
+/**
+ * Get user preferences, returning defaults if not yet saved.
+ * @param db - The database instance
+ * @returns The stored UserPreferencesRecord or DEFAULT_PREFERENCES
+ */
+export async function getPreferences(
+  db: IDBPDatabase<BooklageDB>,
+): Promise<UserPreferencesRecord> {
+  const prefs = await db.get('preferences', 'main')
+  return prefs ?? DEFAULT_PREFERENCES
+}
+
+/**
+ * Save (merge) user preference updates.
+ * @param db - The database instance
+ * @param prefs - Partial preferences to merge with existing values
+ */
+export async function savePreferences(
+  db: IDBPDatabase<BooklageDB>,
+  prefs: Partial<Omit<UserPreferencesRecord, 'key'>>,
+): Promise<void> {
+  const current = await getPreferences(db)
+  await db.put('preferences', { ...current, ...prefs, key: 'main' })
 }
