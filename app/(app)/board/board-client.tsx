@@ -162,6 +162,11 @@ export function BoardClient(): React.ReactElement {
   const [defaultAspectRatio, setDefaultAspectRatio] = useState('random')
 
   const worldRef = useRef<HTMLDivElement | null>(null)
+
+  // Ref for items — always points to latest value, used inside GSAP Draggable
+  // closures which go stale because Draggable instances aren't recreated on re-render
+  const itemsRef = useRef(items)
+  itemsRef.current = items
   const canvas = useInfiniteCanvas()
 
   // ── Stable float delay per card (avoids re-randomizing on re-render) ──
@@ -469,7 +474,7 @@ export function BoardClient(): React.ReactElement {
           existing.draggable.kill()
           existing.draggable = null
         } else if (!isGrid && !existing.draggable) {
-          const inst = createDraggableForCard(existing.el, card.id, card.x, card.y)
+          const inst = createDraggableForCard(existing.el, card.id)
           existing.draggable = inst
         }
         return
@@ -486,7 +491,7 @@ export function BoardClient(): React.ReactElement {
 
       let inst: Draggable | null = null
       if (!isGrid) {
-        const d = createDraggableForCard(el, card.id, card.x, card.y)
+        const d = createDraggableForCard(el, card.id)
         inst = d
       }
 
@@ -511,8 +516,11 @@ export function BoardClient(): React.ReactElement {
   /** Threshold in pixels — movement below this is treated as a click, not a drag */
   const CLICK_THRESHOLD = 5
 
-  /** Helper: create GSAP Draggable for a card wrapper */
-  function createDraggableForCard(el: HTMLElement, cardId: string, cardX: number, cardY: number): Draggable {
+  /** Helper: create GSAP Draggable for a card wrapper.
+   * Reads current position from el.style.left/top on each drag event
+   * instead of relying on closure values (which go stale because
+   * Draggable instances aren't recreated on re-render). */
+  function createDraggableForCard(el: HTMLElement, cardId: string): Draggable {
     let dragMoved = false
 
     const instances = Draggable.create(el, {
@@ -540,7 +548,10 @@ export function BoardClient(): React.ReactElement {
         if (Math.abs(px) > CLICK_THRESHOLD || Math.abs(py) > CLICK_THRESHOLD) {
           dragMoved = true
         }
-        handleDrag(cardId, cardX + px / canvas.state.zoom, cardY + py / canvas.state.zoom)
+        // Read current position from DOM (not stale closure)
+        const baseX = parseFloat(el.style.left) || 0
+        const baseY = parseFloat(el.style.top) || 0
+        handleDrag(cardId, baseX + px / canvas.state.zoom, baseY + py / canvas.state.zoom)
       },
       onDragEnd() {
         // Cursor + tilt unfreeze
@@ -552,7 +563,8 @@ export function BoardClient(): React.ReactElement {
         if (!dragMoved) {
           gsap.to(el, { scale: 1, boxShadow: '', duration: 0.2, overwrite: 'auto', onComplete() { el.style.zIndex = '' } })
           gsap.set(el, { x: 0, y: 0 })
-          const bookmark = items.find((item) => item.card.id === cardId)?.bookmark
+          // Use ref for latest items (Draggable closures go stale)
+          const bookmark = itemsRef.current.find((item) => item.card.id === cardId)?.bookmark
           if (bookmark) {
             window.open(bookmark.url, '_blank', 'noopener')
           }
@@ -568,9 +580,12 @@ export function BoardClient(): React.ReactElement {
           overwrite: 'auto',
           onComplete() { el.style.zIndex = '' },
         })
+        // Read current position from DOM (not stale closure)
+        const baseX = parseFloat(el.style.left) || 0
+        const baseY = parseFloat(el.style.top) || 0
         const px = this.endX ?? 0
         const py = this.endY ?? 0
-        handleDragEnd(cardId, cardX + px / canvas.state.zoom, cardY + py / canvas.state.zoom)
+        handleDragEnd(cardId, baseX + px / canvas.state.zoom, baseY + py / canvas.state.zoom)
       },
     })
     return instances[0]
