@@ -57,6 +57,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
     <html lang="ja" data-theme="dark" data-card-style="glass" data-ui-theme="auto">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
