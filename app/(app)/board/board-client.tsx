@@ -327,31 +327,6 @@ export function BoardClient(): React.ReactElement {
     return () => { cancelled = true }
   }, [db, currentFolder])
 
-  // ── Web Share Target: detect shared URL from OS share menu ──
-  const sharedProcessedRef = useRef(false)
-
-  useEffect(() => {
-    if (!db || !currentFolder || sharedProcessedRef.current) return
-
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('shared') !== 'true') return
-
-    sharedProcessedRef.current = true
-
-    // Try url param first, then extract from text, then from title
-    const sharedUrl =
-      params.get('url') ||
-      extractUrlFromText(params.get('text') ?? '') ||
-      extractUrlFromText(params.get('title') ?? '')
-
-    // Clean up URL params regardless of whether we found a URL
-    window.history.replaceState({}, '', '/board')
-
-    if (sharedUrl && isValidUrl(sharedUrl)) {
-      void handleUrlSubmit(sharedUrl)
-    }
-  }, [db, currentFolder, handleUrlSubmit])
-
   // ── Performance tier ─────────────────────────────────────────
   const perfTier = useFrameMonitor(items.length)
   const enableTilt = perfTier === 'full' || perfTier === 'reduced-spotlight'
@@ -710,6 +685,31 @@ export function BoardClient(): React.ReactElement {
     },
     [db, currentFolder],
   )
+
+  // ── Web Share Target: detect shared URL from OS share menu ──
+  const sharedProcessedRef = useRef(false)
+
+  useEffect(() => {
+    if (!db || !currentFolder || sharedProcessedRef.current) return
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('shared') !== 'true') return
+
+    sharedProcessedRef.current = true
+
+    // Try url param first, then extract from text, then from title
+    const sharedUrl =
+      params.get('url') ||
+      extractUrlFromText(params.get('text') ?? '') ||
+      extractUrlFromText(params.get('title') ?? '')
+
+    // Clean up URL params regardless of whether we found a URL
+    window.history.replaceState({}, '', '/board')
+
+    if (sharedUrl && isValidUrl(sharedUrl)) {
+      void handleUrlSubmit(sharedUrl)
+    }
+  }, [db, currentFolder, handleUrlSubmit])
 
   // ── Temporary: test data shortcut (Ctrl+Shift+T) ────────────
   useEffect(() => {
