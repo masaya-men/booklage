@@ -37,7 +37,7 @@ export const FLOAT_DURATION = 4
 export const DB_NAME = 'booklage-db'
 
 /** IndexedDB schema version */
-export const DB_VERSION = 2
+export const DB_VERSION = 3
 
 /** Minimum zoom level (zoomed out — see full overview) */
 export const CANVAS_ZOOM_MIN = 0.1
@@ -88,3 +88,33 @@ export const CARD_HEIGHT_TWEET = 300
 export const VIEW_SWITCH_DURATION = 0.6
 export const VIEW_SWITCH_STAGGER = 0.02
 export const VIEW_SWITCH_EASE = 'power2.inOut'
+
+// ---------------------------------------------------------------------------
+// Card Sizing
+// ---------------------------------------------------------------------------
+
+/** Card size presets (width in pixels) */
+export const CARD_SIZES = {
+  S: 160,
+  M: 240,
+  L: 320,
+  XL: 480,
+} as const
+
+export type CardSizePreset = keyof typeof CARD_SIZES
+
+/** Card aspect ratio presets */
+export const CARD_ASPECT_RATIOS = {
+  auto: null,
+  square: 1,
+  landscape: 16/9,
+  portrait: 3/4,
+} as const
+
+export type CardAspectPreset = keyof typeof CARD_ASPECT_RATIOS
+
+/** Sizes eligible for random assignment (XL is manual only) */
+export const RANDOM_CARD_SIZES: CardSizePreset[] = ['S', 'M', 'L']
+
+/** All aspect ratios eligible for random assignment */
+export const RANDOM_ASPECT_RATIOS: CardAspectPreset[] = ['auto', 'square', 'landscape', 'portrait']
