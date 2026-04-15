@@ -35,7 +35,7 @@ export function generateBookmarkletCode(appUrl: string): string {
       window.open(
         '${base}/save?'+p.toString(),
         'booklage-save',
-        'width=480,height=600,scrollbars=yes'
+        'width=360,height=420,scrollbars=yes,popup=true'
       );
     })();
   `.replace(/\s+/g, ' ').trim()

@@ -109,7 +109,15 @@ export function SavePopup(): React.ReactElement {
       })
 
       setState('success')
-      setTimeout(() => { window.close() }, 2000)
+
+      // Notify the board page to reload items (no manual refresh needed)
+      try {
+        const channel = new BroadcastChannel('booklage')
+        channel.postMessage({ type: 'bookmark-saved' })
+        channel.close()
+      } catch { /* BroadcastChannel not supported — fallback to manual refresh */ }
+
+      setTimeout(() => { window.close() }, 1500)
     } catch {
       setState('error')
       setErrorMsg('保存に失敗しました。もう一度お試しください。')
