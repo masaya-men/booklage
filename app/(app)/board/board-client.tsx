@@ -518,6 +518,7 @@ export function BoardClient(): React.ReactElement {
   // ── Navigate to card handler (for list panel) ─────────────────
   // Save canvas state before list panel opens, so we can restore on close
   const preListStateRef = useRef<{ panX: number; panY: number; zoom: number } | null>(null)
+  const listNavigatedRef = useRef(false)
 
   const handleNavigateToCard = useCallback(
     (cardId: string, _x: number, _y: number): void => {
@@ -534,6 +535,9 @@ export function BoardClient(): React.ReactElement {
           ),
         )
       }
+
+      // Mark that user selected a card — don't restore position on list close
+      listNavigatedRef.current = true
 
       const domEl = document.querySelector<HTMLElement>(`[data-card-wrapper="${cardId}"]`)
       if (!domEl) return
@@ -1088,6 +1092,7 @@ export function BoardClient(): React.ReactElement {
           onClick={() => {
             // Save current state for restore on close
             preListStateRef.current = { ...canvas.state }
+            listNavigatedRef.current = false
             setShowListPanel(true)
 
             // Google Earth-style zoom out to show all cards
@@ -1181,17 +1186,20 @@ export function BoardClient(): React.ReactElement {
         isOpen={showListPanel}
         onClose={() => {
           setShowListPanel(false)
-          // Restore canvas state from before list was opened
-          const saved = preListStateRef.current
-          if (saved) {
-            const proxy = { ...canvas.state }
-            gsap.to(proxy, {
-              panX: saved.panX, panY: saved.panY, zoom: saved.zoom,
-              duration: 0.8, ease: 'power2.inOut',
-              onUpdate: () => canvas.setTransform(proxy.panX, proxy.panY, proxy.zoom),
-            })
-            preListStateRef.current = null
+          // Only restore if user didn't select a card
+          if (!listNavigatedRef.current) {
+            const saved = preListStateRef.current
+            if (saved) {
+              const proxy = { ...canvas.state }
+              gsap.to(proxy, {
+                panX: saved.panX, panY: saved.panY, zoom: saved.zoom,
+                duration: 0.8, ease: 'power2.inOut',
+                onUpdate: () => canvas.setTransform(proxy.panX, proxy.panY, proxy.zoom),
+              })
+            }
           }
+          preListStateRef.current = null
+          listNavigatedRef.current = false
         }}
         items={items}
         folders={folders}
