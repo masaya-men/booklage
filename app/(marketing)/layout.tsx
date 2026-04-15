@@ -1,8 +1,10 @@
 import Link from 'next/link'
+import { ThemeToggle } from '@/components/marketing/ThemeToggle'
 
 /**
  * Shared layout for marketing/static pages (Privacy, Terms, FAQ, About, Contact).
  * Provides consistent header with back-to-home link and centered content column.
+ * Defaults to light theme (overrides root layout's dark default).
  */
 export default function MarketingLayout({
   children,
@@ -19,6 +21,7 @@ export default function MarketingLayout({
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/contact">Contact</Link>
+          <ThemeToggle />
         </nav>
       </header>
       <main className="static-main">
