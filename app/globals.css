@@ -386,20 +386,6 @@ ol {
   background-size: 10px 10px, 10px 10px, 50px 50px, 50px 50px;
 }
 
-/* ── Glassmorphism Card Mode ───────────────────────────────── */
-
-[data-card-style="glass"] .bookmarkCard {
-  background: var(--color-glass-bg);
-  border: 1px solid var(--color-glass-border);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-[data-card-style="glass"] .bookmarkCard:hover {
-  background: var(--color-glass-bg-hover);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
 /* ── Liquid Glass Base ────────────────────────────────────── */
 
 .liquid-glass-active,
