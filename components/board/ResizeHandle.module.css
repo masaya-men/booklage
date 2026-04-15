@@ -18,6 +18,10 @@
   opacity: 1 !important;
 }
 
+.handle.active {
+  opacity: 1 !important;
+}
+
 .handle::before {
   content: '';
   position: absolute;

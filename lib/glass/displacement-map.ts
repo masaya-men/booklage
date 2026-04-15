@@ -211,7 +211,7 @@ export function generateDisplacementMap(
         specData.data[pixelIdx] = 255
         specData.data[pixelIdx + 1] = 255
         specData.data[pixelIdx + 2] = 255
-        specData.data[pixelIdx + 3] = Math.round(intensity * 0.4) // 40% max opacity
+        specData.data[pixelIdx + 3] = Math.round(intensity * 0.55) // 55% max opacity — brighter on transparent glass
       }
     }
   }

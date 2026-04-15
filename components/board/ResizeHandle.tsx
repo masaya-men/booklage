@@ -18,8 +18,10 @@ type ResizeHandleProps = {
 
 /**
  * A drag handle rendered at the bottom-right corner of a card.
- * Dragging adjusts the card's --card-width CSS variable in real-time
- * and calls onResizeEnd with the final width and height on pointer up.
+ * Dragging adjusts the card's --card-width and --card-height CSS variables
+ * in real-time and calls onResizeEnd with the final dimensions on pointer up.
+ *
+ * During resize, the card's float animation is paused to prevent position drift.
  */
 export function ResizeHandle({
   cardId,
@@ -35,7 +37,9 @@ export function ResizeHandle({
       e.stopPropagation()
       e.preventDefault()
 
-      const cardEl = (e.target as HTMLElement).closest('[data-card-wrapper]') as HTMLElement | null
+      const handle = e.target as HTMLElement
+      const cardEl = handle.closest('[data-card-wrapper]') as HTMLElement | null
+      const inner = cardEl?.firstElementChild as HTMLElement | null
 
       startRef.current = {
         x: e.clientX,
@@ -44,21 +48,34 @@ export function ResizeHandle({
         h: currentHeight,
       }
 
+      // Pause float animation during resize to prevent position drift
+      if (inner) {
+        inner.style.animationPlayState = 'paused'
+      }
+      // Add resizing state for visual feedback
+      handle.classList.add(styles.active)
+
       const handlePointerMove = (moveEvent: PointerEvent): void => {
         const dx = (moveEvent.clientX - startRef.current.x) / zoom
+        const dy = (moveEvent.clientY - startRef.current.y) / zoom
         const newWidth = Math.max(120, Math.round(startRef.current.w + dx))
+        const newHeight = Math.max(80, Math.round(startRef.current.h + dy))
 
-        if (cardEl) {
-          const inner = cardEl.firstElementChild as HTMLElement | null
-          if (inner) {
-            inner.style.setProperty('--card-width', `${newWidth}px`)
-          }
+        if (inner) {
+          inner.style.setProperty('--card-width', `${newWidth}px`)
+          inner.style.setProperty('--card-height', `${newHeight}px`)
         }
       }
 
       const handlePointerUp = (upEvent: PointerEvent): void => {
         document.removeEventListener('pointermove', handlePointerMove)
         document.removeEventListener('pointerup', handlePointerUp)
+
+        // Resume float animation
+        if (inner) {
+          inner.style.animationPlayState = ''
+        }
+        handle.classList.remove(styles.active)
 
         const dx = (upEvent.clientX - startRef.current.x) / zoom
         const dy = (upEvent.clientY - startRef.current.y) / zoom
