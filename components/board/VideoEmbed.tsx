@@ -17,46 +17,37 @@ type VideoEmbedProps = {
 
 /**
  * Renders a YouTube video card.
- * Shows a thumbnail by default — lightweight, supports 3D tilt.
- * On click, swaps to an iframe player with autoplay.
+ *
+ * The iframe loads immediately so content is always visible.
+ * By default pointer-events are disabled on the iframe — this allows:
+ * - 3D tilt tracking (mousemove reaches the parent)
+ * - Dragging from anywhere on the card
+ *
+ * Clicking the ▶ overlay activates the iframe for video playback.
+ * A drag handle appears at the top so the card can still be moved.
  */
 export function VideoEmbed({ videoId, title, style, width }: VideoEmbedProps): React.ReactElement {
-  const [playing, setPlaying] = useState(false)
+  const [active, setActive] = useState(false)
   const cardWidth = width ?? 240
   const iframeHeight = Math.round(cardWidth * 9 / 16)
-  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
-
-  if (!playing) {
-    return (
-      <div className={styles.card} style={style}>
-        <div
-          className={styles.thumbnailWrapper}
-          style={{ height: iframeHeight }}
-          onClick={() => setPlaying(true)}
-        >
-          <img className={styles.thumbnail} src={thumbnailUrl} alt={title} loading="lazy" />
-          <div className={styles.playOverlay}>
-            <div className={styles.playButton}>▶</div>
-          </div>
-        </div>
-        <div className={styles.info}>
-          <span className={styles.title}>{title}</span>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className={styles.card} style={style}>
-      <div className={styles.dragHandle}>⋮⋮</div>
+      {active && <div className={styles.dragHandle}>⋮⋮</div>}
       <div className={styles.iframeWrapper} style={{ height: iframeHeight }}>
         <iframe
           className={styles.iframe}
-          src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`}
+          style={{ pointerEvents: active ? 'auto' : 'none' }}
+          src={`https://www.youtube-nocookie.com/embed/${videoId}`}
           title={title}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
         />
+        {!active && (
+          <div className={styles.activateOverlay} onClick={() => setActive(true)}>
+            <div className={styles.playButton}>▶</div>
+          </div>
+        )}
       </div>
       <div className={styles.info}>
         <span className={styles.title}>{title}</span>
