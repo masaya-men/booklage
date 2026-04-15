@@ -2,6 +2,7 @@
 
 import { useSmoothScroll } from '@/lib/scroll/use-smooth-scroll'
 import { useScrollTrigger } from '@/lib/scroll/use-scroll-trigger'
+import { ThemeToggle } from './ThemeToggle'
 import { HeroSection } from './sections/HeroSection'
 import { SaveDemoSection } from './sections/SaveDemoSection'
 import { CollageDemoSection } from './sections/CollageDemoSection'
@@ -21,6 +22,9 @@ export function LandingPage(): React.ReactElement {
 
   return (
     <div className={styles.wrapper}>
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+        <ThemeToggle />
+      </div>
       <div className={styles.content}>
         <HeroSection />
         <SaveDemoSection />
