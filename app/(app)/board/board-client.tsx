@@ -541,11 +541,15 @@ export function BoardClient(): React.ReactElement {
         (window.innerHeight * padding) / cardH,
         1.5,
       )
-      // Center on card's center point, not top-left
+      // Center on card's center point, accounting for UI panels
       const centerX = x + cardW / 2
       const centerY = y + cardH / 2
-      const targetPanX = -centerX * targetZoom + window.innerWidth / 2
-      const targetPanY = -centerY * targetZoom + window.innerHeight / 2
+      // Offset for FolderNav on the left (~120px) so card is centered in usable area
+      const folderNavWidth = 120
+      const screenCenterX = folderNavWidth + (window.innerWidth - folderNavWidth) / 2
+      const screenCenterY = window.innerHeight / 2
+      const targetPanX = -centerX * targetZoom + screenCenterX
+      const targetPanY = -centerY * targetZoom + screenCenterY
       const proxy = { panX: canvas.state.panX, panY: canvas.state.panY, zoom: canvas.state.zoom }
       gsap.to(proxy, {
         panX: targetPanX,
