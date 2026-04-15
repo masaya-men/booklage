@@ -86,6 +86,7 @@ export interface UserPreferencesRecord {
   defaultCardSize: 'random' | 'S' | 'M' | 'L' | 'XL'
   defaultAspectRatio: 'random' | 'auto' | '1:1' | '16:9' | '3:4'
   reducedMotion: boolean
+  cursorStyle?: string
 }
 
 /** Settings record — user preferences */

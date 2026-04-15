@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Favoritos × Colagem"
+  },
+  "board": {
+    "urlPlaceholder": "Colar URL...",
+    "save": "Salvar",
+    "exportImage": "Salvar como imagem",
+    "shareX": "Compartilhar no X",
+    "randomPick": "Escolha aleatória",
+    "bgTheme": "Tema de fundo",
+    "newFolder": "+ Nova pasta",
+    "folderNamePlaceholder": "Nome da pasta...",
+    "emptyState": "Cole uma URL para adicionar seu primeiro favorito"
+  },
+  "share": {
+    "defaultText": "Fiz uma colagem de favoritos e ficou incrível ✨ #Booklage"
+  }
+}

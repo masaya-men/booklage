@@ -27,5 +27,5 @@
 }
 
 .viewport[data-panning="false"] {
-  cursor: default;
+  cursor: none;
 }

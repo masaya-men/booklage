@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Yer İmleri × Kolaj"
+  },
+  "board": {
+    "urlPlaceholder": "URL yapıştır...",
+    "save": "Kaydet",
+    "exportImage": "Görüntü olarak kaydet",
+    "shareX": "X'te paylaş",
+    "randomPick": "Rastgele seç",
+    "bgTheme": "Arka plan teması",
+    "newFolder": "+ Yeni klasör",
+    "folderNamePlaceholder": "Klasör adı...",
+    "emptyState": "İlk yer iminizi eklemek için bir URL yapıştırın"
+  },
+  "share": {
+    "defaultText": "Yer imleriyle bir kolaj yaptım ve harika oldu ✨ #Booklage"
+  }
+}

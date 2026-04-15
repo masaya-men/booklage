@@ -112,3 +112,27 @@
   height: 1px;
   background: var(--color-glass-border);
 }
+
+.cursorSwatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-size: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color var(--duration-instant), transform 0.2s var(--ease-out-back);
+}
+
+.cursorSwatch:hover {
+  transform: scale(1.1);
+}
+
+.cursorSwatchActive {
+  composes: cursorSwatch;
+  border-color: var(--color-accent-primary);
+  background: rgba(124, 92, 252, 0.1);
+}

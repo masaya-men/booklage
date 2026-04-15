@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Lesezeichen × Collage"
+  },
+  "board": {
+    "urlPlaceholder": "URL einfügen...",
+    "save": "Speichern",
+    "exportImage": "Als Bild speichern",
+    "shareX": "Auf X teilen",
+    "randomPick": "Zufällige Auswahl",
+    "bgTheme": "Hintergrundthema",
+    "newFolder": "+ Neuer Ordner",
+    "folderNamePlaceholder": "Ordnername...",
+    "emptyState": "Füge eine URL ein, um dein erstes Lesezeichen hinzuzufügen"
+  },
+  "share": {
+    "defaultText": "Habe eine Lesezeichen-Collage erstellt und sie ist großartig ✨ #Booklage"
+  }
+}
