@@ -532,46 +532,44 @@ export function BoardClient(): React.ReactElement {
         )
       }
 
-      // Use actual DOM position (getBoundingClientRect) — most reliable
+      // Get card's world-space position directly from DOM + GSAP
+      // This is the most reliable method:
+      // - CSS left/top = base position in world space
+      // - gsap.getProperty(x/y) = drag offset from GSAP Draggable
+      // - offsetWidth/Height = world-space size (not affected by parent zoom)
       const domEl = document.querySelector<HTMLElement>(`[data-card-wrapper="${cardId}"]`)
-      const curZoom = canvas.state.zoom
-      const curPanX = canvas.state.panX
-      const curPanY = canvas.state.panY
 
-      // Get card's world-space center from its actual rendered position
       let worldCenterX: number
       let worldCenterY: number
       let worldW: number
       let worldH: number
 
       if (domEl) {
-        const rect = domEl.getBoundingClientRect()
-        worldCenterX = (rect.left + rect.width / 2 - curPanX) / curZoom
-        worldCenterY = (rect.top + rect.height / 2 - curPanY) / curZoom
-        worldW = rect.width / curZoom
-        worldH = rect.height / curZoom
+        const cssLeft = parseFloat(domEl.style.left) || 0
+        const cssTop = parseFloat(domEl.style.top) || 0
+        const gsapDragX = Number(gsap.getProperty(domEl, 'x')) || 0
+        const gsapDragY = Number(gsap.getProperty(domEl, 'y')) || 0
+        worldW = domEl.offsetWidth
+        worldH = domEl.offsetHeight
+        worldCenterX = cssLeft + gsapDragX + worldW / 2
+        worldCenterY = cssTop + gsapDragY + worldH / 2
       } else {
-        worldCenterX = x + (card?.width ?? 240) / 2
-        worldCenterY = y + (card?.height ?? 180) / 2
         worldW = card?.width ?? 240
         worldH = card?.height ?? 180
+        worldCenterX = x + worldW / 2
+        worldCenterY = y + worldH / 2
       }
 
-      // Calculate zoom to fit card comfortably (65% of usable area), capped at 1.5
+      // Zoom to fit card in 65% of usable viewport, cap at 1.5x
       const folderNavWidth = 120
-      const usableWidth = window.innerWidth - folderNavWidth
-      const usableHeight = window.innerHeight
-      const targetZoom = Math.min(
-        (usableWidth * 0.65) / worldW,
-        (usableHeight * 0.65) / worldH,
-        1.5,
-      )
+      const usableW = window.innerWidth - folderNavWidth
+      const usableH = window.innerHeight
+      const targetZoom = Math.min(usableW * 0.65 / worldW, usableH * 0.65 / worldH, 1.5)
 
-      // Pan so card center = screen center (accounting for left panel)
-      const screenCenterX = folderNavWidth + usableWidth / 2
-      const screenCenterY = usableHeight / 2
-      const targetPanX = -worldCenterX * targetZoom + screenCenterX
-      const targetPanY = -worldCenterY * targetZoom + screenCenterY
+      // Pan so world center of card maps to screen center of usable area
+      // Formula: screenPos = worldPos * zoom + pan → pan = screenPos - worldPos * zoom
+      const targetPanX = (folderNavWidth + usableW / 2) - worldCenterX * targetZoom
+      const targetPanY = usableH / 2 - worldCenterY * targetZoom
       const proxy = { panX: canvas.state.panX, panY: canvas.state.panY, zoom: canvas.state.zoom }
       gsap.to(proxy, {
         panX: targetPanX,
