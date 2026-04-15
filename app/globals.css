@@ -250,11 +250,11 @@ ol {
   --color-accent-primary: #6b46f5;
   --color-accent-primary-hover: #7c5cfc;
 
-  --color-glass-bg: rgba(255, 255, 255, 0.7);
+  --color-glass-bg: rgba(255, 255, 255, 0.05);
   --color-glass-border: rgba(0, 0, 0, 0.08);
-  --color-glass-bg-hover: rgba(255, 255, 255, 0.85);
+  --color-glass-bg-hover: rgba(255, 255, 255, 0.1);
 
-  --color-card-bg: rgba(255, 255, 255, 0.8);
+  --color-card-bg: rgba(255, 255, 255, 0.08);
   --color-card-border: rgba(0, 0, 0, 0.08);
   --color-card-shadow: rgba(0, 0, 0, 0.08);
   --color-card-glow: rgba(107, 70, 245, 0.12);
@@ -288,8 +288,8 @@ ol {
   background: var(--color-glass-bg);
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-lg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transition: background var(--duration-fast) var(--ease-out-expo);
 }
 
@@ -353,13 +353,46 @@ ol {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
 }
 
+[data-bg-theme="cutting-mat"] {
+  background-color: #1a5c36;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 10px 10px, 10px 10px, 50px 50px, 50px 50px;
+}
+
+[data-bg-theme="notebook"] {
+  background-color: #f8f4eb;
+  background-image:
+    linear-gradient(transparent 27px, #c8d8e8 27px, #c8d8e8 28px, transparent 28px);
+  background-size: 100% 28px;
+}
+
+[data-bg-theme="dotted-notebook"] {
+  background-color: #f7f7f4;
+  background-image: radial-gradient(circle, #c0bfba 0.8px, transparent 0.8px);
+  background-size: 20px 20px;
+}
+
+[data-bg-theme="drafting-paper"] {
+  background-color: #eef2f6;
+  background-image:
+    linear-gradient(rgba(100, 140, 180, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 140, 180, 0.12) 1px, transparent 1px),
+    linear-gradient(rgba(100, 140, 180, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 140, 180, 0.25) 1px, transparent 1px);
+  background-size: 10px 10px, 10px 10px, 50px 50px, 50px 50px;
+}
+
 /* ── Glassmorphism Card Mode ───────────────────────────────── */
 
 [data-card-style="glass"] .bookmarkCard {
   background: var(--color-glass-bg);
   border: 1px solid var(--color-glass-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 [data-card-style="glass"] .bookmarkCard:hover {
@@ -377,9 +410,10 @@ ol {
     inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
     inset 0 0 20px 0 rgba(255, 255, 255, 0.02);
   transition:
-    background var(--duration-fast) var(--ease-out-expo),
-    box-shadow var(--duration-fast) var(--ease-out-expo),
-    border-color var(--duration-fast) var(--ease-out-expo);
+    background 0.35s var(--ease-spring),
+    box-shadow 0.35s var(--ease-spring),
+    border-color 0.35s var(--ease-spring),
+    transform 0.35s var(--ease-out-back);
 }
 
 .liquid-glass-active:hover,
@@ -403,26 +437,26 @@ ol {
 
 [data-theme="light"] .liquid-glass-active,
 [data-theme="light"] .liquid-glass-fallback {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.3);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
-    inset 0 0 20px 0 rgba(255, 255, 255, 0.1),
-    0 0 0 1px rgba(0, 0, 0, 0.03),
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    0 8px 16px rgba(0, 0, 0, 0.04);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 20px 0 rgba(255, 255, 255, 0.03),
+    0 0 0 1px rgba(0, 0, 0, 0.02),
+    0 2px 4px rgba(0, 0, 0, 0.03),
+    0 8px 16px rgba(0, 0, 0, 0.03);
 }
 
 [data-theme="light"] .liquid-glass-active:hover,
 [data-theme="light"] .liquid-glass-fallback:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.4);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
-    inset 0 0 30px 0 rgba(255, 255, 255, 0.15),
-    0 0 0 1px rgba(0, 0, 0, 0.03),
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    0 8px 16px rgba(0, 0, 0, 0.04);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+    inset 0 0 30px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(0, 0, 0, 0.02),
+    0 2px 4px rgba(0, 0, 0, 0.03),
+    0 8px 16px rgba(0, 0, 0, 0.03);
 }
 
 [data-theme="light"] .liquid-glass-fallback {

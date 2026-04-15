@@ -10,14 +10,15 @@
   animation-delay: var(--float-delay, 0s);
   cursor: inherit;
   transition:
-    transform var(--duration-fast) var(--ease-out-expo),
-    box-shadow var(--duration-fast) var(--ease-out-expo),
-    border-color var(--duration-fast) ease;
+    transform 0.4s var(--ease-out-back),
+    box-shadow 0.4s var(--ease-out-back),
+    border-color 0.3s ease;
   user-select: none;
+  transform-style: preserve-3d;
 }
 
 .card:hover {
-  transform: scale(1.02);
+  transform: scale(1.03) translateY(-2px);
   box-shadow: var(--shadow-lg), var(--shadow-glow);
   border-color: var(--color-accent-primary, rgba(124, 92, 252, 0.3));
 }

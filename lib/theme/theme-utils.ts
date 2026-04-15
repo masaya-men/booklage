@@ -4,9 +4,13 @@ const THEME_COLOR_MODES: Record<string, 'dark' | 'light'> = {
   ocean: 'dark',
   forest: 'dark',
   grid: 'dark',
+  'cutting-mat': 'dark',
   cork: 'light',
   'minimal-white': 'light',
   cardboard: 'light',
+  notebook: 'light',
+  'dotted-notebook': 'light',
+  'drafting-paper': 'light',
   'custom-image': 'dark',
 }
 

@@ -39,11 +39,11 @@ type ExtendedCSSProperties = React.CSSProperties & {
   WebkitBackdropFilter?: string
 }
 
-/** Fallback backdrop-filter per strength (non-Chromium browsers) */
+/** Fallback backdrop-filter per strength — minimal blur for near-transparent glass */
 const FALLBACK_BLUR: Record<GlassStrength, string> = {
-  subtle: 'blur(12px) saturate(180%)',
-  medium: 'blur(20px) saturate(180%)',
-  strong: 'blur(28px) saturate(180%)',
+  subtle: 'blur(4px) saturate(120%)',
+  medium: 'blur(6px) saturate(130%)',
+  strong: 'blur(10px) saturate(140%)',
 }
 
 export function useLiquidGlass({

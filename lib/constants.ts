@@ -5,7 +5,7 @@ export const Z_INDEX = {
   FOLDER_NAV: 60,
   TOOLBAR: 70,
   INSTALL_PROMPT: 75,
-  LIST_PANEL: 78,
+  LIST_PANEL: 85,
   DROPDOWN: 80,
   MODAL_BACKDROP: 90,
   MODAL: 100,
@@ -86,6 +86,10 @@ export const COLLAGE_PLACEMENT_ATTEMPTS = 10
 export const CARD_HEIGHT_WITH_THUMB = 160
 export const CARD_HEIGHT_NO_THUMB = 130
 export const CARD_HEIGHT_TWEET = 300
+
+/** Justified grid layout (Moodboard 3000 style) */
+export const JUSTIFIED_ROW_HEIGHT = 220
+export const JUSTIFIED_GAP = 4
 
 /** View mode switch animation */
 export const VIEW_SWITCH_DURATION = 0.6

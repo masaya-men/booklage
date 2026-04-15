@@ -35,7 +35,13 @@
   border-left: 1px solid var(--color-glass-border);
   box-shadow: var(--shadow-xl);
   transform: translateX(100%);
-  will-change: transform;
+  transition: transform 0.4s var(--ease-out-expo);
+  pointer-events: none;
+}
+
+.panelOpen {
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 /* ── Header ───────────────────────────────────────────────── */

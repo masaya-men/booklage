@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import { useInfiniteCanvas } from '@/lib/canvas/use-infinite-canvas'
 import {
   initDB,
@@ -26,7 +27,7 @@ import { gsap } from 'gsap'
 import { Draggable } from 'gsap/Draggable'
 
 gsap.registerPlugin(Draggable)
-import { CARD_WIDTH, FLOAT_DELAY_MAX, FLOAT_DURATION, FOLDER_COLORS, GRID_GAP, VIEW_SWITCH_DURATION, VIEW_SWITCH_STAGGER, VIEW_SWITCH_EASE, Z_INDEX } from '@/lib/constants'
+import { FLOAT_DELAY_MAX, FLOAT_DURATION, FOLDER_COLORS, VIEW_SWITCH_DURATION, VIEW_SWITCH_STAGGER, VIEW_SWITCH_EASE, Z_INDEX } from '@/lib/constants'
 import { Canvas } from '@/components/board/Canvas'
 import { BookmarkCard } from '@/components/board/BookmarkCard'
 import { VideoEmbed } from '@/components/board/VideoEmbed'
@@ -40,9 +41,7 @@ import { ColorSuggest } from '@/components/board/ColorSuggest'
 import { ViewModeToggle, type ViewMode } from '@/components/board/ViewModeToggle'
 import { CardStyleWrapper, type CardStyle } from '@/components/board/card-styles/CardStyleWrapper'
 import {
-  calculateMasonryPositions,
-  calculateResponsiveColumns,
-  estimateCardHeight,
+  calculateJustifiedPositions,
 } from '@/lib/canvas/auto-layout'
 import { useCardRepulsion } from '@/lib/interactions/use-card-repulsion'
 import { useCardTilt } from '@/lib/interactions/use-card-tilt'
@@ -70,8 +69,8 @@ const CULL_BUFFER = 300
 const CULL_CARD_MAX_HEIGHT = 500
 
 function getVisibleBounds(panX: number, panY: number, zoom: number): ViewportBounds {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1920
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 1080
   return {
     left: (-panX - CULL_BUFFER) / zoom,
     top: (-panY - CULL_BUFFER) / zoom,
@@ -110,6 +109,8 @@ type CardPortalContentProps = {
   folderColor: string | undefined
   enableTilt: boolean
   isGrid: boolean
+  /** Override width from justified grid layout */
+  gridWidth: number | undefined
   innerStyle: React.CSSProperties
   zoom: number
   onResizeEnd: (cardId: string, width: number, height: number) => void
@@ -125,6 +126,7 @@ function CardPortalContent({
   folderColor,
   enableTilt,
   isGrid,
+  gridWidth,
   innerStyle,
   zoom,
   onResizeEnd,
@@ -134,15 +136,18 @@ function CardPortalContent({
   const tweetId = bookmark.type === 'tweet' ? extractTweetId(bookmark.url) : null
   const youtubeId = bookmark.type === 'youtube' ? extractYoutubeId(bookmark.url) : null
 
+  // In grid mode, use justified layout width; in collage, use card's own width
+  const displayWidth = isGrid && gridWidth ? gridWidth : card.width
+
   /** Render the appropriate card content based on bookmark type */
   function renderCardContent(): React.ReactElement {
     if (tweetId) {
-      return <TweetCard tweetId={tweetId} style={innerStyle} width={card.width} height={card.height} />
+      return <TweetCard tweetId={tweetId} style={innerStyle} width={displayWidth} height={card.height} />
     }
     if (youtubeId) {
-      return <VideoEmbed videoId={youtubeId} title={bookmark.title} style={innerStyle} width={card.width} />
+      return <VideoEmbed videoId={youtubeId} title={bookmark.title} style={innerStyle} width={displayWidth} />
     }
-    return <BookmarkCard bookmark={bookmark} style={innerStyle} width={card.width} height={card.height} />
+    return <BookmarkCard bookmark={bookmark} style={innerStyle} width={displayWidth} height={card.height} />
   }
 
   return (
@@ -221,20 +226,20 @@ export function BoardClient(): React.ReactElement {
     return delay
   }, [])
 
-  // ── Compute grid positions ─────────────────────────────────
+  // ── Compute justified grid positions (Moodboard 3000 style) ──
   const gridPositions = useMemo(() => {
-    if (viewMode !== 'grid' || items.length === 0) return new Map<string, { x: number; y: number }>()
+    if (viewMode !== 'grid' || items.length === 0) return new Map<string, { x: number; y: number; width: number; height: number }>()
 
-    const columns = calculateResponsiveColumns(
-      typeof window !== 'undefined' ? window.innerWidth : 1200,
-    )
-    const cardDimensions = items.map(({ card, bookmark }) => ({
+    const containerWidth = typeof window !== 'undefined'
+      ? Math.min(window.innerWidth - 100, 1400)
+      : 1200
+    const cardDimensions = items.map(({ card }) => ({
       id: card.id,
-      width: CARD_WIDTH,
-      height: estimateCardHeight(bookmark.type, bookmark.thumbnail.length > 0),
+      width: card.width,
+      height: card.height,
     }))
-    const positions = calculateMasonryPositions(cardDimensions, columns, CARD_WIDTH, GRID_GAP)
-    return new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]))
+    const positions = calculateJustifiedPositions(cardDimensions, containerWidth)
+    return new Map(positions.map((p) => [p.id, { x: p.x, y: p.y, width: p.width, height: p.height }]))
   }, [viewMode, items])
 
   // ── Animate view mode switch ────────────────────────────────
@@ -703,6 +708,7 @@ export function BoardClient(): React.ReactElement {
         const displayY = isGrid && gridPos ? gridPos.y : card.y
         existing.el.style.left = `${displayX}px`
         existing.el.style.top = `${displayY}px`
+        existing.el.style.width = isGrid && gridPos ? `${gridPos.width}px` : ''
         existing.el.style.cursor = isGrid ? 'default' : 'grab'
 
         // Enable/disable draggable
@@ -721,7 +727,8 @@ export function BoardClient(): React.ReactElement {
       const gridPos = gridPositions.get(card.id)
       const displayX = isGrid && gridPos ? gridPos.x : card.x
       const displayY = isGrid && gridPos ? gridPos.y : card.y
-      el.style.cssText = `position:absolute;left:${displayX}px;top:${displayY}px;cursor:${isGrid ? 'default' : 'grab'};contain:layout style paint;`
+      const widthStyle = isGrid && gridPos ? `width:${gridPos.width}px;` : ''
+      el.style.cssText = `position:absolute;left:${displayX}px;top:${displayY}px;${widthStyle}cursor:${isGrid ? 'default' : 'grab'};contain:layout style paint;perspective:800px;`
       el.setAttribute('data-card-wrapper', card.id)
       world.appendChild(el)
 
@@ -804,13 +811,17 @@ export function BoardClient(): React.ReactElement {
         el.style.top = `${newY}px`
         gsap.set(el, { x: 0, y: 0 })
 
-        // Animate only scale/shadow back
+        // Bounce + flip on drop
         gsap.to(el, {
           scale: 1,
           boxShadow: '',
-          duration: 0.35,
-          ease: 'back.out(1.4)',
-          onComplete() { el.style.zIndex = '' },
+          rotateY: 360,
+          duration: 0.5,
+          ease: 'back.out(1.7)',
+          onComplete() {
+            el.style.zIndex = ''
+            gsap.set(el, { rotateY: 0 })
+          },
         })
 
         handleDragEnd(cardId, newX, newY)
@@ -1011,6 +1022,28 @@ export function BoardClient(): React.ReactElement {
   // ── Render ───────────────────────────────────────────────────
   return (
     <LiquidGlassProvider>
+      {/* Home link — navigate back to LP */}
+      <Link
+        href="/"
+        style={{
+          position: 'fixed',
+          top: 12,
+          left: 16,
+          zIndex: Z_INDEX.TOOLBAR,
+          color: 'var(--color-text-primary)',
+          fontFamily: 'var(--font-heading)',
+          fontSize: 'var(--text-base)',
+          fontWeight: 700,
+          textDecoration: 'none',
+          letterSpacing: '-0.02em',
+          opacity: 0.6,
+          transition: 'opacity 0.3s var(--ease-spring)',
+        }}
+        onMouseEnter={(e) => { (e.target as HTMLElement).style.opacity = '1' }}
+        onMouseLeave={(e) => { (e.target as HTMLElement).style.opacity = '0.6' }}
+      >
+        Booklage
+      </Link>
       <FolderNav
         folders={folders}
         currentFolderId={currentFolder}
@@ -1073,6 +1106,7 @@ export function BoardClient(): React.ReactElement {
               folderColor={folderColor}
               enableTilt={enableTilt}
               isGrid={isGrid}
+              gridWidth={gridPositions.get(card.id)?.width}
               innerStyle={innerStyle}
               zoom={canvas.state.zoom}
               onResizeEnd={handleResizeEnd}
@@ -1085,124 +1119,131 @@ export function BoardClient(): React.ReactElement {
 
       <ViewModeToggle mode={viewMode} onToggle={setViewMode} />
       <ExportButton canvasRef={worldRef} />
-      {items.length > 0 && (
-        <button
-          onClick={handleGatherCards}
-          style={{
-            position: 'fixed',
-            bottom: 20,
-            left: 20,
-            zIndex: Z_INDEX.TOOLBAR,
-            padding: '8px 16px',
-            borderRadius: '999px',
-            border: '1px solid var(--color-glass-border)',
-            background: 'var(--color-glass-bg)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            color: 'var(--color-text-primary)',
-            fontFamily: 'var(--font-heading)',
-            fontSize: 'var(--text-sm)',
-            cursor: 'pointer',
-          }}
-          type="button"
-        >
-          📍 カードを集める
-        </button>
-      )}
-      <button
-        onClick={() => setShowImportModal(true)}
+      {/* ── Compact bottom toolbar (above UrlInput) ── */}
+      <div
         style={{
           position: 'fixed',
-          bottom: 20,
-          left: items.length > 0 ? 180 : 20,
+          bottom: 76,
+          left: '50%',
+          transform: 'translateX(-50%)',
           zIndex: Z_INDEX.TOOLBAR,
-          padding: '8px 16px',
+          display: 'flex',
+          gap: '6px',
+          padding: '4px',
           borderRadius: '999px',
-          border: '1px solid var(--color-glass-border)',
           background: 'var(--color-glass-bg)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          color: 'var(--color-text-primary)',
-          fontFamily: 'var(--font-heading)',
-          fontSize: 'var(--text-sm)',
-          cursor: 'pointer',
+          border: '1px solid var(--color-glass-border)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
-        type="button"
       >
-        📥 インポート
-      </button>
-      {items.length > 0 && (
+        {items.length > 0 && (
+          <button
+            onClick={handleGatherCards}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '999px',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--color-text-secondary)',
+              fontFamily: 'var(--font-body)',
+              fontSize: 'var(--text-xs)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'color 0.2s, background 0.2s',
+            }}
+            onMouseEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--color-glass-bg-hover)'; (e.target as HTMLElement).style.color = 'var(--color-text-primary)' }}
+            onMouseLeave={(e) => { (e.target as HTMLElement).style.background = 'transparent'; (e.target as HTMLElement).style.color = 'var(--color-text-secondary)' }}
+            type="button"
+          >
+            集める
+          </button>
+        )}
         <button
-          onClick={() => {
-            // Save current state for restore on close
-            preListStateRef.current = { ...canvas.state }
-            listNavigatedRef.current = false
-            setShowListPanel(true)
-
-            // Google Earth-style zoom out to show all cards
-            const wrappers = document.querySelectorAll<HTMLElement>('[data-card-wrapper]')
-            if (wrappers.length === 0) return
-
-            // Find bounding box of all cards in world space
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-            wrappers.forEach((el) => {
-              const left = parseFloat(el.style.left) || 0
-              const top = parseFloat(el.style.top) || 0
-              const gx = Number(gsap.getProperty(el, 'x')) || 0
-              const gy = Number(gsap.getProperty(el, 'y')) || 0
-              const wx = left + gx
-              const wy = top + gy
-              minX = Math.min(minX, wx)
-              minY = Math.min(minY, wy)
-              maxX = Math.max(maxX, wx + el.offsetWidth)
-              maxY = Math.max(maxY, wy + el.offsetHeight)
-            })
-
-            // Add padding around bounding box
-            const pad = 80
-            minX -= pad; minY -= pad; maxX += pad; maxY += pad
-            const bboxW = maxX - minX
-            const bboxH = maxY - minY
-            const bboxCX = (minX + maxX) / 2
-            const bboxCY = (minY + maxY) / 2
-
-            // Calculate zoom to fit all cards
-            const vpW = window.innerWidth
-            const vpH = window.innerHeight
-            const fitZoom = Math.min(vpW / bboxW, vpH / bboxH, 1)
-
-            // Pan to center the bounding box
-            const fitPanX = vpW / 2 - bboxCX * fitZoom
-            const fitPanY = vpH / 2 - bboxCY * fitZoom
-
-            const proxy = { ...canvas.state }
-            gsap.to(proxy, {
-              panX: fitPanX, panY: fitPanY, zoom: fitZoom,
-              duration: 1.0, ease: 'power2.inOut',
-              onUpdate: () => canvas.setTransform(proxy.panX, proxy.panY, proxy.zoom),
-            })
-          }}
+          onClick={() => setShowImportModal(true)}
           style={{
-            position: 'fixed',
-            bottom: 20,
-            left: items.length > 0 ? 320 : 160,
-            zIndex: Z_INDEX.TOOLBAR,
-            padding: '8px 16px',
+            padding: '6px 14px',
             borderRadius: '999px',
-            border: '1px solid var(--color-glass-border)',
-            background: 'var(--color-glass-bg)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            color: 'var(--color-text-primary)',
-            fontFamily: 'var(--font-heading)',
-            fontSize: 'var(--text-sm)',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--color-text-secondary)',
+            fontFamily: 'var(--font-body)',
+            fontSize: 'var(--text-xs)',
             cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'color 0.2s, background 0.2s',
           }}
+          onMouseEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--color-glass-bg-hover)'; (e.target as HTMLElement).style.color = 'var(--color-text-primary)' }}
+          onMouseLeave={(e) => { (e.target as HTMLElement).style.background = 'transparent'; (e.target as HTMLElement).style.color = 'var(--color-text-secondary)' }}
           type="button"
         >
-          📋 リスト
+          インポート
         </button>
-      )}
+        {items.length > 0 && (
+          <button
+            onClick={() => {
+              preListStateRef.current = { ...canvas.state }
+              listNavigatedRef.current = false
+              setShowListPanel(true)
+
+              const wrappers = document.querySelectorAll<HTMLElement>('[data-card-wrapper]')
+              if (wrappers.length === 0) return
+
+              let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+              wrappers.forEach((el) => {
+                const left = parseFloat(el.style.left) || 0
+                const top = parseFloat(el.style.top) || 0
+                const gx = Number(gsap.getProperty(el, 'x')) || 0
+                const gy = Number(gsap.getProperty(el, 'y')) || 0
+                const wx = left + gx
+                const wy = top + gy
+                minX = Math.min(minX, wx)
+                minY = Math.min(minY, wy)
+                maxX = Math.max(maxX, wx + el.offsetWidth)
+                maxY = Math.max(maxY, wy + el.offsetHeight)
+              })
+
+              const pad = 80
+              minX -= pad; minY -= pad; maxX += pad; maxY += pad
+              const bboxW = maxX - minX
+              const bboxH = maxY - minY
+              const bboxCX = (minX + maxX) / 2
+              const bboxCY = (minY + maxY) / 2
+
+              const vpW = window.innerWidth
+              const vpH = window.innerHeight
+              const fitZoom = Math.min(vpW / bboxW, vpH / bboxH, 1)
+
+              const fitPanX = vpW / 2 - bboxCX * fitZoom
+              const fitPanY = vpH / 2 - bboxCY * fitZoom
+
+              const proxy = { ...canvas.state }
+              gsap.to(proxy, {
+                panX: fitPanX, panY: fitPanY, zoom: fitZoom,
+                duration: 1.0, ease: 'power2.inOut',
+                onUpdate: () => canvas.setTransform(proxy.panX, proxy.panY, proxy.zoom),
+              })
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '999px',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--color-text-secondary)',
+              fontFamily: 'var(--font-body)',
+              fontSize: 'var(--text-xs)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'color 0.2s, background 0.2s',
+            }}
+            onMouseEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--color-glass-bg-hover)'; (e.target as HTMLElement).style.color = 'var(--color-text-primary)' }}
+            onMouseLeave={(e) => { (e.target as HTMLElement).style.background = 'transparent'; (e.target as HTMLElement).style.color = 'var(--color-text-secondary)' }}
+            type="button"
+          >
+            リスト
+          </button>
+        )}
+      </div>
       <RandomPick cardIds={items.map(({ card }) => card.id)} />
       <ColorSuggest cardColors={new Map(items.map(({ card }, i) => [card.id, FOLDER_COLORS[i % FOLDER_COLORS.length]]))} />
       <SettingsPanel

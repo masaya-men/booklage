@@ -15,6 +15,10 @@
 - URL: https://r3f.maximeheckel.com/lens2
 - **要点**: 非常に美しいガラスレンズ効果。カスタムカーソル（虫眼鏡リキッドグラス）に取り入れたい。屈折の質が高い。
 
+### Maxime Heckel — シェーダー光学効果
+- URL: https://blog.maximeheckel.com/posts/refraction-dispersion-and-other-shader-light-effects/
+- **要点**: 屈折、色分散（虹彩）、フレネル効果、スペキュラーをGLSLシェーダーで実装。FBO透過技術で背景が透けるリアルなガラス。Booklageのガラス効果の理想形。現在のSVGフィルター方式の限界を超えたい場合の次ステップ候補。
+
 ### marijanapav — PEAK 1983 ルーペ
 - Tweet: https://x.com/marijanapav/status/2039041885625299083
 - **要点**: 実物のルーペ越しにWebコンテンツが見える効果。カードが浮かんでいてクリックするとくるっと横に回転する（奥に向かって回転、上下は固定方向）。ホバー時のカーソルがgrab手のアイコン。
@@ -60,6 +64,10 @@
 - **点線ノート** — ドットグリッド
 - **作図用紙** — 工学用の方眼紙
 - **その他**: 現在のテーマ（ダーク、ホワイト、方眼紙、コルク、厚紙、宇宙、森、海）に追加
+
+### Paper Design — Gem Smoke シェーダー
+- URL: https://app.paper.design/playground/gem-smoke
+- **要点**: 宝石+煙のシェーダーエフェクト。WebGLベースのリアルタイムシェーダー。Booklageの背景や装飾エフェクトに使える可能性。
 
 ---
 
