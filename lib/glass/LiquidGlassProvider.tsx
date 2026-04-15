@@ -5,11 +5,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createPortal } from 'react-dom'
 import { getDisplacementMap, type GlassStrength } from './displacement-map'
 
-/** Gaussian blur stdDeviation per strength (frosted glass effect) */
+/** Gaussian blur stdDeviation per strength — kept very low for near-transparent glass */
 const BLUR_SCALE: Record<GlassStrength, number> = {
-  subtle: 6,
-  medium: 10,
-  strong: 14,
+  subtle: 2,
+  medium: 3,
+  strong: 5,
 }
 
 // navigator.userAgentData is not yet in the standard TypeScript lib types

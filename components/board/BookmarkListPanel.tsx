@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { gsap } from 'gsap'
 import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import { Z_INDEX } from '@/lib/constants'
 import type { BookmarkRecord, CardRecord, FolderRecord } from '@/lib/storage/indexeddb'
@@ -72,7 +71,6 @@ export function BookmarkListPanel({
   onRetryOgp,
 }: BookmarkListPanelProps): React.ReactElement {
   const panelRef = useRef<HTMLDivElement>(null)
-  const backdropRef = useRef<HTMLDivElement>(null)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
   const glass = useLiquidGlass({ id: 'bookmark-list-panel', strength: 'strong', fixedSize: false })
 
@@ -108,40 +106,6 @@ export function BookmarkListPanel({
     })
   }, [grouped, folderMap])
 
-  // ── GSAP slide animation ────────────────────────────────────
-  useEffect(() => {
-    const panel = panelRef.current
-    const backdrop = backdropRef.current
-    if (!panel || !backdrop) return
-
-    if (isOpen) {
-      // Slide in
-      gsap.set(panel, { x: '100%' })
-      gsap.to(panel, {
-        x: 0,
-        duration: 0.4,
-        ease: 'expo.out',
-      })
-      gsap.to(backdrop, {
-        opacity: 1,
-        duration: 0.3,
-        ease: 'power2.out',
-      })
-    } else {
-      // Slide out
-      gsap.to(panel, {
-        x: '100%',
-        duration: 0.3,
-        ease: 'power2.in',
-      })
-      gsap.to(backdrop, {
-        opacity: 0,
-        duration: 0.25,
-        ease: 'power2.in',
-      })
-    }
-  }, [isOpen])
-
   // ── Toggle folder collapse ──────────────────────────────────
   const toggleFolder = useCallback((folderId: string): void => {
     setCollapsedFolders((prev) => {
@@ -172,34 +136,46 @@ export function BookmarkListPanel({
     [onRetryOgp],
   )
 
-  // ── Handle backdrop click ──────────────────────────────────
-  const handleBackdropClick = useCallback((): void => {
-    onClose()
-  }, [onClose])
+  // ── Close on click outside panel ─────────────────────────────
+  useEffect(() => {
+    if (!isOpen) return
+
+    function handleOutsideClick(e: MouseEvent): void {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+
+    // Delay listener so the opening click doesn't immediately close
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleOutsideClick)
+    }, 50)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [isOpen, onClose])
 
   return (
     <>
-      {/* Backdrop overlay */}
+      {/* Backdrop overlay (visual only — close is handled by document mousedown) */}
       <div
-        ref={backdropRef}
         className={styles.backdrop}
         style={{
           zIndex: Z_INDEX.LIST_PANEL - 1,
-          pointerEvents: isOpen ? 'auto' : 'none',
-          opacity: 0,
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: 'none',
         }}
-        onClick={handleBackdropClick}
-        role="presentation"
       />
 
-      {/* Panel */}
+      {/* Panel — CSS transition handles slide in/out */}
       <div
         ref={(el) => {
-          // Merge GSAP ref and liquid glass ref
           (panelRef as React.MutableRefObject<HTMLDivElement | null>).current = el
           glass.ref(el)
         }}
-        className={`${styles.panel} ${glass.className}`}
+        className={`${styles.panel} ${isOpen ? styles.panelOpen : ''} ${glass.className}`}
         style={{
           ...glass.style,
           zIndex: Z_INDEX.LIST_PANEL,

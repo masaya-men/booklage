@@ -1,7 +1,7 @@
 .wrapper {
   position: fixed;
   bottom: var(--space-8);
-  left: var(--space-4);
+  right: calc(var(--space-4) + 48px);
   z-index: 70;
   display: flex;
   gap: var(--space-1);

@@ -4,6 +4,16 @@
   overflow: hidden;
   background: var(--color-bg-secondary);
   cursor: inherit;
+  box-shadow: var(--shadow-md);
+  transition:
+    transform 0.4s var(--ease-out-back),
+    box-shadow 0.4s var(--ease-out-back);
+  transform-style: preserve-3d;
+}
+
+.card:hover {
+  transform: scale(1.03) translateY(-2px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
 }
 
 .dragHandle {
