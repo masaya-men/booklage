@@ -5,9 +5,11 @@ export const Z_INDEX = {
   FOLDER_NAV: 60,
   TOOLBAR: 70,
   INSTALL_PROMPT: 75,
+  LIST_PANEL: 78,
   DROPDOWN: 80,
   MODAL_BACKDROP: 90,
   MODAL: 100,
+  IMPORT_MODAL: 100,
   TOAST: 110,
   BOOKMARKLET_POPUP: 120,
   PIP_DROPZONE: 130,
@@ -38,7 +40,7 @@ export const FLOAT_DURATION = 4
 export const DB_NAME = 'booklage-db'
 
 /** IndexedDB schema version */
-export const DB_VERSION = 3
+export const DB_VERSION = 4
 
 /** Minimum zoom level (zoomed out — see full overview) */
 export const CANVAS_ZOOM_MIN = 0.1
