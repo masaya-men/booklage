@@ -8,7 +8,9 @@
 
 - **ブランチ**: `master`
 - **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S1, S2, S3, S5, S6, S7, S8, **デプロイ完了** → 次は S4（広告）or S9（一括インポート）
+- **進捗**: S1, S2, S3, S5, S6, S7, S8, **S9完了**, デプロイ完了 → 次は S4（広告）or UX磨き
+- **S9新規ファイル**: `lib/import/`（7パーサー+型+重複排除+バッチエンジン）、`components/import/`（3ステップモーダル）、`components/board/BookmarkListPanel.tsx`
+- **DBバージョン**: v4（ogpStatus追加）
 - **本番URL**: `https://booklage.pages.dev`
 - **新規依存**: `lenis`（スムーズスクロール）、`wrangler`（Cloudflare CLI、devDep）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public、push済み）
@@ -188,7 +190,7 @@
 - [x] S7: LP（デモ型6セクション）✅
 - [x] S8: 静的ページ（Privacy, Terms, FAQ, About, Contact）✅
 - [x] Cloudflare Pagesデプロイ ✅（booklage.pages.dev）
-- [ ] S9: 一括インポート機能（ブラウザブックマーク、Twitter/X、YouTube等）
+- [x] S9: 一括インポート機能 ✅（7プラットフォーム対応、3ステップモーダル、リストパネル）
 
 ## 未着手（将来）
 
