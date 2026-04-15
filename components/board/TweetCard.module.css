@@ -21,42 +21,7 @@
   box-shadow: var(--shadow-lg), var(--shadow-glow);
 }
 
-/* ── Placeholder (before iframe loads) ── */
-
-.placeholder {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: #15202b;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.placeholder:hover {
-  background: #1a2836;
-}
-
-.xLogo {
-  font-size: 36px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.loadText {
-  font-size: var(--text-sm);
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.tweetId {
-  font-size: var(--text-xs);
-  color: rgba(255, 255, 255, 0.3);
-  font-family: var(--font-mono, monospace);
-}
-
-/* ── Active state (iframe loaded) ── */
+/* ── Drag handle (visible when iframe is active) ── */
 
 .dragHandle {
   display: flex;
@@ -75,8 +40,43 @@
   cursor: grabbing;
 }
 
+/* ── iframe wrapper ── */
+
+.iframeWrapper {
+  position: relative;
+  flex: 1;
+}
+
 .iframe {
   width: 100%;
-  flex: 1;
+  height: 100%;
   border: none;
+}
+
+/* ── Activate overlay (click to enable iframe interaction) ── */
+
+.activateOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 16px;
+  cursor: pointer;
+  /* transparent — tweet content shows through */
+}
+
+.activateHint {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.activateOverlay:hover .activateHint {
+  opacity: 1;
 }

@@ -12,35 +12,37 @@ type TweetCardProps = {
 }
 
 /**
- * Renders a tweet card.
- * Shows a lightweight placeholder by default — supports 3D tilt.
- * On click, loads the full Twitter iframe embed with video playback.
+ * Renders a tweet card with iframe embed.
+ *
+ * The iframe loads immediately so the tweet content is always visible.
+ * By default pointer-events are disabled on the iframe — this allows:
+ * - 3D tilt tracking (mousemove reaches the parent)
+ * - Dragging from anywhere on the card
+ *
+ * Clicking the overlay activates the iframe for full interaction
+ * (video playback, links, etc.). A drag handle appears at the top.
  */
 export function TweetCard({ tweetId, style }: TweetCardProps): React.ReactElement {
-  const [loaded, setLoaded] = useState(false)
-
-  if (!loaded) {
-    return (
-      <div className={styles.card} style={style}>
-        <div className={styles.placeholder} onClick={() => setLoaded(true)}>
-          <span className={styles.xLogo}>𝕏</span>
-          <span className={styles.loadText}>クリックでツイートを読み込む</span>
-          <span className={styles.tweetId}>ID: {tweetId}</span>
-        </div>
-      </div>
-    )
-  }
+  const [active, setActive] = useState(false)
 
   return (
     <div className={styles.card} style={style}>
-      <div className={styles.dragHandle}>⋮⋮</div>
-      <iframe
-        className={styles.iframe}
-        src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
-        title={`Tweet ${tweetId}`}
-        allowFullScreen
-        sandbox="allow-scripts allow-same-origin allow-popups"
-      />
+      {active && <div className={styles.dragHandle}>⋮⋮</div>}
+      <div className={styles.iframeWrapper}>
+        <iframe
+          className={styles.iframe}
+          style={{ pointerEvents: active ? 'auto' : 'none' }}
+          src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true`}
+          title={`Tweet ${tweetId}`}
+          allowFullScreen
+          sandbox="allow-scripts allow-same-origin allow-popups"
+        />
+        {!active && (
+          <div className={styles.activateOverlay} onClick={() => setActive(true)}>
+            <div className={styles.activateHint}>クリックで操作可能に</div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
