@@ -21,6 +21,43 @@
   box-shadow: var(--shadow-lg), var(--shadow-glow);
 }
 
+/* ── Placeholder (before iframe loads) ── */
+
+.placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #15202b;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.placeholder:hover {
+  background: #1a2836;
+}
+
+.xLogo {
+  font-size: 36px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.loadText {
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tweetId {
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.3);
+  font-family: var(--font-mono, monospace);
+}
+
+/* ── Active state (iframe loaded) ── */
+
 .dragHandle {
   display: flex;
   align-items: center;

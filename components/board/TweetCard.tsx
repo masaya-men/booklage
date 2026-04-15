@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import styles from './TweetCard.module.css'
 
 /** Props for the TweetCard component */
@@ -11,12 +12,25 @@ type TweetCardProps = {
 }
 
 /**
- * Renders an embedded tweet using Twitter's iframe embed.
- * This allows full interactivity including video playback.
- * widgets.js is sandboxed inside the iframe (doesn't affect main page).
- * The drag handle at the top lets users move the card without interfering with the iframe.
+ * Renders a tweet card.
+ * Shows a lightweight placeholder by default — supports 3D tilt.
+ * On click, loads the full Twitter iframe embed with video playback.
  */
 export function TweetCard({ tweetId, style }: TweetCardProps): React.ReactElement {
+  const [loaded, setLoaded] = useState(false)
+
+  if (!loaded) {
+    return (
+      <div className={styles.card} style={style}>
+        <div className={styles.placeholder} onClick={() => setLoaded(true)}>
+          <span className={styles.xLogo}>𝕏</span>
+          <span className={styles.loadText}>クリックでツイートを読み込む</span>
+          <span className={styles.tweetId}>ID: {tweetId}</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.card} style={style}>
       <div className={styles.dragHandle}>⋮⋮</div>
