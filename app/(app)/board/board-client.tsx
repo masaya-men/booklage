@@ -532,22 +532,28 @@ export function BoardClient(): React.ReactElement {
         )
       }
 
-      // Calculate zoom to fit card comfortably (60% of screen), capped at 1.5
-      const cardW = card?.width ?? 240
-      const cardH = card?.height ?? 180
+      // Read actual rendered size from DOM (stored dimensions may not match)
+      const domEl = document.querySelector<HTMLElement>(`[data-card-wrapper="${cardId}"]`)
+      const currentZoom = canvas.state.zoom
+      const cardW = domEl ? domEl.offsetWidth / currentZoom : (card?.width ?? 240)
+      const cardH = domEl ? domEl.offsetHeight / currentZoom : (card?.height ?? 180)
+
+      // Calculate zoom to fit card comfortably (60% of usable area), capped at 1.5
+      const folderNavWidth = 120
+      const usableWidth = window.innerWidth - folderNavWidth
+      const usableHeight = window.innerHeight
       const padding = 0.6
       const targetZoom = Math.min(
-        (window.innerWidth * padding) / cardW,
-        (window.innerHeight * padding) / cardH,
+        (usableWidth * padding) / cardW,
+        (usableHeight * padding) / cardH,
         1.5,
       )
-      // Center on card's center point, accounting for UI panels
+
+      // Center on card's actual center point
       const centerX = x + cardW / 2
       const centerY = y + cardH / 2
-      // Offset for FolderNav on the left (~120px) so card is centered in usable area
-      const folderNavWidth = 120
-      const screenCenterX = folderNavWidth + (window.innerWidth - folderNavWidth) / 2
-      const screenCenterY = window.innerHeight / 2
+      const screenCenterX = folderNavWidth + usableWidth / 2
+      const screenCenterY = usableHeight / 2
       const targetPanX = -centerX * targetZoom + screenCenterX
       const targetPanY = -centerY * targetZoom + screenCenterY
       const proxy = { panX: canvas.state.panX, panY: canvas.state.panY, zoom: canvas.state.zoom }
