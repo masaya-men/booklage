@@ -86,6 +86,8 @@ export interface InfiniteCanvasControls {
   toWorld: (screenX: number, screenY: number) => Point
   /** CSS transform string for the world container */
   worldTransform: string
+  /** Directly set the canvas transform (for animated transitions) */
+  setTransform: (panX: number, panY: number, zoom: number) => void
   /** Whether a pan gesture is currently active */
   isPanning: boolean
   /** Set panning state (used by event handlers) */
@@ -134,6 +136,10 @@ export function useInfiniteCanvas(): InfiniteCanvasControls {
     setState({ panX: 0, panY: 0, zoom: CANVAS_ZOOM_DEFAULT })
   }, [])
 
+  const setTransform = useCallback((panX: number, panY: number, zoom: number) => {
+    setState({ panX, panY, zoom: clampZoom(zoom) })
+  }, [])
+
   const toWorld = useCallback(
     (screenX: number, screenY: number): Point =>
       screenToWorld(screenX, screenY, state.panX, state.panY, state.zoom),
@@ -147,6 +153,7 @@ export function useInfiniteCanvas(): InfiniteCanvasControls {
     pan,
     zoomAtPoint,
     resetView,
+    setTransform,
     toWorld,
     worldTransform,
     isPanning,

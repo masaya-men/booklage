@@ -517,15 +517,38 @@ export function BoardClient(): React.ReactElement {
 
   // ── Navigate to card handler (for list panel) ─────────────────
   const handleNavigateToCard = useCallback(
-    (_cardId: string, x: number, y: number): void => {
-      // Reset canvas to zoom 1 and pan so the card is centred on screen.
-      // resetView() sets panX=0, panY=0, zoom=1 — then we pan to the target.
-      canvas.resetView()
-      const targetPanX = -x + window.innerWidth / 2
-      const targetPanY = -y + window.innerHeight / 2
-      canvas.pan(targetPanX, targetPanY)
+    (cardId: string, x: number, y: number): void => {
+      // Bring card to front
+      const card = items.find((i) => i.card.id === cardId)?.card
+      if (card && db) {
+        const maxZ = Math.max(...items.map((i) => i.card.zIndex || 1), 1)
+        void updateCard(db, cardId, { zIndex: maxZ + 1 })
+        setItems((prev) =>
+          prev.map((item) =>
+            item.card.id === cardId
+              ? { ...item, card: { ...item.card, zIndex: maxZ + 1 } }
+              : item,
+          ),
+        )
+      }
+
+      // Animate canvas to center the card with smooth easing
+      const targetZoom = 1
+      const targetPanX = -x * targetZoom + window.innerWidth / 2
+      const targetPanY = -y * targetZoom + window.innerHeight / 2
+      const proxy = { panX: canvas.state.panX, panY: canvas.state.panY, zoom: canvas.state.zoom }
+      gsap.to(proxy, {
+        panX: targetPanX,
+        panY: targetPanY,
+        zoom: targetZoom,
+        duration: 0.9,
+        ease: 'power3.inOut',
+        onUpdate: () => {
+          canvas.setTransform(proxy.panX, proxy.panY, proxy.zoom)
+        },
+      })
     },
-    [canvas],
+    [canvas, items, db],
   )
 
   // ── OGP retry handler (for list panel) ──────────────────────────
