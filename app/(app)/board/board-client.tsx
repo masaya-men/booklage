@@ -394,14 +394,17 @@ export function BoardClient(): React.ReactElement {
       if (!db) return
       await updateCard(db, cardId, { x, y, isManuallyPlaced: true })
 
-      // Update items state so React knows the new position
-      setItems((prev) =>
-        prev.map((item) =>
-          item.card.id === cardId
-            ? { ...item, card: { ...item.card, x, y, isManuallyPlaced: true } }
-            : item,
-        ),
-      )
+      // Update items state so React knows the new position.
+      // Delay to avoid iframe reload during landing animation.
+      setTimeout(() => {
+        setItems((prev) =>
+          prev.map((item) =>
+            item.card.id === cardId
+              ? { ...item, card: { ...item.card, x, y, isManuallyPlaced: true } }
+              : item,
+          ),
+        )
+      }, 400)
     },
     [db, resetRepulsion],
   )
@@ -588,7 +591,8 @@ export function BoardClient(): React.ReactElement {
         // If barely moved, treat as click → open URL in new tab
         // Skip for video/tweet cards (those have interactive iframes)
         if (!dragMoved) {
-          gsap.to(el, { x: 0, y: 0, scale: 1, boxShadow: '', duration: 0.2, overwrite: true, onComplete() { el.style.zIndex = '' } })
+          gsap.set(el, { x: 0, y: 0, scale: 1, boxShadow: '' })
+          el.style.zIndex = ''
           const bookmark = itemsRef.current.find((item) => item.card.id === cardId)?.bookmark
           if (bookmark && bookmark.type !== 'tweet' && bookmark.type !== 'youtube') {
             window.open(bookmark.url, '_blank', 'noopener')
@@ -596,8 +600,7 @@ export function BoardClient(): React.ReactElement {
           return
         }
 
-        // Calculate new position FIRST, then animate
-        // GSAP Draggable auto-compensates for parent scale — no zoom division
+        // 1. Calculate new position
         const baseX = parseFloat(el.style.left) || 0
         const baseY = parseFloat(el.style.top) || 0
         const px = this.endX ?? 0
@@ -605,16 +608,17 @@ export function BoardClient(): React.ReactElement {
         const newX = baseX + px
         const newY = baseY + py
 
-        // Set CSS position immediately, then animate transform back to 0
+        // 2. Update CSS position + reset transform IMMEDIATELY (no animation on x/y)
         el.style.left = `${newX}px`
         el.style.top = `${newY}px`
+        gsap.set(el, { x: 0, y: 0 })
+
+        // 3. Animate ONLY scale/shadow back (not x/y — avoids Draggable state corruption)
         gsap.to(el, {
-          x: 0, y: 0,
           scale: 1,
           boxShadow: '',
           duration: 0.35,
           ease: 'back.out(1.4)',
-          overwrite: true,
           onComplete() { el.style.zIndex = '' },
         })
 

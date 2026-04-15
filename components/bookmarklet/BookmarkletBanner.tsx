@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { generateBookmarkletCode } from '@/lib/utils/bookmarklet'
-import { APP_URL } from '@/lib/constants'
 import styles from './BookmarkletBanner.module.css'
 
 /**
@@ -10,33 +9,31 @@ import styles from './BookmarkletBanner.module.css'
  * User drags this link to their bookmark bar to install the bookmarklet.
  *
  * React 19 blocks `javascript:` URLs in href — even via refs.
- * We bypass React entirely by creating the <a> element with raw DOM API.
+ * We bypass React entirely by creating the <a> element with raw DOM API,
+ * and compute the origin inside useEffect (client-side only) to avoid
+ * SSR/hydration issues where window.location.origin is unavailable.
  */
 export function BookmarkletBanner(): React.ReactElement {
-  // Use current origin so the bookmarklet works on any deployment (not hardcoded localhost)
-  const bookmarkletUri = useMemo(
-    () => (typeof window !== 'undefined' ? generateBookmarkletCode(window.location.origin) : ''),
-    [],
-  )
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    // Remove any existing link (in case of re-render)
+    // Generate bookmarklet with the CURRENT origin (works on any deployment)
+    const uri = generateBookmarkletCode(window.location.origin)
+
     container.innerHTML = ''
 
-    // Create <a> entirely outside React so javascript: href is not sanitized
     const a = document.createElement('a')
-    a.href = bookmarkletUri
+    a.href = uri
     a.className = styles.dragLink
     a.title = 'ブックマークバーにドラッグしてください'
     a.textContent = 'Booklage'
     a.addEventListener('click', (e) => e.preventDefault())
 
     container.appendChild(a)
-  }, [bookmarkletUri])
+  }, [])
 
   return (
     <div className={styles.banner}>
