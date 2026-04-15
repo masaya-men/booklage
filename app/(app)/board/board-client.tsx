@@ -11,6 +11,7 @@ import {
   addFolder,
   getAllFolders,
   updateCard,
+  updateBookmarkOgp,
   getPreferences,
   hasSavedPreferences,
   savePreferences,
@@ -53,6 +54,8 @@ import { BookmarkletBanner } from '@/components/bookmarklet/BookmarkletBanner'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import { ResizeHandle } from '@/components/board/ResizeHandle'
+import { ImportModal } from '@/components/import/ImportModal'
+import { BookmarkListPanel } from '@/components/board/BookmarkListPanel'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -160,6 +163,8 @@ export function BoardClient(): React.ReactElement {
   const [uiTheme, setUiTheme] = useState<'auto' | 'dark' | 'light'>('auto')
   const [defaultCardSize, setDefaultCardSize] = useState('random')
   const [defaultAspectRatio, setDefaultAspectRatio] = useState('random')
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [showListPanel, setShowListPanel] = useState(false)
 
   const worldRef = useRef<HTMLDivElement | null>(null)
 
@@ -486,6 +491,83 @@ export function BoardClient(): React.ReactElement {
       setItems(paired)
     },
     [db, currentFolder],
+  )
+
+  // ── Import complete handler ──────────────────────────────────
+  const handleImportComplete = useCallback(
+    async (savedCount: number): Promise<void> => {
+      if (!db || !currentFolder) return
+      // Reload items from DB
+      const [bookmarks, cards] = await Promise.all([
+        getBookmarksByFolder(db, currentFolder),
+        getCardsByFolder(db, currentFolder),
+      ])
+      const bookmarkMap = new Map(bookmarks.map((b) => [b.id, b]))
+      const paired: CardWithBookmark[] = []
+      for (const card of cards) {
+        const bookmark = bookmarkMap.get(card.bookmarkId)
+        if (bookmark) paired.push({ card, bookmark })
+      }
+      setItems(paired)
+      setShowImportModal(false)
+      if (savedCount > 0) setShowListPanel(true)
+    },
+    [db, currentFolder],
+  )
+
+  // ── Navigate to card handler (for list panel) ─────────────────
+  const handleNavigateToCard = useCallback(
+    (_cardId: string, x: number, y: number): void => {
+      // Reset canvas to zoom 1 and pan so the card is centred on screen.
+      // resetView() sets panX=0, panY=0, zoom=1 — then we pan to the target.
+      canvas.resetView()
+      const targetPanX = -x + window.innerWidth / 2
+      const targetPanY = -y + window.innerHeight / 2
+      canvas.pan(targetPanX, targetPanY)
+    },
+    [canvas],
+  )
+
+  // ── OGP retry handler (for list panel) ──────────────────────────
+  const handleRetryOgp = useCallback(
+    async (bookmarkId: string): Promise<void> => {
+      if (!db) return
+      const bookmark = items.find((i) => i.bookmark.id === bookmarkId)?.bookmark
+      if (!bookmark) return
+      try {
+        const ogp = await fetchOgp(bookmark.url)
+        await updateBookmarkOgp(db, bookmarkId, {
+          title: ogp.title || bookmark.title,
+          description: ogp.description,
+          thumbnail: ogp.image,
+          favicon: ogp.favicon,
+          siteName: ogp.siteName,
+          ogpStatus: 'fetched',
+        })
+        // Update local state
+        setItems((prev) =>
+          prev.map((item) =>
+            item.bookmark.id === bookmarkId
+              ? {
+                  ...item,
+                  bookmark: {
+                    ...item.bookmark,
+                    title: ogp.title || item.bookmark.title,
+                    description: ogp.description,
+                    thumbnail: ogp.image,
+                    favicon: ogp.favicon,
+                    siteName: ogp.siteName,
+                    ogpStatus: 'fetched' as const,
+                  },
+                }
+              : item,
+          ),
+        )
+      } catch {
+        await updateBookmarkOgp(db, bookmarkId, { ogpStatus: 'failed' })
+      }
+    },
+    [db, items],
   )
 
   // ── GSAP Draggable management via DOM API ────────────────────
@@ -917,6 +999,52 @@ export function BoardClient(): React.ReactElement {
           📍 カードを集める
         </button>
       )}
+      <button
+        onClick={() => setShowImportModal(true)}
+        style={{
+          position: 'fixed',
+          bottom: 20,
+          left: items.length > 0 ? 180 : 20,
+          zIndex: Z_INDEX.TOOLBAR,
+          padding: '8px 16px',
+          borderRadius: '999px',
+          border: '1px solid var(--color-glass-border)',
+          background: 'var(--color-glass-bg)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          color: 'var(--color-text-primary)',
+          fontFamily: 'var(--font-heading)',
+          fontSize: 'var(--text-sm)',
+          cursor: 'pointer',
+        }}
+        type="button"
+      >
+        📥 インポート
+      </button>
+      {items.length > 0 && (
+        <button
+          onClick={() => setShowListPanel(true)}
+          style={{
+            position: 'fixed',
+            bottom: 20,
+            left: items.length > 0 ? 320 : 160,
+            zIndex: Z_INDEX.TOOLBAR,
+            padding: '8px 16px',
+            borderRadius: '999px',
+            border: '1px solid var(--color-glass-border)',
+            background: 'var(--color-glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-heading)',
+            fontSize: 'var(--text-sm)',
+            cursor: 'pointer',
+          }}
+          type="button"
+        >
+          📋 リスト
+        </button>
+      )}
       <RandomPick cardIds={items.map(({ card }) => card.id)} />
       <ColorSuggest cardColors={new Map(items.map(({ card }, i) => [card.id, FOLDER_COLORS[i % FOLDER_COLORS.length]]))} />
       <SettingsPanel
@@ -934,6 +1062,20 @@ export function BoardClient(): React.ReactElement {
       <BookmarkletBanner />
       <InstallPrompt />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        db={db as import('idb').IDBPDatabase<unknown> | null}
+        onImportComplete={handleImportComplete}
+      />
+      <BookmarkListPanel
+        isOpen={showListPanel}
+        onClose={() => setShowListPanel(false)}
+        items={items}
+        folders={folders}
+        onNavigateToCard={handleNavigateToCard}
+        onRetryOgp={handleRetryOgp}
+      />
     </LiquidGlassProvider>
   )
 }
