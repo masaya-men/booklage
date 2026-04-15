@@ -52,10 +52,42 @@ import { useFrameMonitor } from '@/lib/interactions/use-frame-monitor'
 import { LiquidGlassProvider } from '@/lib/glass/LiquidGlassProvider'
 import { BookmarkletBanner } from '@/components/bookmarklet/BookmarkletBanner'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
-import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
+// Liquid glass SVG filters are used only by UI panels (FolderNav, Settings, etc.)
+// Cards use lightweight CSS-only glass for performance — see CardStyleWrapper.module.css
 import { ResizeHandle } from '@/components/board/ResizeHandle'
 import { ImportModal } from '@/components/import/ImportModal'
 import { BookmarkListPanel } from '@/components/board/BookmarkListPanel'
+
+// ---------------------------------------------------------------------------
+// Viewport Culling — only render cards visible on screen
+// ---------------------------------------------------------------------------
+
+type ViewportBounds = { left: number; top: number; right: number; bottom: number }
+
+/** Buffer zone in world-space pixels around the viewport to avoid pop-in */
+const CULL_BUFFER = 300
+/** Fallback card height for culling when actual height is unknown */
+const CULL_CARD_MAX_HEIGHT = 500
+
+function getVisibleBounds(panX: number, panY: number, zoom: number): ViewportBounds {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  return {
+    left: (-panX - CULL_BUFFER) / zoom,
+    top: (-panY - CULL_BUFFER) / zoom,
+    right: (-panX + vw + CULL_BUFFER) / zoom,
+    bottom: (-panY + vh + CULL_BUFFER) / zoom,
+  }
+}
+
+function isCardInViewport(
+  x: number, y: number, w: number, h: number,
+  bounds: ViewportBounds,
+): boolean {
+  const cardH = h > 0 ? h : CULL_CARD_MAX_HEIGHT
+  return x + w > bounds.left && x < bounds.right
+      && y + cardH > bounds.top && y < bounds.bottom
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -83,7 +115,9 @@ type CardPortalContentProps = {
   onResizeEnd: (cardId: string, width: number, height: number) => void
 }
 
-/** Card content with 3D tilt, spotlight, liquid glass, and resize handle */
+/** Card content with 3D tilt, spotlight, and resize handle.
+ *  Cards use lightweight CSS-only glass (no SVG filter pipeline) for performance.
+ *  Liquid glass SVG filters are reserved for UI panels only (FolderNav, Settings, etc.). */
 function CardPortalContent({
   card,
   bookmark,
@@ -96,7 +130,6 @@ function CardPortalContent({
   onResizeEnd,
 }: CardPortalContentProps): React.ReactElement {
   const { ref: tiltRef } = useCardTilt({ enabled: enableTilt && !isGrid })
-  const glass = useLiquidGlass({ id: `card-${card.id}`, strength: 'subtle', borderRadius: 12 })
 
   const tweetId = bookmark.type === 'tweet' ? extractTweetId(bookmark.url) : null
   const youtubeId = bookmark.type === 'youtube' ? extractYoutubeId(bookmark.url) : null
@@ -104,7 +137,7 @@ function CardPortalContent({
   /** Render the appropriate card content based on bookmark type */
   function renderCardContent(): React.ReactElement {
     if (tweetId) {
-      return <TweetCard tweetId={tweetId} style={innerStyle} />
+      return <TweetCard tweetId={tweetId} style={innerStyle} width={card.width} height={card.height} />
     }
     if (youtubeId) {
       return <VideoEmbed videoId={youtubeId} title={bookmark.title} style={innerStyle} width={card.width} />
@@ -118,7 +151,6 @@ function CardPortalContent({
         cardStyle={cardStyle}
         title={bookmark.title}
         magnetColor={folderColor}
-        liquidGlass={cardStyle === 'glass' ? glass : undefined}
       >
         {renderCardContent()}
       </CardStyleWrapper>
@@ -689,7 +721,7 @@ export function BoardClient(): React.ReactElement {
       const gridPos = gridPositions.get(card.id)
       const displayX = isGrid && gridPos ? gridPos.x : card.x
       const displayY = isGrid && gridPos ? gridPos.y : card.y
-      el.style.cssText = `position:absolute;left:${displayX}px;top:${displayY}px;cursor:${isGrid ? 'default' : 'grab'};`
+      el.style.cssText = `position:absolute;left:${displayX}px;top:${displayY}px;cursor:${isGrid ? 'default' : 'grab'};contain:layout style paint;`
       el.setAttribute('data-card-wrapper', card.id)
       world.appendChild(el)
 
@@ -1005,39 +1037,51 @@ export function BoardClient(): React.ReactElement {
         )}
       </Canvas>
 
-      {/* Card content rendered via portals into DOM-managed wrappers */}
-      {items.map(({ card, bookmark }) => {
-        const target = portalTargets.get(card.id)
-        if (!target) return null
+      {/* Card content rendered via portals — viewport culling skips off-screen cards */}
+      {(() => {
+        const { panX, panY, zoom } = canvas.state
+        const bounds = getVisibleBounds(panX, panY, zoom)
 
-        const displayRotation = isGrid ? 0 : card.rotation
-        const innerStyle: React.CSSProperties = {
-          zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
-          ['--card-rotation' as string]: `${displayRotation}deg`,
-          ['--float-delay' as string]: getFloatDelay(card.id),
-          ['--float-duration' as string]: `${FLOAT_DURATION}s`,
-          boxShadow: isGrid ? 'var(--shadow-grid-card)' : 'var(--shadow-collage-card)',
-          animationPlayState: isGrid ? 'paused' : 'running',
-        }
+        return items.map(({ card, bookmark }) => {
+          const target = portalTargets.get(card.id)
+          if (!target) return null
 
-        const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
+          // Viewport culling: skip React portal for off-screen cards
+          const cardX = isGrid ? (gridPositions.get(card.id)?.x ?? card.x) : card.x
+          const cardY = isGrid ? (gridPositions.get(card.id)?.y ?? card.y) : card.y
+          if (!isCardInViewport(cardX, cardY, card.width, card.height, bounds)) {
+            return null
+          }
 
-        return createPortal(
-          <CardPortalContent
-            card={card}
-            bookmark={bookmark}
-            cardStyle={cardStyle}
-            folderColor={folderColor}
-            enableTilt={enableTilt}
-            isGrid={isGrid}
-            innerStyle={innerStyle}
-            zoom={canvas.state.zoom}
-            onResizeEnd={handleResizeEnd}
-          />,
-          target,
-          card.id,
-        )
-      })}
+          const displayRotation = isGrid ? 0 : card.rotation
+          const innerStyle: React.CSSProperties = {
+            zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
+            ['--card-rotation' as string]: `${displayRotation}deg`,
+            ['--float-delay' as string]: getFloatDelay(card.id),
+            ['--float-duration' as string]: `${FLOAT_DURATION}s`,
+            boxShadow: isGrid ? 'var(--shadow-grid-card)' : 'var(--shadow-collage-card)',
+            animationPlayState: isGrid ? 'paused' : 'running',
+          }
+
+          const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
+
+          return createPortal(
+            <CardPortalContent
+              card={card}
+              bookmark={bookmark}
+              cardStyle={cardStyle}
+              folderColor={folderColor}
+              enableTilt={enableTilt}
+              isGrid={isGrid}
+              innerStyle={innerStyle}
+              zoom={canvas.state.zoom}
+              onResizeEnd={handleResizeEnd}
+            />,
+            target,
+            card.id,
+          )
+        })
+      })()}
 
       <ViewModeToggle mode={viewMode} onToggle={setViewMode} />
       <ExportButton canvasRef={worldRef} />

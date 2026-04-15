@@ -18,6 +18,49 @@ html {
   text-size-adjust: 100%;
 }
 
+/* ── Custom Scrollbar (global) ───────────────────────────── */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+[data-theme="light"] * {
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+/* WebKit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
 html,
 body {
   max-width: 100vw;
@@ -93,9 +136,9 @@ ol {
   --color-accent-danger: #ff6b6b;
 
   /* ── Glassmorphism ── */
-  --color-glass-bg: rgba(255, 255, 255, 0.06);
-  --color-glass-border: rgba(255, 255, 255, 0.1);
-  --color-glass-bg-hover: rgba(255, 255, 255, 0.1);
+  --color-glass-bg: rgba(255, 255, 255, 0.02);
+  --color-glass-border: rgba(255, 255, 255, 0.12);
+  --color-glass-bg-hover: rgba(255, 255, 255, 0.04);
 
   /* ── Card ── */
   --color-card-bg: rgba(255, 255, 255, 0.04);
@@ -328,49 +371,67 @@ ol {
 
 .liquid-glass-active,
 .liquid-glass-fallback {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: background var(--duration-fast) var(--ease-out-expo);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 20px 0 rgba(255, 255, 255, 0.02);
+  transition:
+    background var(--duration-fast) var(--ease-out-expo),
+    box-shadow var(--duration-fast) var(--ease-out-expo),
+    border-color var(--duration-fast) var(--ease-out-expo);
 }
 
 .liquid-glass-active:hover,
 .liquid-glass-fallback:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
+    inset 0 0 30px 0 rgba(255, 255, 255, 0.04);
 }
 
 .liquid-glass-fallback {
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(0, 0, 0, 0.16),
-    0 1px 1px -0.5px rgba(0, 0, 0, 0.18),
-    0 3px 3px -1.5px rgba(0, 0, 0, 0.18),
-    0 6px 6px -3px rgba(0, 0, 0, 0.18),
-    0 12px 12px -6px rgba(0, 0, 0, 0.18);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 20px 0 rgba(255, 255, 255, 0.02),
+    0 0 0 1px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    0 8px 16px -4px rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .liquid-glass-active,
 [data-theme="light"] .liquid-glass-fallback {
-  background: rgba(200, 200, 220, 0.25);
-  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
-    0 0 0 1px rgba(0, 0, 0, 0.04),
-    0 2px 4px rgba(0, 0, 0, 0.06),
-    0 8px 16px rgba(0, 0, 0, 0.06);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 20px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 8px 16px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="light"] .liquid-glass-active:hover,
 [data-theme="light"] .liquid-glass-fallback:hover {
-  background: rgba(200, 200, 220, 0.4);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 30px 0 rgba(255, 255, 255, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 8px 16px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="light"] .liquid-glass-fallback {
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
-    0 0 0 1px rgba(0, 0, 0, 0.04),
-    0 2px 4px rgba(0, 0, 0, 0.06),
-    0 8px 16px rgba(0, 0, 0, 0.06);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 20px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 8px 16px rgba(0, 0, 0, 0.04);
 }
 
 /* ── Card 3D Tilt + Spotlight ──────────────────────────────── */

@@ -9,6 +9,10 @@ type TweetCardProps = {
   tweetId: string
   /** Inline styles for positioning, rotation, etc. */
   style?: React.CSSProperties
+  /** Card width in pixels */
+  width?: number
+  /** Card height in pixels */
+  height?: number
 }
 
 /**
@@ -22,11 +26,17 @@ type TweetCardProps = {
  * Clicking the overlay activates the iframe for full interaction
  * (video playback, links, etc.). A drag handle appears at the top.
  */
-export function TweetCard({ tweetId, style }: TweetCardProps): React.ReactElement {
+export function TweetCard({ tweetId, style, width, height }: TweetCardProps): React.ReactElement {
   const [active, setActive] = useState(false)
 
+  const cardStyle: React.CSSProperties = {
+    ...style,
+    ...(width !== undefined ? { ['--card-width' as string]: `${width}px` } : {}),
+    ...(height !== undefined ? { ['--card-height' as string]: `${height}px` } : {}),
+  }
+
   return (
-    <div className={styles.card} style={style}>
+    <div className={styles.card} style={cardStyle}>
       {active && <div className={styles.dragHandle}>⋮⋮</div>}
       <div className={styles.iframeWrapper}>
         <iframe

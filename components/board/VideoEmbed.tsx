@@ -19,22 +19,24 @@ type VideoEmbedProps = {
  * Renders a YouTube video card.
  *
  * The iframe loads immediately so content is always visible.
- * By default pointer-events are disabled on the iframe — this allows:
- * - 3D tilt tracking (mousemove reaches the parent)
- * - Dragging from anywhere on the card
+ * Uses CSS aspect-ratio: 16/9 for the iframe wrapper so the card
+ * responds correctly to --card-width changes during resize.
  *
  * Clicking the ▶ overlay activates the iframe for video playback.
  * A drag handle appears at the top so the card can still be moved.
  */
 export function VideoEmbed({ videoId, title, style, width }: VideoEmbedProps): React.ReactElement {
   const [active, setActive] = useState(false)
-  const cardWidth = width ?? 240
-  const iframeHeight = Math.round(cardWidth * 9 / 16)
+
+  const cardStyle: React.CSSProperties = {
+    ...style,
+    ...(width !== undefined ? { ['--card-width' as string]: `${width}px` } : {}),
+  }
 
   return (
-    <div className={styles.card} style={style}>
+    <div className={styles.card} style={cardStyle}>
       {active && <div className={styles.dragHandle}>⋮⋮</div>}
-      <div className={styles.iframeWrapper} style={{ height: iframeHeight }}>
+      <div className={styles.iframeWrapper}>
         <iframe
           className={styles.iframe}
           style={{ pointerEvents: active ? 'auto' : 'none' }}

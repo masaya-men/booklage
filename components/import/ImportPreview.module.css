@@ -110,22 +110,6 @@
   overflow-y: auto;
 }
 
-.folderList::-webkit-scrollbar {
-  width: 5px;
-}
-
-.folderList::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.folderList::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-full);
-}
-
-.folderList::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
 
 .folderRow {
   display: flex;

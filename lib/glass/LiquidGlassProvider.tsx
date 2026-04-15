@@ -5,6 +5,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createPortal } from 'react-dom'
 import { getDisplacementMap, type GlassStrength } from './displacement-map'
 
+/** Gaussian blur stdDeviation per strength (frosted glass effect) */
+const BLUR_SCALE: Record<GlassStrength, number> = {
+  subtle: 6,
+  medium: 10,
+  strong: 14,
+}
+
 // navigator.userAgentData is not yet in the standard TypeScript lib types
 declare global {
   interface Navigator {
@@ -65,6 +72,7 @@ type FilterEntry = {
   dataUrl: string
   specularUrl: string
   maxDisplacement: number
+  blurAmount: number
 }
 
 export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): React.ReactElement {
@@ -101,6 +109,7 @@ export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): Rea
           dataUrl: displacement,
           specularUrl: specular,
           maxDisplacement,
+          blurAmount: BLUR_SCALE[strength],
         }
         filtersRef.current.set(filterId, entry)
         setFilters(Array.from(filtersRef.current.values()))
@@ -132,8 +141,21 @@ export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): Rea
           >
             <defs>
               {filters.map((f) => (
-                <filter key={f.id} id={f.id} x="0" y="0" width="100%" height="100%">
-                  {/* Refraction displacement */}
+                <filter key={f.id} id={f.id} x="-5%" y="-5%" width="110%" height="110%">
+                  {/* Step 1: Frosted glass blur */}
+                  <feGaussianBlur
+                    in="SourceGraphic"
+                    stdDeviation={f.blurAmount}
+                    result="frosted"
+                  />
+                  {/* Step 2: Restore saturation lost by blur */}
+                  <feColorMatrix
+                    in="frosted"
+                    type="saturate"
+                    values="1.8"
+                    result="saturated"
+                  />
+                  {/* Step 3: Refraction displacement */}
                   <feImage
                     href={f.dataUrl}
                     x="0"
@@ -143,14 +165,14 @@ export function LiquidGlassProvider({ children }: LiquidGlassProviderProps): Rea
                     result="displacement_map"
                   />
                   <feDisplacementMap
-                    in="SourceGraphic"
+                    in="saturated"
                     in2="displacement_map"
                     scale={f.maxDisplacement}
                     xChannelSelector="R"
                     yChannelSelector="G"
                     result="refracted"
                   />
-                  {/* Specular highlight overlay */}
+                  {/* Step 4: Specular highlight overlay */}
                   <feImage
                     href={f.specularUrl}
                     x="0"

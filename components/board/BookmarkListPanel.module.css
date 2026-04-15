@@ -85,29 +85,6 @@
   padding: var(--space-3) 0;
 }
 
-/* Custom scrollbar */
-.body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-full);
-}
-
-.body::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Firefox scrollbar */
-.body {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
 
 /* ── Empty state ──────────────────────────────────────────── */
 
@@ -320,16 +297,4 @@
   opacity: 1;
 }
 
-/* ── Light mode ───────────────────────────────────────────── */
-
-[data-theme="light"] .body::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-}
-
-[data-theme="light"] .body::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="light"] .body {
-  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
-}
+/* Scrollbar styles are in globals.css */
