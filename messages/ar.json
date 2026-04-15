@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "إشارات مرجعية × كولاج"
+  },
+  "board": {
+    "urlPlaceholder": "...الصق الرابط",
+    "save": "حفظ",
+    "exportImage": "حفظ كصورة",
+    "shareX": "مشاركة على X",
+    "randomPick": "اختيار عشوائي",
+    "bgTheme": "سمة الخلفية",
+    "newFolder": "+ مجلد جديد",
+    "folderNamePlaceholder": "...اسم المجلد",
+    "emptyState": "الصق رابطًا لإضافة أول إشارة مرجعية"
+  },
+  "share": {
+    "defaultText": "صنعت كولاج من الإشارات المرجعية وكان رائعًا ✨ #Booklage"
+  }
+}

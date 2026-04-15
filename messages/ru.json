@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Закладки × Коллаж"
+  },
+  "board": {
+    "urlPlaceholder": "Вставить URL...",
+    "save": "Сохранить",
+    "exportImage": "Сохранить как изображение",
+    "shareX": "Поделиться в X",
+    "randomPick": "Случайный выбор",
+    "bgTheme": "Тема фона",
+    "newFolder": "+ Новая папка",
+    "folderNamePlaceholder": "Имя папки...",
+    "emptyState": "Вставьте URL, чтобы добавить первую закладку"
+  },
+  "share": {
+    "defaultText": "Сделал коллаж из закладок — получилось потрясающе ✨ #Booklage"
+  }
+}

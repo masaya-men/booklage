@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Marcadores × Collage"
+  },
+  "board": {
+    "urlPlaceholder": "Pegar URL...",
+    "save": "Guardar",
+    "exportImage": "Guardar como imagen",
+    "shareX": "Compartir en X",
+    "randomPick": "Selección aleatoria",
+    "bgTheme": "Tema de fondo",
+    "newFolder": "+ Nueva carpeta",
+    "folderNamePlaceholder": "Nombre de carpeta...",
+    "emptyState": "Pega una URL para añadir tu primer marcador"
+  },
+  "share": {
+    "defaultText": "Hice un collage de marcadores y quedó increíble ✨ #Booklage"
+  }
+}

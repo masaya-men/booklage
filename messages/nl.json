@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Bladwijzers × Collage"
+  },
+  "board": {
+    "urlPlaceholder": "URL plakken...",
+    "save": "Opslaan",
+    "exportImage": "Opslaan als afbeelding",
+    "shareX": "Delen op X",
+    "randomPick": "Willekeurige keuze",
+    "bgTheme": "Achtergrondthema",
+    "newFolder": "+ Nieuwe map",
+    "folderNamePlaceholder": "Mapnaam...",
+    "emptyState": "Plak een URL om je eerste bladwijzer toe te voegen"
+  },
+  "share": {
+    "defaultText": "Ik heb een bladwijzercollage gemaakt en het is geweldig ✨ #Booklage"
+  }
+}

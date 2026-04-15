@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "북마크 × 콜라주"
+  },
+  "board": {
+    "urlPlaceholder": "URL 붙여넣기...",
+    "save": "저장",
+    "exportImage": "이미지로 저장",
+    "shareX": "X에 공유",
+    "randomPick": "랜덤 뽑기",
+    "bgTheme": "배경 테마",
+    "newFolder": "+ 새 폴더",
+    "folderNamePlaceholder": "폴더 이름...",
+    "emptyState": "URL을 붙여넣어 첫 번째 북마크를 추가하세요"
+  },
+  "share": {
+    "defaultText": "북마크로 콜라주를 만들었는데 최고예요 ✨ #Booklage"
+  }
+}

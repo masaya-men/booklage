@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Dấu trang × Cắt dán"
+  },
+  "board": {
+    "urlPlaceholder": "Dán URL...",
+    "save": "Lưu",
+    "exportImage": "Lưu dưới dạng ảnh",
+    "shareX": "Chia sẻ trên X",
+    "randomPick": "Chọn ngẫu nhiên",
+    "bgTheme": "Chủ đề nền",
+    "newFolder": "+ Thư mục mới",
+    "folderNamePlaceholder": "Tên thư mục...",
+    "emptyState": "Dán URL để thêm dấu trang đầu tiên của bạn"
+  },
+  "share": {
+    "defaultText": "Tôi đã tạo một bức cắt dán từ dấu trang và nó tuyệt vời ✨ #Booklage"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Signets × Collage"
+  },
+  "board": {
+    "urlPlaceholder": "Coller l'URL...",
+    "save": "Enregistrer",
+    "exportImage": "Enregistrer en image",
+    "shareX": "Partager sur X",
+    "randomPick": "Tirage aléatoire",
+    "bgTheme": "Thème de fond",
+    "newFolder": "+ Nouveau dossier",
+    "folderNamePlaceholder": "Nom du dossier...",
+    "emptyState": "Collez une URL pour ajouter votre premier signet"
+  },
+  "share": {
+    "defaultText": "J'ai fait un collage de signets et c'est magnifique ✨ #Booklage"
+  }
+}

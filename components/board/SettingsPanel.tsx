@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import type { CardStyle } from '@/components/board/card-styles/CardStyleWrapper'
+import { CURSOR_STYLES, type CursorStyleId } from '@/components/board/CustomCursor'
 import styles from './SettingsPanel.module.css'
 
 const BG_THEMES = [
@@ -72,6 +73,10 @@ type SettingsPanelProps = {
   defaultAspectRatio: string
   /** Called when the user changes the default aspect ratio */
   onChangeDefaultAspectRatio: (ratio: string) => void
+  /** Currently selected cursor style */
+  cursorStyle: CursorStyleId
+  /** Called when the user selects a cursor style */
+  onChangeCursorStyle: (style: CursorStyleId) => void
 }
 
 /** Unified settings panel: background theme, card style, UI mode, card defaults */
@@ -86,6 +91,8 @@ export function SettingsPanel({
   onChangeDefaultCardSize,
   defaultAspectRatio,
   onChangeDefaultAspectRatio,
+  cursorStyle,
+  onChangeCursorStyle,
 }: SettingsPanelProps): React.ReactElement {
   const [open, setOpen] = useState(false)
   const glass = useLiquidGlass({ id: 'settings-panel', strength: 'strong', fixedSize: false })
@@ -177,6 +184,25 @@ export function SettingsPanel({
                   onClick={() => onChangeDefaultAspectRatio(a.id)}
                 >
                   {a.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.divider} />
+
+          {/* Cursor Style */}
+          <div className={styles.section}>
+            <span className={styles.sectionTitle}>カーソル</span>
+            <div className={styles.swatchGrid}>
+              {CURSOR_STYLES.map((c) => (
+                <button
+                  key={c.id}
+                  className={c.id === cursorStyle ? styles.cursorSwatchActive : styles.cursorSwatch}
+                  title={c.label}
+                  onClick={() => onChangeCursorStyle(c.id)}
+                >
+                  {c.emoji}
                 </button>
               ))}
             </div>

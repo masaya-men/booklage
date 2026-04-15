@@ -39,6 +39,7 @@ import { SettingsPanel } from '@/components/board/SettingsPanel'
 import { RandomPick } from '@/components/board/RandomPick'
 import { ColorSuggest } from '@/components/board/ColorSuggest'
 import { ViewModeToggle, type ViewMode } from '@/components/board/ViewModeToggle'
+import { CustomCursor, type CursorStyleId } from '@/components/board/CustomCursor'
 import { CardStyleWrapper, type CardStyle } from '@/components/board/card-styles/CardStyleWrapper'
 import {
   calculateJustifiedPositions,
@@ -200,6 +201,7 @@ export function BoardClient(): React.ReactElement {
   const [uiTheme, setUiTheme] = useState<'auto' | 'dark' | 'light'>('auto')
   const [defaultCardSize, setDefaultCardSize] = useState('random')
   const [defaultAspectRatio, setDefaultAspectRatio] = useState('random')
+  const [cursorStyle, setCursorStyle] = useState<CursorStyleId>('glass-lens')
   const [showImportModal, setShowImportModal] = useState(false)
   const [showListPanel, setShowListPanel] = useState(false)
 
@@ -343,6 +345,7 @@ export function BoardClient(): React.ReactElement {
           setUiTheme(prefs.uiTheme)
           setDefaultCardSize(prefs.defaultCardSize)
           setDefaultAspectRatio(prefs.defaultAspectRatio)
+          if (prefs.cursorStyle) setCursorStyle(prefs.cursorStyle as CursorStyleId)
         }
       } else {
         // First visit: pick initial theme based on OS preference
@@ -897,6 +900,14 @@ export function BoardClient(): React.ReactElement {
     [db],
   )
 
+  const handleCursorStyleChange = useCallback(
+    async (style: CursorStyleId): Promise<void> => {
+      setCursorStyle(style)
+      if (db) await savePreferences(db, { cursorStyle: style })
+    },
+    [db],
+  )
+
   // ── URL submit handler ───────────────────────────────────────
   const handleUrlSubmit = useCallback(
     async (url: string): Promise<void> => {
@@ -1294,7 +1305,10 @@ export function BoardClient(): React.ReactElement {
         onChangeDefaultCardSize={handleDefaultCardSizeChange}
         defaultAspectRatio={defaultAspectRatio}
         onChangeDefaultAspectRatio={handleDefaultAspectRatioChange}
+        cursorStyle={cursorStyle}
+        onChangeCursorStyle={handleCursorStyleChange}
       />
+      <CustomCursor cursorStyle={cursorStyle} />
       <BookmarkletBanner />
       <InstallPrompt />
       <UrlInput onSubmit={handleUrlSubmit} disabled={loading} />

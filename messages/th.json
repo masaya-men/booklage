@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "บุ๊กมาร์ก × คอลลาจ"
+  },
+  "board": {
+    "urlPlaceholder": "วาง URL...",
+    "save": "บันทึก",
+    "exportImage": "บันทึกเป็นรูปภาพ",
+    "shareX": "แชร์บน X",
+    "randomPick": "สุ่มเลือก",
+    "bgTheme": "ธีมพื้นหลัง",
+    "newFolder": "+ โฟลเดอร์ใหม่",
+    "folderNamePlaceholder": "ชื่อโฟลเดอร์...",
+    "emptyState": "วาง URL เพื่อเพิ่มบุ๊กมาร์กแรกของคุณ"
+  },
+  "share": {
+    "defaultText": "ทำคอลลาจจากบุ๊กมาร์กแล้วสวยมาก ✨ #Booklage"
+  }
+}

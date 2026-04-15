@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "书签 × 拼贴"
+  },
+  "board": {
+    "urlPlaceholder": "粘贴网址...",
+    "save": "保存",
+    "exportImage": "保存为图片",
+    "shareX": "分享到 X",
+    "randomPick": "随机抽取",
+    "bgTheme": "背景主题",
+    "newFolder": "+ 新建文件夹",
+    "folderNamePlaceholder": "文件夹名称...",
+    "emptyState": "粘贴网址来添加你的第一个书签"
+  },
+  "share": {
+    "defaultText": "用书签做了一个拼贴画，太棒了 ✨ #Booklage"
+  }
+}

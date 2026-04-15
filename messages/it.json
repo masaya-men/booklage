@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Booklage",
+    "tagline": "Segnalibri × Collage"
+  },
+  "board": {
+    "urlPlaceholder": "Incolla URL...",
+    "save": "Salva",
+    "exportImage": "Salva come immagine",
+    "shareX": "Condividi su X",
+    "randomPick": "Scelta casuale",
+    "bgTheme": "Tema di sfondo",
+    "newFolder": "+ Nuova cartella",
+    "folderNamePlaceholder": "Nome cartella...",
+    "emptyState": "Incolla un URL per aggiungere il tuo primo segnalibro"
+  },
+  "share": {
+    "defaultText": "Ho creato un collage di segnalibri ed è fantastico ✨ #Booklage"
+  }
+}
