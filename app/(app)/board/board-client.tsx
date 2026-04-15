@@ -1085,7 +1085,54 @@ export function BoardClient(): React.ReactElement {
       </button>
       {items.length > 0 && (
         <button
-          onClick={() => setShowListPanel(true)}
+          onClick={() => {
+            // Save current state for restore on close
+            preListStateRef.current = { ...canvas.state }
+            setShowListPanel(true)
+
+            // Google Earth-style zoom out to show all cards
+            const wrappers = document.querySelectorAll<HTMLElement>('[data-card-wrapper]')
+            if (wrappers.length === 0) return
+
+            // Find bounding box of all cards in world space
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+            wrappers.forEach((el) => {
+              const left = parseFloat(el.style.left) || 0
+              const top = parseFloat(el.style.top) || 0
+              const gx = Number(gsap.getProperty(el, 'x')) || 0
+              const gy = Number(gsap.getProperty(el, 'y')) || 0
+              const wx = left + gx
+              const wy = top + gy
+              minX = Math.min(minX, wx)
+              minY = Math.min(minY, wy)
+              maxX = Math.max(maxX, wx + el.offsetWidth)
+              maxY = Math.max(maxY, wy + el.offsetHeight)
+            })
+
+            // Add padding around bounding box
+            const pad = 80
+            minX -= pad; minY -= pad; maxX += pad; maxY += pad
+            const bboxW = maxX - minX
+            const bboxH = maxY - minY
+            const bboxCX = (minX + maxX) / 2
+            const bboxCY = (minY + maxY) / 2
+
+            // Calculate zoom to fit all cards
+            const vpW = window.innerWidth
+            const vpH = window.innerHeight
+            const fitZoom = Math.min(vpW / bboxW, vpH / bboxH, 1)
+
+            // Pan to center the bounding box
+            const fitPanX = vpW / 2 - bboxCX * fitZoom
+            const fitPanY = vpH / 2 - bboxCY * fitZoom
+
+            const proxy = { ...canvas.state }
+            gsap.to(proxy, {
+              panX: fitPanX, panY: fitPanY, zoom: fitZoom,
+              duration: 1.0, ease: 'power2.inOut',
+              onUpdate: () => canvas.setTransform(proxy.panX, proxy.panY, proxy.zoom),
+            })
+          }}
           style={{
             position: 'fixed',
             bottom: 20,
@@ -1132,7 +1179,20 @@ export function BoardClient(): React.ReactElement {
       />
       <BookmarkListPanel
         isOpen={showListPanel}
-        onClose={() => setShowListPanel(false)}
+        onClose={() => {
+          setShowListPanel(false)
+          // Restore canvas state from before list was opened
+          const saved = preListStateRef.current
+          if (saved) {
+            const proxy = { ...canvas.state }
+            gsap.to(proxy, {
+              panX: saved.panX, panY: saved.panY, zoom: saved.zoom,
+              duration: 0.8, ease: 'power2.inOut',
+              onUpdate: () => canvas.setTransform(proxy.panX, proxy.panY, proxy.zoom),
+            })
+            preListStateRef.current = null
+          }
+        }}
         items={items}
         folders={folders}
         onNavigateToCard={handleNavigateToCard}
