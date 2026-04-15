@@ -1,0 +1,295 @@
+/* ── File Uploader ─────────────────────────────────────── */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Drop Zone ─────────────────────────────────────────── */
+
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 180px;
+  border: 2px dashed var(--color-glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out-expo),
+    background var(--duration-fast);
+}
+
+.dropZone:hover {
+  border-color: var(--color-accent-primary);
+  background: rgba(124, 92, 252, 0.04);
+}
+
+.dropZoneActive {
+  composes: dropZone;
+  border-color: var(--color-accent-primary);
+  background: rgba(124, 92, 252, 0.06);
+  animation: borderPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes borderPulse {
+  0%, 100% {
+    border-color: var(--color-accent-primary);
+  }
+  50% {
+    border-color: rgba(124, 92, 252, 0.4);
+  }
+}
+
+.dropIcon {
+  font-size: var(--text-3xl);
+  opacity: 0.6;
+}
+
+.dropText {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: var(--leading-relaxed);
+}
+
+.dropAccept {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.browseButton {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-accent-primary);
+  background: rgba(124, 92, 252, 0.1);
+  border: 1px solid rgba(124, 92, 252, 0.2);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    border-color var(--duration-fast);
+}
+
+.browseButton:hover {
+  background: rgba(124, 92, 252, 0.16);
+  border-color: rgba(124, 92, 252, 0.3);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+/* ── Textarea (URL list) ──────────────────────────────── */
+
+.textareaContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.textareaLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  resize: vertical;
+  transition:
+    border-color var(--duration-fast),
+    background var(--duration-fast);
+}
+
+.textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+
+.parseButton {
+  align-self: flex-end;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  background: var(--color-accent-primary);
+  border: none;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    transform var(--duration-fast) var(--ease-spring);
+}
+
+.parseButton:hover {
+  background: var(--color-accent-primary-hover);
+}
+
+.parseButton:active {
+  transform: scale(0.97);
+}
+
+.parseButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Selected File ────────────────────────────────────── */
+
+.selectedFile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(124, 92, 252, 0.06);
+  border: 1px solid rgba(124, 92, 252, 0.15);
+}
+
+.selectedFileName {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectedFileSize {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.removeFile {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--duration-fast);
+}
+
+.removeFile:hover {
+  color: var(--color-accent-danger);
+}
+
+/* ── Export Guide Accordion ──────────────────────────── */
+
+.guideAccordion {
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.guideToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--duration-fast);
+}
+
+.guideToggle:hover {
+  color: var(--color-text-primary);
+}
+
+.guideArrow {
+  font-size: var(--text-xs);
+  transition: transform var(--duration-fast) var(--ease-out-expo);
+}
+
+.guideArrowOpen {
+  composes: guideArrow;
+  transform: rotate(180deg);
+}
+
+.guideContent {
+  padding: 0 var(--space-4) var(--space-4);
+  border-top: 1px solid var(--color-glass-border);
+}
+
+.guideSteps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.guideStep {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.guideStepNumber {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: rgba(124, 92, 252, 0.12);
+  color: var(--color-accent-primary);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+}
+
+/* ── Error ────────────────────────────────────────────── */
+
+.error {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  font-size: var(--text-sm);
+  color: var(--color-accent-danger);
+}
