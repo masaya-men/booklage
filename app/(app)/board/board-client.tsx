@@ -554,20 +554,25 @@ export function BoardClient(): React.ReactElement {
       cardWrappersRef.current.set(card.id, { el, draggable: inst })
     })
 
-    // Update portal targets so React renders content into the wrappers
+    // Update portal targets so React renders content into the wrappers.
+    // Only create a new Map if targets actually changed (avoids unnecessary re-render).
     const targets = new Map<string, HTMLElement>()
     cardWrappersRef.current.forEach((entry, id) => targets.set(id, entry.el))
-    setPortalTargets(targets)
+    if (targets.size !== portalTargets.size || [...targets.entries()].some(([k, v]) => portalTargets.get(k) !== v)) {
+      setPortalTargets(targets)
+    }
+  }, [items, isGrid, gridPositions]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Cleanup all wrappers on unmount ONLY (not on every re-run)
+  useEffect(() => {
     return () => {
-      // Cleanup all on unmount
       cardWrappersRef.current.forEach((entry) => {
         entry.draggable?.kill()
         entry.el.remove()
       })
       cardWrappersRef.current.clear()
     }
-  }, [items, isGrid, gridPositions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   /** Helper: create GSAP Draggable for a card wrapper.
    * Uses GSAP's built-in onClick for click detection.
