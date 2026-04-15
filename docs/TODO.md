@@ -14,6 +14,8 @@
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public、push済み）
 - **API**: Next.js API Route → Cloudflare Pages Functions に移行済み（`functions/api/ogp.ts`, `functions/api/oembed.ts`）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
+- **デプロイ**: Cloudflare Pages自動デプロイが動いていない。`npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true` で手動デプロイが必要
+- **Twitter/YouTube埋め込み**: iframe方式（react-tweetから移行済み）。初期状態はpointer-events:noneでtilt追従、クリックでiframe操作可能に
 
 ### 重要な技術判断（確定済み）
 
@@ -162,7 +164,21 @@
 
 ## バグ・不具合（要修正）
 
-（なし — ドラッグ修正済み）
+（なし — Critical修正済み）
+
+## UX磨き（後回しでOK）
+
+- [ ] ガラス縁: 動画カードにもガラスの縁を常時表示（カードより大きいガラスを被せる）
+- [ ] 動画カードのtilt: アクティブ時（iframe操作中）はtilt追従不可（ブラウザ仕様制限）→ CSS揺れアニメで代替検討
+- [ ] UIレイアウト整理: 線が重複・配置が不明瞭な箇所の修正
+- [ ] テーマ切替ボタン: 設定パネル以外（ヘッダー等）からもアクセス可能に
+- [ ] 白地+黒格子柄テーマ追加
+- [ ] LP/全ページのダーク↔ライト切替対応（明るいテーマをデフォルトに検討）
+- [ ] カードz-index制御: 前後関係を能動的に変更できるUI
+- [ ] リサイズ改善: 位置ずれ修正 + 自由変形（将来: 台形等）
+- [ ] キャンバス操作の案内UI: Space+ドラッグ or 中クリックでパン、ホイールでズーム
+- [ ] ブックマークレットのデザイン/アニメーション改善
+- [ ] カードホバー時に「クリックで開く」のツールチップ表示
 
 ## 未着手（S3後にやること）
 
@@ -188,3 +204,5 @@
 - もっと多くのカードスタイル（ネオン、布、羊皮紙等）
 - 音フィードバック（ホバー/クリック時の微かな音）
 - LPの磨き上げ（説明不足、クオリティ向上が必要 — マーケティング開始前に実施）
+- LPは明るいテーマをデフォルトにする方が雰囲気に合う（ユーザーフィードバック）
+- [redacted-strategy]に
