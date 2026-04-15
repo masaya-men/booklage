@@ -345,6 +345,33 @@ export function BoardClient(): React.ReactElement {
     return () => { cancelled = true }
   }, [db, currentFolder])
 
+  // ── Auto-reload when bookmarklet saves a new bookmark ────────
+  useEffect(() => {
+    if (!db || !currentFolder) return
+
+    let channel: BroadcastChannel | null = null
+    try {
+      channel = new BroadcastChannel('booklage')
+      channel.onmessage = async (e: MessageEvent) => {
+        if (e.data?.type === 'bookmark-saved') {
+          const [bookmarks, cards] = await Promise.all([
+            getBookmarksByFolder(db, currentFolder),
+            getCardsByFolder(db, currentFolder),
+          ])
+          const bookmarkMap = new Map(bookmarks.map((b) => [b.id, b]))
+          const paired: CardWithBookmark[] = []
+          for (const card of cards) {
+            const bookmark = bookmarkMap.get(card.bookmarkId)
+            if (bookmark) paired.push({ card, bookmark })
+          }
+          setItems(paired)
+        }
+      }
+    } catch { /* BroadcastChannel not supported */ }
+
+    return () => { channel?.close() }
+  }, [db, currentFolder])
+
   // ── Performance tier ─────────────────────────────────────────
   const perfTier = useFrameMonitor(items.length)
   const enableTilt = perfTier === 'full' || perfTier === 'reduced-spotlight'
@@ -542,78 +569,57 @@ export function BoardClient(): React.ReactElement {
     }
   }, [items, isGrid, gridPositions]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** Threshold in pixels — movement below this is treated as a click, not a drag */
-  const CLICK_THRESHOLD = 5
-
   /** Helper: create GSAP Draggable for a card wrapper.
-   * Reads current position from el.style.left/top on each drag event
-   * instead of relying on closure values (which go stale because
-   * Draggable instances aren't recreated on re-render). */
+   * Uses GSAP's built-in onClick for click detection.
+   * Disables iframe pointer-events during drag to prevent mouseup capture. */
   function createDraggableForCard(el: HTMLElement, cardId: string): Draggable {
-    let dragMoved = false
-
     const instances = Draggable.create(el, {
       type: 'x,y',
       zIndexBoost: false,
+      onClick() {
+        // GSAP fires onClick only when the user clicks without dragging.
+        // Open URL in new tab for non-video cards.
+        const bookmark = itemsRef.current.find((item) => item.card.id === cardId)?.bookmark
+        if (bookmark && bookmark.type !== 'tweet' && bookmark.type !== 'youtube') {
+          window.open(bookmark.url, '_blank', 'noopener')
+        }
+      },
       onDragStart() {
-        dragMoved = false
-        // Cursor + tilt freeze
+        // Disable iframe pointer-events so mouseup isn't captured by iframe
+        el.querySelectorAll('iframe').forEach((f) => { (f as HTMLElement).style.pointerEvents = 'none' })
         el.style.cursor = 'grabbing'
         const tiltEl = el.querySelector<HTMLElement>('[data-tilt]')
         if (tiltEl) tiltEl.dataset.dragging = 'true'
-        // Pickup animation: lift + shadow
         el.style.zIndex = String(Z_INDEX.CANVAS_CARD_DRAGGING)
         gsap.to(el, {
           scale: 1.06,
           boxShadow: 'var(--shadow-drag)',
           duration: 0.25,
           ease: 'back.out(1.7)',
-          overwrite: 'auto',
         })
       },
       onDrag() {
-        const px = this.x ?? 0
-        const py = this.y ?? 0
-        if (Math.abs(px) > CLICK_THRESHOLD || Math.abs(py) > CLICK_THRESHOLD) {
-          dragMoved = true
-        }
-        // GSAP Draggable auto-compensates for parent scale, so no zoom division
         const baseX = parseFloat(el.style.left) || 0
         const baseY = parseFloat(el.style.top) || 0
-        handleDrag(cardId, baseX + px, baseY + py)
+        handleDrag(cardId, baseX + (this.x ?? 0), baseY + (this.y ?? 0))
       },
       onDragEnd() {
-        // Cursor + tilt unfreeze
+        // Re-enable iframe pointer-events
+        el.querySelectorAll('iframe').forEach((f) => { (f as HTMLElement).style.pointerEvents = '' })
         el.style.cursor = 'grab'
         const tiltEl = el.querySelector<HTMLElement>('[data-tilt]')
         if (tiltEl) delete tiltEl.dataset.dragging
 
-        // If barely moved, treat as click → open URL in new tab
-        // Skip for video/tweet cards (those have interactive iframes)
-        if (!dragMoved) {
-          gsap.set(el, { x: 0, y: 0, scale: 1, boxShadow: '' })
-          el.style.zIndex = ''
-          const bookmark = itemsRef.current.find((item) => item.card.id === cardId)?.bookmark
-          if (bookmark && bookmark.type !== 'tweet' && bookmark.type !== 'youtube') {
-            window.open(bookmark.url, '_blank', 'noopener')
-          }
-          return
-        }
-
-        // 1. Calculate new position
+        // Calculate and set new position immediately
         const baseX = parseFloat(el.style.left) || 0
         const baseY = parseFloat(el.style.top) || 0
-        const px = this.endX ?? 0
-        const py = this.endY ?? 0
-        const newX = baseX + px
-        const newY = baseY + py
-
-        // 2. Update CSS position + reset transform IMMEDIATELY (no animation on x/y)
+        const newX = baseX + (this.endX ?? 0)
+        const newY = baseY + (this.endY ?? 0)
         el.style.left = `${newX}px`
         el.style.top = `${newY}px`
         gsap.set(el, { x: 0, y: 0 })
 
-        // 3. Animate ONLY scale/shadow back (not x/y — avoids Draggable state corruption)
+        // Animate only scale/shadow back
         gsap.to(el, {
           scale: 1,
           boxShadow: '',
