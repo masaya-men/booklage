@@ -532,30 +532,46 @@ export function BoardClient(): React.ReactElement {
         )
       }
 
-      // Read actual rendered size from DOM (stored dimensions may not match)
+      // Use actual DOM position (getBoundingClientRect) — most reliable
       const domEl = document.querySelector<HTMLElement>(`[data-card-wrapper="${cardId}"]`)
-      const currentZoom = canvas.state.zoom
-      const cardW = domEl ? domEl.offsetWidth / currentZoom : (card?.width ?? 240)
-      const cardH = domEl ? domEl.offsetHeight / currentZoom : (card?.height ?? 180)
+      const curZoom = canvas.state.zoom
+      const curPanX = canvas.state.panX
+      const curPanY = canvas.state.panY
 
-      // Calculate zoom to fit card comfortably (60% of usable area), capped at 1.5
+      // Get card's world-space center from its actual rendered position
+      let worldCenterX: number
+      let worldCenterY: number
+      let worldW: number
+      let worldH: number
+
+      if (domEl) {
+        const rect = domEl.getBoundingClientRect()
+        worldCenterX = (rect.left + rect.width / 2 - curPanX) / curZoom
+        worldCenterY = (rect.top + rect.height / 2 - curPanY) / curZoom
+        worldW = rect.width / curZoom
+        worldH = rect.height / curZoom
+      } else {
+        worldCenterX = x + (card?.width ?? 240) / 2
+        worldCenterY = y + (card?.height ?? 180) / 2
+        worldW = card?.width ?? 240
+        worldH = card?.height ?? 180
+      }
+
+      // Calculate zoom to fit card comfortably (65% of usable area), capped at 1.5
       const folderNavWidth = 120
       const usableWidth = window.innerWidth - folderNavWidth
       const usableHeight = window.innerHeight
-      const padding = 0.6
       const targetZoom = Math.min(
-        (usableWidth * padding) / cardW,
-        (usableHeight * padding) / cardH,
+        (usableWidth * 0.65) / worldW,
+        (usableHeight * 0.65) / worldH,
         1.5,
       )
 
-      // Center on card's actual center point
-      const centerX = x + cardW / 2
-      const centerY = y + cardH / 2
+      // Pan so card center = screen center (accounting for left panel)
       const screenCenterX = folderNavWidth + usableWidth / 2
       const screenCenterY = usableHeight / 2
-      const targetPanX = -centerX * targetZoom + screenCenterX
-      const targetPanY = -centerY * targetZoom + screenCenterY
+      const targetPanX = -worldCenterX * targetZoom + screenCenterX
+      const targetPanY = -worldCenterY * targetZoom + screenCenterY
       const proxy = { panX: canvas.state.panX, panY: canvas.state.panY, zoom: canvas.state.zoom }
       gsap.to(proxy, {
         panX: targetPanX,
