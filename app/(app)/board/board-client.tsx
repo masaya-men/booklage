@@ -532,10 +532,20 @@ export function BoardClient(): React.ReactElement {
         )
       }
 
-      // Animate canvas to center the card with smooth easing
-      const targetZoom = 1
-      const targetPanX = -x * targetZoom + window.innerWidth / 2
-      const targetPanY = -y * targetZoom + window.innerHeight / 2
+      // Calculate zoom to fit card comfortably (60% of screen), capped at 1.5
+      const cardW = card?.width ?? 240
+      const cardH = card?.height ?? 180
+      const padding = 0.6
+      const targetZoom = Math.min(
+        (window.innerWidth * padding) / cardW,
+        (window.innerHeight * padding) / cardH,
+        1.5,
+      )
+      // Center on card's center point, not top-left
+      const centerX = x + cardW / 2
+      const centerY = y + cardH / 2
+      const targetPanX = -centerX * targetZoom + window.innerWidth / 2
+      const targetPanY = -centerY * targetZoom + window.innerHeight / 2
       const proxy = { panX: canvas.state.panX, panY: canvas.state.panY, zoom: canvas.state.zoom }
       gsap.to(proxy, {
         panX: targetPanX,
