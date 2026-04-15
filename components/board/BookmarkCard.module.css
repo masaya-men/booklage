@@ -1,4 +1,5 @@
 .card {
+  position: relative;
   width: var(--card-width, 240px);
   container-type: inline-size;
   background: var(--color-card-bg);
@@ -21,6 +22,28 @@
   transform: scale(1.03) translateY(-2px);
   box-shadow: var(--shadow-lg), var(--shadow-glow);
   border-color: var(--color-accent-primary, rgba(124, 92, 252, 0.3));
+}
+
+.card::after {
+  content: 'クリックで開く ↗';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 10px;
+  font-family: var(--font-body);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 5;
+}
+
+.card:hover::after {
+  opacity: 1;
 }
 
 /* ── Thumbnail variant ──────────────────────────────────────── */

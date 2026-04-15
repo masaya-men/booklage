@@ -1056,16 +1056,20 @@ export function BoardClient(): React.ReactElement {
           <div
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               height: '100%',
-              color: 'var(--color-text-tertiary)',
-              fontFamily: 'var(--font-heading)',
-              fontSize: 'var(--text-xl)',
+              gap: '16px',
               pointerEvents: 'none',
             }}
           >
-            URLを入力してブックマークを追加しよう
+            <span style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)' }}>
+              URLを入力してブックマークを追加しよう
+            </span>
+            <span style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-body)', fontSize: 'var(--text-xs)', opacity: 0.6 }}>
+              スクロール: ズーム　｜　中ボタンドラッグ / Space+ドラッグ: 移動
+            </span>
           </div>
         )}
       </Canvas>
@@ -1119,6 +1123,39 @@ export function BoardClient(): React.ReactElement {
 
       <ViewModeToggle mode={viewMode} onToggle={setViewMode} />
       <ExportButton canvasRef={worldRef} />
+      {/* ── Quick theme toggle (top-right, below export) ── */}
+      <button
+        onClick={() => {
+          const next = bgTheme === 'dark' ? 'minimal-white' : 'dark'
+          handleBgThemeChange(next)
+        }}
+        style={{
+          position: 'fixed',
+          top: 60,
+          right: 16,
+          zIndex: Z_INDEX.TOOLBAR,
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          border: '1px solid var(--color-glass-border)',
+          background: 'var(--color-glass-bg)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          color: 'var(--color-text-primary)',
+          fontSize: '16px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'transform 0.3s var(--ease-out-back)',
+        }}
+        onMouseEnter={(e) => { (e.target as HTMLElement).style.transform = 'scale(1.1)' }}
+        onMouseLeave={(e) => { (e.target as HTMLElement).style.transform = 'scale(1)' }}
+        type="button"
+        title={bgTheme === 'dark' ? 'ライトモード' : 'ダークモード'}
+      >
+        {bgTheme === 'dark' ? '☀' : '☾'}
+      </button>
       {/* ── Compact bottom toolbar (above UrlInput) ── */}
       <div
         style={{
