@@ -7,6 +7,9 @@ import { generateCardDimensions } from '@/lib/canvas/card-sizing'
 // Types
 // ---------------------------------------------------------------------------
 
+/** OGP fetch lifecycle status */
+export type OgpStatus = 'pending' | 'fetched' | 'failed'
+
 /** Bookmark record stored in IndexedDB */
 export interface BookmarkRecord {
   /** UUID primary key */
@@ -29,6 +32,8 @@ export interface BookmarkRecord {
   savedAt: string
   /** Parent folder ID */
   folderId: string
+  /** OGP fetch status: pending (not yet fetched), fetched (done), failed (needs retry) */
+  ogpStatus: OgpStatus
 }
 
 /** Folder record stored in IndexedDB */
@@ -102,7 +107,7 @@ export interface SettingsRecord {
 // ---------------------------------------------------------------------------
 
 /** Input for creating a new bookmark (id and savedAt are auto-generated) */
-export type BookmarkInput = Omit<BookmarkRecord, 'id' | 'savedAt'>
+export type BookmarkInput = Omit<BookmarkRecord, 'id' | 'savedAt' | 'ogpStatus'> & { ogpStatus?: OgpStatus }
 
 /** Input for creating a new folder (id and createdAt are auto-generated) */
 export type FolderInput = Omit<FolderRecord, 'id' | 'createdAt'>
@@ -210,6 +215,23 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
           return cursor.continue().then(addSizeFields)
         })
       }
+
+      // ── v3 → v4: add ogpStatus to bookmarks ──
+      if (oldVersion < 4) {
+        const bookmarkStore = transaction.objectStore('bookmarks')
+        bookmarkStore.createIndex('by-ogp-status', 'ogpStatus')
+        void bookmarkStore.openCursor().then(function addOgpStatus(
+          cursor: Awaited<ReturnType<typeof bookmarkStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          const bookmark = {
+            ...cursor.value,
+            ogpStatus: (cursor.value as BookmarkRecord & { ogpStatus?: string }).ogpStatus ?? 'fetched',
+          }
+          void cursor.update(bookmark)
+          return cursor.continue().then(addOgpStatus)
+        })
+      }
     },
   })
 }
@@ -276,6 +298,7 @@ export async function addBookmark(
     type: input.type,
     savedAt: new Date().toISOString(),
     folderId: input.folderId,
+    ogpStatus: input.ogpStatus ?? 'fetched',
   }
 
   // Use a transaction to atomically create both bookmark and card
@@ -430,4 +453,116 @@ export async function savePreferences(
 ): Promise<void> {
   const current = await getPreferences(db)
   await db.put('preferences', { ...current, ...prefs, key: 'main' })
+}
+
+// ---------------------------------------------------------------------------
+// OGP helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Update a bookmark's OGP data after background fetch.
+ * @param db - The database instance
+ * @param bookmarkId - The bookmark ID to update
+ * @param ogpData - OGP fields to merge plus the new ogpStatus
+ */
+export async function updateBookmarkOgp(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  ogpData: {
+    title?: string
+    description?: string
+    thumbnail?: string
+    favicon?: string
+    siteName?: string
+    ogpStatus: OgpStatus
+  },
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  const updated: BookmarkRecord = { ...existing, ...ogpData }
+  await db.put('bookmarks', updated)
+}
+
+// ---------------------------------------------------------------------------
+// Bulk / cross-folder queries
+// ---------------------------------------------------------------------------
+
+/**
+ * Get all bookmarks across all folders.
+ * @param db - The database instance
+ * @returns Array of all BookmarkRecord
+ */
+export async function getAllBookmarks(
+  db: IDBPDatabase<BooklageDB>,
+): Promise<BookmarkRecord[]> {
+  return db.getAll('bookmarks')
+}
+
+/**
+ * Add multiple bookmarks in batches with associated cards.
+ * Writes are batched across transactions for performance on large imports.
+ * @param db - The database instance
+ * @param inputs - Array of bookmark inputs to create
+ * @param batchSize - Number of bookmarks per transaction (default: 50)
+ * @param onProgress - Optional callback called after each batch with total completed count
+ * @returns Array of created BookmarkRecord
+ */
+export async function addBookmarkBatch(
+  db: IDBPDatabase<BooklageDB>,
+  inputs: BookmarkInput[],
+  batchSize: number = 50,
+  onProgress?: (completed: number) => void,
+): Promise<BookmarkRecord[]> {
+  const results: BookmarkRecord[] = []
+
+  for (let i = 0; i < inputs.length; i += batchSize) {
+    const batch = inputs.slice(i, i + batchSize)
+    const tx = db.transaction(['bookmarks', 'cards'], 'readwrite')
+    const bookmarkStore = tx.objectStore('bookmarks')
+    const cardStore = tx.objectStore('cards')
+
+    const existingCards = await cardStore.index('by-folder').getAll(batch[0].folderId)
+    let gridIndex = existingCards.length
+
+    for (const input of batch) {
+      const bookmark: BookmarkRecord = {
+        id: uuid(),
+        url: input.url,
+        title: input.title,
+        description: input.description,
+        thumbnail: input.thumbnail,
+        favicon: input.favicon,
+        siteName: input.siteName,
+        type: input.type,
+        savedAt: new Date().toISOString(),
+        folderId: input.folderId,
+        ogpStatus: input.ogpStatus ?? 'fetched',
+      }
+      await bookmarkStore.put(bookmark)
+
+      const pos = randomPosition()
+      const dimensions = generateCardDimensions('random', 'random')
+      const card: CardRecord = {
+        id: uuid(),
+        bookmarkId: bookmark.id,
+        folderId: bookmark.folderId,
+        x: pos.x,
+        y: pos.y,
+        rotation: randomRotation(),
+        scale: 1,
+        zIndex: 1,
+        gridIndex: gridIndex++,
+        isManuallyPlaced: false,
+        width: dimensions.width,
+        height: dimensions.height,
+      }
+      await cardStore.put(card)
+      results.push(bookmark)
+    }
+
+    await tx.done
+    onProgress?.(results.length)
+  }
+
+  return results
 }
