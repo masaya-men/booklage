@@ -1,210 +1,109 @@
 # Booklage 開発ToDo
 
 > 完了済みタスクは [TODO_COMPLETED.md](./TODO_COMPLETED.md) に移動済み
+> デザイン参考資料は [DESIGN_REFERENCES.md](./DESIGN_REFERENCES.md) を参照
 
 ---
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master`
-- **注意**: mainブランチが空のまま。masterで開発中
-- **進捗**: S1, S2, S3, S5, S6, S7, S8, **S9完了**, デプロイ完了 → 次は S4（広告）or UX磨き
-- **S9新規ファイル**: `lib/import/`（7パーサー+型+重複排除+バッチエンジン）、`components/import/`（3ステップモーダル）、`components/board/BookmarkListPanel.tsx`
-- **DBバージョン**: v4（ogpStatus追加）
+- **ブランチ**: `master`（push済み、本番デプロイ済み）
+- **進捗**: S1〜S3, S5〜S9 完了、デプロイ済み → **次はUX磨きスプリント**
 - **本番URL**: `https://booklage.pages.dev`
-- **新規依存**: `lenis`（スムーズスクロール）、`wrangler`（Cloudflare CLI、devDep）
-- **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public、push済み）
-- **API**: Next.js API Route → Cloudflare Pages Functions に移行済み（`functions/api/ogp.ts`, `functions/api/oembed.ts`）
+- **DBバージョン**: v4（ogpStatus追加）
+- **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
-- **デプロイ**: Cloudflare Pages自動デプロイが動いていない。`npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true` で手動デプロイが必要
-- **Twitter/YouTube埋め込み**: iframe方式（react-tweetから移行済み）。初期状態はpointer-events:noneでtilt追従、クリックでiframe操作可能に
+- **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
+- **テスト**: 全108件パス（vitest）、TypeScript型チェッククリア
+
+### 直近の作業（2026-04-15セッション）
+
+- S9一括インポート全実装（15コミット）
+  - 7パーサー（ブラウザHTML/YouTube CSV/TikTok JSON/Reddit CSV/Twitter CSV・JSON/Instagram CSV・JSON/URLリスト）
+  - 3ステップモーダル（ソース選択→ファイル入力→プレビュー&実行）
+  - バッチインポートエンジン（重複排除、バックグラウンドOGP取得、リトライ）
+  - ブックマークリストパネル（カードナビゲーション、OGPリトライ）
+  - リスト→カード中央配置（ビューポート相対座標変換で正確に中央）
+  - Google Earth風ズームアウト/ズームインアニメーション
 
 ### 重要な技術判断（確定済み）
 
-1. **ReactのDOM管理がGSAP Draggableを壊す** — カードのwrapper divはDOM APIで直接作成し、`createPortal`でカード中身をレンダリングする方式に変更済み。`board-client.tsx`内のuseEffectでDraggable管理
-2. **リキッドグラス** — Chrome検出成功、UIパネル+カードに屈折効果あり。物理ベース（スネルの法則）のdisplacement map + スペキュラーハイライト実装済み
-3. **React Strict Mode** — GSAP互換性のため`next.config.ts`で`reactStrictMode: false`に設定中
-4. **CardPortalContent** — tilt/spotlight/liquid glass/resize handleを統合した内部コンポーネント。各カードがポータル経由でレンダリング
-
-### S3 完了済み
-
-- [x] リキッドグラス基盤（displacement map生成、Provider、Hook、Chrome検出）
-- [x] UIパネル全てにリキッドグラス適用（FolderNav, UrlInput, ViewModeToggle等）
-- [x] **カードにもリキッドグラス適用**（glass style時にSVGフィルター自動適用）
-- [x] カードスタイル4種のCSS（Glass, Polaroid, Newspaper, Magnet） — 切替動作確認済み
-- [x] テーマ→カラーモード自動連動
-- [x] UIモード独立トグル（自動/ダーク/ライト）
-- [x] Cardboard背景テーマ + 手書きフォント(Caveat)
-- [x] カードサイズ/アスペクト比プリセット + ランダム生成コード
-- [x] DB Migration v3（width/height + UserPreferences）
-- [x] 統合設定パネル（背景/スタイル/UIモード/サイズ/比率）
-- [x] カードドラッグ（DOM API方式で動作確認済み）
-- [x] FPS監視 + 段階的劣化コード
-- [x] **3D tilt + spotlight 再接続**（CardPortalContent + useCardTilt hook）
-- [x] **着地リプル 再接続**（handleDragEnd内でcreateRipple呼び出し）
-- [x] **リサイズハンドル 再接続**（ポータル内にResizeHandle配置）
-- [x] **リパルション接続確認**（handleDrag→applyRepulsion、handleDragEnd→resetRepulsion）
-- [x] **ドラッグアニメーション**（ピックアップ時scale+shadow、着地バウンス）
-- [x] **ホバーエフェクト磨き**（border-colorアクセント、scale調整）
-- [x] **カーソル統一**（wrapper→grab/grabbing、子要素はinherit）
-- [x] **FPS監視バグ修正** — useFrameMonitorが一時的FPS低下で永久劣化していた。閾値緩和（30fps→degrade、45fps以上×3回→recover）
-
-### S5 完了済み
-
-- [x] ブックマークレットJS URI改修（OGP抽出+window.openインライン方式）
-- [x] `/save` ページルート（Server Component + Suspense）
-- [x] SavePopupコンポーネント（プレビュー、フォルダ選択、新規フォルダ作成、IndexedDB保存、自動クローズ）
-- [x] BookmarkletBanner（boardページ左下にドラッグ可能リンク配置）
-- [x] Playwrightブラウザテスト全通過（/save保存フロー、パラメータなし案内、boardバナー表示）
-
-**S5 新規作成ファイル:**
-- `app/(app)/save/page.tsx` — /saveルート
-- `components/bookmarklet/SavePopup.tsx` + `.module.css` — ポップアップUI
-- `components/bookmarklet/BookmarkletBanner.tsx` + `.module.css` — 取得バナー
-
-**S5 変更ファイル:**
-- `lib/utils/bookmarklet.ts` — インラインOGP抽出方式に全面改修
-- `tests/lib/bookmarklet.test.ts` — テスト5件に拡張
-- `app/(app)/board/board-client.tsx` — BookmarkletBanner追加
-
-### S7 完了済み
-
-- [x] Lenis スムーズスクロール + GSAP ScrollTrigger 基盤Hook
-- [x] LandingPage シェル（ノイズテクスチャ背景）
-- [x] HeroSection（グラデーションキャッチ + 浮遊ガラスカード + ブラー入場アニメーション）
-- [x] SaveDemoSection（ブックマークレット3ステップフロー、ScrollTrigger連動）
-- [x] CollageDemoSection（カード5枚が四方から飛来してコラージュ組み上げ）
-- [x] StyleSwitchSection（Glass/Polaroid/Newspaper/Magnetプレビュー）
-- [x] ShareDemoSection（コラージュ→PNG→SNS共有フロー）
-- [x] CtaSection（"Make it yours." + 最終CTA）
-- [x] Playwrightブラウザテスト全通過
-
-**S7 新規作成ファイル:**
-- `lib/scroll/use-smooth-scroll.ts` — Lenis初期化Hook
-- `lib/scroll/use-scroll-trigger.ts` — ScrollTrigger初期化Hook
-- `components/marketing/LandingPage.tsx` + `.module.css` — LP全体シェル
-- `components/marketing/sections/HeroSection.tsx` + `.module.css`
-- `components/marketing/sections/SaveDemoSection.tsx` + `.module.css`
-- `components/marketing/sections/CollageDemoSection.tsx` + `.module.css`
-- `components/marketing/sections/StyleSwitchSection.tsx` + `.module.css`
-- `components/marketing/sections/ShareDemoSection.tsx` + `.module.css`
-- `components/marketing/sections/CtaSection.tsx` + `.module.css`
-
-**S7 変更ファイル:**
-- `app/page.tsx` — LandingPageコンポーネントに置き換え
-- `package.json` — lenis追加
-
-### S6 完了済み
-
-- [x] `extractUrlFromText` ユーティリティ（URL抽出 + テスト7件）
-- [x] PWAアイコン生成スクリプト（`scripts/generate-pwa-icons.mjs`）+ icon-192/512.png
-- [x] manifest.json に `purpose: "any maskable"` 追加
-- [x] Service Worker（プリキャッシュ + キャッシュ戦略）
-- [x] SW登録（layout.tsx）+ apple-touch-icon
-- [x] Web Share Target 受け取り処理（board-client.tsx）
-- [x] InstallPrompt コンポーネント（beforeinstallprompt + ガラス風バナー）
-
-**S6 新規作成ファイル:**
-- `scripts/generate-pwa-icons.mjs` — アイコン生成スクリプト
-- `public/icon-192.png`, `public/icon-512.png` — PWAアイコン
-- `public/sw.js` — Service Worker
-- `components/pwa/InstallPrompt.tsx` + `.module.css` — インストール促進UI
-
-**S6 変更ファイル:**
-- `public/manifest.json` — purpose追加
-- `app/layout.tsx` — SW登録 + apple-touch-icon
-- `lib/utils/url.ts` — extractUrlFromText追加
-- `tests/lib/url.test.ts` — テスト7件追加
-- `lib/constants.ts` — Z_INDEX.INSTALL_PROMPT追加
-- `app/(app)/board/board-client.tsx` — Web Share Target + InstallPrompt統合
-
-### 次にやること（S3の仕上げ — 後でブラッシュアップ）
-
-1. **最終確認** — 各テーマ×各スタイルの組み合わせ確認
-2. **パフォーマンス確認** — 50枚カード時のFPS（perfTier段階的劣化の動作）
-3. **エッジケース** — リサイズ後の液体ガラスフィルター再計算、グリッド↔コラージュ切替時の挙動
-
-### 変更ファイル一覧（S3で追加・変更した主要ファイル）
-
-**新規作成:**
-- `lib/glass/displacement-map.ts` — 物理ベース屈折のdisplacement map生成
-- `lib/glass/LiquidGlassProvider.tsx` — SVGフィルター定義 + Chrome検出コンテキスト
-- `lib/glass/use-liquid-glass.ts` — リキッドグラス適用Hook
-- `lib/interactions/use-card-tilt.ts` — 3D tilt Hook（CardPortalContent経由で接続済み）
-- `lib/interactions/use-card-repulsion.ts` — 距離ベースリパルション
-- `lib/interactions/use-frame-monitor.ts` — FPS監視
-- `lib/interactions/ripple.ts` — 着地波紋エフェクト
-- `lib/theme/theme-utils.ts` — テーマ→カラーモードマッピング
-- `lib/canvas/card-sizing.ts` — ランダムサイズ/比率生成
-- `components/board/card-styles/CardStyleWrapper.tsx` + `.module.css`
-- `components/board/ResizeHandle.tsx` + `.module.css`
-- `components/board/SettingsPanel.tsx` + `.module.css`
-
-**主要変更:**
-- `app/(app)/board/board-client.tsx` — 全システム統合。CardPortalContent追加、ドラッグアニメ、リプル、tilt/glass/resize接続
-- `app/globals.css` — リキッドグラスCSS、tilt/spotlight、drag状態、ripple keyframes
-- `app/layout.tsx` — Caveatフォント、data-ui-theme属性
-- `lib/constants.ts` — DB_VERSION=3、カードサイズ定数
-- `lib/storage/indexeddb.ts` — v3 migration、UserPreferences
-- `components/board/Canvas.tsx` — LiquidGlassProvider削除（board-clientに移動）
-- `components/board/card-styles/CardStyleWrapper.tsx` — liquidGlassプロパティ追加
-- `components/board/card-styles/CardStyleWrapper.module.css` — liquid-glass-active時のblur無効化
-- `components/board/BookmarkCard.module.css` — cursor inherit、hover border-color追加
-- `components/board/TweetCard.module.css` — cursor inherit
-- `next.config.ts` — reactStrictMode: false
+1. **ReactのDOM管理がGSAP Draggableを壊す** → DOM API + createPortal方式
+2. **リキッドグラス** — Chrome検出、物理ベース屈折、UIパネル+カードに適用済み
+3. **React Strict Mode** — GSAP互換性のため`reactStrictMode: false`
+4. **カードナビゲーション座標変換** — getBoundingClientRect→ビューポート相対→ワールド座標逆算。`use-infinite-canvas.ts`に`setTransform()`追加済み
 
 ---
 
-## 確定した設計方針（2026-04-10 確認）
+## 次にやること: UX磨きスプリント（最優先）
+
+**目標: Booklageを「触って感動する」レベルにする**
+
+必ず `docs/DESIGN_REFERENCES.md` を読んでから着手すること。
+
+### 優先度1（コア体験の品質）
+- [ ] **リキッドグラス透明化 + ぽよんぽよん変形**
+  - 現在は黒ずんでいる → 本物のガラスのように透明に
+  - マウス移動時に水玉のように有機的に変形
+  - 参考: https://kube.io/blog/liquid-glass-css-svg/
+- [ ] **カスタムスクロールバー（全ページ統一）**
+  - デフォルトはダサい、全箇所でオリジナルに
+- [ ] **カード自由リサイズ改善**
+  - 位置ずれ修正
+  - 動画/ツイート埋め込みカードのサイズ制御
+
+### 優先度2（見た目の差別化）
+- [ ] **背景テーマ追加（現実マテリアル系）**
+  - カッティングマット（緑）、普通のノート、点線ノート、作図用紙
+- [ ] **Moodboard 3000風グリッド整理**
+  - 参考: Figma plugin Moodboard 3000
+  - 画像をぴったり隙間なく美しく配置
+
+### 優先度3（インタラクションの楽しさ）
+- [ ] **カード回転アニメーション**
+  - クリック→くるっと横回転（参考: marijanapav）
+- [ ] **Fluid Functionalismアニメーション**
+  - 参考: https://github.com/mickadesign/fluid-functionalism
+
+### 将来（ユーザー反応を見てから）
+- [ ] カスタムカーソル（リキッドグラス虫眼鏡 + コレクション12種）
+- [ ] 3D球体ナビゲーション（snapdom参考、地球の反対側感）
+- [ ] html-in-canvas（パフォーマンス改善）
+- [ ] S4: 広告基盤（ユーザーが付いてから）
+- [ ] Booklage専用Chrome拡張（S10）
+- [ ] 残り13言語のi18n対応
+
+---
+
+## 確定した設計方針
 
 - サーバー費¥0（Cloudflare Pages無料枠のみ）
 - ユーザーデータ一切非保持（IndexedDBのみ）
 - ブックマークレットが主導線（Worker不要でOGP取得）
-- 画像は外部サイトから直接表示
 - 無限キャンバス: Figma/Miro風
-- **ReactのDOM管理はGSAP Draggableと互換性がない** → DOM API + createPortal方式
+- ReactのDOM管理はGSAP Draggableと互換性がない → DOM API + createPortal方式
 
-## バグ・不具合（要修正）
+## 既存のUX磨きリスト（前セッションから引き継ぎ）
 
-（なし — Critical修正済み）
-
-## UX磨き（後回しでOK）
-
-- [ ] ガラス縁: 動画カードにもガラスの縁を常時表示（カードより大きいガラスを被せる）
-- [ ] 動画カードのtilt: アクティブ時（iframe操作中）はtilt追従不可（ブラウザ仕様制限）→ CSS揺れアニメで代替検討
-- [ ] UIレイアウト整理: 線が重複・配置が不明瞭な箇所の修正
-- [ ] テーマ切替ボタン: 設定パネル以外（ヘッダー等）からもアクセス可能に
-- [ ] 白地+黒格子柄テーマ追加
-- [ ] LP/全ページのダーク↔ライト切替対応（明るいテーマをデフォルトに検討）
-- [ ] カードz-index制御: 前後関係を能動的に変更できるUI
-- [ ] リサイズ改善: 位置ずれ修正 + 自由変形（将来: 台形等）
-- [ ] キャンバス操作の案内UI: Space+ドラッグ or 中クリックでパン、ホイールでズーム
+- [ ] ガラス縁: 動画カードにもガラスの縁を常時表示
+- [ ] UIレイアウト整理: 配置が不明瞭な箇所の修正
+- [ ] テーマ切替ボタン: 設定パネル以外からもアクセス可能に
+- [ ] LP/全ページのダーク↔ライト切替対応（明るいテーマをデフォルトに）
+- [ ] キャンバス操作の案内UI
 - [ ] ブックマークレットのデザイン/アニメーション改善
 - [ ] カードホバー時に「クリックで開く」のツールチップ表示
 
-## 未着手（S3後にやること）
+## YouTube Takeout の問題
 
-- [ ] S4: 広告基盤
-- [x] S5: ブックマークレットUI ✅
-- [x] S6: PWA + スマホ保存 ✅
-- [x] S7: LP（デモ型6セクション）✅
-- [x] S8: 静的ページ（Privacy, Terms, FAQ, About, Contact）✅
-- [x] Cloudflare Pagesデプロイ ✅（booklage.pages.dev）
-- [x] S9: 一括インポート機能 ✅（7プラットフォーム対応、3ステップモーダル、リストパネル）
-
-## 未着手（将来）
-
-- [ ] 残り13言語のi18n対応
-- [ ] Remotionプロモ動画
-- [ ] OGP画像生成（Satori）
-- [ ] PiPドロップゾーン（v1.2）
+- Google Takeoutは「後で見る」を含むが、エクスポートに**数時間かかり非現実的**
+- ZIP直接アップロード未対応（手動展開が必要）
+- 代替手段を検討すべき: YouTube API直接 or Chrome拡張推奨
 
 ## アイデア・やりたいこと
 
-- ~~カードにもリキッドグラスを適用~~ → 完了（glassスタイル時に自動適用）
-- 方眼紙は白系背景に黒い格子パターンも追加
 - もっと多くのカードスタイル（ネオン、布、羊皮紙等）
 - 音フィードバック（ホバー/クリック時の微かな音）
-- LPの磨き上げ（説明不足、クオリティ向上が必要 — マーケティング開始前に実施）
-- LPは明るいテーマをデフォルトにする方が雰囲気に合う（ユーザーフィードバック）
-- 複数動画の同時視聴はBooklageならではの体験 → 訴求ポイントに
+- LPの磨き上げ（マーケティング開始前に実施）
+- LPは明るいテーマをデフォルト
+- 複数動画の同時視聴はBooklageならではの体験 → 訴求ポイント
+- レンズカーソル参考: https://r3f.maximeheckel.com/lens2
