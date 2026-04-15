@@ -516,8 +516,11 @@ export function BoardClient(): React.ReactElement {
   )
 
   // ── Navigate to card handler (for list panel) ─────────────────
+  // Save canvas state before list panel opens, so we can restore on close
+  const preListStateRef = useRef<{ panX: number; panY: number; zoom: number } | null>(null)
+
   const handleNavigateToCard = useCallback(
-    (cardId: string, x: number, y: number): void => {
+    (cardId: string, _x: number, _y: number): void => {
       // Bring card to front
       const card = items.find((i) => i.card.id === cardId)?.card
       if (card && db) {
@@ -532,45 +535,47 @@ export function BoardClient(): React.ReactElement {
         )
       }
 
-      // Get card's world-space position directly from DOM + GSAP
-      // This is the most reliable method:
-      // - CSS left/top = base position in world space
-      // - gsap.getProperty(x/y) = drag offset from GSAP Draggable
-      // - offsetWidth/Height = world-space size (not affected by parent zoom)
       const domEl = document.querySelector<HTMLElement>(`[data-card-wrapper="${cardId}"]`)
+      if (!domEl) return
 
-      let worldCenterX: number
-      let worldCenterY: number
-      let worldW: number
-      let worldH: number
+      // Step 1: Get card's current screen position (absolute truth from browser)
+      const cardRect = domEl.getBoundingClientRect()
 
-      if (domEl) {
-        const cssLeft = parseFloat(domEl.style.left) || 0
-        const cssTop = parseFloat(domEl.style.top) || 0
-        const gsapDragX = Number(gsap.getProperty(domEl, 'x')) || 0
-        const gsapDragY = Number(gsap.getProperty(domEl, 'y')) || 0
-        worldW = domEl.offsetWidth
-        worldH = domEl.offsetHeight
-        worldCenterX = cssLeft + gsapDragX + worldW / 2
-        worldCenterY = cssTop + gsapDragY + worldH / 2
-      } else {
-        worldW = card?.width ?? 240
-        worldH = card?.height ?? 180
-        worldCenterX = x + worldW / 2
-        worldCenterY = y + worldH / 2
-      }
+      // Step 2: Get viewport element to convert coordinates correctly
+      // The viewport is the Canvas's container — world div is its child
+      const worldEl = domEl.parentElement
+      const viewportEl = worldEl?.parentElement
+      const vpRect = viewportEl?.getBoundingClientRect() ?? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
 
-      // Zoom to fit card in 65% of usable viewport, cap at 1.5x
-      const folderNavWidth = 120
-      const usableW = window.innerWidth - folderNavWidth
-      const usableH = window.innerHeight
-      const targetZoom = Math.min(usableW * 0.65 / worldW, usableH * 0.65 / worldH, 1.5)
+      // Step 3: Card center in viewport-relative coordinates
+      const cardVpCX = (cardRect.left + cardRect.width / 2) - vpRect.left
+      const cardVpCY = (cardRect.top + cardRect.height / 2) - vpRect.top
 
-      // Pan so world center of card maps to screen center of usable area
-      // Formula: screenPos = worldPos * zoom + pan → pan = screenPos - worldPos * zoom
-      const targetPanX = (folderNavWidth + usableW / 2) - worldCenterX * targetZoom
-      const targetPanY = usableH / 2 - worldCenterY * targetZoom
-      const proxy = { panX: canvas.state.panX, panY: canvas.state.panY, zoom: canvas.state.zoom }
+      // Step 4: Convert to world coordinates using current pan/zoom
+      // viewport_pos = world_pos * zoom + pan → world_pos = (viewport_pos - pan) / zoom
+      const { panX, panY, zoom: curZoom } = canvas.state
+      const worldCX = (cardVpCX - panX) / curZoom
+      const worldCY = (cardVpCY - panY) / curZoom
+      const worldW = cardRect.width / curZoom
+      const worldH = cardRect.height / curZoom
+
+      // Step 5: Target zoom — fit card to 65% of viewport
+      const targetZoom = Math.min(
+        vpRect.width * 0.65 / worldW,
+        vpRect.height * 0.65 / worldH,
+        1.5,
+      )
+
+      // Step 6: Target pan — place card center at viewport center
+      // viewport_center = world_center * targetZoom + targetPan
+      // targetPan = viewport_center - world_center * targetZoom
+      const vpCenterX = vpRect.width / 2
+      const vpCenterY = vpRect.height / 2
+      const targetPanX = vpCenterX - worldCX * targetZoom
+      const targetPanY = vpCenterY - worldCY * targetZoom
+
+      // Animate with GSAP
+      const proxy = { panX, panY, zoom: curZoom }
       gsap.to(proxy, {
         panX: targetPanX,
         panY: targetPanY,
