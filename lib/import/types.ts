@@ -37,19 +37,5 @@ export interface ParseResult {
  */
 export type OgpStatus = 'pending' | 'fetched' | 'failed'
 
-/**
- * Folder assignment for import preview
- */
-export interface FolderAssignment {
-  /** Source folder name (from file) */
-  sourceName: string
-  /** Target Booklage folder ID (existing or new) */
-  targetFolderId: string
-  /** Whether this folder needs to be created */
-  isNew: boolean
-  /** Number of bookmarks in this folder */
-  count: number
-}
-
 // Re-export UrlType for convenience within the import module
 export type { UrlType }
