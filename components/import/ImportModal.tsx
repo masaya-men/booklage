@@ -5,7 +5,7 @@ import { gsap } from 'gsap'
 import type { IDBPDatabase } from 'idb'
 import { useLiquidGlass } from '@/lib/glass/use-liquid-glass'
 import { Z_INDEX } from '@/lib/constants'
-import type { ImportSource, ImportedBookmark, ParseResult, FolderAssignment } from '@/lib/import/types'
+import type { ImportSource, ImportedBookmark, ParseResult } from '@/lib/import/types'
 import { executeImport, type ImportProgress as ImportProgressData } from '@/lib/import/batch-import'
 import { SourceSelector } from './SourceSelector'
 import { FileUploader } from './FileUploader'
@@ -34,8 +34,8 @@ type ImportModalProps = {
   onClose: () => void
   /** IndexedDB database instance */
   db: IDBPDatabase<unknown> | null
-  /** Called after import completes successfully */
-  onImportComplete: (savedCount: number) => void
+  /** Called after import completes successfully, with the saved count and the target folder ID */
+  onImportComplete: (savedCount: number, importFolderId: string) => void
 }
 
 /**
@@ -180,7 +180,7 @@ export function ImportModal({
   )
 
   const handleExecute = useCallback(
-    async (bookmarks: ImportedBookmark[], assignments: FolderAssignment[]): Promise<void> => {
+    async (bookmarks: ImportedBookmark[]): Promise<void> => {
       if (!db) return
       animateStepTransition('forward', () => {
         setStep('progress')
@@ -190,13 +190,13 @@ export function ImportModal({
         const result = await executeImport(
           db,
           bookmarks,
-          assignments,
+          new Date(),
           (p) => setProgress(p),
         )
         setSavedCount(result.saved)
         setSkippedCount(result.skipped)
         setIsComplete(true)
-        onImportComplete(result.saved)
+        onImportComplete(result.saved, result.importFolderId)
       } catch {
         setIsComplete(true)
       }
