@@ -65,7 +65,11 @@
 
 ### 将来（ユーザー反応を見てから）
 - [x] カスタムカーソル: ガラスレンズ + 12種エモジカーソル、設定で切替可、IndexedDB保持
-- [ ] 3D球体ナビゲーション（snapdom参考、地球の反対側感）
+- [x] 3D球体ナビゲーション実装（Task 1〜11完了 / Task 12=視覚確認は次セッション）
+  - ブランチ: `claude/hardcore-yalow`、master 未マージ
+  - トグル: テーマボタン下に 🌐/📋（既存 grid/collage とは別管理）
+  - デフォルト `canvasMode: 'flat'` opt-in、WebGL 非対応は自動 flat
+  - 139/139 テスト pass、ビルド OK
 - [ ] html-in-canvas（ブラウザ未実装、待ち）
 - [ ] S4: 広告基盤（ユーザーが付いてから）
 - [x] Chrome拡張: manifest v3, ワンクリック保存, /save経由でIndexedDBに追加
