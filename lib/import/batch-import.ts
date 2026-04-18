@@ -13,6 +13,14 @@ import { findDuplicates } from './deduplicate'
 import { FOLDER_COLORS } from '@/lib/constants'
 import type { IDBPDatabase } from 'idb'
 
+/**
+ * Build the canonical name for an "import bucket" folder based on a local date.
+ * Format: `インポート YYYY-MM-DD`. Uses Swedish locale for stable ISO date output.
+ */
+export function formatImportFolderName(date: Date): string {
+  return `インポート ${date.toLocaleDateString('sv-SE')}`
+}
+
 /** Progress callback for import operations */
 export interface ImportProgress {
   phase: 'saving' | 'ogp'
