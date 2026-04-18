@@ -36,7 +36,7 @@ describe('findImportFolder', () => {
   it('returns null when no folder matches today', async () => {
     const database = await initDB()
     db = database as unknown as IDBPDatabase<unknown>
-    const result = await findImportFolder(database, new Date(2026, 3, 18, 12, 0, 0))
+    const result = await findImportFolder(db!, new Date(2026, 3, 18, 12, 0, 0))
     expect(result).toBeNull()
   })
 
@@ -48,7 +48,7 @@ describe('findImportFolder', () => {
       color: '#ff6b6b',
       order: 0,
     })
-    const result = await findImportFolder(database, new Date(2026, 3, 18, 12, 0, 0))
+    const result = await findImportFolder(db!, new Date(2026, 3, 18, 12, 0, 0))
     expect(result?.id).toBe(created.id)
   })
 
@@ -57,7 +57,7 @@ describe('findImportFolder', () => {
     db = database as unknown as IDBPDatabase<unknown>
     await addFolder(database, { name: 'インポート', color: '#ff6b6b', order: 0 })
     await addFolder(database, { name: 'インポート 2026-04-17', color: '#339af0', order: 1 })
-    const result = await findImportFolder(database, new Date(2026, 3, 18, 12, 0, 0))
+    const result = await findImportFolder(db!, new Date(2026, 3, 18, 12, 0, 0))
     expect(result).toBeNull()
   })
 })
@@ -92,7 +92,7 @@ describe('executeImport (single-folder)', () => {
     const database = await initDB()
     db = database as unknown as IDBPDatabase<unknown>
 
-    const result = await executeImport(database, bookmarks, new Date(2026, 3, 18, 12, 0, 0))
+    const result = await executeImport(db!, bookmarks, new Date(2026, 3, 18, 12, 0, 0))
 
     expect(result.saved).toBe(3)
     expect(result.importFolderId).toBeTruthy()
@@ -109,7 +109,7 @@ describe('executeImport (single-folder)', () => {
     const database = await initDB()
     db = database as unknown as IDBPDatabase<unknown>
 
-    await executeImport(database, bookmarks, new Date(2026, 3, 18, 12, 0, 0))
+    await executeImport(db!, bookmarks, new Date(2026, 3, 18, 12, 0, 0))
 
     const folders = await getAllFolders(database)
     const names = folders.map((f) => f.name)
@@ -122,12 +122,12 @@ describe('executeImport (single-folder)', () => {
     db = database as unknown as IDBPDatabase<unknown>
     const date = new Date(2026, 3, 18, 12, 0, 0)
 
-    const first = await executeImport(database, bookmarks, date)
+    const first = await executeImport(db!, bookmarks, date)
     const more: ImportedBookmark[] = [
       { url: 'https://d.example.com', title: 'D', source: 'browser' },
       { url: 'https://e.example.com', title: 'E', source: 'browser' },
     ]
-    const second = await executeImport(database, more, date)
+    const second = await executeImport(db!, more, date)
 
     expect(second.importFolderId).toBe(first.importFolderId)
 
@@ -143,9 +143,9 @@ describe('executeImport (single-folder)', () => {
     const database = await initDB()
     db = database as unknown as IDBPDatabase<unknown>
 
-    const r1 = await executeImport(database, bookmarks, new Date(2026, 3, 18, 12, 0, 0))
+    const r1 = await executeImport(db!, bookmarks, new Date(2026, 3, 18, 12, 0, 0))
     const r2 = await executeImport(
-      database,
+      db!,
       [{ url: 'https://z.example.com', title: 'Z', source: 'browser' }],
       new Date(2026, 3, 19, 12, 0, 0),
     )
@@ -168,7 +168,7 @@ describe('executeImport (single-folder)', () => {
       { url: 'https://a.example.com', title: 'Dup A', source: 'browser' },
     ]
 
-    const result = await executeImport(database, withDup, new Date(2026, 3, 18, 12, 0, 0))
+    const result = await executeImport(db!, withDup, new Date(2026, 3, 18, 12, 0, 0))
 
     expect(result.saved).toBe(3)
     expect(result.skipped).toBe(1)
