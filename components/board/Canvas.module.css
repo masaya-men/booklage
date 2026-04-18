@@ -21,7 +21,8 @@
   will-change: transform;
 }
 
-/* Cursor states */
+/* Cursor states — keep `cursor: none` when idle so the CustomCursor overlay shows.
+   Show grabbing cursor during active pan for clearer affordance. */
 .viewport[data-panning="true"] {
   cursor: grabbing;
 }
