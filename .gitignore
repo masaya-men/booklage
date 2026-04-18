@@ -57,3 +57,7 @@ next-env.d.ts
 
 # Private strategy documents (not for public repo)
 .private/
+
+# Private sensitive content (business/personal) — README only tracked
+docs/private/*
+!docs/private/README.md
