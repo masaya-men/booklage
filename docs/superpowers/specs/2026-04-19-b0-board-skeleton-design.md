@@ -127,7 +127,26 @@ export const DEFAULT_THEME_ID: ThemeId = 'dotted-notebook'
 
 ### B4. 自動レイアウトアルゴリズム
 
-**Justified grid**（Moodboard 3000 風）を採用。縦スクロールモードでは「行」単位で justify。
+**Justified grid**（Moodboard 3000 風・Flickr 方式）を採用。縦スクロールモードでは「行」単位で justify。
+
+#### B0 完成度基準（妥協禁止）
+
+自動レイアウトは **ボードを開いた瞬間の第一印象**。装飾ゼロ B0 が成立するか否かの生命線なので、アルゴリズム自体は **本番品質** で実装する。
+
+- **正統 Flickr 方式 justified grid**: 各行が viewport 幅ぴったり（gap 除く）に揃う
+- **アスペクト比耐性**: 縦長（0.5）〜 横長（3.0）、正方形、どれも破綻しない
+- **最終行の扱い**: カード少なくて justify できない行は「残りを targetRowHeight のまま左寄せ」を既定。ただし 1〜2枚の孤立行は、前の行と一緒に再分配するか targetRowHeight を少し拡大して自然に見せる（実装時調整）
+- **viewport 幅変化対応**: リサイズで即座に再配置、トランジションなしでも気持ちよく収まる
+- **ギャップ**: 4px 固定（`constants.ts` で変更可能）
+- **targetRowHeight**: 既定 180px、テーマごとに調整可能（`theme-registry.ts` の `layoutParams?` で上書き）
+- **実データ検証**: 実装完了時、既存 IndexedDB のブクマで開いて視覚確認。「思ったより普通」と感じたら B0 内で `targetRowHeight` / 最終行ロジック / 余白感を即調整。これは polish ではなく基礎の完成度なので B0 範囲内
+
+#### B0 で実装しないレイアウト polish（B1 以降）
+
+- カード追加/削除時のアニメーション遷移
+- テーマ切替時のスムーズな再配置アニメ
+- 隣接カード最適化（色・アスペクト比の類似を離す、視覚リズム調整）
+- 周辺リフロー演出（ドロップ時に周りが「スッと」寄る動き）
 
 `lib/board/auto-layout.ts` シグネチャ：
 
@@ -289,7 +308,7 @@ export function computeAutoLayout(input: LayoutInput): LayoutResult
 
 本 spec の対象外。別スプリントでそれぞれ独立した spec を書く。
 
-- **B1 装飾レイヤー**: リキッドグラス（kube.io 方式）、カードスタイル、スプリング物理、3Dタイル演出、**周辺リフロー演出**（カードドロップ時に周囲が「ガスっと」寄る動き）
+- **B1 装飾レイヤー**: リキッドグラス（kube.io 方式）、カードスタイル、スプリング物理、3Dタイル演出、**周辺リフロー演出**（カードドロップ時に周囲が「スッと」寄る動き）
 - **B2 ブクマ管理**: 既読/未読、Inbox モード、フォルダサジェスト、一括振り分け
 - **B3 3D 球体モード**: theme-registry の `sphere` direction に接続、archive notes 参照して再実装
 - **B4 ブクマ名自動取得強化**: YouTube タイトル、Tweet 冒頭、Instagram 本文
