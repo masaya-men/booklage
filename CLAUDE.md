@@ -15,6 +15,37 @@
 
 ---
 
+## 🔒 プライバシー・センシティブ情報の絶対ルール
+
+以下の内容は **絶対に** public な場所（`docs/` 直下、code コメント、tracked ファイル等）に書かない：
+
+- **収益計画・価格戦略・ローンチ戦略**（「収益化計画」「価格戦略」「monetization plan」「launch strategy」等のキーワード）
+- **個人情報**（ユーザーのメアド `masaya-men@users.noreply.github.com`、電話番号、住所、契約関係）
+- **競合分析**（手の内を見せたくないもの）
+- **Paid サービスの認証情報メモ**（実鍵は `.env.local` / `.dev.vars`）
+
+### 置き場所ルール
+
+- **センシティブ系** → `docs/private/` に置く（git-ignored）
+- **迷ったら** → `docs/private/` を選ぶ。後で public にしてもいい。逆は GitHub 履歴から消すのが面倒
+- **実行時の認証情報** → `.env.local` / `.dev.vars`（既に gitignored）
+
+### 安全装置（多層防御）
+
+1. `.gitignore` で `docs/private/*` を除外（README だけ追跡）
+2. `.husky/pre-commit` で gitleaks（API キー等）+ カスタムキーワード検知（メアド・戦略ワード）
+3. GitHub Secret Scanning + Push Protection（サーバー側）
+4. `docs/private/README.md` に「ここに置く / 置かない」リスト
+
+### Claude への指示
+
+- センシティブ情報を含むファイルを作るときは **必ず `docs/private/` 配下** にパスを選ぶ
+- 既存 tracked ファイルにセンシティブ内容を追記しない
+- 迷ったらユーザーに確認。無断で public 化しない
+- `--no-verify` で hooks をスキップすることは **絶対禁止**（CLAUDE.md 既定）
+
+---
+
 ## セッション管理
 
 ### 開始時
