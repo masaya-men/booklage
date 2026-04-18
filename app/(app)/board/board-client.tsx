@@ -39,6 +39,9 @@ import { SettingsPanel } from '@/components/board/SettingsPanel'
 import { RandomPick } from '@/components/board/RandomPick'
 import { ColorSuggest } from '@/components/board/ColorSuggest'
 import { ViewModeToggle, type ViewMode } from '@/components/board/ViewModeToggle'
+import { SphereModeToggle, type CanvasMode } from '@/components/board/SphereModeToggle'
+import { SphereCanvas } from '@/components/board/SphereCanvas'
+import { calculateSphereRadius } from '@/lib/sphere/sphere-projection'
 import { CustomCursor, type CursorStyleId } from '@/components/board/CustomCursor'
 import { CardStyleWrapper, type CardStyle } from '@/components/board/card-styles/CardStyleWrapper'
 import {
@@ -204,6 +207,8 @@ export function BoardClient(): React.ReactElement {
   const [cursorStyle, setCursorStyle] = useState<CursorStyleId>('glass-lens')
   const [showImportModal, setShowImportModal] = useState(false)
   const [showListPanel, setShowListPanel] = useState(false)
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>('flat')
+  const [webglSupported, setWebglSupported] = useState(true)
 
   const worldRef = useRef<HTMLDivElement | null>(null)
 
@@ -346,6 +351,7 @@ export function BoardClient(): React.ReactElement {
           setDefaultCardSize(prefs.defaultCardSize)
           setDefaultAspectRatio(prefs.defaultAspectRatio)
           if (prefs.cursorStyle) setCursorStyle(prefs.cursorStyle as CursorStyleId)
+          if (prefs.canvasMode) setCanvasMode(prefs.canvasMode)
         }
       } else {
         // First visit: pick initial theme based on OS preference
@@ -422,6 +428,16 @@ export function BoardClient(): React.ReactElement {
   const enableTilt = perfTier === 'full' || perfTier === 'reduced-spotlight'
 
   // ── Theme auto-mapping effects ────────────────────────────────
+  // WebGL support detection (run once on mount)
+  useEffect(() => {
+    const canvas = document.createElement('canvas')
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
+    if (!gl) {
+      setWebglSupported(false)
+      setCanvasMode('flat')
+    }
+  }, [])
+
   // bgTheme → data-theme (dark/light color mode)
   useEffect(() => {
     const colorMode = getColorModeForTheme(bgTheme)
@@ -687,6 +703,17 @@ export function BoardClient(): React.ReactElement {
   useEffect(() => {
     const world = worldRef.current
     if (!world) return
+    // Sphere mode renders cards through SphereCanvas directly (no portal wrappers needed).
+    // Tear down any existing wrappers so we don't leak DOM when user toggles to sphere.
+    if (canvasMode === 'sphere') {
+      cardWrappersRef.current.forEach((entry) => {
+        entry.draggable?.kill()
+        entry.el.remove()
+      })
+      cardWrappersRef.current.clear()
+      if (portalTargets.size !== 0) setPortalTargets(new Map())
+      return
+    }
 
     const currentIds = new Set(items.map(({ card }) => card.id))
 
@@ -751,7 +778,7 @@ export function BoardClient(): React.ReactElement {
     if (targets.size !== portalTargets.size || [...targets.entries()].some(([k, v]) => portalTargets.get(k) !== v)) {
       setPortalTargets(targets)
     }
-  }, [items, isGrid, gridPositions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [items, isGrid, gridPositions, canvasMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup all wrappers on unmount ONLY (not on every re-run)
   useEffect(() => {
@@ -864,6 +891,14 @@ export function BoardClient(): React.ReactElement {
     async (theme: string): Promise<void> => {
       setBgTheme(theme)
       if (db) await savePreferences(db, { bgTheme: theme })
+    },
+    [db],
+  )
+
+  const handleCanvasModeChange = useCallback(
+    async (mode: CanvasMode): Promise<void> => {
+      setCanvasMode(mode)
+      if (db) await savePreferences(db, { canvasMode: mode })
     },
     [db],
   )
@@ -1062,77 +1097,118 @@ export function BoardClient(): React.ReactElement {
         onAddFolder={handleAddFolder}
       />
 
-      <Canvas bgTheme={bgTheme} canvas={canvas} worldRef={worldRef}>
-        {items.length === 0 && !loading && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              gap: '16px',
-              pointerEvents: 'none',
+      {canvasMode === 'sphere' && webglSupported ? (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
+          <SphereCanvas
+            cards={items.map((i) => i.card)}
+            worldSpan={Math.max(2000, calculateSphereRadius(items.length) * 2)}
+            bgTheme={bgTheme}
+            renderCard={(cardId, lod) => {
+              const item = items.find((i) => i.card.id === cardId)
+              if (!item) return null
+              const { card, bookmark } = item
+              const innerStyle: React.CSSProperties = {
+                zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
+                ['--card-rotation' as string]: `0deg`,
+                ['--float-delay' as string]: getFloatDelay(card.id),
+                ['--float-duration' as string]: `${FLOAT_DURATION}s`,
+                boxShadow: 'var(--shadow-collage-card)',
+                animationPlayState: 'running',
+              }
+              const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
+              return (
+                <CardPortalContent
+                  card={card}
+                  bookmark={bookmark}
+                  cardStyle={cardStyle}
+                  folderColor={folderColor}
+                  enableTilt={enableTilt && lod === 'full'}
+                  isGrid={false}
+                  gridWidth={undefined}
+                  innerStyle={innerStyle}
+                  zoom={1}
+                  onResizeEnd={handleResizeEnd}
+                />
+              )
             }}
-          >
-            <span style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)' }}>
-              URLを入力してブックマークを追加しよう
-            </span>
-            <span style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-body)', fontSize: 'var(--text-xs)', opacity: 0.6 }}>
-              スクロール: ズーム　｜　中ボタンドラッグ / Space+ドラッグ: 移動
-            </span>
-          </div>
-        )}
-      </Canvas>
+          />
+        </div>
+      ) : (
+        <>
+          <Canvas bgTheme={bgTheme} canvas={canvas} worldRef={worldRef}>
+            {items.length === 0 && !loading && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  gap: '16px',
+                  pointerEvents: 'none',
+                }}
+              >
+                <span style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)' }}>
+                  URLを入力してブックマークを追加しよう
+                </span>
+                <span style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-body)', fontSize: 'var(--text-xs)', opacity: 0.6 }}>
+                  スクロール: ズーム　｜　中ボタンドラッグ / Space+ドラッグ: 移動
+                </span>
+              </div>
+            )}
+          </Canvas>
 
-      {/* Card content rendered via portals — viewport culling skips off-screen cards */}
-      {(() => {
-        const { panX, panY, zoom } = canvas.state
-        const bounds = getVisibleBounds(panX, panY, zoom)
+          {/* Card content rendered via portals — viewport culling skips off-screen cards */}
+          {(() => {
+            const { panX, panY, zoom } = canvas.state
+            const bounds = getVisibleBounds(panX, panY, zoom)
 
-        return items.map(({ card, bookmark }) => {
-          const target = portalTargets.get(card.id)
-          if (!target) return null
+            return items.map(({ card, bookmark }) => {
+              const target = portalTargets.get(card.id)
+              if (!target) return null
 
-          // Viewport culling: skip React portal for off-screen cards
-          const cardX = isGrid ? (gridPositions.get(card.id)?.x ?? card.x) : card.x
-          const cardY = isGrid ? (gridPositions.get(card.id)?.y ?? card.y) : card.y
-          if (!isCardInViewport(cardX, cardY, card.width, card.height, bounds)) {
-            return null
-          }
+              // Viewport culling: skip React portal for off-screen cards
+              const cardX = isGrid ? (gridPositions.get(card.id)?.x ?? card.x) : card.x
+              const cardY = isGrid ? (gridPositions.get(card.id)?.y ?? card.y) : card.y
+              if (!isCardInViewport(cardX, cardY, card.width, card.height, bounds)) {
+                return null
+              }
 
-          const displayRotation = isGrid ? 0 : card.rotation
-          const innerStyle: React.CSSProperties = {
-            zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
-            ['--card-rotation' as string]: `${displayRotation}deg`,
-            ['--float-delay' as string]: getFloatDelay(card.id),
-            ['--float-duration' as string]: `${FLOAT_DURATION}s`,
-            boxShadow: isGrid ? 'var(--shadow-grid-card)' : 'var(--shadow-collage-card)',
-            animationPlayState: isGrid ? 'paused' : 'running',
-          }
+              const displayRotation = isGrid ? 0 : card.rotation
+              const innerStyle: React.CSSProperties = {
+                zIndex: card.zIndex || Z_INDEX.CANVAS_CARD,
+                ['--card-rotation' as string]: `${displayRotation}deg`,
+                ['--float-delay' as string]: getFloatDelay(card.id),
+                ['--float-duration' as string]: `${FLOAT_DURATION}s`,
+                boxShadow: isGrid ? 'var(--shadow-grid-card)' : 'var(--shadow-collage-card)',
+                animationPlayState: isGrid ? 'paused' : 'running',
+              }
 
-          const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
+              const folderColor = folders.find((f) => f.id === bookmark.folderId)?.color
 
-          return createPortal(
-            <CardPortalContent
-              card={card}
-              bookmark={bookmark}
-              cardStyle={cardStyle}
-              folderColor={folderColor}
-              enableTilt={enableTilt}
-              isGrid={isGrid}
-              gridWidth={gridPositions.get(card.id)?.width}
-              innerStyle={innerStyle}
-              zoom={canvas.state.zoom}
-              onResizeEnd={handleResizeEnd}
-            />,
-            target,
-            card.id,
-          )
-        })
-      })()}
+              return createPortal(
+                <CardPortalContent
+                  card={card}
+                  bookmark={bookmark}
+                  cardStyle={cardStyle}
+                  folderColor={folderColor}
+                  enableTilt={enableTilt}
+                  isGrid={isGrid}
+                  gridWidth={gridPositions.get(card.id)?.width}
+                  innerStyle={innerStyle}
+                  zoom={canvas.state.zoom}
+                  onResizeEnd={handleResizeEnd}
+                />,
+                target,
+                card.id,
+              )
+            })
+          })()}
+        </>
+      )}
 
       <ViewModeToggle mode={viewMode} onToggle={setViewMode} />
+      <SphereModeToggle mode={canvasMode} onChange={handleCanvasModeChange} topPx={104} />
       <ExportButton canvasRef={worldRef} />
       {/* ── Quick theme toggle (top-right, below export) ── */}
       <button

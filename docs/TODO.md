@@ -65,7 +65,17 @@
 
 ### 将来（ユーザー反応を見てから）
 - [x] カスタムカーソル: ガラスレンズ + 12種エモジカーソル、設定で切替可、IndexedDB保持
-- [ ] 3D球体ナビゲーション（snapdom参考、地球の反対側感）
+- [x] 3D球体ナビゲーション実装（基本動作まで完了、polish は別セッション）
+  - ブランチ: `claude/hardcore-yalow`、master 未マージ、未 push
+  - トグル: テーマボタン下に 🌐/📋（既存 grid/collage とは別管理）
+  - デフォルト `canvasMode: 'flat'` opt-in、WebGL 非対応は自動 flat
+  - 139/139 テスト pass、ビルド OK、Playwright でブラウザ確認済
+  - 既知の残課題（次セッションで触る前に確認すること）:
+    - 実際のパン操作で裏側のカードが戻ってくるか未検証
+    - 球面が大きすぎてカードが小さく遠い（camera distance/scale のバランス）
+    - WebGL キャンバスに謎の白丸アーティファクト（bloom or glow 起因と推測）
+    - 計画書の裏側dot LOD表示は未実装（WebGL points で描画する予定だった）
+    - ガラスシェーダーは球体に適用されていない（glass-shader.ts は作ったが未接続）
 - [ ] html-in-canvas（ブラウザ未実装、待ち）
 - [ ] S4: 広告基盤（ユーザーが付いてから）
 - [x] Chrome拡張: manifest v3, ワンクリック保存, /save経由でIndexedDBに追加

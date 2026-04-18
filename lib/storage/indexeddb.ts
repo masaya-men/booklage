@@ -87,6 +87,7 @@ export interface UserPreferencesRecord {
   defaultAspectRatio: 'random' | 'auto' | '1:1' | '16:9' | '3:4'
   reducedMotion: boolean
   cursorStyle?: string
+  canvasMode?: 'flat' | 'sphere'
 }
 
 /** Settings record — user preferences */

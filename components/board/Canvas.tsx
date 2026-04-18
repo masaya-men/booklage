@@ -91,20 +91,25 @@ export function Canvas({
     }
   }, []) // Empty deps — uses refs for latest values
 
-  // ── Pointer events: pan (middle button or Space+left) ───────
+  // ── Pointer events: pan (middle button, Space+left, or empty-space left) ───────
   const handlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const isMiddle = e.button === 1
       const isSpaceLeft = spaceHeldRef.current && e.button === 0
+      // Left-click on empty canvas background (viewport or world, not a card) pans too.
+      // currentTarget is the viewport div; target is whatever was clicked.
+      const isEmptySpaceLeft =
+        e.button === 0 &&
+        (e.target === viewportRef.current || e.target === worldRef?.current)
 
-      if (isMiddle || isSpaceLeft) {
+      if (isMiddle || isSpaceLeft || isEmptySpaceLeft) {
         e.preventDefault()
         canvas.setIsPanning(true)
         panStartRef.current = { x: e.clientX, y: e.clientY }
         ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
       }
     },
-    [canvas],
+    [canvas, worldRef],
   )
 
   const handlePointerMove = useCallback(
