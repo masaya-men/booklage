@@ -535,12 +535,20 @@ export function BoardClient(): React.ReactElement {
 
   // ── Import complete handler ──────────────────────────────────
   const handleImportComplete = useCallback(
-    async (savedCount: number): Promise<void> => {
-      if (!db || !currentFolder) return
-      // Reload items from DB
+    async (savedCount: number, importFolderId: string): Promise<void> => {
+      if (!db) return
+
+      // Reload folders so the new import folder shows up in the sidebar
+      const allFolders = await getAllFolders(db)
+      setFolders(allFolders)
+
+      // Navigate to the import folder so the user sees what they just imported
+      setCurrentFolder(importFolderId)
+
+      // Load items for the import folder
       const [bookmarks, cards] = await Promise.all([
-        getBookmarksByFolder(db, currentFolder),
-        getCardsByFolder(db, currentFolder),
+        getBookmarksByFolder(db, importFolderId),
+        getCardsByFolder(db, importFolderId),
       ])
       const bookmarkMap = new Map(bookmarks.map((b) => [b.id, b]))
       const paired: CardWithBookmark[] = []
@@ -552,7 +560,7 @@ export function BoardClient(): React.ReactElement {
       setShowImportModal(false)
       if (savedCount > 0) setShowListPanel(true)
     },
-    [db, currentFolder],
+    [db],
   )
 
   // ── Navigate to card handler (for list panel) ─────────────────
