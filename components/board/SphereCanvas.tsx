@@ -1,6 +1,7 @@
 'use client'
 
 import { type ReactElement, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useSphereCanvas } from '@/lib/sphere/use-sphere-canvas'
 import { worldToUv } from '@/lib/sphere/sphere-projection'
 import { type CardRecord } from '@/lib/storage/indexeddb'
@@ -14,6 +15,11 @@ interface SphereCanvasProps {
   bgTheme?: string
 }
 
+/**
+ * 3D sphere canvas. Cards live as CSS3DObjects managed by SphereRenderer;
+ * this component renders their React content into the managed wrappers
+ * via createPortal (same pattern as the 2D canvas uses for GSAP Draggable).
+ */
 export function SphereCanvas({
   cards,
   worldSpan,
@@ -36,23 +42,26 @@ export function SphereCanvas({
 
   const sphere = useSphereCanvas(sphereCards)
 
+  const lodById = useMemo(() => {
+    const m = new Map<string, 'full' | 'reduced' | 'dot'>()
+    sphere.visibleCards.forEach(v => m.set(v.id, v.lod))
+    return m
+  }, [sphere.visibleCards])
+
   return (
     <div
       ref={sphere.containerRef}
       className={styles.sphereViewport}
       data-bg-theme={bgTheme}
     >
-      {sphere.visibleCards.map(vc => {
-        if (vc.lod === 'dot') return null
-        return (
-          <div
-            key={vc.id}
-            className={`${styles.cardWrapper} ${vc.lod === 'reduced' ? styles.cardReduced : ''}`}
-            style={{ opacity: vc.opacity }}
-          >
-            {renderCard(vc.id, vc.lod)}
-          </div>
-        )
+      {cards.map(card => {
+        const target = sphere.portalTargets.get(card.id)
+        if (!target) return null
+        const lod = lodById.get(card.id)
+        if (!lod || lod === 'dot') return null
+        const content = renderCard(card.id, lod)
+        if (!content) return null
+        return createPortal(content, target, card.id)
       })}
     </div>
   )

@@ -119,7 +119,9 @@ export function createSphereRenderer(config: SphereRendererConfig): SphereRender
     const matrix = new THREE.Matrix4().makeBasis(right, correctedUp, normal)
     obj.quaternion.setFromRotationMatrix(matrix)
 
-    obj.scale.set(0.5, 0.5, 0.5)
+    // CSS3D scale: element pixel size becomes world units at scale=1.
+    // Keep at 1 so cards render close to their natural size in the overlay.
+    obj.scale.set(1, 1, 1)
 
     css3dObjects.set(placement.id, obj)
     scene.add(obj)
