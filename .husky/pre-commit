@@ -1,0 +1,37 @@
+#!/bin/sh
+# ============================================================
+# Secret leak prevention (gitleaks)
+# commit 前にステージ済みファイルからシークレットを検出して
+# 見つかれば commit を拒否する。
+# ============================================================
+
+if command -v gitleaks >/dev/null 2>&1; then
+  GITLEAKS="gitleaks"
+elif [ -n "$LOCALAPPDATA" ] && [ -f "$LOCALAPPDATA/Microsoft/WinGet/Packages/Gitleaks.Gitleaks_Microsoft.Winget.Source_8wekyb3d8bbwe/gitleaks.exe" ]; then
+  GITLEAKS="$LOCALAPPDATA/Microsoft/WinGet/Packages/Gitleaks.Gitleaks_Microsoft.Winget.Source_8wekyb3d8bbwe/gitleaks.exe"
+elif [ -f "$HOME/AppData/Local/Microsoft/WinGet/Packages/Gitleaks.Gitleaks_Microsoft.Winget.Source_8wekyb3d8bbwe/gitleaks.exe" ]; then
+  GITLEAKS="$HOME/AppData/Local/Microsoft/WinGet/Packages/Gitleaks.Gitleaks_Microsoft.Winget.Source_8wekyb3d8bbwe/gitleaks.exe"
+else
+  echo "⚠️ gitleaks が見つかりません。以下のどれかでインストールしてください:"
+  echo "  Windows: winget install --id Gitleaks.Gitleaks"
+  echo "  macOS:   brew install gitleaks"
+  echo "  Linux:   https://github.com/gitleaks/gitleaks/releases"
+  echo ""
+  echo "インストール後、ターミナルを再起動してから再度 commit してください。"
+  exit 1
+fi
+
+echo "🔍 gitleaks: ステージ済みファイルをスキャン中..."
+if ! "$GITLEAKS" git --staged --redact=100 --verbose; then
+  echo ""
+  echo "❌ シークレット（API キー, 秘密鍵, トークン等）を検出しました。commit を中止します。"
+  echo ""
+  echo "対処法:"
+  echo "  1. 実値を .env.local などの gitignore 済みファイルに移す"
+  echo "  2. git reset HEAD <該当ファイル> でステージから外す"
+  echo "  3. コード内で process.env.XXX 経由に書き換える"
+  echo "  4. 本当に誤検知なら、該当行末尾に  # gitleaks:allow  を追加（慎重に）"
+  exit 1
+fi
+
+echo "✅ gitleaks: シークレット無し"
