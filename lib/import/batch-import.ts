@@ -8,6 +8,7 @@ import {
   addBookmarkBatch,
   getAllBookmarks,
   updateBookmarkOgp,
+  type FolderRecord,
 } from '@/lib/storage/indexeddb'
 import { findDuplicates } from './deduplicate'
 import { FOLDER_COLORS } from '@/lib/constants'
@@ -19,6 +20,20 @@ import type { IDBPDatabase } from 'idb'
  */
 export function formatImportFolderName(date: Date): string {
   return `インポート ${date.toLocaleDateString('sv-SE')}`
+}
+
+/**
+ * Look up the "インポート YYYY-MM-DD" folder for the given local date.
+ * Returns null if no folder exists with that exact name yet.
+ */
+export async function findImportFolder(
+  db: IDBPDatabase<unknown>,
+  date: Date,
+): Promise<FolderRecord | null> {
+  const typedDb = db as Parameters<typeof getAllFolders>[0]
+  const folders = await getAllFolders(typedDb)
+  const target = formatImportFolderName(date)
+  return folders.find((f) => f.name === target) ?? null
 }
 
 /** Progress callback for import operations */
