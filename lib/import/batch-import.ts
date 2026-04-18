@@ -1,4 +1,4 @@
-import type { ImportedBookmark, FolderAssignment, OgpStatus } from './types'
+import type { ImportedBookmark, OgpStatus } from './types'
 import type { BookmarkInput, BookmarkRecord } from '@/lib/storage/indexeddb'
 import { detectUrlType } from '@/lib/utils/url'
 import { fetchOgp } from '@/lib/scraper/ogp'
@@ -41,41 +41,6 @@ export interface ImportProgress {
   phase: 'saving' | 'ogp'
   completed: number
   total: number
-}
-
-/**
- * Build folder assignments from parsed bookmarks.
- * Maps source folder names to existing or new Booklage folders.
- *
- * @param db - The IndexedDB database instance
- * @param bookmarks - Parsed bookmarks from an import file
- * @returns Array of folder assignments for the import preview UI
- */
-export async function buildFolderAssignments(
-  db: IDBPDatabase<unknown>,
-  bookmarks: ImportedBookmark[],
-): Promise<FolderAssignment[]> {
-  const existingFolders = await getAllFolders(db as Parameters<typeof getAllFolders>[0])
-  const folderMap = new Map<string, FolderAssignment>()
-  const noFolderKey = '__no_folder__'
-
-  for (const bm of bookmarks) {
-    const key = bm.folder ?? noFolderKey
-    if (folderMap.has(key)) {
-      folderMap.get(key)!.count++
-      continue
-    }
-    const existing = bm.folder
-      ? existingFolders.find((f) => f.name === bm.folder)
-      : existingFolders[0]
-    folderMap.set(key, {
-      sourceName: bm.folder ?? 'インポート',
-      targetFolderId: existing?.id ?? '',
-      isNew: !existing && !!bm.folder,
-      count: 1,
-    })
-  }
-  return Array.from(folderMap.values())
 }
 
 /**
