@@ -1,0 +1,35 @@
+.container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.vertical,
+.horizontal,
+.spacing {
+  position: absolute;
+  background: #ff4080;
+  box-shadow: 0 0 4px rgba(255, 64, 128, 0.6);
+  pointer-events: none;
+}
+
+.vertical  { width: 1px; }
+.horizontal { height: 1px; }
+
+.spacing {
+  background: rgba(255, 64, 128, 0.5);
+  height: 1px;
+}
+
+.spacingLabel {
+  position: absolute;
+  background: rgba(255, 64, 128, 0.9);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  transform: translateY(-20px);
+}
