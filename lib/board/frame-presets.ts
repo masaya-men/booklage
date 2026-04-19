@@ -31,7 +31,7 @@ export type FrameSize = { readonly width: number; readonly height: number }
 
 /**
  * Compute frame pixel size to fit within viewport, preserving the preset ratio.
- * For custom: uses explicit width/height, clamped to FRAME.MIN_PX..MAX_PX.
+ * For custom: returns explicit width/height as-is.
  */
 export function computeFrameSize(ratio: FrameRatio, viewportWidth: number, viewportHeight: number): FrameSize {
   if (ratio.kind === 'custom') {
@@ -45,8 +45,4 @@ export function computeFrameSize(ratio: FrameRatio, viewportWidth: number, viewp
   // Fit into viewport while preserving rw:rh
   const scale = Math.min(viewportWidth / rw, viewportHeight / rh)
   return { width: rw * scale, height: rh * scale }
-}
-
-function clamp(v: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, v))
 }
