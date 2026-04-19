@@ -65,6 +65,7 @@ export function CardsLayer({
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const prevModeRef = useRef<LayoutMode>(layoutMode)
+  const morphTimelineRef = useRef<gsap.core.Timeline | null>(null)
 
   // Build LayoutCard[] from items, applying any overrides as userOverridePos
   // so computeAutoLayout will respect drag positions in grid mode too.
@@ -130,7 +131,17 @@ export function CardsLayer({
   // Initial / non-mode-change positioning: GSAP owns the transform.
   // Use useLayoutEffect to set position before paint so the card never
   // flashes at the wrong spot.
+  //
+  // Two bail conditions guard against races with the morph effect below:
+  //   1. If layoutMode just changed, the morph effect (useEffect) is about
+  //      to take over this transition — do not snap to the final position
+  //      synchronously, or the user never sees the animation (C1).
+  //   2. If a morph timeline is currently in flight, an unrelated re-render
+  //      (viewport scroll, parent state change) must not snap cards to the
+  //      end state and kill the running tween (C2).
   useLayoutEffect(() => {
+    if (prevModeRef.current !== layoutMode) return
+    if (morphTimelineRef.current?.isActive()) return
     for (const it of visibleItems) {
       const el = cardRefs.current[it.bookmarkId]
       if (!el) continue
@@ -138,26 +149,38 @@ export function CardsLayer({
       if (!p) continue
       gsap.set(el, { x: p.x, y: p.y, width: p.w, height: p.h })
     }
-  }, [visibleItems, activePositions])
+  }, [visibleItems, activePositions, layoutMode])
 
-  // Animated morph when layoutMode toggles.
+  // Animated morph when layoutMode toggles. Owns transforms for the
+  // duration of the tween; the useLayoutEffect above bails while this
+  // timeline is active so it does not get snapped to the end state.
   useEffect(() => {
     if (prevModeRef.current === layoutMode) return
+    morphTimelineRef.current?.kill()
+    const tl = gsap.timeline()
     for (const it of items) {
       const el = cardRefs.current[it.bookmarkId]
       if (!el) continue
       const p = activePositions[it.bookmarkId]
       if (!p) continue
-      gsap.to(el, {
-        x: p.x,
-        y: p.y,
-        width: p.w,
-        height: p.h,
-        duration: MODE_TRANSITION.MORPH_MS / 1000,
-        ease: MODE_TRANSITION.EASING,
-      })
+      tl.to(
+        el,
+        {
+          x: p.x,
+          y: p.y,
+          width: p.w,
+          height: p.h,
+          duration: MODE_TRANSITION.MORPH_MS / 1000,
+          ease: MODE_TRANSITION.EASING,
+        },
+        0,
+      )
     }
+    morphTimelineRef.current = tl
     prevModeRef.current = layoutMode
+    return (): void => {
+      tl.kill()
+    }
   }, [layoutMode, items, activePositions])
 
   return (
