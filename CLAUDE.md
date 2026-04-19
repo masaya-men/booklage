@@ -385,7 +385,7 @@ import { gsap } from 'gsap'
 | ファイル | 内容 |
 |---------|------|
 | `CLAUDE.md` | このファイル。Claude Code用指示書 |
-| `MYCOLLAGE_FULL_SPEC.md` | 完全要件定義書。全決定事項・UI・収益・ロードマップ |
+| `MYCOLLAGE_FULL_SPEC.md` | 完全要件定義書。全決定事項・UI・運用方針・ロードマップ |
 | `docs/` | 完全運営マニュアル（開発と同時に作成） |
 
 ---

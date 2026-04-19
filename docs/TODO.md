@@ -108,8 +108,8 @@
   - 形が揃わない方が Moodboard 的な視覚リズムが出て見ていて楽しい
   - 実装箇所: `lib/storage/use-board-data.ts::toItem` の `aspectRatio` を IndexedDB 固定値ではなく「URL種別 + OGP メタから推定」に差し替え
 - **B1 で優先したい**: **ドラッグ UX の brainstorming 済み版を実装**
-  - 候補: Reorder drag（mymind/Are.na）vs Free placement（Milanote）vs Hybrid（Are.na pinlock）
-  - multi-playback の「ミックス配置」ニーズと合わせて設計（Free の方が直感的かも）
+  - 候補: Reorder drag vs Free placement vs Hybrid（詳細は docs/superpowers/specs/ 参照）
+  - multi-playback の「ミックス配置」ニーズと合わせて設計
 - もっと多くのカードスタイル（ネオン、布、羊皮紙等）
 - 音フィードバック（ホバー/クリック時の微かな音）
 - LPの磨き上げ（マーケティング開始前に実施）

@@ -14,7 +14,7 @@
 | 2 | **ハードコーディング禁止** | 全設定値は定数ファイルか環境変数。広告カテゴリ、表示間隔、アニメーション値、色、ブレークポイント等すべて設定ファイルに集約 |
 | 3 | **多言語の無限拡張** | 翻訳は `messages/{locale}.json` にキーベース。コード内に日本語文字列を直書きしない。新言語 = JSONファイル1つ追加するだけ |
 | 4 | **デザイントークン** | 色・フォント・影・角度・間隔・z-indexを全て `globals.css` の CSS Custom Properties で定義。UIの見た目変更 = 変数の値を変えるだけ |
-| 5 | **1億PVで収益最大化** | 静的サイト配信のみ（サーバーダウンなし）。広告枠は最初から組み込み。AdSense申請に必要なページを初日から用意 |
+| 5 | **大規模トラフィック対応** | 静的サイト配信のみ（サーバーダウンなし）。将来のサステナビリティに備え必要なページを初日から用意 |
 | 6 | **システム設定に追従** | テーマ: `prefers-color-scheme` でOS設定を自動検出 → 手動切り替えも可能。言語: `navigator.language` でブラウザ言語を自動検出 → 手動切り替えも可能 |
 
 ---
@@ -234,96 +234,9 @@ Google Fonts: `Inter`（本文）、`Outfit`（見出し・ブランド）
 
 ---
 
-## セクション 2: 収益基盤（広告）
+## セクション 2: 運用基盤（省略）
 
-### 2.1 アフィリエイトカード
-
-#### 表示ルール
-
-- グリッドモード: 4枚ごとに1枚のアフィリエイトカード
-- コラージュモード: 5枚ごとに1枚
-- 表示間隔はデザイントークン `--ad-interval-grid: 4` / `--ad-interval-collage: 5` で管理
-- 最低ブックマーク数: 3枚以上でアフィリエイト表示開始
-
-#### カテゴリマッピング
-
-`lib/ads/category-map.ts` にマッピングテーブルを定義:
-
-```typescript
-// フォルダ名のキーワード → 広告カテゴリ
-const CATEGORY_MAP: Record<string, string[]> = {
-  fashion: ['ファッション', 'fashion', '服', 'コーデ', 'outfit', 'style'],
-  tech: ['テック', 'tech', 'プログラミング', 'coding', 'gadget', 'ガジェット'],
-  food: ['料理', 'food', 'レシピ', 'recipe', 'cooking'],
-  // ... 拡張可能
-}
-```
-
-- 新しいカテゴリ = このファイルに1行追加するだけ
-- フォルダ名とブックマークのURL/ドメインの両方でマッチング
-
-#### コンポーネント
-
-`components/board/AdCard.tsx`:
-- `BookmarkCard` と同じ外観ベース
-- 「AD」バッジを常に表示（`--color-ad-badge` で色管理）
-- クリック → アフィリエイトリンクを新規タブで開く
-- PNG書き出し時: `data-ad="true"` 属性でフィルタリングして非表示
-
-### 2.2 AdSense
-
-#### PC: サイドバー
-
-```
-┌─ toolbar ─────────────────────────────────┐
-├─ folder-nav ─┬─ canvas ─────┬─ adsense ──┤
-│  (56px)      │  (flex: 1)   │  (160px)   │
-│              │              │            │
-│              │              │  [広告1]    │
-│              │              │  [広告2]    │
-│              │              │            │
-└──────────────┴──────────────┴────────────┘
-```
-
-- サイドバー幅: `--sidebar-width: 160px`
-- キャンバスとは CSS で完全分離（`display: flex` の兄弟要素）
-- スマホ（md以下）ではサイドバー非表示
-
-#### スマホ: アンカー広告
-
-```
-┌─ toolbar ──────────┐
-├─ folder-tabs ──────┤
-├─ canvas ───────────┤
-│                    │
-│  （無限キャンバス）  │
-│                    │
-├─ adsense-anchor ───┤  ← position: fixed; bottom: 0;
-└────────────────────┘
-```
-
-- 高さ: `--anchor-ad-height: 60px`
-- `position: fixed; bottom: 0;` で画面下に固定
-- キャンバスの `padding-bottom` に `--anchor-ad-height` を追加して重ならないようにする
-- Google AdSenseの標準アンカー広告形式
-
-### 2.3 PNG書き出し時の広告除外
-
-1. エクスポート開始前: `[data-ad="true"]` のカードを `display: none` に設定
-2. AdSenseサイドバー/アンカーはキャンバス要素の外にあるため自動的に含まれない
-3. `dom-to-image-more` でキャンバス要素のみをキャプチャ
-4. エクスポート完了後: 広告カードの `display` を復元
-
-### 2.4 新規ファイル
-
-| ファイル | 内容 |
-|---------|------|
-| `components/board/AdCard.tsx` | アフィリエイトカードコンポーネント |
-| `components/board/AdSenseSidebar.tsx` | PC用サイドバー広告枠 |
-| `components/board/AdSenseAnchor.tsx` | スマホ用アンカー広告枠 |
-| `lib/ads/category-map.ts` | フォルダ名→広告カテゴリのマッピング |
-| `lib/ads/affiliate.ts` | アフィリエイトリンク生成ロジック |
-| `lib/ads/config.ts` | 広告表示間隔等の設定値 |
+本セクションの実装詳細は非公開ドキュメントで管理。
 
 ---
 
@@ -482,7 +395,6 @@ const CATEGORY_MAP: Record<string, string[]> = {
 - 全テキスト: 翻訳キーで管理
 - ダーク/ライト: システム設定に追従
 - レスポンシブ: スマホでも美しく表示
-- AdSenseを1箇所（フッター上部）に配置
 
 #### 新規ファイル
 
@@ -506,7 +418,7 @@ const CATEGORY_MAP: Record<string, string[]> = {
 | Terms of Service | `/terms` | 免責事項。ユーザーデータ非保持の明示 |
 | FAQ | `/faq` | アコーディオンUI。SEOロングテール。翻訳キー管理 |
 | About | `/about` | No Data Collection の哲学。オープンソース。プロジェクトの想い |
-| Contact | `/contact` | Formspree（無料枠: 50件/月）でメールフォーム。収益化後に有料プランへ移行 |
+| Contact | `/contact` | Formspree（無料枠: 50件/月）でメールフォーム。必要に応じて有料プランへ移行 |
 | Features | `/features` | 各機能を画像付きで紹介 |
 | Guide | `/guide` | ブックマークレット設定チュートリアル。iOS/Android別の解説 |
 
@@ -596,18 +508,9 @@ const CATEGORY_MAP: Record<string, string[]> = {
   - `npm run build` が通る
 - **依存**: S2
 
-#### S4: 広告基盤
+#### S4: 運用基盤
 
-- **入力**: S3完了後のレイアウト, この設計書のセクション2
-- **作業**: AdCard, AdSenseSidebar, AdSenseAnchor実装。カテゴリマッピング。PNG書出し時の広告除外
-- **完了条件**:
-  - グリッドモードで4枚ごとにアフィリエイトカード表示
-  - コラージュモードで5枚ごとにアフィリエイトカード表示
-  - PCでサイドバーにAdSense枠が表示
-  - スマホで画面下にアンカー広告枠が表示
-  - PNG書出し時に広告が含まれない
-  - `npm run build` が通る
-- **依存**: S3
+本タスクの実装詳細は非公開ドキュメントで管理。
 
 #### S5: ブックマークレットUI
 
