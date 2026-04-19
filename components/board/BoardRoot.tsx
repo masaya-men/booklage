@@ -10,6 +10,7 @@ import {
 import { LAYOUT_CONFIG } from '@/lib/board/constants'
 import type { CardPosition, LayoutCard, ThemeId } from '@/lib/board/types'
 import { useBoardData, type BoardItem } from '@/lib/storage/use-board-data'
+import { t } from '@/lib/i18n/t'
 import { ThemeLayer } from './ThemeLayer'
 import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
@@ -189,7 +190,7 @@ export function BoardRoot() {
             data-active={themeId === id}
             data-theme-button={id}
           >
-            {getThemeMeta(id).labelKey}
+            {t(getThemeMeta(id).labelKey)}
           </button>
         ))}
       </div>

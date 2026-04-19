@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
-import { BoardClient } from './board-client'
+import { BoardRoot } from '@/components/board/BoardRoot'
 
 export const metadata: Metadata = {
   title: 'Board',
 }
 
 export default function BoardPage(): React.ReactElement {
-  return <BoardClient />
+  return <BoardRoot />
 }
