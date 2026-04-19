@@ -38,9 +38,53 @@ export function BoardRoot() {
   const [frameRatio, setFrameRatio] = useState<FrameRatio>(DEFAULT_BOARD_CONFIG.frameRatio)
   const [overrides, setOverrides] = useState<Record<string, CardPosition>>({})
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
+  // Lifted from InteractionLayer so CardsLayer can also observe Space-held
+  // state and bail its pointerdown handler — letting the event bubble up to
+  // InteractionLayer where pan engagement lives.
+  const [spaceHeld, setSpaceHeld] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => setThemeId(loadSavedTheme()), [])
+
+  // Window-level Space-key tracking for hold-to-pan. Lifted here from
+  // InteractionLayer so both InteractionLayer (engagement) and CardsLayer
+  // (early-bail in card pointerdown) can read the same state.
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+      if (target.isContentEditable) return true
+      return false
+    }
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.code !== 'Space') return
+      if (isEditableTarget(e.target)) return
+      // Prevent default page scroll while Space is held for pan-mode.
+      e.preventDefault()
+      setSpaceHeld(true)
+    }
+    const onKeyUp = (e: KeyboardEvent): void => {
+      if (e.code !== 'Space') return
+      setSpaceHeld(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return (): void => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [])
+
+  // Cursor hint while Space is held. Owned here (not InteractionLayer) so the
+  // hint matches the lifted state. Always restores on unmount.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.body.style.cursor = spaceHeld ? 'grab' : ''
+    return (): void => {
+      document.body.style.cursor = ''
+    }
+  }, [spaceHeld])
 
   // Hydrate layoutMode + frameRatio from IndexedDB on mount
   useEffect(() => {
@@ -256,7 +300,11 @@ export function BoardRoot() {
       ref={containerRef}
       style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}
     >
-      <InteractionLayer direction={themeMeta.direction} onScroll={handleScroll}>
+      <InteractionLayer
+        direction={themeMeta.direction}
+        onScroll={handleScroll}
+        spaceHeld={spaceHeld}
+      >
         {/* Background — full viewport coverage, follows scroll, NO horizontal
             centering offset. Splitting this from the cards wrapper means the
             dotted/notebook pattern stays anchored to the visible viewport on
@@ -299,6 +347,7 @@ export function BoardRoot() {
             gap={layoutGap}
             direction={themeMeta.direction}
             overrides={overrides}
+            spaceHeld={spaceHeld}
             onCardPointerDown={handleCardPointerDown}
             onCardResize={handleCardResize}
             onCardResizeEnd={handleCardResizeEnd}

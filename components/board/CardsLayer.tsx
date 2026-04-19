@@ -50,6 +50,12 @@ type CardsLayerProps = {
    * Keyed by bookmarkId. Takes precedence over computed grid position.
    */
   readonly overrides?: Readonly<Record<string, CardPosition>>
+  /**
+   * Whether the Space key is currently held (lifted to BoardRoot). When true,
+   * the card-pointerdown handler returns early WITHOUT stopPropagation so the
+   * event bubbles up to InteractionLayer for hold-Space-to-pan.
+   */
+  readonly spaceHeld: boolean
   readonly onCardPointerDown: (e: PointerEvent<HTMLDivElement>, cardId: string) => void
   /**
    * Resize live tick: fires on every pointer move during a resize drag.
@@ -114,6 +120,7 @@ export function CardsLayer({
   gap,
   direction,
   overrides,
+  spaceHeld,
   onCardPointerDown,
   onCardResize,
   onCardResizeEnd,
@@ -360,6 +367,12 @@ export function CardsLayer({
     e: PointerEvent<HTMLDivElement>,
     bookmarkId: string,
   ): void => {
+    // Space-held → bail WITHOUT stopPropagation so the pointerdown bubbles
+    // up to InteractionLayer where pan engagement lives. Without this, both
+    // grid mode (useCardDrag stopPropagation) and free mode (explicit
+    // stopPropagation below) swallow the event and the user only sees the
+    // grab cursor change with no actual pan.
+    if (spaceHeld) return
     if (layoutMode === 'grid') {
       onCardPointerDown(e, bookmarkId)
       return

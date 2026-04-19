@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useRef,
   type PointerEvent,
   type ReactNode,
@@ -14,61 +13,28 @@ import type { ScrollDirection } from '@/lib/board/types'
 type InteractionLayerProps = {
   readonly direction: ScrollDirection
   readonly onScroll: (deltaX: number, deltaY: number) => void
+  /**
+   * Whether the Space key is currently held. Owned by BoardRoot so CardsLayer
+   * can also observe it and bail card-pointerdown handlers — letting the
+   * event bubble up to InteractionLayer for pan engagement.
+   */
+  readonly spaceHeld: boolean
   readonly children?: ReactNode
 }
 
 export function InteractionLayer({
   direction,
   onScroll,
+  spaceHeld,
   children,
 }: InteractionLayerProps) {
   const dragRef = useRef<{ lastX: number; lastY: number } | null>(null)
-  // Window-level Space-key state for hold-to-pan. Refs (not state) so the
-  // pointerdown handler reads the latest value without re-creating callbacks
-  // on every key press.
-  const spaceHeldRef = useRef<boolean>(false)
+  // Mirror prop in a ref so the pointerdown handler reads the latest value
+  // without forcing useCallback to re-bind every time spaceHeld toggles.
+  const spaceHeldRef = useRef<boolean>(spaceHeld)
+  spaceHeldRef.current = spaceHeld
 
   const isHorizontal = direction === 'horizontal'
-
-  // Track Space key globally so the user can engage pan-mode by holding Space
-  // and dragging anywhere on the board, including over cards. Setting
-  // body.style.cursor gives an immediate visual cue. We ignore key events that
-  // originate inside form fields so typing in inputs doesn't accidentally
-  // trigger pan-cursor.
-  useEffect(() => {
-    const isEditableTarget = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) return false
-      const tag = target.tagName
-      return (
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT' ||
-        target.isContentEditable
-      )
-    }
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.code !== 'Space') return
-      if (isEditableTarget(e.target)) return
-      // Prevent default page scroll while Space is held for pan-mode.
-      e.preventDefault()
-      if (spaceHeldRef.current) return
-      spaceHeldRef.current = true
-      document.body.style.cursor = 'grab'
-    }
-    const onKeyUp = (e: KeyboardEvent): void => {
-      if (e.code !== 'Space') return
-      spaceHeldRef.current = false
-      document.body.style.cursor = ''
-    }
-    window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('keyup', onKeyUp)
-    return (): void => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('keyup', onKeyUp)
-      // Always restore cursor on unmount in case Space was held.
-      document.body.style.cursor = ''
-    }
-  }, [])
 
   const handleWheel = useCallback(
     (e: WheelEvent<HTMLDivElement>): void => {
