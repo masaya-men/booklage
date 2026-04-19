@@ -16,6 +16,15 @@
     "theme": {
       "dottedNotebook": "点線ノート",
       "gridPaper": "方眼紙"
+    },
+    "mode": {
+      "grid": "グリッド",
+      "free": "フリー"
+    },
+    "toolbar": {
+      "theme": "テーマ",
+      "export": "書き出し",
+      "share": "シェア"
     }
   },
   "share": {

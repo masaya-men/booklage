@@ -16,10 +16,10 @@ import {
   loadBoardConfig,
   saveBoardConfig,
 } from '@/lib/storage/board-config'
-import { t } from '@/lib/i18n/t'
 import { ThemeLayer } from './ThemeLayer'
 import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
+import { Toolbar } from './Toolbar'
 import { useCardDrag } from './use-card-drag'
 
 const THEME_LS_KEY = 'booklage.board.themeId'
@@ -190,27 +190,34 @@ export function BoardRoot() {
     [overrides, layout.positions, itemByBookmark, persistCardPosition],
   )
 
-  // TODO(Task 19): wire into Toolbar — eslint suppressed until then
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleModeChange = useCallback(
-    async (next: LayoutMode): Promise<void> => {
+    (next: LayoutMode): void => {
       setLayoutMode(next)
-      const db = await initDB()
-      await saveBoardConfig(db, { layoutMode: next, frameRatio, themeId })
+      void (async (): Promise<void> => {
+        const db = await initDB()
+        await saveBoardConfig(db, { layoutMode: next, frameRatio, themeId })
+      })()
     },
     [frameRatio, themeId],
   )
 
-  // TODO(Task 19): wire into Toolbar — eslint suppressed until then
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleFrameRatioChange = useCallback(
-    async (next: FrameRatio): Promise<void> => {
+    (next: FrameRatio): void => {
       setFrameRatio(next)
-      const db = await initDB()
-      await saveBoardConfig(db, { layoutMode, frameRatio: next, themeId })
+      void (async (): Promise<void> => {
+        const db = await initDB()
+        await saveBoardConfig(db, { layoutMode, frameRatio: next, themeId })
+      })()
     },
     [layoutMode, themeId],
   )
+
+  const handleThemeClick = useCallback((): void => {
+    const ids = listThemeIds()
+    const idx = ids.indexOf(themeId)
+    const next = ids[(idx + 1) % ids.length] ?? DEFAULT_THEME_ID
+    setThemeId(next)
+  }, [themeId])
 
   const contentWidth = Math.max(viewport.w, layout.totalWidth)
   const contentHeight = Math.max(viewport.h, layout.totalHeight)
@@ -257,21 +264,14 @@ export function BoardRoot() {
           />
         </div>
       </InteractionLayer>
-      <div
-        style={{ position: 'fixed', top: 16, right: 16, display: 'flex', gap: 8, zIndex: 1000 }}
-      >
-        {listThemeIds().map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setThemeId(id)}
-            data-active={themeId === id}
-            data-theme-button={id}
-          >
-            {t(getThemeMeta(id).labelKey)}
-          </button>
-        ))}
-      </div>
+      <Toolbar
+        layoutMode={layoutMode}
+        onModeChange={handleModeChange}
+        frameRatio={frameRatio}
+        onFrameRatioChange={handleFrameRatioChange}
+        themeId={themeId}
+        onThemeClick={handleThemeClick}
+      />
     </div>
   )
 }
