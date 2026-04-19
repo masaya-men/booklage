@@ -236,12 +236,15 @@ ol {
 
   /* === B1 Dashboard Foundation variables (2026-04-20) === */
 
-  /* Liquid glass */
-  --glass-clarity: 0.04;
-  --glass-blur: 0px;
+  /* Liquid glass — tunable for iteration.
+     clarity 0 = 完全クリア, 1 = opaque white. 0.35 is a mid "visibly present" baseline.
+     blur: always applied as a baseline so chrome is visible even when backdrop-filter:url() fails.
+     displacement-scale: used by feDisplacementMap in the SVG filter (refractive distortion). */
+  --glass-clarity: 0.35;
+  --glass-blur: 6px;
   --glass-displacement-scale: 12;
-  --glass-edge: rgba(255, 255, 255, 0.55);
-  --glass-specular: rgba(255, 255, 255, 0.9);
+  --glass-edge: rgba(255, 255, 255, 0.6);
+  --glass-specular: rgba(255, 255, 255, 0.95);
 
   /* Sidebar geometry */
   --sidebar-width: 240px;
