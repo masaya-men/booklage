@@ -44,6 +44,41 @@
 - 迷ったらユーザーに確認。無断で public 化しない
 - `--no-verify` で hooks をスキップすることは **絶対禁止**（CLAUDE.md 既定）
 
+### IDEAS.md と docs/private/ の永続化ルール（2026-04-19 Phase 2 追加）
+
+- **真実の場所はメインリポ**: `docs/private/IDEAS.md` の正本は `C:/Users/masay/Desktop/マイコラージュ/docs/private/` 配下。gitignored なので worktree 作成時に自動的にコピーされない
+- **新規 worktree 作成時**: 開始直後に `cp -r` でメインリポから `docs/private/` 配下を worktree にコピーする（IDEAS.md, README.md 等）
+- **worktree で IDEAS.md を更新したら**: セッション終了前に worktree → メインリポへ逆コピーで永続化する
+- **worktree を破棄するときは** IDEAS.md がメインリポに同期済みかを必ず確認する（`diff` で比較）
+- 「両方ある」状態を sync して維持する仕組みは現在ない。手動同期 = ルール遵守で担保する
+
+### 実メアド・本名の絶対的扱い（2026-04-19 Phase 2 追加）
+
+- tracked ファイルには **絶対に** 実メアドを書かない（CLAUDE.md / README.md / docs/ / コードコメント 含めて全部）
+- 例示で必要なら `<user-email>` のような placeholder のみ
+- 実値の参照場所は **Claude の user memory（ローカル）** と `docs/private/IDEAS.md` のみ
+- 本名 `Masaya` も tracked ファイルでの言及を最小化（GitHub username `masaya-men` から推測可能だが、わざわざ書かない）
+- git config の user.name / user.email は別問題。GitHub commit author に出るので、必要なら `<id>+<username>@users.noreply.github.com` 形式に設定
+
+### commit 前の機微自己チェック（pre-commit hook と二重防御）
+
+新規追加 / 編集箇所に以下が含まれていないか **commit 前に目視確認**：
+
+1. **個人情報**: 実メアド、本名、電話、住所、契約関係
+2. **競合・戦略ワード**: 「収益」「価格」「monetization」「launch strategy」「Pocket」「Raindrop」「mymind」「Cosmos」「Are.na」「Pinterest」「Dewey」等
+3. **戦略表現**: 「magic moment」「差別化の核」「他にない」「市場の空白」「勝ち筋」「訴求ポイント」等
+
+怪しいときは該当内容を `docs/private/IDEAS.md` に退避してから commit。
+**既に push 済の機微** が見つかったら、即時 IDEAS.md 退避 + scrub commit + 必要に応じて `git filter-repo` で履歴書き換え（手順は `docs/private/IDEAS.md` §「次セッションのプライバシー徹底監査タスク」参照）。
+
+### Phase 2 (2026-04-19) で実施した恒久対策
+
+- **CLAUDE.md L23**: 実メアド placeholder 化
+- **MYCOLLAGE_FULL_SPEC.md §1, §13**: 市場分析・Pocket ポジショニングを IDEAS.md に退避
+- **docs/TODO.md / b1-placement-design.md**: 戦略表現中立化、「収益戦略」参照削除
+- **git filter-repo**: master 全履歴 214 commits から機微テキスト + 旧メアドを削除
+- **backup branch**: `backup-pre-filter-repo-2026-04-19` を origin に保管（**2026-05-19 以降に削除可**）
+
 ---
 
 ## セッション管理
