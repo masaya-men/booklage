@@ -12,7 +12,11 @@
     "bgTheme": "背景主题",
     "newFolder": "+ 新建文件夹",
     "folderNamePlaceholder": "文件夹名称...",
-    "emptyState": "粘贴网址来添加你的第一个书签"
+    "emptyState": "粘贴网址来添加你的第一个书签",
+    "theme": {
+      "dottedNotebook": "点线笔记本",
+      "gridPaper": "方格纸"
+    }
   },
   "share": {
     "defaultText": "用书签做了一个拼贴画，太棒了 ✨ #Booklage"

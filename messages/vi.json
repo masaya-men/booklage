@@ -12,7 +12,11 @@
     "bgTheme": "Chủ đề nền",
     "newFolder": "+ Thư mục mới",
     "folderNamePlaceholder": "Tên thư mục...",
-    "emptyState": "Dán URL để thêm dấu trang đầu tiên của bạn"
+    "emptyState": "Dán URL để thêm dấu trang đầu tiên của bạn",
+    "theme": {
+      "dottedNotebook": "Sổ Tay Chấm Bi",
+      "gridPaper": "Giấy Kẻ Ô"
+    }
   },
   "share": {
     "defaultText": "Tôi đã tạo một bức cắt dán từ dấu trang và nó tuyệt vời ✨ #Booklage"

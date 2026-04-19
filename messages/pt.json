@@ -12,7 +12,11 @@
     "bgTheme": "Tema de fundo",
     "newFolder": "+ Nova pasta",
     "folderNamePlaceholder": "Nome da pasta...",
-    "emptyState": "Cole uma URL para adicionar seu primeiro favorito"
+    "emptyState": "Cole uma URL para adicionar seu primeiro favorito",
+    "theme": {
+      "dottedNotebook": "Caderno Pontilhado",
+      "gridPaper": "Papel Quadriculado"
+    }
   },
   "share": {
     "defaultText": "Fiz uma colagem de favoritos e ficou incrível ✨ #Booklage"

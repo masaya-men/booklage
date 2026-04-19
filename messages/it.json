@@ -12,7 +12,11 @@
     "bgTheme": "Tema di sfondo",
     "newFolder": "+ Nuova cartella",
     "folderNamePlaceholder": "Nome cartella...",
-    "emptyState": "Incolla un URL per aggiungere il tuo primo segnalibro"
+    "emptyState": "Incolla un URL per aggiungere il tuo primo segnalibro",
+    "theme": {
+      "dottedNotebook": "Quaderno Puntinato",
+      "gridPaper": "Carta Quadrettata"
+    }
   },
   "share": {
     "defaultText": "Ho creato un collage di segnalibri ed è fantastico ✨ #Booklage"

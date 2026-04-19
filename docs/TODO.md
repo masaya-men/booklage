@@ -7,79 +7,69 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master`（push済み）
-- **進捗**: S1〜S3, S5〜S9 完了 → **UX磨きスプリント進行中**
+- **ブランチ**: `claude/b0-impl`（Task 13〜18 完了、master マージ待ち）
+- **進捗**: **B0 ボード骨組みリビルド完了** → 次は B1（装飾レイヤー）か Task 17（実データ視覚調整）
 - **本番URL**: `https://booklage.pages.dev`
-- **DBバージョン**: v4（ogpStatus追加）
+- **DBバージョン**: v4（ogpStatus追加、スキーマは変更なし）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
-- **テスト**: 全108件パス（vitest）、TypeScript型チェッククリア
+- **テスト**: vitest 30/30、Playwright E2E 6/6、perf spec 1本 すべて green、TypeScript strict クリア
 
-### 直近の作業（2026-04-16セッション④）
+### 直近の作業（2026-04-19 B0 セッション②）
 
-- **UX磨きリスト全7項目完了**
-- LP: ライトテーマデフォルト + ☀/☾テーマトグル（localStorage保持）
-- ブックマークレット: パルスリングアニメ、スプリングホバー、pill形状に改善
-- カードガラスblur修正: CardStyleWrapper 24px→6px
-- テーマ切替ボタン: ボード右上に☀/☾トグル追加
-- キャンバス操作ガイド: 空キャンバスにズーム/移動ヒント表示
-- カードホバーツールチップ: 「クリックで開く ↗」表示
-- リストパネル: 外クリックで閉じるように修正（document mousedown方式）
-- 死んだCSS削除（.bookmarkCardセレクタ）
+- Task 13: `/board` を BoardRoot に差し替え。最小 ja-only 翻訳ヘルパ `lib/i18n/t.ts` を追加
+- Task 14: Playwright E2E 6件追加。layout wrap バグ（InteractionLayer がカードイベントを奪う）を発見・修正
+- Task 15: **クリーンスレート削除** — 旧 board-client.tsx + orphan UI 全部 + 依存 lib すべて削除（11,270 行削除）
+- Task 16: 1000 カード perf spec 追加 → 60.6 fps / DOM 66枚 / 最長 16.8ms frame 達成
+- Task 17: 実データ視覚調整は **ユーザー確認待ち**（マージ後に実ブクマで確認してもらう）
+- Task 18: TODO 更新 + master マージ
 
 ### 重要な技術判断（確定済み）
 
-1. **ReactのDOM管理がGSAP Draggableを壊す** → DOM API + createPortal方式
-2. **リキッドグラス** — Chrome検出、物理ベース屈折、UIパネル+カードに適用済み
-3. **React Strict Mode** — GSAP互換性のため`reactStrictMode: false`
-4. **カードナビゲーション座標変換** — getBoundingClientRect→ビューポート相対→ワールド座標逆算。`use-infinite-canvas.ts`に`setTransform()`追加済み
+1. **B0 6層構成** — BoardRoot / ThemeLayer / CardsLayer / InteractionLayer / CardNode / ResizeHandle、`lib/board/*` に純関数レイアウト
+2. **InteractionLayer は scrolled content を children として wrap する** — 直下 wrapper に `pointer-events: none`、カードだけ `auto`
+3. **viewport culling** — 1-screen buffer で 1000 カード → DOM 66 枚
+4. **i18n は静的 ja.json import** — next-intl 未導入。locale 化は将来スプリント
+5. **IndexedDB v4 スキーマは現状維持** — rotation / scale / zIndex / gridIndex は dead column のまま（v5 マイグレーションは不要になるまで保留）
+
+### B0 で削除された旧実装（git history 参照）
+
+- `lib/glass/*`, `lib/sphere/*`, `lib/interactions/*`, `lib/theme/*`, `lib/import/*`, `lib/scraper/*`
+- `lib/canvas/{auto-layout,use-infinite-canvas,collision}.ts`
+- `components/board/*` の旧 UI 全系統（Canvas, BookmarkCard, DraggableCard, CustomCursor, Sphere*, SettingsPanel, FolderNav, UrlInput, ViewModeToggle, ThemeSelector, ExportButton, RandomPick, ColorSuggest, BookmarkListPanel, TweetCard, VideoEmbed, card-styles/）
+- `components/import/*`（ImportModal 等）、`components/pwa/InstallPrompt`、`components/bookmarklet/BookmarkletBanner`
+
+→ 再実装時はまず `docs/archive/liquid-glass-notes.md` / `docs/archive/sphere-navigation-notes.md` を読む
 
 ---
 
-## 次にやること: UX磨きスプリント（最優先）
+## 次にやること: リビルドフェーズ
 
-**目標: Booklageを「触って感動する」レベルにする**
+`docs/REBUILD_VISION.md` の方針で B(board) → C(LP) → D(cards) → A(sphere)。B0 が完了したところ。
 
-必ず `docs/DESIGN_REFERENCES.md` を読んでから着手すること。
+### 最優先（マージ直後にやる）
 
-### 優先度1（コア体験の品質）— 完了 ✓
-- [x] **リキッドグラス透明化 + ぽよんぽよん変形**
-- [x] **カスタムスクロールバー（全ページ統一）**
-- [x] **カード自由リサイズ改善**
-- [x] **ビューポートカリング + パフォーマンス最適化（1000枚60fps）**
+- [ ] **Task 17: B0 の実データ視覚調整**
+  - `/board` を実ブラウザで開き、既存ブクマで auto layout の手触りを確認
+  - `lib/board/constants.ts::LAYOUT_CONFIG` の `TARGET_ROW_HEIGHT_PX` / `GAP_PX` を必要なら微調整
+  - 「触ってて気持ちいい」ラインまで来てから B1 へ進む
 
-### 優先度2（見た目の差別化）— 完了 ✓
-- [x] **背景テーマ追加（現実マテリアル系）**
-  - カッティングマット（緑）、ノート、点線ノート、作図用紙
-- [x] **Moodboard 3000風グリッド整理**
-  - ジャスティファイドレイアウト: 行ごとにカードを幅いっぱいに配置、隙間4px
-  - カードはアスペクト比を保ちつつ行高さを揃える
+### 次フェーズ候補（ユーザー判断）
 
-### 優先度3（インタラクションの楽しさ）— 完了 ✓
-- [x] **カード回転アニメーション**
-  - クリック時に3Dフリップ（rotateY 360°、power2.inOut、0.55秒）→URL遷移
-- [x] **Fluid Functionalismアニメーション**
-  - 全カードにスプリング物理ホバー（ease-out-back + translateY(-2px) + scale(1.03)）
-  - リキッドグラスUIパネルにスプリングトランジション適用
+- **B1 装飾レイヤー**: kube.io 方式の液体ガラス再実装、カードスタイル、スプリング物理、3D タイル演出
+  - 参照: `docs/archive/liquid-glass-notes.md`、`docs/DESIGN_REFERENCES.md`
+- **B2 ブクマ管理再統合**: URL 入力 / フォルダ / インポート / 設定パネルを BoardRoot に戻す
+  - 旧実装は B0 で完全削除済。git history から発掘してフルスクラッチ
+- **B3 3D 球体ナビ再接続**: `theme-registry` に `direction: 'sphere'` を足して再統合
+  - 参照: `docs/archive/sphere-navigation-notes.md`
+- **C LP リビルド**: `app/(marketing)/` と `app/page.tsx` 全面刷新
+- **D カードスタイル拡充**
 
-### 将来（ユーザー反応を見てから）
-- [x] カスタムカーソル: ガラスレンズ + 12種エモジカーソル、設定で切替可、IndexedDB保持
-- [x] 3D球体ナビゲーション実装（基本動作まで完了、polish は別セッション）
-  - ブランチ: `claude/hardcore-yalow`、master 未マージ、未 push
-  - トグル: テーマボタン下に 🌐/📋（既存 grid/collage とは別管理）
-  - デフォルト `canvasMode: 'flat'` opt-in、WebGL 非対応は自動 flat
-  - 139/139 テスト pass、ビルド OK、Playwright でブラウザ確認済
-  - 既知の残課題（次セッションで触る前に確認すること）:
-    - 実際のパン操作で裏側のカードが戻ってくるか未検証
-    - 球面が大きすぎてカードが小さく遠い（camera distance/scale のバランス）
-    - WebGL キャンバスに謎の白丸アーティファクト（bloom or glow 起因と推測）
-    - 計画書の裏側dot LOD表示は未実装（WebGL points で描画する予定だった）
-    - ガラスシェーダーは球体に適用されていない（glass-shader.ts は作ったが未接続）
+### 未着手（スプリント未切）
+
 - [ ] html-in-canvas（ブラウザ未実装、待ち）
 - [ ] S4: 広告基盤（ユーザーが付いてから）
-- [x] Chrome拡張: manifest v3, ワンクリック保存, /save経由でIndexedDBに追加
-- [x] 15言語i18n完了: ja,en,zh,ko,es,fr,de,pt,it,nl,tr,ru,ar,th,vi
 
 ---
 
@@ -89,23 +79,7 @@
 - ユーザーデータ一切非保持（IndexedDBのみ）
 - ブックマークレットが主導線（Worker不要でOGP取得）
 - 無限キャンバス: Figma/Miro風
-- ReactのDOM管理はGSAP Draggableと互換性がない → DOM API + createPortal方式
-
-## 既存のUX磨きリスト（前セッションから引き継ぎ）
-
-- [x] ガラス縁: CardStyleWrapperで全カード共通適用済み。blur 24px→6pxに修正
-- [x] UIレイアウト整理: ツールバー統合、ボタン重なり解消
-- [x] テーマ切替ボタン: 右上に☀/☾トグル追加（ダーク↔ライト即切替）
-- [x] LP/全ページのダーク↔ライト切替: ライトデフォルト + ☀/☾トグル（localStorage保持）
-- [x] キャンバス操作の案内UI: 空キャンバスにズーム/移動操作ヒント表示
-- [x] ブックマークレットのデザイン改善: パルスリングアニメ、スプリングホバー、pill形状
-- [x] カードホバー時に「クリックで開く ↗」ツールチップ表示
-
-## YouTube Takeout の問題
-
-- Google Takeoutは「後で見る」を含むが、エクスポートに**数時間かかり非現実的**
-- ZIP直接アップロード未対応（手動展開が必要）
-- 代替手段を検討すべき: YouTube API直接 or Chrome拡張推奨
+- B0 以降は「装飾ゼロの骨組み」を常に維持し、装飾は差し込み可能な形で追加する
 
 ## アイデア・やりたいこと
 

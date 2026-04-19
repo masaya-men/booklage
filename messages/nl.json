@@ -12,7 +12,11 @@
     "bgTheme": "Achtergrondthema",
     "newFolder": "+ Nieuwe map",
     "folderNamePlaceholder": "Mapnaam...",
-    "emptyState": "Plak een URL om je eerste bladwijzer toe te voegen"
+    "emptyState": "Plak een URL om je eerste bladwijzer toe te voegen",
+    "theme": {
+      "dottedNotebook": "Stippennotitieboek",
+      "gridPaper": "Ruitjespapier"
+    }
   },
   "share": {
     "defaultText": "Ik heb een bladwijzercollage gemaakt en het is geweldig ✨ #Booklage"
