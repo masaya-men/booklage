@@ -145,6 +145,7 @@ ol {
   --color-card-border: rgba(255, 255, 255, 0.08);
   --color-card-shadow: rgba(0, 0, 0, 0.4);
   --color-card-glow: rgba(124, 92, 252, 0.15);
+  --color-selection-glow: rgba(124, 92, 252, 0.18);
 
   /* ── Folder Colors ── */
   --folder-red: #ff6b6b;

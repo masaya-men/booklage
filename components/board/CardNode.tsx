@@ -51,7 +51,7 @@ export function CardNode({
           </>
         )}
         {locked && (
-          <div className={styles.lockChip} aria-label="locked">
+          <div className={styles.lockChip} role="img" aria-label="ロック中">
             <svg
               className={styles.lockIcon}
               viewBox="0 0 24 24"

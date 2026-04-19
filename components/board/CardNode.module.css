@@ -27,7 +27,7 @@
   outline: 2px solid var(--color-accent-primary);
   outline-offset: 2px;
   z-index: 31;
-  box-shadow: 0 0 0 4px rgba(124, 92, 252, 0.18);
+  box-shadow: 0 0 0 4px var(--color-selection-glow);
 }
 
 .lockChip {
