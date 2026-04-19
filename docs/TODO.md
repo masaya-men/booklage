@@ -44,6 +44,13 @@
   - ⚠️ **「グリッドボタン押しても全カード整列しない」既知バグ** — 現在は「モード切替」で再レイアウトが部分的にしか効いてない。Batch B Task 6-8 で「整列アクション化」すれば解決予定 (Task 7 `alignAllToGrid` が全カード強制再計算する)
 - 全 commits は `claude/b1-placement` に積まれ **origin に push 済**
 
+### 🚨 次セッション起床後の最優先アクション
+
+1. **`docs/private/launch-plan-2026-04.md` を読む** (非公開、launch 戦略の詳細 day-by-day プラン)
+2. **`docs/TODO.md` (このファイル) を読む** ← 今ここ
+3. **Plan A Batch B Task 6 から subagent-driven-development で dispatch**
+4. 並行で X に build-in-public 第 1 投稿 (90 秒)
+
 ### Plan A Batch B (次セッションここから)
 
 **Task 6-9 (4 タスク)** — 以下の順で subagent-driven-development で実装予定:
