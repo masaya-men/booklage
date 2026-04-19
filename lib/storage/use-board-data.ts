@@ -36,7 +36,7 @@ function deriveThumbnail(b: BookmarkRecord): string | undefined {
   return undefined
 }
 
-function computeAspectRatio(b: BookmarkRecord, c: CardRecord | undefined): number {
+export function computeAspectRatio(b: BookmarkRecord, c: CardRecord | undefined): number {
   // Respect user-resized cards — never recompute
   if (c?.isUserResized && c.width > 0 && c.height > 0) return c.width / c.height
   // Use cached aspectRatio if present
@@ -153,7 +153,7 @@ export function useBoardData(): {
   const persistReadFlag = useCallback(
     async (bookmarkId: string, isRead: boolean): Promise<void> => {
       const db = dbRef.current
-      if (!db) return
+      if (!db || !bookmarkId) return
       const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
       if (!existing) return
       await db.put('bookmarks', { ...existing, isRead })
@@ -164,7 +164,7 @@ export function useBoardData(): {
   const persistSoftDelete = useCallback(
     async (bookmarkId: string, isDeleted: boolean): Promise<void> => {
       const db = dbRef.current
-      if (!db) return
+      if (!db || !bookmarkId) return
       const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
       if (!existing) return
       await db.put('bookmarks', {
@@ -172,17 +172,18 @@ export function useBoardData(): {
         isDeleted,
         deletedAt: isDeleted ? new Date().toISOString() : undefined,
       })
-      // Remove from live items if deleted; re-add if restored
+      // Remove from live items immediately when deleted.
+      // Restore is NOT reflected in the current session; the item only
+      // reappears after the next hook mount (page reload or remount).
       setItems((prev) => {
         if (isDeleted) return prev.filter(it => it.bookmarkId !== bookmarkId)
-        // restore: query will re-run on next hook mount
         return prev
       })
     },
     [],
   )
 
-  // Temporary (removed in Task 13): legacy persistCardPosition shim
+  // Temporary shim, removed in Task 13 (updates BoardRoot.tsx callsites at lines ~109 and ~142).
   // Maps CardPosition to FreePosition defaults so BoardRoot keeps compiling.
   const persistCardPosition = useCallback(
     async (cardId: string, pos: CardPosition): Promise<void> => {
