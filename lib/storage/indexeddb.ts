@@ -34,6 +34,13 @@ export interface BookmarkRecord {
   folderId: string
   /** OGP fetch status: pending (not yet fetched), fetched (done), failed (needs retry) */
   ogpStatus: OgpStatus
+  // v6 additions
+  /** Whether user has read this bookmark */
+  isRead?: boolean
+  /** Whether this bookmark is soft-deleted (B2 cleanup) */
+  isDeleted?: boolean
+  /** ISO 8601 timestamp for 30-day purge (B2) */
+  deletedAt?: string
 }
 
 /** Folder record stored in IndexedDB */
@@ -76,6 +83,13 @@ export interface CardRecord {
   width: number
   /** Card height in pixels */
   height: number
+  // v6 additions
+  /** Whether card is locked (prevents interaction) */
+  locked?: boolean
+  /** Whether user manually resized this card (prevents aspect-ratio recompute overwrite) */
+  isUserResized?: boolean
+  /** Cached aspect ratio estimation */
+  aspectRatio?: number
 }
 
 export interface UserPreferencesRecord {
@@ -246,6 +260,39 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
           if (!cursor) return
           void cursor.update({ ...cursor.value, isManuallyPlaced: false })
           return cursor.continue().then(clearManualPlacement)
+        })
+      }
+
+      // ── v5 → v6: add locked / isUserResized / aspectRatio to cards;
+      //            add isRead / isDeleted / deletedAt to bookmarks
+      if (oldVersion < 6) {
+        const cardStore = transaction.objectStore('cards')
+        void cardStore.openCursor().then(function addV6CardFields(
+          cursor: Awaited<ReturnType<typeof cardStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          const card = {
+            ...cursor.value,
+            locked: (cursor.value as CardRecord & { locked?: boolean }).locked ?? false,
+            isUserResized: (cursor.value as CardRecord & { isUserResized?: boolean }).isUserResized ?? false,
+            aspectRatio: (cursor.value as CardRecord & { aspectRatio?: number }).aspectRatio,
+          }
+          void cursor.update(card)
+          return cursor.continue().then(addV6CardFields)
+        })
+
+        const bookmarkStore = transaction.objectStore('bookmarks')
+        void bookmarkStore.openCursor().then(function addV6BookmarkFields(
+          cursor: Awaited<ReturnType<typeof bookmarkStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          const b = {
+            ...cursor.value,
+            isRead: (cursor.value as BookmarkRecord & { isRead?: boolean }).isRead ?? false,
+            isDeleted: (cursor.value as BookmarkRecord & { isDeleted?: boolean }).isDeleted ?? false,
+          }
+          void cursor.update(b)
+          return cursor.continue().then(addV6BookmarkFields)
         })
       }
     },
