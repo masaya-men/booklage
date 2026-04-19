@@ -25,13 +25,18 @@
   transform: translateX(calc(-1 * (var(--sidebar-width) - var(--sidebar-collapsed))));
 }
 
-.sidebar :global(.glass) {
+/* Routed via <LiquidGlass className={styles.sidebarGlass}>.
+   CSS Modules hash the .glass class so a :global selector doesn't match;
+   the className prop is the correct way to extend it from consumers. */
+.sidebarGlass {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   border-radius:
     var(--corner-radius-outer)
     var(--corner-radius-inner)
     var(--corner-radius-inner)
     var(--corner-radius-outer);
-  height: 100%;
 }
 
 /* --- Brand --- */

@@ -23,7 +23,7 @@ export function Sidebar({ collapsed, onToggle, counts, onThemeClick }: Props): R
       data-testid="board-sidebar"
       aria-label="ボードナビゲーション"
     >
-      <LiquidGlass>
+      <LiquidGlass className={styles.sidebarGlass}>
         <div className={styles.inner}>
           {/* Brand */}
           <div className={styles.brand}>
