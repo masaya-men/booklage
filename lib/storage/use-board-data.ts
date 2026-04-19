@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { IDBPDatabase } from 'idb'
-import type { CardPosition } from '@/lib/board/types'
-import { extractYoutubeId } from '@/lib/utils/url'
+import type { FreePosition, CardPosition } from '@/lib/board/types'
+import { extractYoutubeId, detectUrlType } from '@/lib/utils/url'
+import { detectAspectRatioSource, estimateAspectRatio } from '@/lib/board/aspect-ratio'
 import {
   initDB,
   getAllBookmarks,
@@ -19,7 +20,11 @@ export type BoardItem = {
   readonly thumbnail?: string
   readonly url: string
   readonly aspectRatio: number
-  readonly userOverridePos?: CardPosition
+  readonly gridIndex: number
+  readonly freePos?: FreePosition
+  readonly userOverridePos?: CardPosition  // legacy compat: same data as freePos for grid-side consumers
+  readonly isRead: boolean
+  readonly isDeleted: boolean
 }
 
 type DbLike = IDBPDatabase<unknown>
@@ -31,22 +36,66 @@ function deriveThumbnail(b: BookmarkRecord): string | undefined {
   return undefined
 }
 
+function computeAspectRatio(b: BookmarkRecord, c: CardRecord | undefined): number {
+  // Respect user-resized cards — never recompute
+  if (c?.isUserResized && c.width > 0 && c.height > 0) return c.width / c.height
+  // Use cached aspectRatio if present
+  if (c?.aspectRatio && c.aspectRatio > 0) return c.aspectRatio
+  // Else estimate from URL + OGP metadata
+  const source = detectAspectRatioSource({
+    url: b.url,
+    urlType: detectUrlType(b.url),
+    title: b.title,
+    description: b.description,
+    ogImage: b.thumbnail,
+  })
+  return estimateAspectRatio(source)
+}
+
 function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
-  const w = c?.width ?? 240
-  const h = c?.height ?? 180
+  const aspectRatio = computeAspectRatio(b, c)
   const hasPlacement = c?.isManuallyPlaced === true
+  const w = c?.width ?? 240
+  const h = c?.height ?? (w / aspectRatio)
+
+  const freePos: FreePosition | undefined = hasPlacement && c
+    ? {
+        x: c.x,
+        y: c.y,
+        w,
+        h,
+        rotation: c.rotation ?? 0,
+        zIndex: c.zIndex ?? 0,
+        locked: c.locked ?? false,
+        isUserResized: c.isUserResized ?? false,
+      }
+    : undefined
+
   return {
     bookmarkId: b.id,
     cardId: c?.id ?? '',
     title: b.title || b.url,
     thumbnail: deriveThumbnail(b),
     url: b.url,
-    aspectRatio: w / h,
+    aspectRatio,
+    gridIndex: c?.gridIndex ?? 0,
+    freePos,
     userOverridePos: hasPlacement ? { x: c.x, y: c.y, w, h } : undefined,
+    isRead: b.isRead ?? false,
+    isDeleted: b.isDeleted ?? false,
   }
 }
 
-export function useBoardData() {
+export function useBoardData(): {
+  items: BoardItem[]
+  loading: boolean
+  persistFreePosition: (cardId: string, pos: FreePosition) => Promise<void>
+  persistGridIndex: (cardId: string, gridIndex: number) => Promise<void>
+  persistReadFlag: (bookmarkId: string, isRead: boolean) => Promise<void>
+  persistSoftDelete: (bookmarkId: string, isDeleted: boolean) => Promise<void>
+  /** @deprecated Use persistFreePosition instead. Removed in Task 13. */
+  persistCardPosition: (cardId: string, pos: CardPosition) => Promise<void>
+} {
   const [items, setItems] = useState<BoardItem[]>([])
   const [loading, setLoading] = useState(true)
   const dbRef = useRef<DbLike | null>(null)
@@ -62,7 +111,10 @@ export function useBoardData() {
       const cardByBookmark = new Map<string, CardRecord>()
       for (const c of cards) cardByBookmark.set(c.bookmarkId, c)
       if (cancelled) return
-      setItems(bookmarks.map((b) => toItem(b, cardByBookmark.get(b.id))))
+      const all = bookmarks
+        .filter(b => !b.isDeleted)
+        .map((b) => toItem(b, cardByBookmark.get(b.id)))
+      setItems(all)
       setLoading(false)
     })().catch(() => {
       if (!cancelled) setLoading(false)
@@ -72,20 +124,82 @@ export function useBoardData() {
     }
   }, [])
 
-  const persistCardPosition = useCallback(
-    async (cardId: string, pos: CardPosition): Promise<void> => {
+  const persistFreePosition = useCallback(
+    async (cardId: string, pos: FreePosition): Promise<void> => {
       const db = dbRef.current
       if (!db || !cardId) return
       await updateCard(db as Parameters<typeof updateCard>[0], cardId, {
-        x: pos.x,
-        y: pos.y,
-        width: pos.w,
-        height: pos.h,
+        x: pos.x, y: pos.y,
+        width: pos.w, height: pos.h,
+        rotation: pos.rotation,
+        zIndex: pos.zIndex,
+        locked: pos.locked,
+        isUserResized: pos.isUserResized,
         isManuallyPlaced: true,
       })
     },
     [],
   )
 
-  return { items, loading, persistCardPosition }
+  const persistGridIndex = useCallback(
+    async (cardId: string, gridIndex: number): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !cardId) return
+      await updateCard(db as Parameters<typeof updateCard>[0], cardId, { gridIndex })
+    },
+    [],
+  )
+
+  const persistReadFlag = useCallback(
+    async (bookmarkId: string, isRead: boolean): Promise<void> => {
+      const db = dbRef.current
+      if (!db) return
+      const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
+      if (!existing) return
+      await db.put('bookmarks', { ...existing, isRead })
+    },
+    [],
+  )
+
+  const persistSoftDelete = useCallback(
+    async (bookmarkId: string, isDeleted: boolean): Promise<void> => {
+      const db = dbRef.current
+      if (!db) return
+      const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
+      if (!existing) return
+      await db.put('bookmarks', {
+        ...existing,
+        isDeleted,
+        deletedAt: isDeleted ? new Date().toISOString() : undefined,
+      })
+      // Remove from live items if deleted; re-add if restored
+      setItems((prev) => {
+        if (isDeleted) return prev.filter(it => it.bookmarkId !== bookmarkId)
+        // restore: query will re-run on next hook mount
+        return prev
+      })
+    },
+    [],
+  )
+
+  // Temporary (removed in Task 13): legacy persistCardPosition shim
+  // Maps CardPosition to FreePosition defaults so BoardRoot keeps compiling.
+  const persistCardPosition = useCallback(
+    async (cardId: string, pos: CardPosition): Promise<void> => {
+      const freePos: FreePosition = {
+        x: pos.x,
+        y: pos.y,
+        w: pos.w,
+        h: pos.h,
+        rotation: 0,
+        zIndex: 0,
+        locked: false,
+        isUserResized: true,
+      }
+      await persistFreePosition(cardId, freePos)
+    },
+    [persistFreePosition],
+  )
+
+  return { items, loading, persistFreePosition, persistGridIndex, persistReadFlag, persistSoftDelete, persistCardPosition }
 }
