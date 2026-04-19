@@ -81,6 +81,37 @@
 
 ---
 
+## 🚀 本番デプロイのルール（2026-04-19 追加）
+
+**Cloudflare Pages は direct upload (`wrangler pages deploy`) なら build minutes 0 消費。1ヶ月 500 deploys 制限のみ（= 1 日 16 回まで、ソロ開発では実質無制限）。**
+
+### デプロイしてよいタイミング（Claude の自発判断で OK）
+
+- **セッション終了時**: TODO 更新 commit 後、必ずデプロイ
+- **セッション途中で大きめ UI 変更を ship したら**: 「本番で動作確認してほしい」と提案しつつ自発デプロイ
+- **ユーザーが「本番で見たい」と言ったら**: 即デプロイ
+- **デプロイ回数が 1 日 10 回を超えそう** or **500/月 の残り枠が少ない** と感じたら、初めて確認を取る
+
+### デプロイ手順（固定）
+
+```bash
+# worktree 内で実行
+rtk pnpm build
+npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true
+```
+
+- `pnpm build` は `output: 'export'` 設定で `out/` に static file 生成
+- `--commit-dirty=true` は「現在の作業ツリーに未 commit 変更があっても deploy してよい」フラグ（直前の commit とビルド内容が一致する前提で使う）
+- 本番 URL: `https://booklage.pages.dev`
+
+### 守ること
+
+- デプロイ前に tsc + vitest が通っていること（壊れたものを本番に上げない）
+- master ブランチじゃなくても OK（Cloudflare Pages は direct upload 時は branch 情報を問わない、URL も `booklage.pages.dev` 固定）
+- デプロイしたら引き継ぎメッセージに「本番反映済」の旨を添える
+
+---
+
 ## セッション管理
 
 ### 開始時
