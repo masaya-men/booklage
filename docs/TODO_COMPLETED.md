@@ -1,5 +1,16 @@
 # 完了済みタスク
 
+## B0 ボード骨組みリビルド（2026-04-19 完了）
+
+- [x] 6層分離: `BoardRoot` → `ThemeLayer` / `CardsLayer` / `InteractionLayer` → `CardNode` / `ResizeHandle`
+- [x] 純関数 `computeAutoLayout` + vitest 8件、1000カード計算 <16ms
+- [x] テーマ: 点線ノート（縦）+ 方眼紙（縦、白格子）。`theme-registry.ts` で追加可能
+- [x] viewport culling で 1000カード → DOM 66枚、60.6fps 維持（Playwright perf spec）
+- [x] 装飾完全削除 — card-styles, liquid-glass, sphere, custom cursor, カードスタイル系
+- [x] クリーンスレート削除 — 旧 board-client + orphan UI + 依存 lib（11,270行削除）
+- [x] Playwright E2E 6件 green（テーマ背景、カード描画、wheel scroll、empty-drag、テーマ切替、カードドラッグ）
+- [x] 本番品質の justified grid layout + IndexedDB 位置永続化
+
 ## MVP Week 1（2026-04-10 完了）
 
 - [x] Task 1: プロジェクト初期化（Next.js 16 + TypeScript strict + pnpm）
