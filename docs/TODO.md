@@ -81,12 +81,35 @@
 - 無限キャンバス: Figma/Miro風
 - B0 以降は「装飾ゼロの骨組み」を常に維持し、装飾は差し込み可能な形で追加する
 
+## B1 の核ビジョン: 「Booklage 上で複数動画／音を同時ミックスして世界を作る」
+
+ユーザー発案 2026-04-19、**[redacted-strategy]**。[redacted-strategy]。
+
+**例**: クラシック音楽 + 森の散歩動画、ポケモンシティ BGM + 勉強机、AAA ゲーム trailer + 深海生物、etc.
+
+**技術的実現性**: 全て合法・公式 embed あり
+- YouTube: `youtube.com/embed/<id>` iframe（公式・利用規約明示許諾）
+- TikTok: 公式 embed API
+- Twitter/X: `react-tweet`（以前削除したので B1 で戻す）
+- Vimeo / SoundCloud / Spotify: iframe 公式対応
+- 複数同時再生: ブラウザ制限なし。音は各カードにミュートトグル、通常は 1 枚だけ unmute
+
+**B1 実装時の論点**（brainstorming 必須）:
+- click の意味を「新タブで開く」→「カード内で再生」に変える
+- 再生中カードのアスペクト比を 16:9 に自動調整
+- 音声競合の UX（自動 mute / 手動 unmute 切替）
+- 同時再生時のパフォーマンス（iframe 多数 → 帯域 + CPU）
+- ミックス状態の保存・共有（URL 圧縮エンコード方式で「このミックス」を SNS シェア？）
+
 ## アイデア・やりたいこと
 
 - **B1 で優先したい**: **中身に応じてカードの縦横比を変える**（ユーザー発案 2026-04-19）
   - 長文ツイート → 縦長（3:4 / 1:2 など）、画像付きツイート → 横長（16:9）、YouTube → 16:9
   - 形が揃わない方が Moodboard 的な視覚リズムが出て見ていて楽しい
   - 実装箇所: `lib/storage/use-board-data.ts::toItem` の `aspectRatio` を IndexedDB 固定値ではなく「URL種別 + OGP メタから推定」に差し替え
+- **B1 で優先したい**: **ドラッグ UX の brainstorming 済み版を実装**
+  - 候補: Reorder drag（mymind/Are.na）vs Free placement（Milanote）vs Hybrid（Are.na pinlock）
+  - multi-playback の「ミックス配置」ニーズと合わせて設計（Free の方が直感的かも）
 - もっと多くのカードスタイル（ネオン、布、羊皮紙等）
 - 音フィードバック（ホバー/クリック時の微かな音）
 - LPの磨き上げ（マーケティング開始前に実施）

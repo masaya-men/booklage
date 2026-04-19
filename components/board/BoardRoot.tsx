@@ -110,10 +110,19 @@ export function BoardRoot() {
     },
     [itemByBookmark, persistCardPosition],
   )
+  const onCardClick = useCallback(
+    (cardId: string): void => {
+      const item = itemByBookmark.get(cardId)
+      if (!item?.url) return
+      window.open(item.url, '_blank', 'noopener,noreferrer')
+    },
+    [itemByBookmark],
+  )
   const handleCardPointerDown = useCardDrag({
     resolveStartPos: resolveStart,
     onDrag,
     onDragEnd,
+    onClick: onCardClick,
   })
 
   const handleCardResize = useCallback(
