@@ -78,11 +78,26 @@ export function BoardRoot() {
 
   // Cursor hint while Space is held. Owned here (not InteractionLayer) so the
   // hint matches the lifted state. Always restores on unmount.
+  // Also disables native text/element selection on the body so that Space+drag
+  // pan never triggers the browser's blue selection rectangle when the drag
+  // starts on a card. Uses setProperty/removeProperty to keep types clean and
+  // to cover the -webkit- prefixed variant for Safari/older Chrome.
   useEffect(() => {
     if (typeof document === 'undefined') return
-    document.body.style.cursor = spaceHeld ? 'grab' : ''
+    const body = document.body
+    if (spaceHeld) {
+      body.style.cursor = 'grab'
+      body.style.setProperty('user-select', 'none')
+      body.style.setProperty('-webkit-user-select', 'none')
+    } else {
+      body.style.cursor = ''
+      body.style.removeProperty('user-select')
+      body.style.removeProperty('-webkit-user-select')
+    }
     return (): void => {
-      document.body.style.cursor = ''
+      body.style.cursor = ''
+      body.style.removeProperty('user-select')
+      body.style.removeProperty('-webkit-user-select')
     }
   }, [spaceHeld])
 

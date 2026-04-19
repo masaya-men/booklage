@@ -58,9 +58,12 @@ export function InteractionLayer({
       const isPanModifier =
         e.button === 1 || (e.button === 0 && spaceHeldRef.current)
       if (!isPanModifier && e.target !== e.currentTarget) return
-      // Middle-button click would otherwise scroll-with-autoscroll on some
-      // browsers; preventDefault keeps our drag logic in sole control.
-      if (e.button === 1) e.preventDefault()
+      // Suppress the browser's native dragstart + text/element selection that
+      // would otherwise fire when a Space+drag pan starts on a card (event
+      // bubbles up here from CardsLayer's bailed pointerdown). Also covers
+      // middle-button click which would trigger scroll-with-autoscroll on some
+      // browsers — keeps our drag logic in sole control.
+      e.preventDefault()
       e.currentTarget.setPointerCapture(e.pointerId)
       dragRef.current = { lastX: e.clientX, lastY: e.clientY }
     },
