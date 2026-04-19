@@ -32,7 +32,7 @@ function loadSavedTheme(): ThemeId {
 }
 
 export function BoardRoot() {
-  const { items, persistCardPosition } = useBoardData()
+  const { items, persistCardPosition, persistFreePosition } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(DEFAULT_BOARD_CONFIG.layoutMode)
   const [frameRatio, setFrameRatio] = useState<FrameRatio>(DEFAULT_BOARD_CONFIG.frameRatio)
@@ -229,6 +229,7 @@ export function BoardRoot() {
             onCardPointerDown={handleCardPointerDown}
             onCardResize={handleCardResize}
             onCardResizeEnd={handleCardResizeEnd}
+            onPersistFreePos={persistFreePosition}
           />
         </div>
       </InteractionLayer>
