@@ -137,6 +137,16 @@ export function useBoardData(): {
         isUserResized: pos.isUserResized,
         isManuallyPlaced: true,
       })
+      // Sync local state so freeLayoutPositions sees the persisted position
+      // immediately when displayedPositions clears its drag override.
+      // Without this, the card snaps back to its old freePos on drag end.
+      setItems((prev) =>
+        prev.map((it) =>
+          it.cardId === cardId
+            ? { ...it, freePos: { ...pos } }
+            : it,
+        ),
+      )
     },
     [],
   )

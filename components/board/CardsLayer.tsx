@@ -59,7 +59,7 @@ type CardsLayerProps = {
    * cardId from the BoardItem and skips persistence when cardId is empty
    * (no IDB record yet).
    */
-  readonly onPersistFreePos?: (cardId: string, pos: FreePosition) => Promise<void>
+  readonly onPersistFreePos: (cardId: string, pos: FreePosition) => Promise<void>
 }
 
 /**
@@ -109,6 +109,7 @@ export function CardsLayer({
   const morphTimelineRef = useRef<gsap.core.Timeline | null>(null)
 
   // Free-mode drag state (only meaningful when layoutMode === 'free').
+  // NOTE: selectedIds intentionally not added here — see plan §Task 23/24 (selection consumers).
   const [freeDragState, setFreeDragState] = useState<FreeDragState | null>(null)
   const [snapGuides, setSnapGuides] = useState<ReadonlyArray<SnapGuideLine>>([])
   // Ref mirror so async drag-end can read the latest state synchronously
@@ -291,26 +292,28 @@ export function CardsLayer({
     clientY: number,
     shift: boolean,
   ): void => {
-    setFreeDragState((prev) => {
-      if (!prev || prev.bookmarkId !== bookmarkId) return prev
-      const dx = clientX - prev.startClientX
-      const dy = clientY - prev.startClientY
-      let newPos: FreePosition = {
-        ...prev.startPos,
-        x: prev.startPos.x + dx,
-        y: prev.startPos.y + dy,
-      }
-      if (!shift) {
-        const others = items
-          .filter((it) => it.bookmarkId !== bookmarkId && it.freePos)
-          .map((it) => it.freePos as FreePosition)
-        newPos = applySnapToPosition(newPos, others)
-        setSnapGuides(computeSnapGuides(newPos, others))
-      } else {
-        setSnapGuides([])
-      }
-      return { ...prev, currentPos: newPos, shift }
-    })
+    // Read latest state via ref (mirrored every render at line ~117) so the
+    // updater stays pure — Strict Mode double-invokes setter callbacks, and
+    // calling setSnapGuides inside one would fire twice.
+    const prev = freeDragStateRef.current
+    if (!prev || prev.bookmarkId !== bookmarkId) return
+    const dx = clientX - prev.startClientX
+    const dy = clientY - prev.startClientY
+    let newPos: FreePosition = {
+      ...prev.startPos,
+      x: prev.startPos.x + dx,
+      y: prev.startPos.y + dy,
+    }
+    let nextGuides: ReadonlyArray<SnapGuideLine> = []
+    if (!shift) {
+      const others = items
+        .filter((it) => it.bookmarkId !== bookmarkId && it.freePos)
+        .map((it) => it.freePos as FreePosition)
+      newPos = applySnapToPosition(newPos, others)
+      nextGuides = computeSnapGuides(newPos, others)
+    }
+    setFreeDragState({ ...prev, currentPos: newPos, shift })
+    setSnapGuides(nextGuides)
   }
 
   const handleFreeDragEnd = async (bookmarkId: string): Promise<void> => {
@@ -320,7 +323,7 @@ export function CardsLayer({
     if (!state || state.bookmarkId !== bookmarkId) return
     const item = items.find((it) => it.bookmarkId === bookmarkId)
     if (!item || !item.cardId) return // no IDB record yet — skip persist
-    if (onPersistFreePos) await onPersistFreePos(item.cardId, state.currentPos)
+    await onPersistFreePos(item.cardId, state.currentPos)
   }
 
   // Branched pointer-down: free mode runs an internal drag state machine,
