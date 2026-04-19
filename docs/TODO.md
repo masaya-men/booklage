@@ -81,7 +81,7 @@
 ### 次セッション最優先タスク
 
 1. **worktree 物理削除**（lucid-bardeen + quirky-wilson の 2 つ、Windows ファイルロックで自動削除不可のまま）
-2. **B1-placement Task 11 から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で Task 11 (Grid drop indicator + virtual insert 統合) から再開。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` L1502 〜。Task 11 は `InteractionLayer.tsx` / `CardsLayer.tsx` / `CardNode.tsx` の 3 ファイルを触る統合タスクで、drag 閾値検出 + ホバー位置 → virtual insert index 計算 + drop indicator 描画が要点。implementer は sonnet 推奨（複数ファイル coordination）
+2. **B1-placement Task 14 から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で Task 14 (CardsLayer mode 分岐 + GSAP morph) から再開。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` L1834 〜。Task 14 は `CardsLayer.tsx` 単体の修正で、`layoutMode` prop を BoardRoot から受け取って grid positions vs free positions を切替 + モード変更時に GSAP で全カード morph 演出。Task 13 で BoardRoot に state は既に生やしてあるので、そこから props で配線すれば OK。implementer は sonnet で十分。**Task 11 は Task 14 の後に着手**（plan 順序変更、下記メモ参照）
 
 ### 引き継ぎ時の重要メモ
 
