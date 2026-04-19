@@ -10,7 +10,7 @@ type Props = {
   readonly offsetY?: number
 }
 
-export function SnapGuides({ guides, offsetX = 0, offsetY = 0 }: Props) {
+export function SnapGuides({ guides, offsetX = 0, offsetY = 0 }: Props): React.ReactElement | null {
   if (guides.length === 0) return null
 
   return (
