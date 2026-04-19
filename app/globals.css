@@ -253,8 +253,8 @@ ol {
   --corner-radius-outer: 24px;
   --corner-radius-inner: 6px;
 
-  /* Accents */
-  /* NOTE: --accent-primary omitted — --color-accent-primary (#7c5cfc) already exists at line 132 */
+  /* Accents (Plan A naming alias; existing palette uses --color-accent-primary) */
+  --accent-primary: var(--color-accent-primary);
   --accent-dark: #1a1a1a;
 }
 
