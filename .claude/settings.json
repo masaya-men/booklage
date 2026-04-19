@@ -4,6 +4,12 @@
       "Bash(rtk npx:*)",
       "WebFetch(domain:ui-design-dictionary.pages.dev)",
       "WebFetch(domain:orbix-one-xi.vercel.app)"
+    ],
+    "deny": [
+      "Bash(rm -rf ~*)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ./*)",
+      "Bash(rm -rf .)"
     ]
   }
 }
