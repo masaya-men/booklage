@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, type PointerEvent } from 'react'
-import { CARD_SIZE_LIMITS } from '@/lib/board/constants'
+import { RESIZE } from '@/lib/board/constants'
 import styles from './ResizeHandle.module.css'
 
 type ResizeHandleProps = {
@@ -13,7 +13,7 @@ type ResizeHandleProps = {
 }
 
 const clamp = (v: number): number =>
-  Math.min(Math.max(v, CARD_SIZE_LIMITS.MIN_PX), CARD_SIZE_LIMITS.MAX_PX)
+  Math.min(Math.max(v, RESIZE.MIN_PX), RESIZE.MAX_PX)
 
 export function ResizeHandle({
   cardId,
