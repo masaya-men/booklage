@@ -155,30 +155,32 @@ export function BoardRoot() {
       ref={containerRef}
       style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}
     >
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          transform: `translate3d(${-viewport.x}px, ${-viewport.y}px, 0)`,
-          willChange: 'transform',
-        }}
-      >
-        <ThemeLayer
-          themeId={themeId}
-          totalWidth={contentWidth}
-          totalHeight={contentHeight}
-        />
-        <CardsLayer
-          cards={cardsForLayer}
-          positions={layout.positions}
-          viewport={viewport}
-          onCardPointerDown={handleCardPointerDown}
-          onCardResize={handleCardResize}
-          onCardResizeEnd={handleCardResizeEnd}
-        />
-      </div>
-      <InteractionLayer direction={themeMeta.direction} onScroll={handleScroll} />
+      <InteractionLayer direction={themeMeta.direction} onScroll={handleScroll}>
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            transform: `translate3d(${-viewport.x}px, ${-viewport.y}px, 0)`,
+            willChange: 'transform',
+            pointerEvents: 'none',
+          }}
+        >
+          <ThemeLayer
+            themeId={themeId}
+            totalWidth={contentWidth}
+            totalHeight={contentHeight}
+          />
+          <CardsLayer
+            cards={cardsForLayer}
+            positions={layout.positions}
+            viewport={viewport}
+            onCardPointerDown={handleCardPointerDown}
+            onCardResize={handleCardResize}
+            onCardResizeEnd={handleCardResizeEnd}
+          />
+        </div>
+      </InteractionLayer>
       <div
         style={{ position: 'fixed', top: 16, right: 16, display: 'flex', gap: 8, zIndex: 1000 }}
       >

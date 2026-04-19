@@ -82,6 +82,7 @@ export function InteractionLayer({
 
   return (
     <div
+      data-interaction-layer
       onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
