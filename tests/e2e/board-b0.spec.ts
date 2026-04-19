@@ -13,7 +13,7 @@ async function seedBoard(page: Page): Promise<void> {
   await page.evaluate(
     async ({ dbName, seedCount }) => {
       await new Promise<void>((resolve, reject) => {
-        const req = indexedDB.open(dbName, 4)
+        const req = indexedDB.open(dbName, 5)
         const timer = window.setTimeout(() => reject(new Error('seed open timeout 10s')), 10_000)
         req.onsuccess = () => {
           window.clearTimeout(timer)

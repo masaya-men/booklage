@@ -12,7 +12,7 @@ async function seedBoard(page: Page, seedCount: number): Promise<void> {
   await page.evaluate(
     async ({ dbName, count }) => {
       await new Promise<void>((resolve, reject) => {
-        const req = indexedDB.open(dbName, 4)
+        const req = indexedDB.open(dbName, 5)
         req.onsuccess = () => {
           const db = req.result
           const tx = db.transaction(['bookmarks', 'cards'], 'readwrite')

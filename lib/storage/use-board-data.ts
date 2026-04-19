@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { IDBPDatabase } from 'idb'
 import type { CardPosition } from '@/lib/board/types'
+import { extractYoutubeId } from '@/lib/utils/url'
 import {
   initDB,
   getAllBookmarks,
@@ -23,6 +24,13 @@ export type BoardItem = {
 
 type DbLike = IDBPDatabase<unknown>
 
+function deriveThumbnail(b: BookmarkRecord): string | undefined {
+  if (b.thumbnail) return b.thumbnail
+  const youtubeId = extractYoutubeId(b.url)
+  if (youtubeId) return `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`
+  return undefined
+}
+
 function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
   const w = c?.width ?? 240
   const h = c?.height ?? 180
@@ -31,7 +39,7 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     bookmarkId: b.id,
     cardId: c?.id ?? '',
     title: b.title || b.url,
-    thumbnail: b.thumbnail || undefined,
+    thumbnail: deriveThumbnail(b),
     url: b.url,
     aspectRatio: w / h,
     userOverridePos: hasPlacement ? { x: c.x, y: c.y, w, h } : undefined,

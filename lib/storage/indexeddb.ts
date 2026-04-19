@@ -234,6 +234,20 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
           return cursor.continue().then(addOgpStatus)
         })
       }
+
+      // ── v4 → v5: clear legacy isManuallyPlaced from old infinite-canvas
+      //            positions. B0 justified grid treats every card as auto-layout
+      //            on first load; fresh user drags re-set the flag via updateCard.
+      if (oldVersion < 5) {
+        const cardStore = transaction.objectStore('cards')
+        void cardStore.openCursor().then(function clearManualPlacement(
+          cursor: Awaited<ReturnType<typeof cardStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          void cursor.update({ ...cursor.value, isManuallyPlaced: false })
+          return cursor.continue().then(clearManualPlacement)
+        })
+      }
     },
   })
 }
