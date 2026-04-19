@@ -52,10 +52,17 @@ type CardsLayerProps = {
   readonly overrides?: Readonly<Record<string, CardPosition>>
   readonly onCardPointerDown: (e: PointerEvent<HTMLDivElement>, cardId: string) => void
   /**
-   * Resize callback. With the 8-handle API there is no separate end-signal —
-   * every pointer move fires `onResize`, so BoardRoot persists on each call.
+   * Resize live tick: fires on every pointer move during a resize drag.
+   * Consumers should ONLY do cheap local-state updates here (e.g. visual
+   * overrides). Persistence belongs in `onCardResizeEnd`.
    */
   readonly onCardResize: (cardId: string, w: number, h: number) => void
+  /**
+   * Resize commit: fires once when a resize drag ends. Use this for
+   * IDB persistence so writes are batched at drag-end instead of running
+   * at pointer-move frequency.
+   */
+  readonly onCardResizeEnd: (bookmarkId: string, w: number, h: number) => void
   /**
    * Reset a card's height to native aspect ratio (handle double-click).
    * Receives bookmarkId; BoardRoot resolves the cardId for IDB persistence.
@@ -109,6 +116,7 @@ export function CardsLayer({
   overrides,
   onCardPointerDown,
   onCardResize,
+  onCardResizeEnd,
   onCardResetToNative,
   onPersistFreePos,
 }: CardsLayerProps): ReactNode {
@@ -408,6 +416,7 @@ export function CardsLayer({
               currentH={p.h}
               aspectRatio={it.aspectRatio}
               onResize={(w, h): void => onCardResize(it.bookmarkId, w, h)}
+              onResizeEnd={(w, h): void => onCardResizeEnd(it.bookmarkId, w, h)}
               onResetToNative={(): void => onCardResetToNative(it.bookmarkId)}
             />
           </div>

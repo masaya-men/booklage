@@ -19,6 +19,13 @@ type ResizeHandleProps = {
   readonly aspectRatio: number
   readonly onResize: (w: number, h: number) => void
   readonly onResetToNative: () => void
+  /**
+   * Fired once when a resize drag ends (pointerup / pointercancel), but only
+   * if a drag was actually in progress. Consumers use this to batch expensive
+   * side-effects (e.g. IDB persistence) instead of running them on every
+   * `onResize` tick at pointer-move frequency.
+   */
+  readonly onResizeEnd?: (w: number, h: number) => void
 }
 
 const HANDLES: ReadonlyArray<ResizeHandleKind> = [
@@ -60,6 +67,7 @@ export function ResizeHandle({
   aspectRatio,
   onResize,
   onResetToNative,
+  onResizeEnd,
 }: ResizeHandleProps): ReactElement {
   const dragRef = useRef<{
     kind: ResizeHandleKind
@@ -114,6 +122,13 @@ export function ResizeHandle({
   const handleUp = (e: PointerEvent<HTMLDivElement>): void => {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    // Gate on dragRef so handleUp without a matching handleDown (stray events,
+    // pointercancel from outside our pointerdown path) does not fire the
+    // end-callback. currentW/currentH are props, so they reflect the latest
+    // committed values from the parent by the time we land here.
+    if (dragRef.current && onResizeEnd) {
+      onResizeEnd(currentW, currentH)
     }
     dragRef.current = null
   }

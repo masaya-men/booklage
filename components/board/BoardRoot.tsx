@@ -147,18 +147,31 @@ export function BoardRoot() {
     onClick: onCardClick,
   })
 
-  // Resize: every pointer move from the 8-handle ResizeHandle fires this.
-  // No separate end-signal in the new API, so we update local state AND
-  // persist to IDB on each call. (Future perf TODO: debounce the persist
-  // path — IDB writes are async/cheap but not free.)
+  // Resize live tick: fires on every pointer move during a resize drag.
+  // Visual-only — updates the local `overrides` map so the card follows the
+  // pointer in real time. IDB persistence is deferred to `handleCardResizeEnd`
+  // so we don't write 60×/sec (which would also re-trigger persistFreePosition's
+  // optimistic setItems and run computeAutoLayout on every tick — see code
+  // review I1).
   const handleCardResize = useCallback(
     (bookmarkId: string, w: number, h: number): void => {
       const current = overrides[bookmarkId] ?? layout.positions[bookmarkId]
       if (!current) return
       const next: CardPosition = { ...current, w, h }
       setOverrides((prev) => ({ ...prev, [bookmarkId]: next }))
+    },
+    [overrides, layout.positions],
+  )
+  // Resize commit: fires once when the resize drag ends. Persists the final
+  // size to IDB. Mirrors the persistence pattern used by handleCardResetToNative.
+  const handleCardResizeEnd = useCallback(
+    (bookmarkId: string, w: number, h: number): void => {
       const item = itemByBookmark.get(bookmarkId)
-      if (item?.cardId) void persistCardPosition(item.cardId, next)
+      if (!item?.cardId) return
+      const current = overrides[bookmarkId] ?? layout.positions[bookmarkId]
+      if (!current) return
+      const next: CardPosition = { ...current, w, h }
+      void persistCardPosition(item.cardId, next)
     },
     [overrides, layout.positions, itemByBookmark, persistCardPosition],
   )
@@ -238,6 +251,7 @@ export function BoardRoot() {
             overrides={overrides}
             onCardPointerDown={handleCardPointerDown}
             onCardResize={handleCardResize}
+            onCardResizeEnd={handleCardResizeEnd}
             onCardResetToNative={handleCardResetToNative}
             onPersistFreePos={persistFreePosition}
           />
