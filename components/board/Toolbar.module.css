@@ -6,6 +6,8 @@
   display: flex;
   gap: 2px;
   align-items: center;
+  /* Always-light pill on any board theme (Notion/Figma chrome pattern).
+     Future: add theme-aware variant if dark-mode legibility regresses. */
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   border-radius: 999px;
@@ -31,6 +33,9 @@
   transition: background 120ms ease, color 120ms ease;
 }
 .button:hover { background: rgba(0, 0, 0, 0.05); }
+/* Active state uses neutral near-black, NOT Booklage violet (--color-accent-primary).
+   This is intentional: violet is reserved for edit affordances (selection outlines, handles).
+   System chrome stays neutral (Notion/Figma pattern). */
 .button.active {
   background: #1a1a1a;
   color: white;

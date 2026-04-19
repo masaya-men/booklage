@@ -194,8 +194,14 @@ export function BoardRoot() {
     (next: LayoutMode): void => {
       setLayoutMode(next)
       void (async (): Promise<void> => {
-        const db = await initDB()
-        await saveBoardConfig(db, { layoutMode: next, frameRatio, themeId })
+        try {
+          const db = await initDB()
+          await saveBoardConfig(db, { layoutMode: next, frameRatio, themeId })
+        } catch (err) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('[BoardRoot] saveBoardConfig failed', err)
+          }
+        }
       })()
     },
     [frameRatio, themeId],
@@ -205,13 +211,20 @@ export function BoardRoot() {
     (next: FrameRatio): void => {
       setFrameRatio(next)
       void (async (): Promise<void> => {
-        const db = await initDB()
-        await saveBoardConfig(db, { layoutMode, frameRatio: next, themeId })
+        try {
+          const db = await initDB()
+          await saveBoardConfig(db, { layoutMode, frameRatio: next, themeId })
+        } catch (err) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('[BoardRoot] saveBoardConfig failed', err)
+          }
+        }
       })()
     },
     [layoutMode, themeId],
   )
 
+  // TODO: unify theme persistence — currently localStorage drives hydration; IDB themeId is write-only dead state.
   const handleThemeClick = useCallback((): void => {
     const ids = listThemeIds()
     const idx = ids.indexOf(themeId)

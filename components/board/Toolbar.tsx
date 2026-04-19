@@ -56,7 +56,7 @@ export function Toolbar(props: Props): ReactElement {
 
       {props.layoutMode === 'free' && (
         <>
-          <div className={styles.sep} />
+          <div className={styles.sep} role="separator" aria-orientation="vertical" />
           <button
             type="button"
             className={`${styles.button} ${presetOpen ? styles.active : ''}`}
@@ -75,7 +75,7 @@ export function Toolbar(props: Props): ReactElement {
         </>
       )}
 
-      <div className={styles.sep} />
+      <div className={styles.sep} role="separator" aria-orientation="vertical" />
       <button
         type="button"
         className={styles.button}
