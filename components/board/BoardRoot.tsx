@@ -20,6 +20,7 @@ import { ThemeLayer } from './ThemeLayer'
 import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
 import { Toolbar } from './Toolbar'
+import { Sidebar } from './Sidebar'
 import { useCardDrag } from './use-card-drag'
 
 const THEME_LS_KEY = 'booklage.board.themeId'
@@ -42,6 +43,7 @@ export function BoardRoot() {
   // state and bail its pointerdown handler — letting the event bubble up to
   // InteractionLayer where pan engagement lives.
   const [spaceHeld, setSpaceHeld] = useState<boolean>(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => setThemeId(loadSavedTheme()), [])
@@ -303,6 +305,40 @@ export function BoardRoot() {
     setThemeId(next)
   }, [themeId])
 
+  const handleSidebarToggle = useCallback((): void => {
+    setSidebarCollapsed((prev) => !prev)
+  }, [])
+
+  // F key toggles sidebar collapse (ignored while typing in an input/textarea)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'f' && e.key !== 'F') return
+      const target = e.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      )
+        return
+      e.preventDefault()
+      setSidebarCollapsed((prev) => !prev)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
+
+  const sidebarCounts = useMemo(() => {
+    const active = items.filter((i) => !i.isDeleted)
+    return {
+      all: active.length,
+      unread: active.filter((i) => !i.isRead).length,
+      read: active.filter((i) => i.isRead).length,
+    }
+  }, [items])
+
   const contentWidth = Math.max(viewport.w, layout.totalWidth)
   const contentHeight = Math.max(viewport.h, layout.totalHeight)
 
@@ -377,6 +413,12 @@ export function BoardRoot() {
         frameRatio={frameRatio}
         onFrameRatioChange={handleFrameRatioChange}
         themeId={themeId}
+        onThemeClick={handleThemeClick}
+      />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={handleSidebarToggle}
+        counts={sidebarCounts}
         onThemeClick={handleThemeClick}
       />
     </div>
