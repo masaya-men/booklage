@@ -4,7 +4,7 @@
 **Status**: Draft (pending user review)
 **Author**: Claude Opus 4.7 + user brainstorming
 **Branch**: `claude/lucid-bardeen-c9a786`
-**Prerequisite read**: `docs/superpowers/specs/2026-04-19-b0-board-skeleton-design.md`, `docs/DESIGN_REFERENCES.md`, `docs/TODO.md`, `CLAUDE.md`, `docs/private/IDEAS.md`（非公開）
+**Prerequisite read**: `docs/superpowers/specs/2026-04-19-b0-board-skeleton-design.md`, `docs/private/IDEAS.md`（非公開）, `docs/TODO.md`, `CLAUDE.md`
 
 ---
 
@@ -383,7 +383,7 @@ export type BoardConfigV6 = {
 
 **viewport culling**: B0 の実装を踏襲。Free モードでは `freePos` ベースで AABB culling。
 
-### B10. デザイン参考（DESIGN_REFERENCES.md から引用）
+### B10. デザイン参考（`docs/private/IDEAS.md`（非公開）から引用）
 
 | UI 要素 | 参考 | 抽出ポイント |
 |--------|-----|----------|
@@ -392,9 +392,9 @@ export type BoardConfigV6 = {
 | CardContextMenu | **linear.app** の context menu | アイコン + ショートカット表記の整列 |
 | UndoToast | **linear.app** の toast notification | 位置、消失タイミング、アクション可視化 |
 | SnapGuides ピンク線 | **Figma** | 色、太さ、ラベル表示 |
-| GSAP motion | **Fluid Functionalism**（DESIGN_REFERENCES.md） | "motion is information", easing curves |
+| GSAP motion | **Fluid Functionalism**（`docs/private/IDEAS.md`（非公開）） | "motion is information", easing curves |
 | Grid 配置感 | **Moodboard 3000**（Figma plugin） | gap / margin の数値、justified 感 |
-| Meanwhile Studio collage | **DESIGN_REFERENCES.md** | 有機的重なり、ブリード感 |
+| Meanwhile Studio collage | **`docs/private/IDEAS.md`（非公開）** | 有機的重なり、ブリード感 |
 
 **実装時**: **Designmd Style Extractor**（Chrome 拡張）で shopify.design 等の CSS を吸い出し、**数値と余白のリズムだけ** 学習して Booklage 独自に再構成。**そのまま使うのは NG**（AI 感・shadcn 感が出る）。
 
@@ -511,7 +511,7 @@ B1-placement で **追加** するのみ。既存の B0 コンポーネントに
 ## Part D — 参照
 
 - `docs/superpowers/specs/2026-04-19-b0-board-skeleton-design.md` — B0 骨組みの設計基盤
-- `docs/DESIGN_REFERENCES.md` — 参考サイト（shopify.design、kube.io、Fluid Functionalism、Moodboard 3000、Designmd Style Extractor 等）
+- `docs/private/IDEAS.md`（非公開） — 参考サイト（shopify.design、kube.io、Fluid Functionalism、Moodboard 3000、Designmd Style Extractor 等）
 - `docs/REBUILD_VISION.md` — リビルド全体方針
 - `docs/TODO.md` — 既存技術判断（React DOM 管理、GSAP、座標変換、ドラッグ閾値等）
 - `docs/private/IDEAS.md`（非公開） — ユーザーの核ビジョン、フォルダモード化、Triage、Share+Import、テーマ別アニメ等の設計下地

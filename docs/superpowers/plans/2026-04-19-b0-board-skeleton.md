@@ -79,7 +79,7 @@ Template — fill in actual values from Step 1:
 - 次回対策: kube.io 方式の pre-rendered displacement map（α=255 固定）に置き換え
 
 ## B1 再実装時のチェックリスト
-1. DESIGN_REFERENCES.md の「kube.io」技術レシピを読む
+1. `docs/private/IDEAS.md`（非公開） の「kube.io」技術レシピを読む
 2. `feTurbulence` を使わず pre-rendered displacement map を使う
 3. α=255 を displacement map 全ピクセルで維持
 4. Chrome 以外は半透明グラデへフォールバック（feature detection）

@@ -1,7 +1,7 @@
 # Liquid Glass 実装ノート（2026-04-19 archive）
 
 > 現行 SVG filter 方式は B0 で削除。次回実装時は kube.io 方式（feDisplacementMap + pre-rendered map, α=255）で完全透明を目指す。
-> 参考: `docs/DESIGN_REFERENCES.md` 「kube.io」節
+> 参考: `docs/private/IDEAS.md`（非公開） 「kube.io」節
 
 ---
 
@@ -55,7 +55,7 @@
 
 ## B1 再実装時のチェックリスト
 
-1. `docs/DESIGN_REFERENCES.md` の「kube.io」節を再読
+1. `docs/private/IDEAS.md`（非公開） の「kube.io」節を再読
 2. 現行 `displacement-map.ts` は既にほぼ kube 方式。捨てずに基礎として流用可
 3. 黒ずみ原因調査: まず LiquidGlassProvider の SVG filter チェーン全体を Inspect（feColorMatrix / feComposite の alpha channel）
 4. α=255 維持は既に OK — displacement map 経由の黒ずみではない

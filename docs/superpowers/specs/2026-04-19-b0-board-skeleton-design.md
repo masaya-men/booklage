@@ -4,7 +4,7 @@
 **Status**: Draft (pending user review)
 **Author**: Claude Opus 4.7 (1M context) + user brainstorming
 **Branch**: `claude/rebuild-board`
-**Prerequisite read**: `docs/REBUILD_VISION.md`, `docs/DESIGN_REFERENCES.md` 「kube.io — CSS/SVGリキッドグラス」節
+**Prerequisite read**: `docs/REBUILD_VISION.md`, `docs/private/IDEAS.md`（非公開） 「kube.io — CSS/SVGリキッドグラス」節
 
 ---
 
@@ -318,7 +318,7 @@ export function computeAutoLayout(input: LayoutInput): LayoutResult
 ## Part D — 参照
 
 - `docs/REBUILD_VISION.md` — リビルド全体方針とアイデア保管庫
-- `docs/DESIGN_REFERENCES.md` — kube.io 液体ガラスレシピ、HTML-in-Canvas 動向
+- `docs/private/IDEAS.md`（非公開） — kube.io 液体ガラスレシピ、HTML-in-Canvas 動向
 - `docs/TODO.md` — 既存技術判断（ReactのDOM管理+GSAP、座標変換等）
 - `CLAUDE.md` — コーディング規約、禁止事項、プライバシー絶対ルール
 - `MYCOLLAGE_FULL_SPEC.md` — プロダクト全体仕様

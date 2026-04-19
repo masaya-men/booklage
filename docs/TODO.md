@@ -1,7 +1,7 @@
 # Booklage 開発ToDo
 
 > 完了済みタスクは [TODO_COMPLETED.md](./TODO_COMPLETED.md) に移動済み
-> デザイン参考資料は [DESIGN_REFERENCES.md](./DESIGN_REFERENCES.md) を参照
+> デザイン参考資料は `docs/private/IDEAS.md`（非公開）を参照
 
 ---
 
@@ -90,7 +90,7 @@
 ### 次フェーズ候補（ユーザー判断）
 
 - **B1 装飾レイヤー**: kube.io 方式の液体ガラス再実装、カードスタイル、スプリング物理、3D タイル演出
-  - 参照: `docs/archive/liquid-glass-notes.md`、`docs/DESIGN_REFERENCES.md`
+  - 参照: `docs/archive/liquid-glass-notes.md`、`docs/private/IDEAS.md`（非公開）
 - **B2 ブクマ管理再統合**: URL 入力 / フォルダ / インポート / 設定パネルを BoardRoot に戻す
   - 旧実装は B0 で完全削除済。git history から発掘してフルスクラッチ
 - **B3 3D 球体ナビ再接続**: `theme-registry` に `direction: 'sphere'` を足して再統合
