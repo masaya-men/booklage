@@ -54,6 +54,7 @@ export function BoardRoot() {
     })()
     return (): void => { cancelled = true }
   }, [])
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(THEME_LS_KEY, themeId)
@@ -166,19 +167,27 @@ export function BoardRoot() {
     [overrides, layout.positions, itemByBookmark, persistCardPosition],
   )
 
+  // TODO(Task 19): wire into Toolbar — eslint suppressed until then
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleModeChange = async (next: LayoutMode): Promise<void> => {
-    setLayoutMode(next)
-    const db = await initDB()
-    await saveBoardConfig(db, { layoutMode: next, frameRatio, themeId })
-  }
+  const handleModeChange = useCallback(
+    async (next: LayoutMode): Promise<void> => {
+      setLayoutMode(next)
+      const db = await initDB()
+      await saveBoardConfig(db, { layoutMode: next, frameRatio, themeId })
+    },
+    [frameRatio, themeId],
+  )
 
+  // TODO(Task 19): wire into Toolbar — eslint suppressed until then
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleFrameRatioChange = async (next: FrameRatio): Promise<void> => {
-    setFrameRatio(next)
-    const db = await initDB()
-    await saveBoardConfig(db, { layoutMode, frameRatio: next, themeId })
-  }
+  const handleFrameRatioChange = useCallback(
+    async (next: FrameRatio): Promise<void> => {
+      setFrameRatio(next)
+      const db = await initDB()
+      await saveBoardConfig(db, { layoutMode, frameRatio: next, themeId })
+    },
+    [layoutMode, themeId],
+  )
 
   const cardsForLayer = useMemo(
     () =>
