@@ -8,7 +8,7 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐、**origin に push 済**)
-- **進捗**: **B1-placement Task 1-9 完了**（foundation + data integration、27 タスク中 9 完了）→ 次は **Task 10 (SnapGuides UI コンポーネント)** から
+- **進捗**: **B1-placement Task 1-10 完了**（foundation + data integration + SnapGuides UI、27 タスク中 10 完了）→ 次は **Task 11 (Grid drop indicator + virtual insert 統合)** から
 - **本番URL**: `https://booklage.pages.dev`
 - **DBバージョン**: v6（Task 7 で bump 済、worktree ローカル。master にマージ or deploy 時に旧ユーザーの DB が自動 migration される）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
@@ -16,7 +16,7 @@
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
 - **テスト**: **82 PASS / 0 FAIL**（Task 9 時点、vitest）、tsc strict clean
 
-### 直近の作業（2026-04-19 B1-placement Task 1-9 実装）
+### 直近の作業（2026-04-19 B1-placement Task 1-10 実装）
 
 - **superpowers:subagent-driven-development** で Task 1 から順次実装、implementer → spec reviewer → code-quality reviewer の二段レビュー loop を全タスクで実施
 - **Task 1 (b58638b)** — `types.ts` に `LayoutMode` / `FreePosition` / `FrameRatio` / `BoardConfig` / `SnapGuideLine` / `CardRightClickAction` 追加
@@ -28,6 +28,7 @@
 - **Task 7 (b19c9d2)** — IndexedDB v5→v6 migration、`BookmarkRecord` に isRead/isDeleted/deletedAt、`CardRecord` に locked/isUserResized/aspectRatio 追加
 - **Task 8 (a0bfa59)** — `lib/storage/board-config.ts` 新規、`loadBoardConfig` / `saveBoardConfig` / `DEFAULT_BOARD_CONFIG`、fake DB での 2 テスト
 - **Task 9 (ab76cd4 + 348da9a)** — `use-board-data.ts` を全面書き換え。`BoardItem` に freePos / isRead / isDeleted / aspectRatio / gridIndex 追加、`computeAspectRatio` 3 段階優先（isUserResized → cached → 推定）、persistFreePosition / persistGridIndex / persistReadFlag / persistSoftDelete の 4 persist 関数。BoardRoot 互換のため persistCardPosition を @deprecated shim として残存（Task 13 で除去）。後追い fix で コメント精度 + bookmarkId guard + computeAspectRatio の unit test 5 個追加
+- **Task 10 (d06b672 + 93b485a)** — `components/board/SnapGuides.tsx` + `.module.css` 新規作成。plan 仕様通り verbatim の純 UI コンポーネント（Figma 風ピンク線 `#ff4080`、vertical / horizontal / spacing の 3 種）、`BOARD_Z_INDEX.SNAP_GUIDES = 25`、プロップは `guides: ReadonlyArray<SnapGuideLine>` + optional `offsetX/Y`。code-quality reviewer の指摘で `: React.ReactElement | null` return type 明示を追加（CLAUDE.md「return type は常に明示」に合わせる）
 - **全 commits** は `claude/b1-placement` ブランチに積まれ **origin に push 済**
 
 ### ⚠️ 次セッションの最初にやってほしい後処理
@@ -56,8 +57,7 @@
 
 ### B1-placement 残タスク（Task 10-27、次セッション以降）
 
-**UI 層** (Task 10-24):
-- Task 10: `SnapGuides.tsx`（Figma 風ピンク線）
+**UI 層** (Task 11-24):
 - Task 11: Grid drop indicator + virtual insert 統合
 - Task 12: FLIP animation (GSAP) for grid reflow
 - Task 13: `BoardRoot` に layoutMode state + morph
@@ -81,7 +81,7 @@
 ### 次セッション最優先タスク
 
 1. **worktree 物理削除**（lucid-bardeen + quirky-wilson の 2 つ、Windows ファイルロックで自動削除不可のまま）
-2. **B1-placement Task 10 から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で Task 10 (SnapGuides.tsx) から再開。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` 参照
+2. **B1-placement Task 11 から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で Task 11 (Grid drop indicator + virtual insert 統合) から再開。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` L1502 〜。Task 11 は `InteractionLayer.tsx` / `CardsLayer.tsx` / `CardNode.tsx` の 3 ファイルを触る統合タスクで、drag 閾値検出 + ホバー位置 → virtual insert index 計算 + drop indicator 描画が要点。implementer は sonnet 推奨（複数ファイル coordination）
 
 ### 引き継ぎ時の重要メモ
 
@@ -90,6 +90,7 @@
 - **Task 7 DB migration**: worktree で DB_VERSION が 6 になった。master にマージする前に既存 booklage.pages.dev ユーザーの DB が自動 migration される設計（fire-and-forget cursor）。migration 失敗時のフォールバック無しなのは既存 v1-v5 パターン踏襲
 - **Foundation + data integration 層 (1-9) と UI 層 (10-27) の境界**: Task 10 から UI 依存が増える。実装中に subagent が NEEDS_CONTEXT で止まる率が上がる見込み。controller は sonnet モデル昇格を検討
 - **Task 9 メモ**: code-quality reviewer が指摘した `updateCard` のエラー silent swallow (Important #1) と `dbRef` の weak cast (Minor #4) は deferred。Task 13 (BoardRoot 書き直し) でエラーバウンダリを設計する際に併せて対応する予定
+- **Task 10 メモ — 既存 React コンポーネントの return type 欠落**: `components/board/ThemeLayer.tsx` / `BoardRoot.tsx` は return type 未明示。CLAUDE.md「return type は常に明示」に違反。Task 10 の reviewer 指摘で発覚。他の新規コンポーネント（marketing/*, bookmarklet/SavePopup）は `: React.ReactElement` を明示済で整合済。将来の small cleanup で両ファイルに `: React.ReactElement` を追加すれば足りる
 - **IDEAS.md sync**: 本セッションでは修正していない。`b1-placement` worktree と メインリポ両方で同一
 
 ### 2026-05-19 以降に削除する remote backup branch
