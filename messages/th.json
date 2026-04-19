@@ -12,7 +12,11 @@
     "bgTheme": "ธีมพื้นหลัง",
     "newFolder": "+ โฟลเดอร์ใหม่",
     "folderNamePlaceholder": "ชื่อโฟลเดอร์...",
-    "emptyState": "วาง URL เพื่อเพิ่มบุ๊กมาร์กแรกของคุณ"
+    "emptyState": "วาง URL เพื่อเพิ่มบุ๊กมาร์กแรกของคุณ",
+    "theme": {
+      "dottedNotebook": "สมุดจุดประ",
+      "gridPaper": "กระดาษกราฟ"
+    }
   },
   "share": {
     "defaultText": "ทำคอลลาจจากบุ๊กมาร์กแล้วสวยมาก ✨ #Booklage"

@@ -12,7 +12,11 @@
     "bgTheme": "Hintergrundthema",
     "newFolder": "+ Neuer Ordner",
     "folderNamePlaceholder": "Ordnername...",
-    "emptyState": "Füge eine URL ein, um dein erstes Lesezeichen hinzuzufügen"
+    "emptyState": "Füge eine URL ein, um dein erstes Lesezeichen hinzuzufügen",
+    "theme": {
+      "dottedNotebook": "Punktiertes Notizbuch",
+      "gridPaper": "Rasterpapier"
+    }
   },
   "share": {
     "defaultText": "Habe eine Lesezeichen-Collage erstellt und sie ist großartig ✨ #Booklage"

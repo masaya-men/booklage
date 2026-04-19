@@ -12,7 +12,11 @@
     "bgTheme": "Thème de fond",
     "newFolder": "+ Nouveau dossier",
     "folderNamePlaceholder": "Nom du dossier...",
-    "emptyState": "Collez une URL pour ajouter votre premier signet"
+    "emptyState": "Collez une URL pour ajouter votre premier signet",
+    "theme": {
+      "dottedNotebook": "Carnet Pointillé",
+      "gridPaper": "Papier Quadrillé"
+    }
   },
   "share": {
     "defaultText": "J'ai fait un collage de signets et c'est magnifique ✨ #Booklage"

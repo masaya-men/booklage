@@ -12,7 +12,11 @@
     "bgTheme": "Background Theme",
     "newFolder": "+ New Folder",
     "folderNamePlaceholder": "Folder name...",
-    "emptyState": "Paste a URL to add your first bookmark"
+    "emptyState": "Paste a URL to add your first bookmark",
+    "theme": {
+      "dottedNotebook": "Dotted Notebook",
+      "gridPaper": "Grid Paper"
+    }
   },
   "share": {
     "defaultText": "Made a bookmark collage and it's amazing ✨ #Booklage"

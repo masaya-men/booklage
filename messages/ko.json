@@ -12,7 +12,11 @@
     "bgTheme": "배경 테마",
     "newFolder": "+ 새 폴더",
     "folderNamePlaceholder": "폴더 이름...",
-    "emptyState": "URL을 붙여넣어 첫 번째 북마크를 추가하세요"
+    "emptyState": "URL을 붙여넣어 첫 번째 북마크를 추가하세요",
+    "theme": {
+      "dottedNotebook": "점선 노트",
+      "gridPaper": "모눈종이"
+    }
   },
   "share": {
     "defaultText": "북마크로 콜라주를 만들었는데 최고예요 ✨ #Booklage"

@@ -12,7 +12,11 @@
     "bgTheme": "سمة الخلفية",
     "newFolder": "+ مجلد جديد",
     "folderNamePlaceholder": "...اسم المجلد",
-    "emptyState": "الصق رابطًا لإضافة أول إشارة مرجعية"
+    "emptyState": "الصق رابطًا لإضافة أول إشارة مرجعية",
+    "theme": {
+      "dottedNotebook": "دفتر منقط",
+      "gridPaper": "ورق مربعات"
+    }
   },
   "share": {
     "defaultText": "صنعت كولاج من الإشارات المرجعية وكان رائعًا ✨ #Booklage"

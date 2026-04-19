@@ -12,7 +12,11 @@
     "bgTheme": "Arka plan teması",
     "newFolder": "+ Yeni klasör",
     "folderNamePlaceholder": "Klasör adı...",
-    "emptyState": "İlk yer iminizi eklemek için bir URL yapıştırın"
+    "emptyState": "İlk yer iminizi eklemek için bir URL yapıştırın",
+    "theme": {
+      "dottedNotebook": "Noktalı Defter",
+      "gridPaper": "Kareli Kağıt"
+    }
   },
   "share": {
     "defaultText": "Yer imleriyle bir kolaj yaptım ve harika oldu ✨ #Booklage"

@@ -12,7 +12,11 @@
     "bgTheme": "Тема фона",
     "newFolder": "+ Новая папка",
     "folderNamePlaceholder": "Имя папки...",
-    "emptyState": "Вставьте URL, чтобы добавить первую закладку"
+    "emptyState": "Вставьте URL, чтобы добавить первую закладку",
+    "theme": {
+      "dottedNotebook": "Точечная Тетрадь",
+      "gridPaper": "Миллиметровая Бумага"
+    }
   },
   "share": {
     "defaultText": "Сделал коллаж из закладок — получилось потрясающе ✨ #Booklage"

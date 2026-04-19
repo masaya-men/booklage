@@ -12,7 +12,11 @@
     "bgTheme": "背景テーマ",
     "newFolder": "+ 新しいフォルダ",
     "folderNamePlaceholder": "フォルダ名...",
-    "emptyState": "URLをペーストしてブックマークを追加しましょう"
+    "emptyState": "URLをペーストしてブックマークを追加しましょう",
+    "theme": {
+      "dottedNotebook": "点線ノート",
+      "gridPaper": "方眼紙"
+    }
   },
   "share": {
     "defaultText": "ブックマークでコラージュ作ったら最高になった✨ #Booklage"

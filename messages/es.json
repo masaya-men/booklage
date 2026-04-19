@@ -12,7 +12,11 @@
     "bgTheme": "Tema de fondo",
     "newFolder": "+ Nueva carpeta",
     "folderNamePlaceholder": "Nombre de carpeta...",
-    "emptyState": "Pega una URL para añadir tu primer marcador"
+    "emptyState": "Pega una URL para añadir tu primer marcador",
+    "theme": {
+      "dottedNotebook": "Cuaderno Punteado",
+      "gridPaper": "Papel Cuadriculado"
+    }
   },
   "share": {
     "defaultText": "Hice un collage de marcadores y quedó increíble ✨ #Booklage"
