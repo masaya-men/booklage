@@ -7,35 +7,40 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master` (HEAD = `9d96437` 時点で **filter-repo 後の clean 履歴**)
-- **進捗**: **Phase 2 プライバシー徹底監査 完了** → 次は **B1-placement 実装開始**
+- **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐)
+- **進捗**: **B1-placement Task 1-8 完了**（foundation 層、27 タスク中 8 完了）→ 次は **Task 9 (use-board-data.ts 統合)** から
 - **本番URL**: `https://booklage.pages.dev`
-- **DBバージョン**: v5（B0 で bump、B1 で v6 にする予定）
+- **DBバージョン**: v6（Task 7 で bump 済、worktree ローカル。master にマージ or deploy 時に旧ユーザーの DB が自動 migration される）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
-- **テスト**: B0 までのテスト green、B1 実装時に拡張
+- **テスト**: **77 PASS / 0 FAIL**（Task 8 時点、vitest）、tsc strict clean
 
-### 直近の作業（2026-04-19 Phase 2 プライバシー徹底監査）
+### 直近の作業（2026-04-19 B1-placement Task 1-8 実装）
 
-- **3 並列 subagent 監査** で全 140 tracked ファイルを熟読、機微 11 件発見
-- **scrub commit (e4bc378)**: CLAUDE.md 実メアド placeholder 化、MYCOLLAGE_FULL_SPEC §1/§13 中立化、TODO.md 戦略表現中立化、b1-placement-design.md 「収益戦略」参照削除
-- **git filter-repo**: master 全 214 commits から旧 user メアド + 主要機微テキスト 9 個を削除
-- **author noreply 化**: 旧メアド author 全 commit を `masaya-men <masaya-men@users.noreply.github.com>` に書き換え
-- **force-with-lease push**: master `e4bc378 → 9d96437` で remote 上書き完了
-- **backup branch**: `backup-pre-filter-repo-2026-04-19` を origin に保管（**2026-05-19 以降に削除可**）
-- **CLAUDE.md 強化**: 「IDEAS.md メインリポ常駐」「実メアド絶対禁止」「commit 前自己チェック手順」追加
-- **docs/private/IDEAS.md**: メインリポと worktree に二重保管、退避内容を追記済
+- **superpowers:subagent-driven-development** で Task 1 から順次実装、implementer → spec reviewer → code-quality reviewer の二段レビュー loop を全タスクで実施
+- **Task 1 (b58638b)** — `types.ts` に `LayoutMode` / `FreePosition` / `FrameRatio` / `BoardConfig` / `SnapGuideLine` / `CardRightClickAction` 追加
+- **Task 2 (9ca2fc8)** — `constants.ts` に RESIZE / SNAP / ROTATION / Z_ORDER / FRAME / MODE_TRANSITION / UNDO 追加、`CARD_SIZE_LIMITS` を `RESIZE` にリネーム・値変更（MIN 80, MAX 1200）
+- **Task 3 (367ad11)** — `aspect-ratio.ts` 新規、12 URL 種別 → アスペクト比推定の純関数 + 20 テスト
+- **Task 4 (1a08532 + 5f0805e)** — `frame-presets.ts` 新規、SNS 9 プリセット + custom、8 テスト。spec 内部矛盾（custom clamp vs test）を TDD 原則に従って「test pass 優先」で解決（clamp 削除、caller 側で validation すべき旨のメモ）
+- **Task 5 (61d9f7b)** — `free-layout.ts` 新規、snap guides / applySnap / bleed detection の純関数 + 8 テスト
+- **Task 6 (a0fedfc)** — `auto-layout.ts` に `computeGridLayoutWithVirtualInsert` 追加（drag preview 用）、`auto-layout.test.ts` 新規 9 テスト
+- **Task 7 (b19c9d2)** — IndexedDB v5→v6 migration、`BookmarkRecord` に isRead/isDeleted/deletedAt、`CardRecord` に locked/isUserResized/aspectRatio 追加
+- **Task 8 (a0bfa59)** — `lib/storage/board-config.ts` 新規、`loadBoardConfig` / `saveBoardConfig` / `DEFAULT_BOARD_CONFIG`、fake DB での 2 テスト
+- **全 9 commits** は `claude/b1-placement` ブランチに積まれた状態（未 push）
 
 ### ⚠️ 次セッションの最初にやってほしい後処理
 
-**worktree 物理ディレクトリの手動削除**（Windows ファイルロックで自動削除失敗）:
+**worktree 物理ディレクトリの手動削除**（Windows ファイルロックで自動削除失敗が残存）:
 
-`.claude/worktrees/` 配下に以下の orphan ディレクトリが残存。git 上は既に消えているので、エクスプローラーで物理削除してください：
+`.claude/worktrees/` 配下の以下の 2 つは本セッションでも PowerShell/bash 両方で削除失敗。エクスプローラーで物理削除してください：
 
-- `lucid-bardeen-c9a786/`（前セッションの worktree、IDEAS.md はメインリポに sync 済）
-- `quirky-wilson-41d2b5/`（Phase 2 worktree）
-- 他に `b0-impl`, `cool-archimedes-0b85f7`, `hardcore-yalow` も orphan の可能性あり（git worktree list で確認）
+- `lucid-bardeen-c9a786/`
+- `quirky-wilson-41d2b5/`
+
+**削除済み**: `b0-impl/`, `cool-archimedes-0b85f7/`, `hardcore-yalow/`
+
+**アクティブ worktree**（触らない）: `b1-placement/`（今回の作業ツリー）, `condescending-vaughan-e85ea7/`, `practical-brown-e05704/`, `relaxed-bartik-75778e/`, `zen-gould-55806b/`, `tender-chaplygin-e7c89c/`（前セッション）
 
 ### B1-placement 実装計画の要点
 
@@ -45,13 +50,47 @@
 - カード変形（Free のみ）: 回転（Shift で自由）、8 ハンドルリサイズ、alignment snap（Shift で OFF）、z-order
 - 右クリック: 既読 / 削除（10s Undo トースト）/ z-order / ロック
 - Shopify.design tier の UI chrome、Designmd Style Extractor で数値抽出
-- IndexedDB v5→v6 migration + `freePos` / `isRead` / `isDeleted` 追加
+- IndexedDB v5→v6 migration + `freePos` / `isRead` / `isDeleted` 追加 ← **Task 7 で完了**
 - Grid drag: A++ Insert + FLIP reflow、C-pure は post-B1 upgrade として design 済
+
+### B1-placement 残タスク（Task 9-27、次セッション以降）
+
+**Integration 層** (Task 9): `lib/storage/use-board-data.ts` 改修、`detectAspectRatioSource` + `estimateAspectRatio` を OGP から使って aspectRatio 動的計算、`freePos` / `gridIndex` 配信
+
+**UI 層** (Task 10-24):
+- Task 10: `SnapGuides.tsx`（Figma 風ピンク線）
+- Task 11: Grid drop indicator + virtual insert 統合
+- Task 12: FLIP animation (GSAP) for grid reflow
+- Task 13: `BoardRoot` に layoutMode state + morph
+- Task 14: `CardsLayer` mode 分岐 + morph
+- Task 15: `CardNode` 選択 UI + free transforms
+- Task 16: Free-mode drag + snap + alignment guides
+- Task 17: `RotationHandle.tsx`（15° snap / Shift で自由）
+- Task 18: `ResizeHandle.tsx` を 8 ハンドル化（4 隅 aspect-locked / 4 辺 free-axis）
+- Task 19: `Toolbar.tsx` Pill トグル
+- Task 20: `FramePresetPopover.tsx`
+- Task 21: `Frame.tsx` visualizer + desaturation
+- Task 22: `CardContextMenu.tsx` 右クリック
+- Task 23: `UndoToast.tsx` + soft delete flow
+- Task 24: z-order keyboard shortcuts + lock
+
+**仕上げ** (Task 25-27):
+- Task 25: i18n 文字列 15 言語追加
+- Task 26: Playwright E2E（6+ シナリオ）
+- Task 27: 1000-card パフォーマンス regression
 
 ### 次セッション最優先タスク
 
-1. **worktree 物理削除**（上記）
-2. **B1-placement 実装開始** — 新しい worktree を切る（superpowers:using-git-worktrees）→ `docs/private/IDEAS.md` を新 worktree にコピー → `docs/superpowers/plans/2026-04-19-b1-placement.md` を subagent-driven-development で Task 1 から順に
+1. **worktree 物理削除**（lucid-bardeen + quirky-wilson の 2 つ）
+2. **B1-placement Task 9 から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で Task 9 から再開。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` 参照
+
+### 引き継ぎ時の重要メモ
+
+- **Task 4 spec 内部矛盾メモ**: `computeFrameSize({ kind: 'custom', ... })` は現在 clamp しない実装。UI から custom サイズを受ける時は caller 側で FRAME.MIN_PX / MAX_PX に clamp する必要あり（実装時に気をつける）
+- **Task 6 テスト extra**: `auto-layout.test.ts` に spec 指定より多い tests が含まれる（既存 `computeAutoLayout` baseline 4 + virtual insert 5）。害はないので削除不要
+- **Task 7 DB migration**: worktree で DB_VERSION が 6 になった。master にマージする前に既存 booklage.pages.dev ユーザーの DB が自動 migration される設計（fire-and-forget cursor）。migration 失敗時のフォールバック無しなのは既存 v1-v5 パターン踏襲
+- **Foundation 層 (1-8) と Integration/UI 層 (9-27) の境界**: Task 9 から UI 依存が増える。実装中に subagent が NEEDS_CONTEXT で止まる率が上がる見込み。controller は sonnet モデル昇格を検討
+- **IDEAS.md sync**: 本セッションでは修正していない。`b1-placement` worktree と メインリポ両方で同一
 
 ### 2026-05-19 以降に削除する remote backup branch
 
