@@ -8,7 +8,10 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐、**origin に push 済**)
-- **進捗**: **B1-placement Task 1-10 + Task 13-20 完了 + UX polish 4 連発 + Privacy Phase 3 完了**（27 タスク中 18 タスク + 4 UX polish + 1 privacy 大掃除）→ 次は **Task 11 (Grid drop indicator + virtual insert 統合)** か Task 21 (Frame visualizer) から
+- **🔥 最新進捗 (2026-04-20)**: **Plan A (B1 Dashboard Foundation) Batch A 完了** — 左サイドバー (液体ガラス) が `booklage.pages.dev` で visible に。Plan A Task 1-5 実装 + BoardRoot 統合 + 実機確認済
+- **Plan A 次は Batch B** (Task 6-9): layoutMode 削除 + IDB v6→v7 + Align action + Toolbar 2 ボタン化 + FramePresetPopover 削除 → 「グリッドボタンが毎回整列しない」既知バグは Batch B で解決
+- **Plan A ドキュメント**: spec は `docs/superpowers/specs/2026-04-20-b1-dashboard-redesign-design.md`, plan は `docs/superpowers/plans/2026-04-20-b1-dashboard-foundation.md`。brainstorming session 2026-04-20 で Plan 全体を設計
+- **旧進捗 (2026-04-19)**: B1-placement plan の Task 1-10 + 13-20 完了済（27 タスクのうち 18 + UX polish 4 連 + Privacy Phase 3）→ **新 Plan A が旧 plan の Task 11-27 を superseded**（サイドバー + シェアモーダル軸に redesign、Task 14-18 のカード操作系は温存）
 - **🎉 Task 19 マイルストーン**: Toolbar が mount され `layoutMode`/`frameRatio` の UI 切替がついに動く。Task 14 morph + Task 16 free-drag が user 操作可能に
 - **🎉 ユーザー実機確認済み**（2026-04-19 セッション後半）: dev server `localhost:3000/board` で Grid/Free Toolbar 切替・テーマ切替・カード hover ハンドル表示・Space+drag pan・dotted-notebook 背景表示 全部動作確認
 - **本番URL**: `https://booklage.pages.dev`
@@ -18,7 +21,45 @@
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
 - **テスト**: **82 PASS / 0 FAIL**（vitest）、tsc strict clean（Task 14 後も維持）
 
-### 直近の作業（2026-04-19 B1-placement Task 1-10 + Task 13-20 実装）
+### 直近の作業（2026-04-20 Plan A Batch A 実装）
+
+**brainstorming (2026-04-20)**: B1-placement の UX に根本的ねじれ発覚 → 完全再設計
+- Grid/Free モード概念を廃止 → canvas 常に free placement、`整列` は「モード」ではなく「アクション」
+- Frame preset は Toolbar 常時表示ではなく「シェア」ボタンで開く full-screen モーダルに
+- 左 edge-anchored サイドバー (kube.io 式 屈折液体ガラス) で dashboard 体験
+- 既存 Task 14-18 (カード操作系) は温存、Task 19/20 は rework/削除
+- spec `docs/superpowers/specs/2026-04-20-b1-dashboard-redesign-design.md` + plan `docs/superpowers/plans/2026-04-20-b1-dashboard-foundation.md` にまとめた
+
+**Plan A Batch A (Task 1-5 + BoardRoot 統合)** — 本番デプロイ済 (`booklage.pages.dev`):
+- **Task 1 (9a5a344 + alias fix)** — `app/globals.css` に B1 Dashboard 用 CSS 変数群 (`--glass-clarity: 0.35`, `--glass-blur: 6px`, `--glass-displacement-scale: 12`, `--glass-edge`, `--glass-specular`, `--sidebar-width: 240px`, `--sidebar-collapsed: 52px`, `--sidebar-ease`, `--sidebar-duration: 340ms`, `--corner-radius-outer: 24px`, `--corner-radius-inner: 6px`, `--accent-dark`, `--accent-primary` は既存 `--color-accent-primary` alias として追加)
+- **Task 2 (23d6fc6)** — `scripts/generate-displacement-map.mjs` + `public/displacement/glass-001.png` (512x512, 70KB, radial ripple pattern)。`sharp` を dev dep に追加
+- **Task 3 (1d1c9fe)** — `components/board/LiquidGlass.tsx` + `.module.css` 新規。SVG `<feDisplacementMap>` filter + blur fallback (`@supports not (backdrop-filter: url)`)
+- **Task 4 (d875540)** — `components/board/Sidebar.tsx` + `.module.css` 新規 (shell)、edge-anchored 240px / 折り畳み 52px、`transform: translateX()` で ease-out 340ms
+- **Task 5 (c07ab42)** — Sidebar 本実装。Playfair italic ロゴ / 検索 shell / LIBRARY 3 項 (すべて/未読/既読 + 件数) / Folders B2 placeholder / 🎨 テーマ / 縦書き `BOARD · 2026` signature。`messages/ja.json` に `board.sidebar.*` 13 キー追加
+- **BoardRoot 統合** — Sidebar を BoardRoot に mount、`sidebarCollapsed` state + F キー global listener、`sidebarCounts` derived from items (isRead/isDeleted ベース)、`handleSidebarToggle` useCallback
+- **Glass visibility fix** — 初回デプロイで `:global(.glass)` CSS Module スコープバグで glass チップが高さ 0 になりサイドバーがほぼ見えなかった → `<LiquidGlass className={styles.sidebarGlass}>` で className prop 経由に修正。さらに refraction が実機で効いていないため `--glass-clarity: 0.04 → 0.35` / `--glass-blur: 0 → 6px` でベースライン視認性確保 (CSS var なので後調整可)
+- **実機確認** (2026-04-20 セッション後半):
+  - ✅ サイドバー表示 OK (ロゴ/検索/Library/Folders/テーマ/signature 全部見える)
+  - ⚠️ **リキッドガラスの屈折は実機で効いてない** — `backdrop-filter: url(#id)` の Chrome 互換性か feDisplacementMap 設定要再調査。MEMORY に `feedback_glass_blur_tuning.md` 記録、Batch B or polish で戻る
+  - ⚠️ **「グリッドボタン押しても全カード整列しない」既知バグ** — 現在は「モード切替」で再レイアウトが部分的にしか効いてない。Batch B Task 6-8 で「整列アクション化」すれば解決予定 (Task 7 `alignAllToGrid` が全カード強制再計算する)
+- 全 commits は `claude/b1-placement` に積まれ **origin に push 済**
+
+### Plan A Batch B (次セッションここから)
+
+**Task 6-9 (4 タスク)** — 以下の順で subagent-driven-development で実装予定:
+
+1. **Task 6**: `layoutMode` 概念を削除 (`lib/board/types.ts` / `lib/storage/board-config.ts` / `lib/storage/indexeddb.ts` v6→v7 migration / `components/board/BoardRoot.tsx` の state・hydration・handleModeChange / `components/board/CardsLayer.tsx` の grid/free 分岐削除)。canvas 常に free placement に
+2. **Task 7**: `lib/board/align.ts` 新規 — `alignAllToGrid(items, { containerWidth, targetRowHeight, gap })` pure fn + 4 vitest。既存 `computeAutoLayout` を呼んで各 item の `freePos` を grid 位置にセットして返す
+3. **Task 8**: Toolbar を `整列` / `シェア` の 2 ボタン化。`FramePresetPopover.tsx` + `.module.css` 削除。`messages/ja.json` の `board.mode` / `board.frame` キー削除
+4. **Task 9**: BoardRoot に `handleAlign` 配線 — `alignAllToGrid` で全 items の freePos 更新 → `setItems` optimistic update → `persistFreePosition` で IDB 書き込み。GSAP morph で 400ms ease-in-out アニメ。`onShare` は stub (Plan B で ShareModal 実装)
+
+**Task 10** (Batch C): 最終デプロイ + 手動検証チェックリスト (Chrome/Firefox 両方) + TODO.md 更新
+
+### Plan B (Batch A/B 完了後に書き起こす)
+
+Share System — ShareModal full-screen + フレーム drag/resize + SNS Web Intents + Web Share API + brotli URL encoding + importer + ウォーターマーク。Plan A 完成 → 実機フィードバック → Plan B spec → 実装。
+
+### 旧進捗 (2026-04-19 B1-placement Task 1-10 + Task 13-20 実装 — 一部 Plan A で superseded)
 
 - **Task 20 (aa3d2b8 + 368a4a0)** — `FramePresetPopover.tsx` 本実装 + `.module.css` 新規。Task 19 で作った stub (// TODO(Task 20)) を SNS 9 プリセット + Custom 入力 UI に置換。9 preset tile (Instagram/Story/Reels/IG Landscape/X 横/X 縦/Pinterest/YT Thumb/A4) + 別描画の Custom tile、`isCustom` 時のみ width×height input + Apply button。**design override**: Shopify-tier glass chrome (rgba(255,255,255,0.98) + blur 10px + 12px radius + 紫 tinted shadow `0 8px 28px rgba(15,15,25,0.14)` + 1px hairline border)、selected は neutral `#1a1a1a` (Toolbar active と整合、violet は input focus ring のみ edit affordance として採用)、top: 56px (Toolbar との gap 詰め)。**plan バグ修正**: customW/customH の `useState` 初期値を `currentRatio.kind === 'custom' ? currentRatio.width : 800` に変更 (plan のまま 800 固定だと popover 再開時に state が消える)。**NaN guard + apply-time clamp** 方式: onChange は clamp せず自由入力、Apply ボタン押下時のみ `FRAME.MIN_PX` / `MAX_PX` で clamp (UX: 打ってる途中で "30" → "3000" の mid-typing を妨げない)。**a11y**: PresetCard を `<button type="button" aria-pressed>` に、container `role="group" aria-label` で labelled group、input に `aria-label={t(...)}` で i18n 経由。**code review で Important 3 件 fix** (368a4a0): aria-label のハードコード日本語 → i18n (`widthLabel`/`heightLabel` キー追加)、`role="dialog"` → `role="group"` downgrade (focus trap 未実装で dialog を名乗る矛盾解消)、未使用 `onClose` prop を Props 型と Toolbar 呼び出し両方から削除。`messages/ja.json` に `board.frame.popover.{title,applyCustom,widthLabel,heightLabel}` + `board.frame.preset.custom` の 5 キー追加。preset ラベルは `preset.label` 直接参照 (messageKey は Task 25 i18n 展開のため残置)。outside-click / ESC close は未実装 (Task 19 simplicity-first pattern 踏襲、将来必要になったら prop + 実装をセットで追加する方針)。82 vitest pass / tsc clean
 
