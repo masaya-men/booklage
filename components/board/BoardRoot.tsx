@@ -257,6 +257,29 @@ export function BoardRoot() {
       style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}
     >
       <InteractionLayer direction={themeMeta.direction} onScroll={handleScroll}>
+        {/* Background — full viewport coverage, follows scroll, NO horizontal
+            centering offset. Splitting this from the cards wrapper means the
+            dotted/notebook pattern stays anchored to the visible viewport on
+            wide screens (cards center while background fills). */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            transform: `translate3d(${-viewport.x}px, ${-viewport.y}px, 0)`,
+            willChange: 'transform',
+            pointerEvents: 'none',
+          }}
+        >
+          <ThemeLayer
+            themeId={themeId}
+            totalWidth={contentWidth}
+            totalHeight={contentHeight}
+          />
+        </div>
+        {/* Cards — centered with horizontalOffset so the cluster sits in the
+            middle of wide viewports while the background above keeps full
+            coverage. */}
         <div
           style={{
             position: 'absolute',
@@ -267,11 +290,6 @@ export function BoardRoot() {
             pointerEvents: 'none',
           }}
         >
-          <ThemeLayer
-            themeId={themeId}
-            totalWidth={contentWidth}
-            totalHeight={contentHeight}
-          />
           <CardsLayer
             items={items}
             layoutMode={layoutMode}
