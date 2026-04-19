@@ -166,9 +166,9 @@ function CardPortalContent({
       {!isGrid && (
         <ResizeHandle
           cardId={card.id}
-          currentWidth={card.width}
-          currentHeight={card.height}
-          zoom={zoom}
+          initialW={card.width}
+          initialH={card.height}
+          onResize={() => {}}
           onResizeEnd={onResizeEnd}
         />
       )}
