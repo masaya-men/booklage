@@ -48,7 +48,6 @@ type CardsLayerProps = {
   readonly onCardPointerDown: (e: PointerEvent<HTMLDivElement>, cardId: string) => void
   readonly onCardResize: (cardId: string, w: number, h: number) => void
   readonly onCardResizeEnd?: (cardId: string, w: number, h: number) => void
-  readonly renderCardChildren?: (item: BoardItem) => ReactNode
 }
 
 export function CardsLayer({
@@ -63,7 +62,6 @@ export function CardsLayer({
   onCardPointerDown,
   onCardResize,
   onCardResizeEnd,
-  renderCardChildren,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const prevModeRef = useRef<LayoutMode>(layoutMode)
@@ -199,9 +197,7 @@ export function CardsLayer({
               title={it.title}
               thumbnailUrl={it.thumbnail}
               onPointerDown={onCardPointerDown}
-            >
-              {renderCardChildren ? renderCardChildren(it) : undefined}
-            </CardNode>
+            />
             <ResizeHandle
               cardId={it.bookmarkId}
               initialW={p.w}
