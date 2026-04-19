@@ -1,0 +1,42 @@
+.handle {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  cursor: grab;
+  z-index: 32; /* mirrors BOARD_Z_INDEX.ROTATION_HANDLE */
+  box-shadow:
+    0 2px 6px rgba(15, 15, 25, 0.18),
+    0 0 0 0 var(--color-selection-glow);
+  transition:
+    box-shadow 140ms ease-out,
+    transform 140ms ease-out;
+}
+
+.handle:hover {
+  box-shadow:
+    0 2px 6px rgba(15, 15, 25, 0.18),
+    0 0 0 4px var(--color-selection-glow);
+  transform: translateX(-50%) scale(1.08);
+}
+
+.handle:active {
+  cursor: grabbing;
+  transform: translateX(-50%) scale(0.96);
+}
+
+.line {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 1px;
+  height: 12px;
+  background: var(--color-accent-primary);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
