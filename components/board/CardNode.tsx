@@ -1,18 +1,10 @@
 'use client'
 
 import type { PointerEvent, ReactNode } from 'react'
-import type { CardPosition } from '@/lib/board/types'
 import styles from './CardNode.module.css'
 
 type CardNodeProps = {
   readonly id: string
-  /**
-   * Layout position. Currently retained for API compatibility with callers,
-   * but the outer element fills its parent (the CardsLayer wrapper owns
-   * absolute positioning + width/height + GSAP transforms). Only `w`/`h`
-   * are read in fallback rendering paths if needed in the future.
-   */
-  readonly position: CardPosition
   readonly title: string
   readonly thumbnailUrl?: string
   readonly children?: ReactNode

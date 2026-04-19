@@ -216,7 +216,6 @@ export function CardsLayer({
           >
             <CardNode
               id={it.bookmarkId}
-              position={{ x: 0, y: 0, w: p.w, h: p.h }}
               title={it.title}
               thumbnailUrl={it.thumbnail}
               onPointerDown={onCardPointerDown}
