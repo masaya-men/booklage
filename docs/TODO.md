@@ -1,15 +1,16 @@
 # Booklage 開発ToDo
 
 > 完了済みタスクは [TODO_COMPLETED.md](./TODO_COMPLETED.md) に移動済み
-> デザイン参考資料は [DESIGN_REFERENCES.md](./DESIGN_REFERENCES.md) を参照
+> デザイン参考資料は `docs/private/IDEAS.md`（非公開、gitignored）を参照
 
 ---
 
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐、**origin に push 済**)
-- **進捗**: **B1-placement Task 1-10 + Task 13-19 完了**（+ Toolbar Pill トグル & FramePresetPopover stub & i18n 拡張、27 タスク中 17 完了）→ 次は **Task 20 (FramePresetPopover 本実装)** から
-- **🎉 重要マイルストーン**: Task 19 で Toolbar が mount され `layoutMode` / `frameRatio` の UI 切替がついに動く。Task 14 の morph アニメと Task 16 の free-drag が初めてユーザー操作できる状態に。**ブラウザで実機確認するタイミング** — `pnpm dev` → `localhost:3000/board` で Grid/Free pill toggle 動作を見てから Task 20 に進むのが安全
+- **進捗**: **B1-placement Task 1-10 + Task 13-19 完了 + UX polish 4 連発 + Privacy Phase 3 完了**（27 タスク中 17 タスク + 4 UX polish + 1 privacy 大掃除）→ 次は **Task 20 (FramePresetPopover 本実装)** から
+- **🎉 Task 19 マイルストーン**: Toolbar が mount され `layoutMode`/`frameRatio` の UI 切替がついに動く。Task 14 morph + Task 16 free-drag が user 操作可能に
+- **🎉 ユーザー実機確認済み**（2026-04-19 セッション後半）: dev server `localhost:3000/board` で Grid/Free Toolbar 切替・テーマ切替・カード hover ハンドル表示・Space+drag pan・dotted-notebook 背景表示 全部動作確認
 - **本番URL**: `https://booklage.pages.dev`
 - **DBバージョン**: v6（Task 7 で bump 済、worktree ローカル。master にマージ or deploy 時に旧ユーザーの DB が自動 migration される）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
@@ -31,6 +32,12 @@
 - **Task 9 (ab76cd4 + 348da9a)** — `use-board-data.ts` を全面書き換え。`BoardItem` に freePos / isRead / isDeleted / aspectRatio / gridIndex 追加、`computeAspectRatio` 3 段階優先（isUserResized → cached → 推定）、persistFreePosition / persistGridIndex / persistReadFlag / persistSoftDelete の 4 persist 関数。BoardRoot 互換のため persistCardPosition を @deprecated shim として残存（Task 13 で除去）。後追い fix で コメント精度 + bookmarkId guard + computeAspectRatio の unit test 5 個追加
 - **Task 10 (d06b672 + 93b485a)** — `components/board/SnapGuides.tsx` + `.module.css` 新規作成。plan 仕様通り verbatim の純 UI コンポーネント（Figma 風ピンク線 `#ff4080`、vertical / horizontal / spacing の 3 種）、`BOARD_Z_INDEX.SNAP_GUIDES = 25`、プロップは `guides: ReadonlyArray<SnapGuideLine>` + optional `offsetX/Y`。code-quality reviewer の指摘で `: React.ReactElement | null` return type 明示を追加（CLAUDE.md「return type は常に明示」に合わせる）
 - **Task 13 (d376136 + 21710bb)** — **plan の順序を入れ替えて Task 11 より先に実装**（Task 11 が layoutMode state を前提にしてて、state 未導入だと動作確認不可だったため）。`BoardRoot` に `layoutMode: LayoutMode` と `frameRatio: FrameRatio` の 2 state 追加、mount 時に IndexedDB の board-config から hydrate（cancelled guard 付き async useEffect）、`handleModeChange` / `handleFrameRatioChange` を useCallback 化。plan Step 2（子コンポへの props 配線）は Task 14 で完了
+- **UX polish 4 連発（Task 19 後、ユーザー実機確認 → 即フィードバック反映）**:
+  - **(1) 83b99c8** — `BOARD_INNER` constants (max-width 1400 + side-padding 64) 追加、cards 中央寄せ、ResizeHandle hover 時のみ表示 (`hoveredId` + `resizingId` state で active resize 中も持続表示)、Space+drag pan + 中クリック pan を InteractionLayer に追加
+  - **(2) fbdf454** — ThemeLayer を offset wrapper の外に分離 (背景 = viewport 全幅キープ、cards のみ中央寄せ)、hydration mismatch 解消
+  - **(3) 2fe71d3 + 0e023dc** — Space+drag bug fix: `spaceHeld` state を BoardRoot に lift up、CardsLayer 側で early-bail (no stopPropagation) → InteractionLayer まで bubble、`body.user-select: none` + `e.preventDefault()` で native 選択枠抑止
+  - **(4) 4ac1f84** — final fix (Space+drag が完全動作)
+  - 全部実機テスト済、tsc clean / 82 vitest pass
 - **Task 19 (426c5dc + 849bdb1)** — `Toolbar.tsx` + `.module.css` 新規作成、Shopify.design tier の pill toggle (top-center fixed、backdrop-blur 10px、`#1a1a1a` neutral active state、`rgba(15,15,25,0.1)` violet-tinted shadow)。BoardRoot に mount して `layoutMode`/`frameRatio`/`themeId` 切替がついに動く。FramePresetPopover stub も同時作成 (Task 20 で本実装)。`messages/ja.json` に `board.mode = { grid, free }` + `board.toolbar = { theme, export, share }` 追加。**重要な統合**: BoardRoot の旧 debug theme buttons 削除、`handleModeChange`/`handleFrameRatioChange` の eslint-disable も外して finally 正規 callback として認識される。`handleThemeClick` は theme cycle (localStorage で永続化、IDB themeId は dead state なので TODO コメント残置)。code review approved with minor revisions、polish (849bdb1) で I3 (try/catch + dev-only console.error で IDB 失敗を可視化)、N2 (dead i18n keys 削除)、N3 (sep に `role="separator"` + `aria-orientation`)、N6 (CSS コメントで「neutral chrome / violet edit affordance」分離方針 + 「always-light pill」決定を明文化)、I2 (theme dual-source TODO コメント) を一括対応。残 I1 (theme-aware pill 暗背景対応) は Notion/Figma パターンを採用して常に明るい chrome 維持で確定（後で実機で違和感あれば再考）。82 vitest pass / tsc clean
 - **Task 18 (695fe98 + 17d481c)** — `ResizeHandle` を 1 ハンドル → 8 ハンドル化（4 隅 aspect-locked + 4 辺 free-axis）。新 props (`currentW/currentH/aspectRatio/onResize/onResetToNative`) で旧 API を完全置換、CardsLayer の call site も新 prop shape に更新、BoardRoot に `handleCardResetToNative` 追加。**design override**: Booklage 紫枠 + Shopify-tier polish (resting box-shadow + hover scale 1.15 + active scale 0.92 + 120ms ease-out)、JP a11y `LABELS` map で 8 hand の `aria-label` (`角リサイズ（左上）` 等)。**plan のバグも先回り修正**: corner aspect-lock を W 軸固定式 → larger-axis (`Math.abs(dx) > Math.abs(dy)`) に変更、redundant `||` 句簡素化。code review で I1 (毎ムーブ persist で 120Hz re-render の perf 懸念) 発見、17d481c で `onResizeEnd` を再導入 → BoardRoot に `handleCardResizeEnd` 追加して drag-end のみ persist する形に変更。残り I2 (top/left ハンドル drag で位置 anchor が動かない UX 問題) は plan-accepted limitation として L86-90 にコメント、free-mode 統合タイミングで対応予定。82 vitest pass / tsc clean
 - **Task 17 (ee4bf85 + d5ca5ae)** — `RotationHandle.tsx` + `.module.css` 新規作成。14×14 白丸 + 12px tick line を選択カードの 24px 上に配置、pointer-capture で角度ドラッグ → 15° snap (Shift で自由) + double-click で reset。**design override**: Booklage 紫 (`var(--color-accent-primary)`) + Shopify-tier polish (resting drop shadow + hover で 4px glow ring + scale 1.08, active で scale 0.96, 140ms ease-out transition)、JP a11y (`aria-label="回転ハンドル"`)。React 19 で global `JSX` 名前空間が消えたので component return type に `ReactElement` 使用。code review で C1 (atan2 wrap-around → ±180° 跨ぐと 360° flip)、I1 (`role="slider"` + `aria-valuenow/min/max` 追加で AT に届く)、I2 (props を `cardCenterClientX/Y` に rename → 座標系を self-document) を発見、d5ca5ae で 3 件まとめて修正。**Task 17 はコンポーネント単独作成のみ — CardNode/CardsLayer への wiring は未来タスク**。82 vitest pass / tsc clean
@@ -65,19 +72,16 @@
 
 ### B1-placement 残タスク（Task 10-27、次セッション以降）
 
-**UI 層** (Task 11-24、** は実装順を入れ替え済):
+**UI 層** (Task 11-24):
 - Task 11: Grid drop indicator + virtual insert 統合（plan のコード例は現構造と divergence あり、BoardRoot が drag state 持つ形に適応して実装する予定）
 - Task 12: FLIP animation (GSAP) for grid reflow
-- **Task 20**: `FramePresetPopover.tsx` 本実装（Task 19 で stub 作成済） ← **次セッションここから**
-- Task 16: Free-mode drag + snap + alignment guides
-- Task 17: `RotationHandle.tsx`（15° snap / Shift で自由）
-- Task 18: `ResizeHandle.tsx` を 8 ハンドル化（4 隅 aspect-locked / 4 辺 free-axis）
-- Task 19: `Toolbar.tsx` Pill トグル
-- Task 20: `FramePresetPopover.tsx`
+- **Task 20**: `FramePresetPopover.tsx` 本実装（Task 19 で stub 作成済、Free モードで SNS 9 比率 + custom 選択 UI） ← **次セッションここから**
 - Task 21: `Frame.tsx` visualizer + desaturation
 - Task 22: `CardContextMenu.tsx` 右クリック
 - Task 23: `UndoToast.tsx` + soft delete flow
 - Task 24: z-order keyboard shortcuts + lock
+
+✅ **完了**: Task 14 / 15 / 16 / 17 / 18 / 19 + UX polish 4 連発（このセッションで全部 ship）
 
 **仕上げ** (Task 25-27):
 - Task 25: i18n 文字列 15 言語追加
@@ -86,8 +90,9 @@
 
 ### 次セッション最優先タスク
 
-1. **worktree 物理削除**（lucid-bardeen + quirky-wilson の 2 つ、Windows ファイルロックで自動削除不可のまま）
-2. **B1-placement Task 14 から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で Task 14 (CardsLayer mode 分岐 + GSAP morph) から再開。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` L1834 〜。Task 14 は `CardsLayer.tsx` 単体の修正で、`layoutMode` prop を BoardRoot から受け取って grid positions vs free positions を切替 + モード変更時に GSAP で全カード morph 演出。Task 13 で BoardRoot に state は既に生やしてあるので、そこから props で配線すれば OK。implementer は sonnet で十分。**Task 11 は Task 14 の後に着手**（plan 順序変更、下記メモ参照）
+1. **B1-placement Task 20 (FramePresetPopover) から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で着手。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` §Task 20。`components/board/FramePresetPopover.tsx` は既に Task 19 で stub あり (`// TODO(Task 20):` マーク)、これを SNS 比率 9 プリセット + custom 入力の正規 UI に置換。`lib/board/frame-presets.ts` に既に preset 定義あり、`getPresetById` 等も export 済。Task 19 で `<FramePresetPopover>` の呼び出しは Toolbar から既に配線済（Free モード時のみ表示）
+2. **このセッションで保管した重要アイデア**: `docs/private/IDEAS.md` に 2 件の bath idea が追加済 — (a) **常時 dashboard + focus mode (F キー) + liquid glass 被り** B2 候補、(b) **韓国系参考は失われたまま** ユーザーが思い出したら追記。Task 20 直前に IDEAS.md 一読推奨
+3. **Privacy 大掃除はもう完了**（バックアップ branch 削除済）— 過去のような worktree orphan 物理削除作業は不要
 
 ### 引き継ぎ時の重要メモ
 
