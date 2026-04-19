@@ -51,8 +51,16 @@ type CardsLayerProps = {
    */
   readonly overrides?: Readonly<Record<string, CardPosition>>
   readonly onCardPointerDown: (e: PointerEvent<HTMLDivElement>, cardId: string) => void
+  /**
+   * Resize callback. With the 8-handle API there is no separate end-signal —
+   * every pointer move fires `onResize`, so BoardRoot persists on each call.
+   */
   readonly onCardResize: (cardId: string, w: number, h: number) => void
-  readonly onCardResizeEnd?: (cardId: string, w: number, h: number) => void
+  /**
+   * Reset a card's height to native aspect ratio (handle double-click).
+   * Receives bookmarkId; BoardRoot resolves the cardId for IDB persistence.
+   */
+  readonly onCardResetToNative: (bookmarkId: string) => void
   /**
    * Persist a card's free-mode position to IDB. Receives the IDB cardId
    * (NOT bookmarkId). CardsLayer's free-drag state machine looks up the
@@ -101,7 +109,7 @@ export function CardsLayer({
   overrides,
   onCardPointerDown,
   onCardResize,
-  onCardResizeEnd,
+  onCardResetToNative,
   onPersistFreePos,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -396,11 +404,11 @@ export function CardsLayer({
               onPointerDown={handleCardPointerDown}
             />
             <ResizeHandle
-              cardId={it.bookmarkId}
-              initialW={p.w}
-              initialH={p.h}
-              onResize={onCardResize}
-              onResizeEnd={onCardResizeEnd}
+              currentW={p.w}
+              currentH={p.h}
+              aspectRatio={it.aspectRatio}
+              onResize={(w, h): void => onCardResize(it.bookmarkId, w, h)}
+              onResetToNative={(): void => onCardResetToNative(it.bookmarkId)}
             />
           </div>
         )

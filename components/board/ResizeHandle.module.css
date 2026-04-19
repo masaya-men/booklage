@@ -1,15 +1,98 @@
 .handle {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 14px;
-  height: 14px;
-  cursor: nwse-resize;
-  background: rgba(0, 0, 0, 0.15);
-  border-top-left-radius: 4px;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 2px;
+  z-index: 30; /* mirrors BOARD_Z_INDEX.RESIZE_HANDLE */
+  box-shadow: 0 1px 3px rgba(15, 15, 25, 0.18);
+  transition:
+    transform 120ms ease-out,
+    box-shadow 120ms ease-out;
   touch-action: none;
 }
 
-.handle:hover {
-  background: rgba(0, 0, 0, 0.3);
+/* Corner handles (aspect-locked) */
+.tl {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+.tr {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+.bl {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+.br {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+/* Edge handles (free-axis). Hover/active scale must compose with the
+   centering translate, so each edge declares its own scale rules. */
+.t {
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+.b {
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+.l {
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+.r {
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+/* Corner hover/active: simple scale */
+.tl:hover,
+.tr:hover,
+.bl:hover,
+.br:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 6px rgba(15, 15, 25, 0.24);
+}
+.tl:active,
+.tr:active,
+.bl:active,
+.br:active {
+  transform: scale(0.92);
+}
+
+/* Edge hover/active: compose scale with centering translate */
+.t:hover,
+.b:hover {
+  transform: translateX(-50%) scale(1.15);
+  box-shadow: 0 2px 6px rgba(15, 15, 25, 0.24);
+}
+.t:active,
+.b:active {
+  transform: translateX(-50%) scale(0.92);
+}
+.l:hover,
+.r:hover {
+  transform: translateY(-50%) scale(1.15);
+  box-shadow: 0 2px 6px rgba(15, 15, 25, 0.24);
+}
+.l:active,
+.r:active {
+  transform: translateY(-50%) scale(0.92);
 }
