@@ -8,7 +8,7 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐、**origin に push 済**)
-- **進捗**: **B1-placement Task 1-10 + Task 13-19 完了 + UX polish 4 連発 + Privacy Phase 3 完了**（27 タスク中 17 タスク + 4 UX polish + 1 privacy 大掃除）→ 次は **Task 20 (FramePresetPopover 本実装)** から
+- **進捗**: **B1-placement Task 1-10 + Task 13-20 完了 + UX polish 4 連発 + Privacy Phase 3 完了**（27 タスク中 18 タスク + 4 UX polish + 1 privacy 大掃除）→ 次は **Task 11 (Grid drop indicator + virtual insert 統合)** か Task 21 (Frame visualizer) から
 - **🎉 Task 19 マイルストーン**: Toolbar が mount され `layoutMode`/`frameRatio` の UI 切替がついに動く。Task 14 morph + Task 16 free-drag が user 操作可能に
 - **🎉 ユーザー実機確認済み**（2026-04-19 セッション後半）: dev server `localhost:3000/board` で Grid/Free Toolbar 切替・テーマ切替・カード hover ハンドル表示・Space+drag pan・dotted-notebook 背景表示 全部動作確認
 - **本番URL**: `https://booklage.pages.dev`
@@ -18,7 +18,10 @@
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
 - **テスト**: **82 PASS / 0 FAIL**（vitest）、tsc strict clean（Task 14 後も維持）
 
-### 直近の作業（2026-04-19 B1-placement Task 1-10 + Task 13 実装）
+### 直近の作業（2026-04-19 B1-placement Task 1-10 + Task 13-20 実装）
+
+- **Task 20 (aa3d2b8 + 368a4a0)** — `FramePresetPopover.tsx` 本実装 + `.module.css` 新規。Task 19 で作った stub (// TODO(Task 20)) を SNS 9 プリセット + Custom 入力 UI に置換。9 preset tile (Instagram/Story/Reels/IG Landscape/X 横/X 縦/Pinterest/YT Thumb/A4) + 別描画の Custom tile、`isCustom` 時のみ width×height input + Apply button。**design override**: Shopify-tier glass chrome (rgba(255,255,255,0.98) + blur 10px + 12px radius + 紫 tinted shadow `0 8px 28px rgba(15,15,25,0.14)` + 1px hairline border)、selected は neutral `#1a1a1a` (Toolbar active と整合、violet は input focus ring のみ edit affordance として採用)、top: 56px (Toolbar との gap 詰め)。**plan バグ修正**: customW/customH の `useState` 初期値を `currentRatio.kind === 'custom' ? currentRatio.width : 800` に変更 (plan のまま 800 固定だと popover 再開時に state が消える)。**NaN guard + apply-time clamp** 方式: onChange は clamp せず自由入力、Apply ボタン押下時のみ `FRAME.MIN_PX` / `MAX_PX` で clamp (UX: 打ってる途中で "30" → "3000" の mid-typing を妨げない)。**a11y**: PresetCard を `<button type="button" aria-pressed>` に、container `role="group" aria-label` で labelled group、input に `aria-label={t(...)}` で i18n 経由。**code review で Important 3 件 fix** (368a4a0): aria-label のハードコード日本語 → i18n (`widthLabel`/`heightLabel` キー追加)、`role="dialog"` → `role="group"` downgrade (focus trap 未実装で dialog を名乗る矛盾解消)、未使用 `onClose` prop を Props 型と Toolbar 呼び出し両方から削除。`messages/ja.json` に `board.frame.popover.{title,applyCustom,widthLabel,heightLabel}` + `board.frame.preset.custom` の 5 キー追加。preset ラベルは `preset.label` 直接参照 (messageKey は Task 25 i18n 展開のため残置)。outside-click / ESC close は未実装 (Task 19 simplicity-first pattern 踏襲、将来必要になったら prop + 実装をセットで追加する方針)。82 vitest pass / tsc clean
+
 
 - **superpowers:subagent-driven-development** で Task 1 から順次実装、implementer → spec reviewer → code-quality reviewer の二段レビュー loop を全タスクで実施
 - **Task 1 (b58638b)** — `types.ts` に `LayoutMode` / `FreePosition` / `FrameRatio` / `BoardConfig` / `SnapGuideLine` / `CardRightClickAction` 追加
@@ -75,13 +78,12 @@
 **UI 層** (Task 11-24):
 - Task 11: Grid drop indicator + virtual insert 統合（plan のコード例は現構造と divergence あり、BoardRoot が drag state 持つ形に適応して実装する予定）
 - Task 12: FLIP animation (GSAP) for grid reflow
-- **Task 20**: `FramePresetPopover.tsx` 本実装（Task 19 で stub 作成済、Free モードで SNS 9 比率 + custom 選択 UI） ← **次セッションここから**
-- Task 21: `Frame.tsx` visualizer + desaturation
+- Task 21: `Frame.tsx` visualizer + desaturation ← **次セッションここから**
 - Task 22: `CardContextMenu.tsx` 右クリック
 - Task 23: `UndoToast.tsx` + soft delete flow
 - Task 24: z-order keyboard shortcuts + lock
 
-✅ **完了**: Task 14 / 15 / 16 / 17 / 18 / 19 + UX polish 4 連発（このセッションで全部 ship）
+✅ **完了**: Task 14 / 15 / 16 / 17 / 18 / 19 / 20 + UX polish 4 連発
 
 **仕上げ** (Task 25-27):
 - Task 25: i18n 文字列 15 言語追加
@@ -90,9 +92,10 @@
 
 ### 次セッション最優先タスク
 
-1. **B1-placement Task 20 (FramePresetPopover) から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で着手。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` §Task 20。`components/board/FramePresetPopover.tsx` は既に Task 19 で stub あり (`// TODO(Task 20):` マーク)、これを SNS 比率 9 プリセット + custom 入力の正規 UI に置換。`lib/board/frame-presets.ts` に既に preset 定義あり、`getPresetById` 等も export 済。Task 19 で `<FramePresetPopover>` の呼び出しは Toolbar から既に配線済（Free モード時のみ表示）
-2. **このセッションで保管した重要アイデア**: `docs/private/IDEAS.md` に 2 件の bath idea が追加済 — (a) **常時 dashboard + focus mode (F キー) + liquid glass 被り** B2 候補、(b) **韓国系参考は失われたまま** ユーザーが思い出したら追記。Task 20 直前に IDEAS.md 一読推奨
-3. **Privacy 大掃除はもう完了**（バックアップ branch 削除済）— 過去のような worktree orphan 物理削除作業は不要
+1. **B1-placement Task 21 (Frame visualizer) から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で着手。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` §Task 21 (line 2651〜)。Free モードで選択された frameRatio の境界線を可視化 + outside 領域を desaturate する UI。Task 20 で `FramePresetPopover` が完成してるので Free モード切替 → preset 選択 → フレーム可視化の流れが繋がる
+2. **または Task 11 (Grid drop indicator + virtual insert 統合) を先にやる選択肢あり** — plan の順番だが、Task 11 は BoardRoot 側で drag state を持つ形に「plan のコード例から構造を適応」する必要あり (TODO.md の「plan 順序変更」メモ参照)。Task 21 の方が既存構造に綺麗に乗る
+3. **このセッションで保管した重要アイデア**: `docs/private/IDEAS.md` に bath idea 追加済 — **常時 dashboard + focus mode (F キー) + liquid glass 被り** B2 候補、**韓国系参考は失われたまま** (ユーザーが思い出したら追記、2026-04-19 に `ryuri-r` の Postype 記事は発見したが dashboard 参考ではないと確認)。Task 21 直前に IDEAS.md 一読推奨
+4. **Privacy 大掃除はもう完了**（バックアップ branch 削除済）— 過去のような worktree orphan 物理削除作業は不要
 
 ### 引き継ぎ時の重要メモ
 
