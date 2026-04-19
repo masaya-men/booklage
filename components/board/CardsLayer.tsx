@@ -124,6 +124,18 @@ export function CardsLayer({
   const prevModeRef = useRef<LayoutMode>(layoutMode)
   const morphTimelineRef = useRef<gsap.core.Timeline | null>(null)
 
+  // Which card the pointer is currently over. Drives ResizeHandle visibility:
+  // we render the 8-dot handle group only on the hovered card so the board
+  // isn't visually noisy. pointerleave on the wrapper does NOT fire when the
+  // pointer moves onto a child (handle/card body), so this stays stable while
+  // the user reaches for the handle.
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  // Defensive belt-and-braces: keep the handle mounted while a resize drag is
+  // in progress, in case pointerleave on the wrapper fires while the handle
+  // has pointer capture (browser-dependent). Without this, unmounting the
+  // capturing element mid-drag would silently break the resize.
+  const [resizingId, setResizingId] = useState<string | null>(null)
+
   // Free-mode drag state (only meaningful when layoutMode === 'free').
   // NOTE: selectedIds intentionally not added here — see plan §Task 23/24 (selection consumers).
   const [freeDragState, setFreeDragState] = useState<FreeDragState | null>(null)
@@ -393,6 +405,8 @@ export function CardsLayer({
             ref={(el): void => {
               cardRefs.current[it.bookmarkId] = el
             }}
+            onPointerEnter={(): void => setHoveredId(it.bookmarkId)}
+            onPointerLeave={(): void => setHoveredId((cur) => (cur === it.bookmarkId ? null : cur))}
             style={{
               position: 'absolute',
               top: 0,
@@ -411,14 +425,24 @@ export function CardsLayer({
               thumbnailUrl={it.thumbnail}
               onPointerDown={handleCardPointerDown}
             />
-            <ResizeHandle
-              currentW={p.w}
-              currentH={p.h}
-              aspectRatio={it.aspectRatio}
-              onResize={(w, h): void => onCardResize(it.bookmarkId, w, h)}
-              onResizeEnd={(w, h): void => onCardResizeEnd(it.bookmarkId, w, h)}
-              onResetToNative={(): void => onCardResetToNative(it.bookmarkId)}
-            />
+            {(hoveredId === it.bookmarkId || resizingId === it.bookmarkId) && (
+              <ResizeHandle
+                currentW={p.w}
+                currentH={p.h}
+                aspectRatio={it.aspectRatio}
+                onResize={(w, h): void => {
+                  // First tick of a resize drag implicitly marks it active so
+                  // the handle stays mounted even if hover ends mid-drag.
+                  if (resizingId !== it.bookmarkId) setResizingId(it.bookmarkId)
+                  onCardResize(it.bookmarkId, w, h)
+                }}
+                onResizeEnd={(w, h): void => {
+                  setResizingId(null)
+                  onCardResizeEnd(it.bookmarkId, w, h)
+                }}
+                onResetToNative={(): void => onCardResetToNative(it.bookmarkId)}
+              />
+            )}
           </div>
         )
       })}

@@ -4,6 +4,16 @@ export const LAYOUT_CONFIG = {
   CONTAINER_MARGIN_PX: 16,
 } as const
 
+/**
+ * Page-level cluster constraints. The cards arrange within a centered column
+ * of width `min(viewport.w, MAX_WIDTH_PX) - 2 * SIDE_PADDING_PX` so the
+ * background remains visible at the edges (mymind / Pinterest / Are.na pattern).
+ */
+export const BOARD_INNER = {
+  MAX_WIDTH_PX: 1400,
+  SIDE_PADDING_PX: 64,
+} as const
+
 export const RESIZE = {
   MIN_PX: 80,
   MAX_PX: 1200,

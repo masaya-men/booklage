@@ -7,7 +7,7 @@ import {
   getThemeMeta,
   listThemeIds,
 } from '@/lib/board/theme-registry'
-import { LAYOUT_CONFIG } from '@/lib/board/constants'
+import { BOARD_INNER, LAYOUT_CONFIG } from '@/lib/board/constants'
 import type { CardPosition, FrameRatio, LayoutCard, LayoutMode, ThemeId } from '@/lib/board/types'
 import { useBoardData, type BoardItem } from '@/lib/storage/use-board-data'
 import { initDB } from '@/lib/storage/indexeddb'
@@ -84,17 +84,29 @@ export function BoardRoot() {
 
   const themeMeta = getThemeMeta(themeId)
 
+  // Cap layout width at MAX_WIDTH_PX and reserve SIDE_PADDING_PX of gutter on
+  // each side so the background remains visible. The cards container is then
+  // horizontally centered via `horizontalOffset` (added to the scroll wrapper
+  // transform below). On viewports < (MAX_WIDTH_PX + 2 * SIDE_PADDING_PX) the
+  // gutter stays at exactly SIDE_PADDING_PX; on wider screens the cluster
+  // narrows to MAX_WIDTH_PX and the rest is gutter.
+  const effectiveLayoutWidth = Math.max(
+    0,
+    Math.min(viewport.w, BOARD_INNER.MAX_WIDTH_PX) - 2 * BOARD_INNER.SIDE_PADDING_PX,
+  )
+  const horizontalOffset = (viewport.w - effectiveLayoutWidth) / 2
+
   const layout = useMemo(
     () =>
       computeAutoLayout({
         cards: layoutCards,
-        viewportWidth: viewport.w,
+        viewportWidth: effectiveLayoutWidth,
         targetRowHeight:
           themeMeta.layoutParams?.targetRowHeight ?? LAYOUT_CONFIG.TARGET_ROW_HEIGHT_PX,
         gap: themeMeta.layoutParams?.gap ?? LAYOUT_CONFIG.GAP_PX,
         direction: themeMeta.direction,
       }),
-    [layoutCards, viewport.w, themeMeta],
+    [layoutCards, effectiveLayoutWidth, themeMeta],
   )
 
   const itemByBookmark = useMemo(() => {
@@ -250,7 +262,7 @@ export function BoardRoot() {
             position: 'absolute',
             top: 0,
             left: 0,
-            transform: `translate3d(${-viewport.x}px, ${-viewport.y}px, 0)`,
+            transform: `translate3d(${horizontalOffset - viewport.x}px, ${-viewport.y}px, 0)`,
             willChange: 'transform',
             pointerEvents: 'none',
           }}
@@ -264,7 +276,7 @@ export function BoardRoot() {
             items={items}
             layoutMode={layoutMode}
             viewport={viewport}
-            viewportWidth={viewport.w}
+            viewportWidth={effectiveLayoutWidth}
             targetRowHeight={targetRowHeight}
             gap={layoutGap}
             direction={themeMeta.direction}
