@@ -514,6 +514,6 @@ B1-placement で **追加** するのみ。既存の B0 コンポーネントに
 - `docs/DESIGN_REFERENCES.md` — 参考サイト（shopify.design、kube.io、Fluid Functionalism、Moodboard 3000、Designmd Style Extractor 等）
 - `docs/REBUILD_VISION.md` — リビルド全体方針
 - `docs/TODO.md` — 既存技術判断（React DOM 管理、GSAP、座標変換、ドラッグ閾値等）
-- `docs/private/IDEAS.md`（非公開） — ユーザーの核ビジョン、フォルダモード化、Triage、Share+Import、テーマ別アニメ、設計下地
+- `docs/private/IDEAS.md`（非公開） — ユーザーの核ビジョン、フォルダモード化、Triage、Share+Import、テーマ別アニメ等の設計下地
 - `CLAUDE.md` — コーディング規約、禁止事項、プライバシー絶対ルール
 - `MYCOLLAGE_FULL_SPEC.md` — プロダクト全体仕様

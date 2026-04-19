@@ -20,7 +20,7 @@
 以下の内容は **絶対に** public な場所（`docs/` 直下、code コメント、tracked ファイル等）に書かない：
 
 - **収益計画・価格戦略・ローンチ戦略**（「収益化計画」「価格戦略」「monetization plan」「launch strategy」等のキーワード）
-- **個人情報**（ユーザーのメアド `masaya-men@users.noreply.github.com`、電話番号、住所、契約関係）
+- **個人情報**（ユーザーの個人メアド、本名、電話番号、住所、契約関係 — 例示でも実値を書かない、placeholder のみ）
 - **競合分析**（手の内を見せたくないもの）
 - **Paid サービスの認証情報メモ**（実鍵は `.env.local` / `.dev.vars`）
 
