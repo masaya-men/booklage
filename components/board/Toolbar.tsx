@@ -29,7 +29,6 @@ export function Toolbar(props: Props): ReactElement {
   const handleGridClick = (): void => props.onModeChange('grid')
   const handleFreeClick = (): void => props.onModeChange('free')
   const togglePresetOpen = (): void => setPresetOpen((v) => !v)
-  const closePreset = (): void => setPresetOpen(false)
   const handlePresetSelect = (r: FrameRatio): void => {
     props.onFrameRatioChange(r)
     setPresetOpen(false)
@@ -69,7 +68,6 @@ export function Toolbar(props: Props): ReactElement {
             <FramePresetPopover
               currentRatio={props.frameRatio}
               onSelect={handlePresetSelect}
-              onClose={closePreset}
             />
           )}
         </>

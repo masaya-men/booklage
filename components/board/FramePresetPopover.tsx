@@ -10,7 +10,6 @@ import styles from './FramePresetPopover.module.css'
 type Props = {
   readonly currentRatio: FrameRatio
   readonly onSelect: (ratio: FrameRatio) => void
-  readonly onClose: () => void
 }
 
 function clamp(v: number, min: number, max: number): number {
@@ -75,7 +74,7 @@ export function FramePresetPopover({ currentRatio, onSelect }: Props): ReactElem
   return (
     <div
       className={styles.container}
-      role="dialog"
+      role="group"
       aria-label={t('board.frame.popover.title')}
       data-testid="frame-preset-popover"
     >
@@ -111,7 +110,7 @@ export function FramePresetPopover({ currentRatio, onSelect }: Props): ReactElem
             min={FRAME.MIN_PX}
             max={FRAME.MAX_PX}
             onChange={handleWidthChange}
-            aria-label="幅"
+            aria-label={t('board.frame.popover.widthLabel')}
           />
           <span className={styles.times} aria-hidden="true">
             ×
@@ -122,7 +121,7 @@ export function FramePresetPopover({ currentRatio, onSelect }: Props): ReactElem
             min={FRAME.MIN_PX}
             max={FRAME.MAX_PX}
             onChange={handleHeightChange}
-            aria-label="高さ"
+            aria-label={t('board.frame.popover.heightLabel')}
           />
           <button type="button" className={styles.apply} onClick={applyCustom}>
             {t('board.frame.popover.applyCustom')}
