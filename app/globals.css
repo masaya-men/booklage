@@ -233,6 +233,29 @@ ol {
   --collage-rotation-range: 5deg;
   --shadow-grid-card: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-collage-card: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* === B1 Dashboard Foundation variables (2026-04-20) === */
+
+  /* Liquid glass */
+  --glass-clarity: 0.04;
+  --glass-blur: 0px;
+  --glass-displacement-scale: 12;
+  --glass-edge: rgba(255, 255, 255, 0.55);
+  --glass-specular: rgba(255, 255, 255, 0.9);
+
+  /* Sidebar geometry */
+  --sidebar-width: 240px;
+  --sidebar-collapsed: 52px;
+  --sidebar-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-duration: 340ms;
+
+  /* Asymmetric corners */
+  --corner-radius-outer: 24px;
+  --corner-radius-inner: 6px;
+
+  /* Accents */
+  /* NOTE: --accent-primary omitted — --color-accent-primary (#7c5cfc) already exists at line 132 */
+  --accent-dark: #1a1a1a;
 }
 
 /* ── Light Mode Overrides ──────────────────────────────────── */
