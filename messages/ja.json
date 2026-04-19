@@ -22,6 +22,15 @@
       "theme": "テーマ",
       "export": "書き出し",
       "share": "シェア"
+    },
+    "frame": {
+      "popover": {
+        "title": "フレームプリセット",
+        "applyCustom": "適用"
+      },
+      "preset": {
+        "custom": "カスタム"
+      }
     }
   },
   "share": {
