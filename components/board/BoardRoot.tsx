@@ -8,8 +8,14 @@ import {
   listThemeIds,
 } from '@/lib/board/theme-registry'
 import { LAYOUT_CONFIG } from '@/lib/board/constants'
-import type { CardPosition, LayoutCard, ThemeId } from '@/lib/board/types'
+import type { CardPosition, FrameRatio, LayoutCard, LayoutMode, ThemeId } from '@/lib/board/types'
 import { useBoardData, type BoardItem } from '@/lib/storage/use-board-data'
+import { initDB } from '@/lib/storage/indexeddb'
+import {
+  DEFAULT_BOARD_CONFIG,
+  loadBoardConfig,
+  saveBoardConfig,
+} from '@/lib/storage/board-config'
 import { t } from '@/lib/i18n/t'
 import { ThemeLayer } from './ThemeLayer'
 import { CardsLayer } from './CardsLayer'
@@ -28,11 +34,26 @@ function loadSavedTheme(): ThemeId {
 export function BoardRoot() {
   const { items, persistCardPosition } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>(DEFAULT_BOARD_CONFIG.layoutMode)
+  const [frameRatio, setFrameRatio] = useState<FrameRatio>(DEFAULT_BOARD_CONFIG.frameRatio)
   const [overrides, setOverrides] = useState<Record<string, CardPosition>>({})
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => setThemeId(loadSavedTheme()), [])
+
+  // Hydrate layoutMode + frameRatio from IndexedDB on mount
+  useEffect(() => {
+    let cancelled = false
+    void (async (): Promise<void> => {
+      const db = await initDB()
+      if (cancelled) return
+      const cfg = await loadBoardConfig(db)
+      setLayoutMode(cfg.layoutMode)
+      setFrameRatio(cfg.frameRatio)
+    })()
+    return (): void => { cancelled = true }
+  }, [])
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(THEME_LS_KEY, themeId)
@@ -144,6 +165,20 @@ export function BoardRoot() {
     },
     [overrides, layout.positions, itemByBookmark, persistCardPosition],
   )
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleModeChange = async (next: LayoutMode): Promise<void> => {
+    setLayoutMode(next)
+    const db = await initDB()
+    await saveBoardConfig(db, { layoutMode: next, frameRatio, themeId })
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleFrameRatioChange = async (next: FrameRatio): Promise<void> => {
+    setFrameRatio(next)
+    const db = await initDB()
+    await saveBoardConfig(db, { layoutMode, frameRatio: next, themeId })
+  }
 
   const cardsForLayer = useMemo(
     () =>
