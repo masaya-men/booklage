@@ -189,19 +189,12 @@ export function BoardRoot() {
     [layoutMode, themeId],
   )
 
-  const cardsForLayer = useMemo(
-    () =>
-      items.map((it) => ({
-        id: it.bookmarkId,
-        aspectRatio: it.aspectRatio,
-        title: it.title,
-        thumbnailUrl: it.thumbnail,
-      })),
-    [items],
-  )
-
   const contentWidth = Math.max(viewport.w, layout.totalWidth)
   const contentHeight = Math.max(viewport.h, layout.totalHeight)
+
+  const targetRowHeight =
+    themeMeta.layoutParams?.targetRowHeight ?? LAYOUT_CONFIG.TARGET_ROW_HEIGHT_PX
+  const layoutGap = themeMeta.layoutParams?.gap ?? LAYOUT_CONFIG.GAP_PX
 
   return (
     <div
@@ -225,9 +218,14 @@ export function BoardRoot() {
             totalHeight={contentHeight}
           />
           <CardsLayer
-            cards={cardsForLayer}
-            positions={layout.positions}
+            items={items}
+            layoutMode={layoutMode}
             viewport={viewport}
+            viewportWidth={viewport.w}
+            targetRowHeight={targetRowHeight}
+            gap={layoutGap}
+            direction={themeMeta.direction}
+            overrides={overrides}
             onCardPointerDown={handleCardPointerDown}
             onCardResize={handleCardResize}
             onCardResizeEnd={handleCardResizeEnd}

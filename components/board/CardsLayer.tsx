@@ -1,16 +1,29 @@
 'use client'
 
-import { useMemo, type PointerEvent, type ReactNode } from 'react'
-import type { CardPosition, LayoutCard } from '@/lib/board/types'
-import { CULLING, BOARD_Z_INDEX } from '@/lib/board/constants'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type PointerEvent,
+  type ReactNode,
+} from 'react'
+import { gsap } from 'gsap'
+import { computeAutoLayout } from '@/lib/board/auto-layout'
+import type {
+  CardPosition,
+  LayoutCard,
+  LayoutMode,
+  ScrollDirection,
+} from '@/lib/board/types'
+import {
+  BOARD_Z_INDEX,
+  CULLING,
+  MODE_TRANSITION,
+} from '@/lib/board/constants'
+import type { BoardItem } from '@/lib/storage/use-board-data'
 import { CardNode } from './CardNode'
 import { ResizeHandle } from './ResizeHandle'
-
-type CardData = LayoutCard & {
-  readonly title: string
-  readonly thumbnailUrl?: string
-  readonly children?: ReactNode
-}
 
 type Viewport = {
   readonly x: number
@@ -20,23 +33,88 @@ type Viewport = {
 }
 
 type CardsLayerProps = {
-  readonly cards: ReadonlyArray<CardData>
-  readonly positions: Readonly<Record<string, CardPosition>>
+  readonly items: ReadonlyArray<BoardItem>
+  readonly layoutMode: LayoutMode
   readonly viewport: Viewport
+  readonly viewportWidth: number
+  readonly targetRowHeight: number
+  readonly gap: number
+  readonly direction: ScrollDirection
+  /**
+   * Optional per-card user override (e.g. while dragging in grid mode).
+   * Keyed by bookmarkId. Takes precedence over computed grid position.
+   */
+  readonly overrides?: Readonly<Record<string, CardPosition>>
   readonly onCardPointerDown: (e: PointerEvent<HTMLDivElement>, cardId: string) => void
   readonly onCardResize: (cardId: string, w: number, h: number) => void
   readonly onCardResizeEnd?: (cardId: string, w: number, h: number) => void
+  readonly renderCardChildren?: (item: BoardItem) => ReactNode
 }
 
 export function CardsLayer({
-  cards,
-  positions,
+  items,
+  layoutMode,
   viewport,
+  viewportWidth,
+  targetRowHeight,
+  gap,
+  direction,
+  overrides,
   onCardPointerDown,
   onCardResize,
   onCardResizeEnd,
-}: CardsLayerProps) {
-  const visibleCards = useMemo(() => {
+  renderCardChildren,
+}: CardsLayerProps): ReactNode {
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const prevModeRef = useRef<LayoutMode>(layoutMode)
+
+  // Build LayoutCard[] from items, applying any overrides as userOverridePos
+  // so computeAutoLayout will respect drag positions in grid mode too.
+  const layoutCards = useMemo<LayoutCard[]>(
+    () =>
+      items.map((it) => ({
+        id: it.bookmarkId,
+        aspectRatio: it.aspectRatio,
+        userOverridePos: overrides?.[it.bookmarkId] ?? it.userOverridePos,
+      })),
+    [items, overrides],
+  )
+
+  const gridLayout = useMemo(
+    () =>
+      computeAutoLayout({
+        cards: layoutCards,
+        viewportWidth,
+        targetRowHeight,
+        gap,
+        direction,
+      }),
+    [layoutCards, viewportWidth, targetRowHeight, gap, direction],
+  )
+
+  const freeLayoutPositions = useMemo<Readonly<Record<string, CardPosition>>>(() => {
+    const result: Record<string, CardPosition> = {}
+    for (const it of items) {
+      if (it.freePos) {
+        result[it.bookmarkId] = {
+          x: it.freePos.x,
+          y: it.freePos.y,
+          w: it.freePos.w,
+          h: it.freePos.h,
+        }
+      } else {
+        // Fallback to grid position so newly-added cards have a home when mode=free.
+        const gridPos = gridLayout.positions[it.bookmarkId]
+        if (gridPos) result[it.bookmarkId] = gridPos
+      }
+    }
+    return result
+  }, [items, gridLayout])
+
+  const activePositions: Readonly<Record<string, CardPosition>> =
+    layoutMode === 'grid' ? gridLayout.positions : freeLayoutPositions
+
+  const visibleItems = useMemo(() => {
     const bufferX = viewport.w * CULLING.BUFFER_SCREENS
     const bufferY = viewport.h * CULLING.BUFFER_SCREENS
     const minX = viewport.x - bufferX
@@ -44,12 +122,45 @@ export function CardsLayer({
     const minY = viewport.y - bufferY
     const maxY = viewport.y + viewport.h + bufferY
 
-    return cards.filter((c) => {
-      const p = positions[c.id]
+    return items.filter((it) => {
+      const p = activePositions[it.bookmarkId]
       if (!p) return false
       return !(p.x + p.w < minX || p.x > maxX || p.y + p.h < minY || p.y > maxY)
     })
-  }, [cards, positions, viewport])
+  }, [items, activePositions, viewport])
+
+  // Initial / non-mode-change positioning: GSAP owns the transform.
+  // Use useLayoutEffect to set position before paint so the card never
+  // flashes at the wrong spot.
+  useLayoutEffect(() => {
+    for (const it of visibleItems) {
+      const el = cardRefs.current[it.bookmarkId]
+      if (!el) continue
+      const p = activePositions[it.bookmarkId]
+      if (!p) continue
+      gsap.set(el, { x: p.x, y: p.y, width: p.w, height: p.h })
+    }
+  }, [visibleItems, activePositions])
+
+  // Animated morph when layoutMode toggles.
+  useEffect(() => {
+    if (prevModeRef.current === layoutMode) return
+    for (const it of items) {
+      const el = cardRefs.current[it.bookmarkId]
+      if (!el) continue
+      const p = activePositions[it.bookmarkId]
+      if (!p) continue
+      gsap.to(el, {
+        x: p.x,
+        y: p.y,
+        width: p.w,
+        height: p.h,
+        duration: MODE_TRANSITION.MORPH_MS / 1000,
+        ease: MODE_TRANSITION.EASING,
+      })
+    }
+    prevModeRef.current = layoutMode
+  }, [layoutMode, items, activePositions])
 
   return (
     <div
@@ -61,33 +172,38 @@ export function CardsLayer({
         pointerEvents: 'none',
       }}
     >
-      {visibleCards.map((c) => {
-        const p = positions[c.id]
+      {visibleItems.map((it) => {
+        const p = activePositions[it.bookmarkId]
         if (!p) return null
         return (
           <div
-            key={c.id}
+            key={it.bookmarkId}
+            ref={(el): void => {
+              cardRefs.current[it.bookmarkId] = el
+            }}
             style={{
               position: 'absolute',
               top: 0,
               left: 0,
-              transform: `translate3d(${p.x}px, ${p.y}px, 0)`,
+              // Initial inline values match what GSAP will set; useLayoutEffect
+              // overwrites these via the matrix transform before paint.
               width: `${p.w}px`,
               height: `${p.h}px`,
+              transform: `translate3d(${p.x}px, ${p.y}px, 0)`,
               pointerEvents: 'auto',
             }}
           >
             <CardNode
-              id={c.id}
+              id={it.bookmarkId}
               position={{ x: 0, y: 0, w: p.w, h: p.h }}
-              title={c.title}
-              thumbnailUrl={c.thumbnailUrl}
+              title={it.title}
+              thumbnailUrl={it.thumbnail}
               onPointerDown={onCardPointerDown}
             >
-              {c.children}
+              {renderCardChildren ? renderCardChildren(it) : undefined}
             </CardNode>
             <ResizeHandle
-              cardId={c.id}
+              cardId={it.bookmarkId}
               initialW={p.w}
               initialH={p.h}
               onResize={onCardResize}
