@@ -97,12 +97,14 @@
 ```bash
 # worktree 内で実行
 rtk pnpm build
-npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true
+npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true
 ```
 
+- **`--branch=master` は必須**。これがないと現在の git ブランチ名で preview deploy になってしまい、`booklage.pages.dev` に反映されない（ユーザーが確認に使う URL はここ固定）。ユーザーの IndexedDB ブクマは URL 単位で保存されるため、別 URL に deploy されると確認 URL でブクマが空に見える致命的 UX 破綻になる
 - `pnpm build` は `output: 'export'` 設定で `out/` に static file 生成
 - `--commit-dirty=true` は「現在の作業ツリーに未 commit 変更があっても deploy してよい」フラグ（直前の commit とビルド内容が一致する前提で使う）
-- 本番 URL: `https://booklage.pages.dev`
+- **本番 URL**: `https://booklage.pages.dev` ← **ユーザーが確認に使うのは常にここ**。ハードリロードで最新版が見える
+- deploy 完了時、ユーザーに「`booklage.pages.dev` をハードリロードしてください」と案内する（ブランチ固有の preview URL `xxxxx.booklage.pages.dev` は案内しない — ブクマが空で混乱の元）
 
 ### 守ること
 
