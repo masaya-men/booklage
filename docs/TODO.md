@@ -7,16 +7,16 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐)
-- **進捗**: **B1-placement Task 1-8 完了**（foundation 層、27 タスク中 8 完了）→ 次は **Task 9 (use-board-data.ts 統合)** から
+- **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐、**origin に push 済**)
+- **進捗**: **B1-placement Task 1-9 完了**（foundation + data integration、27 タスク中 9 完了）→ 次は **Task 10 (SnapGuides UI コンポーネント)** から
 - **本番URL**: `https://booklage.pages.dev`
 - **DBバージョン**: v6（Task 7 で bump 済、worktree ローカル。master にマージ or deploy 時に旧ユーザーの DB が自動 migration される）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
-- **テスト**: **77 PASS / 0 FAIL**（Task 8 時点、vitest）、tsc strict clean
+- **テスト**: **82 PASS / 0 FAIL**（Task 9 時点、vitest）、tsc strict clean
 
-### 直近の作業（2026-04-19 B1-placement Task 1-8 実装）
+### 直近の作業（2026-04-19 B1-placement Task 1-9 実装）
 
 - **superpowers:subagent-driven-development** で Task 1 から順次実装、implementer → spec reviewer → code-quality reviewer の二段レビュー loop を全タスクで実施
 - **Task 1 (b58638b)** — `types.ts` に `LayoutMode` / `FreePosition` / `FrameRatio` / `BoardConfig` / `SnapGuideLine` / `CardRightClickAction` 追加
@@ -27,7 +27,8 @@
 - **Task 6 (a0fedfc)** — `auto-layout.ts` に `computeGridLayoutWithVirtualInsert` 追加（drag preview 用）、`auto-layout.test.ts` 新規 9 テスト
 - **Task 7 (b19c9d2)** — IndexedDB v5→v6 migration、`BookmarkRecord` に isRead/isDeleted/deletedAt、`CardRecord` に locked/isUserResized/aspectRatio 追加
 - **Task 8 (a0bfa59)** — `lib/storage/board-config.ts` 新規、`loadBoardConfig` / `saveBoardConfig` / `DEFAULT_BOARD_CONFIG`、fake DB での 2 テスト
-- **全 9 commits** は `claude/b1-placement` ブランチに積まれた状態（未 push）
+- **Task 9 (ab76cd4 + 348da9a)** — `use-board-data.ts` を全面書き換え。`BoardItem` に freePos / isRead / isDeleted / aspectRatio / gridIndex 追加、`computeAspectRatio` 3 段階優先（isUserResized → cached → 推定）、persistFreePosition / persistGridIndex / persistReadFlag / persistSoftDelete の 4 persist 関数。BoardRoot 互換のため persistCardPosition を @deprecated shim として残存（Task 13 で除去）。後追い fix で コメント精度 + bookmarkId guard + computeAspectRatio の unit test 5 個追加
+- **全 commits** は `claude/b1-placement` ブランチに積まれ **origin に push 済**
 
 ### ⚠️ 次セッションの最初にやってほしい後処理
 
@@ -53,9 +54,7 @@
 - IndexedDB v5→v6 migration + `freePos` / `isRead` / `isDeleted` 追加 ← **Task 7 で完了**
 - Grid drag: A++ Insert + FLIP reflow、C-pure は post-B1 upgrade として design 済
 
-### B1-placement 残タスク（Task 9-27、次セッション以降）
-
-**Integration 層** (Task 9): `lib/storage/use-board-data.ts` 改修、`detectAspectRatioSource` + `estimateAspectRatio` を OGP から使って aspectRatio 動的計算、`freePos` / `gridIndex` 配信
+### B1-placement 残タスク（Task 10-27、次セッション以降）
 
 **UI 層** (Task 10-24):
 - Task 10: `SnapGuides.tsx`（Figma 風ピンク線）
@@ -81,15 +80,16 @@
 
 ### 次セッション最優先タスク
 
-1. **worktree 物理削除**（lucid-bardeen + quirky-wilson の 2 つ）
-2. **B1-placement Task 9 から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で Task 9 から再開。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` 参照
+1. **worktree 物理削除**（lucid-bardeen + quirky-wilson の 2 つ、Windows ファイルロックで自動削除不可のまま）
+2. **B1-placement Task 10 から継続** — `.claude/worktrees/b1-placement/` に入って `superpowers:subagent-driven-development` で Task 10 (SnapGuides.tsx) から再開。plan は `docs/superpowers/plans/2026-04-19-b1-placement.md` 参照
 
 ### 引き継ぎ時の重要メモ
 
 - **Task 4 spec 内部矛盾メモ**: `computeFrameSize({ kind: 'custom', ... })` は現在 clamp しない実装。UI から custom サイズを受ける時は caller 側で FRAME.MIN_PX / MAX_PX に clamp する必要あり（実装時に気をつける）
 - **Task 6 テスト extra**: `auto-layout.test.ts` に spec 指定より多い tests が含まれる（既存 `computeAutoLayout` baseline 4 + virtual insert 5）。害はないので削除不要
 - **Task 7 DB migration**: worktree で DB_VERSION が 6 になった。master にマージする前に既存 booklage.pages.dev ユーザーの DB が自動 migration される設計（fire-and-forget cursor）。migration 失敗時のフォールバック無しなのは既存 v1-v5 パターン踏襲
-- **Foundation 層 (1-8) と Integration/UI 層 (9-27) の境界**: Task 9 から UI 依存が増える。実装中に subagent が NEEDS_CONTEXT で止まる率が上がる見込み。controller は sonnet モデル昇格を検討
+- **Foundation + data integration 層 (1-9) と UI 層 (10-27) の境界**: Task 10 から UI 依存が増える。実装中に subagent が NEEDS_CONTEXT で止まる率が上がる見込み。controller は sonnet モデル昇格を検討
+- **Task 9 メモ**: code-quality reviewer が指摘した `updateCard` のエラー silent swallow (Important #1) と `dbRef` の weak cast (Minor #4) は deferred。Task 13 (BoardRoot 書き直し) でエラーバウンダリを設計する際に併せて対応する予定
 - **IDEAS.md sync**: 本セッションでは修正していない。`b1-placement` worktree と メインリポ両方で同一
 
 ### 2026-05-19 以降に削除する remote backup branch
