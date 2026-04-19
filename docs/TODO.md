@@ -7,23 +7,40 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `claude/b0-impl`（Task 13〜18 完了、master マージ待ち）
-- **進捗**: **B0 ボード骨組みリビルド完了** → 次は B1（装飾レイヤー）か Task 17（実データ視覚調整）
+- **ブランチ**: `master`（B1-placement spec + plan + privacy scrub が 07802ce で反映済み）
+- **進捗**: **B1-placement の設計と実装計画 完了** → 次は **(1) privacy 最終監査 + git 履歴書き換え** → **(2) B1-placement 実装開始**
 - **本番URL**: `https://booklage.pages.dev`
-- **DBバージョン**: v4（ogpStatus追加、スキーマは変更なし）
+- **DBバージョン**: v5（B0 で bump、B1 で v6 にする予定）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
-- **テスト**: vitest 30/30、Playwright E2E 6/6、perf spec 1本 すべて green、TypeScript strict クリア
+- **テスト**: B0 までのテスト green、B1 実装時に拡張
 
-### 直近の作業（2026-04-19 B0 セッション②）
+### 直近の作業（2026-04-19 B1-placement brainstorming + spec + plan + privacy scrub）
 
-- Task 13: `/board` を BoardRoot に差し替え。最小 ja-only 翻訳ヘルパ `lib/i18n/t.ts` を追加
-- Task 14: Playwright E2E 6件追加。layout wrap バグ（InteractionLayer がカードイベントを奪う）を発見・修正
-- Task 15: **クリーンスレート削除** — 旧 board-client.tsx + orphan UI 全部 + 依存 lib すべて削除（11,270 行削除）
-- Task 16: 1000 カード perf spec 追加 → 60.6 fps / DOM 66枚 / 最長 16.8ms frame 達成
-- Task 17: 実データ視覚調整は **ユーザー確認待ち**（マージ後に実ブクマで確認してもらう）
-- Task 18: TODO 更新 + master マージ
+- brainstorming スキルで 7 問ビジュアル対話 → B1-placement の全要素決定
+- **spec 作成**: `docs/superpowers/specs/2026-04-19-b1-placement-design.md`（519 行）
+- **implementation plan 作成**: `docs/superpowers/plans/2026-04-19-b1-placement.md`（3,373 行、27 タスク TDD）
+- **プライバシー緊急対応**: 公開 tracked ファイルから機微コンテンツを scrub（MYCOLLAGE_FULL_SPEC §9/§14、REBUILD_VISION quote、DESIGN_REFERENCES quote、week2-design §2 広告基盤、TODO.md 軽微な競合 refs 等）
+- **docs/private/IDEAS.md**（gitignored）に全機微内容を永続保管
+- 3 commit が origin/master に push 済（5eeb148, 94a89af, 07802ce）
+
+### B1-placement 実装計画の要点
+
+- Grid モードと Free モードの 2 切替。ボード設定（layoutMode + frameRatio）は永続化
+- 中身に応じたアスペクト比マッピング（YouTube 16:9、長文ツイート 3:4 等、12 パターン）
+- Free モード: ソフト境界フレーム + SNS プリセット + desaturated 外側 + ブリード配置
+- カード変形（Free のみ）: 回転（Shift で自由）、8 ハンドルリサイズ、alignment snap（Shift で OFF）、z-order
+- 右クリック: 既読 / 削除（10s Undo トースト）/ z-order / ロック
+- Shopify.design tier の UI chrome、Designmd Style Extractor で数値抽出
+- IndexedDB v5→v6 migration + `freePos` / `isRead` / `isDeleted` 追加
+- Grid drag: A++ Insert + FLIP reflow、C-pure は post-B1 upgrade として design 済
+
+### 次セッション最優先タスク
+
+1. **プライバシー監査（徹底版）** — 全 tracked ファイル熟読。残存機微 or 微妙な箇所を発見 → docs/private/IDEAS.md に退避 → commit
+2. **git 履歴書き換え** — `pip install git-filter-repo` → backup push → filter-repo → `git push --force-with-lease origin master`
+3. **B1-placement 実装開始** — `docs/superpowers/plans/2026-04-19-b1-placement.md` を subagent-driven-development で Task 1 から順に
 
 ### 重要な技術判断（確定済み）
 
