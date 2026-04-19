@@ -33,6 +33,22 @@
       "preset": {
         "custom": "カスタム"
       }
+    },
+    "sidebar": {
+      "searchPlaceholder": "検索...",
+      "searchHint": "⌘K",
+      "libraryHeader": "LIBRARY",
+      "all": "すべて",
+      "unread": "未読",
+      "read": "既読",
+      "foldersHeader": "FOLDERS",
+      "foldersPlaceholder": "B2 で実装",
+      "themeLabel": "テーマ",
+      "settingsLabel": "設定",
+      "hideHint": "F で隠す",
+      "collapseAria": "折り畳む",
+      "expandAria": "展開",
+      "signature": "BOARD · 2026"
     }
   },
   "share": {

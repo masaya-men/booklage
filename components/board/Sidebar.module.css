@@ -12,7 +12,6 @@
   box-sizing: border-box;
 }
 
-/* Inner padding area (so asymmetric corners don't clip icon content) */
 .inner {
   position: absolute;
   inset: 0;
@@ -22,12 +21,10 @@
   overflow: hidden;
 }
 
-/* Collapsed: slide left so only 52px icon rail remains visible */
 .collapsed {
   transform: translateX(calc(-1 * (var(--sidebar-width) - var(--sidebar-collapsed))));
 }
 
-/* Asymmetric corners (soft left, tight right) */
 .sidebar :global(.glass) {
   border-radius:
     var(--corner-radius-outer)
@@ -37,8 +34,150 @@
   height: 100%;
 }
 
-.placeholder {
-  color: #888;
+/* --- Brand --- */
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 0 4px;
+}
+.brandName {
+  font-family: 'Playfair Display', 'Hiragino Mincho ProN', serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.brandMono {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 9px;
+  color: #777;
+  letter-spacing: 0.1em;
+}
+.collapseBtn {
+  margin-left: auto;
+  width: 26px; height: 26px;
+  border: none; background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #999;
+  font-size: 14px;
+}
+.collapseBtn:hover { background: rgba(0, 0, 0, 0.05); color: #333; }
+
+/* --- Search (shell) --- */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 2px 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  margin-bottom: 22px;
+  color: #666;
   font-size: 12px;
-  padding: 10px;
+}
+.searchIcon { opacity: 0.5; }
+.searchPlaceholder { flex: 1; }
+.searchHint {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 9px; color: #999;
+}
+
+/* --- Section header --- */
+.sectionHeader {
+  font-size: 10px;
+  color: #999;
+  letter-spacing: 0.08em;
+  margin: 16px 2px 6px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* --- Nav item --- */
+.navItem {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 6px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  color: #555;
+  font-size: 13px;
+  transition: background 100ms ease;
+  text-align: left;
+  width: 100%;
+  background: transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  font-family: inherit;
+}
+.navItem:hover { background: rgba(0, 0, 0, 0.04); }
+.navItem.active {
+  border-left-color: var(--accent-primary);
+  background: linear-gradient(90deg, rgba(124, 92, 252, 0.1), transparent);
+  color: #1a1a1a;
+  font-weight: 500;
+}
+.navLabel { flex: 1; }
+.navCount {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 11px;
+  color: #999;
+}
+
+/* --- Folders placeholder --- */
+.foldersPlaceholder {
+  padding: 8px 10px;
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  font-size: 10px;
+  color: #999;
+  text-align: center;
+  letter-spacing: 0.05em;
+  margin: 4px 2px;
+}
+
+/* --- Bottom controls --- */
+.spacer { flex: 1; }
+.footRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: #777;
+}
+.themeBtn {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: inherit;
+  font-size: inherit;
+  font-family: inherit;
+}
+.themeBtn:hover { background: rgba(0, 0, 0, 0.04); }
+.hideHint {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 9px;
+  color: #aaa;
+}
+
+/* --- Vertical signature --- */
+.signature {
+  position: absolute;
+  right: -8px;
+  top: 80px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 9px;
+  letter-spacing: 0.35em;
+  color: #999;
+  text-transform: uppercase;
+  opacity: 0.6;
+  pointer-events: none;
 }
