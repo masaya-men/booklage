@@ -6,16 +6,16 @@ import styles from './RotationHandle.module.css'
 
 type RotationHandleProps = {
   readonly currentRotation: number
-  readonly cardCenterX: number
-  readonly cardCenterY: number
+  readonly cardCenterClientX: number
+  readonly cardCenterClientY: number
   readonly onRotate: (degrees: number) => void
   readonly onReset?: () => void
 }
 
 export function RotationHandle({
   currentRotation,
-  cardCenterX,
-  cardCenterY,
+  cardCenterClientX,
+  cardCenterClientY,
   onRotate,
   onReset,
 }: RotationHandleProps): ReactElement {
@@ -25,8 +25,8 @@ export function RotationHandle({
   } | null>(null)
 
   const getAngle = (x: number, y: number): number => {
-    const dx = x - cardCenterX
-    const dy = y - cardCenterY
+    const dx = x - cardCenterClientX
+    const dy = y - cardCenterClientY
     return (Math.atan2(dy, dx) * 180) / Math.PI
   }
 
@@ -43,7 +43,10 @@ export function RotationHandle({
     const s = dragRef.current
     if (!s) return
     const a = getAngle(e.clientX, e.clientY)
-    let rot = s.startRotation + (a - s.startAngle)
+    let delta = a - s.startAngle
+    if (delta > 180) delta -= 360
+    else if (delta < -180) delta += 360
+    let rot = s.startRotation + delta
     if (!e.shiftKey) {
       rot = Math.round(rot / ROTATION.SNAP_STEP_DEG) * ROTATION.SNAP_STEP_DEG
     }
@@ -69,7 +72,11 @@ export function RotationHandle({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onDoubleClick={handleDoubleClick}
+        role="slider"
         aria-label="回転ハンドル"
+        aria-valuenow={Math.round(currentRotation)}
+        aria-valuemin={-180}
+        aria-valuemax={180}
       />
     </>
   )
