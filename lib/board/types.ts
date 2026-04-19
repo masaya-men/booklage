@@ -57,3 +57,37 @@ export type ThemeMeta = {
   readonly labelKey: string
   readonly layoutParams?: ThemeLayoutParams
 }
+
+export type LayoutMode = 'grid' | 'free'
+
+export type FreePosition = {
+  readonly x: number
+  readonly y: number
+  readonly w: number
+  readonly h: number
+  readonly rotation: number        // degrees
+  readonly zIndex: number          // 0 = auto (last-touched wins)
+  readonly locked: boolean
+  readonly isUserResized: boolean  // prevents aspectRatio recompute overwrite
+}
+
+export type FrameRatio =
+  | { readonly kind: 'preset'; readonly presetId: string }
+  | { readonly kind: 'custom'; readonly width: number; readonly height: number }
+
+export type BoardConfig = {
+  readonly layoutMode: LayoutMode
+  readonly frameRatio: FrameRatio
+  readonly themeId: ThemeId
+}
+
+export type SnapGuideLine =
+  | { readonly kind: 'vertical'; readonly x: number; readonly y1: number; readonly y2: number }
+  | { readonly kind: 'horizontal'; readonly y: number; readonly x1: number; readonly x2: number }
+  | { readonly kind: 'spacing'; readonly label: string; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number }
+
+export type CardRightClickAction =
+  | 'open' | 'mark-read' | 'delete'
+  | 'move-folder'
+  | 'z-forward' | 'z-backward' | 'z-front' | 'z-back'
+  | 'lock'
