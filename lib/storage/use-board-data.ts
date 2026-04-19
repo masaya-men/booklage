@@ -128,6 +128,15 @@ export function useBoardData(): {
     async (cardId: string, pos: FreePosition): Promise<void> => {
       const db = dbRef.current
       if (!db || !cardId) return
+      // Optimistic local update first — keeps UI in sync with the freshly-released drag
+      // before the IDB round-trip completes (eliminates one-frame snap-back).
+      setItems((prev) =>
+        prev.map((it) =>
+          it.cardId === cardId
+            ? { ...it, freePos: { ...pos } }
+            : it,
+        ),
+      )
       await updateCard(db as Parameters<typeof updateCard>[0], cardId, {
         x: pos.x, y: pos.y,
         width: pos.w, height: pos.h,
@@ -137,16 +146,6 @@ export function useBoardData(): {
         isUserResized: pos.isUserResized,
         isManuallyPlaced: true,
       })
-      // Sync local state so freeLayoutPositions sees the persisted position
-      // immediately when displayedPositions clears its drag override.
-      // Without this, the card snaps back to its old freePos on drag end.
-      setItems((prev) =>
-        prev.map((it) =>
-          it.cardId === cardId
-            ? { ...it, freePos: { ...pos } }
-            : it,
-        ),
-      )
     },
     [],
   )
