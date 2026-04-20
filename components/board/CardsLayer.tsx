@@ -55,6 +55,8 @@ export function CardsLayer({
   onDrop,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
+  const lastComputeRef = useRef<{ x: number; y: number } | null>(null)
 
   // Stage 2: virtual order during drag for live reflow preview.
   // null = no drag in progress (use real masonry order).
@@ -184,8 +186,8 @@ export function CardsLayer({
         id: string,
         cardWorldX: number,
         cardWorldY: number,
-        pointerWorldX: number,
-        pointerWorldY: number,
+        _pointerWorldX: number,
+        _pointerWorldY: number,
       ): void => {
         // Stage 1: instant pointer follow — gsap.set is synchronous, zero lag.
         const el = cardRefs.current[id]
@@ -193,15 +195,21 @@ export function CardsLayer({
           gsap.set(el, { x: cardWorldX, y: cardWorldY, scale: 1.03, overwrite: 'auto' })
         }
 
-        // Stage 2: compute virtual order from current card world position.
+        // Stage 2: position-preserving insertion — throttle via 8px movement delta.
+        const last = lastComputeRef.current
+        if (last && Math.abs(last.x - cardWorldX) < 8 && Math.abs(last.y - cardWorldY) < 8) {
+          return // skip — no significant pointer movement
+        }
+        lastComputeRef.current = { x: cardWorldX, y: cardWorldY }
+
         const newOrder = computeVirtualOrder({
           items,
-          positions: masonryLayout.positions,
           draggedId: id,
           cardWorldX,
           cardWorldY,
-          pointerWorldX,
-          pointerWorldY,
+          containerWidth: viewportWidth,
+          gap: COLUMN_MASONRY.GAP_PX,
+          targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
         })
 
         // Only update state if order actually changed — avoids re-render storms.
@@ -214,10 +222,13 @@ export function CardsLayer({
           return prev
         })
       },
-      [items, masonryLayout.positions],
+      [items, viewportWidth],
     ),
     onDrop: useCallback(
       (_orderedIds: readonly string[]): void => {
+        // Reset throttle ref so next drag starts fresh.
+        lastComputeRef.current = null
+
         // Fix: capture the dragged card's current DOM transform as its prev
         // BEFORE clearing virtualOrderedIds / calling onDrop. This prevents
         // FLIP from seeing a stale pre-drag prev and teleporting the card back

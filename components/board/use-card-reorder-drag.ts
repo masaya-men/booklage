@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useRef, useState, type PointerEvent } from 'react'
+import { computeColumnMasonry, type MasonryCard } from '@/lib/board/column-masonry'
+import { SIZE_PRESET_SPAN } from '@/lib/board/constants'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { CardPosition } from '@/lib/board/types'
 
@@ -109,22 +111,11 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
           return
         }
 
-        // Drag end — compute new order using the card's final world position.
-        const cardWorldX = (startPos?.x ?? 0) + (ev.clientX - startClientX)
-        const cardWorldY = (startPos?.y ?? 0) + (ev.clientY - startClientY)
-        const pointerWorldX = ev.clientX + deltaClientToWorldX
-        const pointerWorldY = ev.clientY + deltaClientToWorldY
-        const newOrder = computeVirtualOrder({
-          items: stateRef.current.items,
-          positions: stateRef.current.positions,
-          draggedId: bookmarkId,
-          cardWorldX,
-          cardWorldY,
-          pointerWorldX,
-          pointerWorldY,
-        })
+        // Drag end — CardsLayer's virtualOrderedIds (updated on every
+        // pointermove) is the single source of truth for the final drop order.
+        // Pass [] as a no-op placeholder; CardsLayer.onDrop ignores the arg.
         setDragState(null)
-        stateRef.current.onDrop(newOrder)
+        stateRef.current.onDrop([])
       }
 
       el.addEventListener('pointermove', move)
@@ -137,110 +128,88 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
   return { dragState, handleCardPointerDown }
 }
 
+// --------------------------------------------------------------------------
+// Position-preserving insertion algorithm
+// --------------------------------------------------------------------------
+
+/**
+ * Build masonry input cards from ordered items (module-scope helper).
+ */
+function buildMasonryCards(items: ReadonlyArray<BoardItem>): MasonryCard[] {
+  return items.map((it) => ({
+    id: it.bookmarkId,
+    aspectRatio: it.aspectRatio,
+    columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+  }))
+}
+
 /**
  * Compute what the card order WOULD BE if the dragged card were dropped at
- * the current position. Called on every pointermove for live reflow preview,
- * and also on drop to finalize the order.
+ * the current position. Called on every pointermove for live reflow preview.
  *
- * Strategy:
- *  Phase 1 — Primary: find the non-dragged card with the MAX bounding-box
- *    overlap area with the dragged card.
- *  Phase 2 — Fallback: if no overlap (dragged card hovering in a gap), use
- *    nearest-center from the pointer position.
+ * Strategy (position-preserving):
+ *   For each candidate insertion index (0 … withoutDragged.length), simulate
+ *   the masonry layout with the dragged card inserted at that index. Record
+ *   where the dragged card lands in the simulation. Pick the index whose
+ *   simulated position is closest to the card's current visual top-left
+ *   (cardWorldX, cardWorldY). This ensures the drop location matches the
+ *   user's spatial intent rather than just a relative order change.
  *
- * Insert direction uses Y-first comparison (reading order for column masonry)
- * with X as tiebreaker. This ensures that a card dragged directly over another
- * triggers a reorder from any approach angle, not just horizontal.
+ * Complexity: O(N²) per call — acceptable up to ~200 cards at 60Hz with the
+ * 8px movement throttle applied in CardsLayer.
  */
 export function computeVirtualOrder(params: {
   items: ReadonlyArray<BoardItem>
-  positions: Readonly<Record<string, CardPosition>>
   draggedId: string
-  /** Dragged card's current world-space top-left (at the pointer-follow transform). */
+  /** Dragged card's current world-space top-left (pointer-driven transform). */
   cardWorldX: number
   cardWorldY: number
-  /** Pointer world coords — used only as fallback (when card bbox has no overlap). */
-  pointerWorldX: number
-  pointerWorldY: number
+  /** Masonry layout params — the fn runs simulations internally. */
+  containerWidth: number
+  gap: number
+  targetColumnUnit: number
 }): readonly string[] {
-  const { items, positions, draggedId, cardWorldX, cardWorldY, pointerWorldX, pointerWorldY } =
-    params
-  const draggedPos = positions[draggedId]
+  const { items, draggedId, cardWorldX, cardWorldY, containerWidth, gap, targetColumnUnit } = params
 
   const ordered = items.slice().sort((a, b) => a.orderIndex - b.orderIndex)
   const withoutDragged = ordered.filter((it) => it.bookmarkId !== draggedId)
 
-  if (!draggedPos) {
-    // Defensive: without the dragged card's size, fall back to no-op order.
-    return ordered.map((it) => it.bookmarkId)
-  }
+  // Defensive: if dragged isn't in items, return unchanged order.
+  const draggedItem = items.find((it) => it.bookmarkId === draggedId)
+  if (!draggedItem) return ordered.map((it) => it.bookmarkId)
 
-  // Dragged card's bbox at its current pointer-driven world position.
-  const dBox = { x: cardWorldX, y: cardWorldY, w: draggedPos.w, h: draggedPos.h }
-  const draggedCenterX = cardWorldX + draggedPos.w / 2
-  const draggedCenterY = cardWorldY + draggedPos.h / 2
+  let bestIdx = 0
+  let bestDist = Infinity
 
-  // Phase 1: find the non-dragged card with MAX bounding-box overlap.
-  let bestId: string | null = null
-  let bestOverlap = 0
-  let bestCenter = { cx: 0, cy: 0 }
-  for (const it of items) {
-    if (it.bookmarkId === draggedId) continue
-    const p = positions[it.bookmarkId]
-    if (!p) continue
-    const overlapW = Math.max(0, Math.min(dBox.x + dBox.w, p.x + p.w) - Math.max(dBox.x, p.x))
-    const overlapH = Math.max(0, Math.min(dBox.y + dBox.h, p.y + p.h) - Math.max(dBox.y, p.y))
-    const area = overlapW * overlapH
-    if (area > bestOverlap) {
-      bestOverlap = area
-      bestId = it.bookmarkId
-      bestCenter = { cx: p.x + p.w / 2, cy: p.y + p.h / 2 }
+  for (let idx = 0; idx <= withoutDragged.length; idx++) {
+    // Build simulated items array with dragged inserted at idx.
+    const simulatedItems: BoardItem[] = withoutDragged.slice()
+    simulatedItems.splice(idx, 0, draggedItem)
+
+    // Simulate masonry layout.
+    const simMasonryCards = buildMasonryCards(simulatedItems)
+    const sim = computeColumnMasonry({
+      cards: simMasonryCards,
+      containerWidth,
+      gap,
+      targetColumnUnit,
+    })
+
+    const simPos = sim.positions[draggedId]
+    if (!simPos) continue
+
+    // Squared distance between simulated position and current visual top-left.
+    const dx = simPos.x - cardWorldX
+    const dy = simPos.y - cardWorldY
+    const dist = dx * dx + dy * dy
+
+    if (dist < bestDist) {
+      bestDist = dist
+      bestIdx = idx
     }
   }
-
-  // Phase 2: fallback to nearest-center if the dragged card isn't overlapping anyone
-  // (e.g., user hovering in a gap or outside the grid).
-  if (!bestId) {
-    let bestDistSq = Infinity
-    for (const it of items) {
-      if (it.bookmarkId === draggedId) continue
-      const p = positions[it.bookmarkId]
-      if (!p) continue
-      const cx = p.x + p.w / 2
-      const cy = p.y + p.h / 2
-      const dx = pointerWorldX - cx
-      const dy = pointerWorldY - cy
-      const d = dx * dx + dy * dy
-      if (d < bestDistSq) {
-        bestDistSq = d
-        bestId = it.bookmarkId
-        bestCenter = { cx, cy }
-      }
-    }
-  }
-
-  if (!bestId) {
-    // No other cards at all — append dragged at end.
-    return [...withoutDragged.map((it) => it.bookmarkId), draggedId]
-  }
-
-  // Insert direction: Y-first with X tiebreaker (reading order for column masonry).
-  // This ensures overlapping at a target's exact center still changes order.
-  const Y_SAME_THRESHOLD_PX = 2
-  let insertBefore: boolean
-  if (draggedCenterY < bestCenter.cy - Y_SAME_THRESHOLD_PX) {
-    insertBefore = true
-  } else if (draggedCenterY > bestCenter.cy + Y_SAME_THRESHOLD_PX) {
-    insertBefore = false
-  } else {
-    // Same row (roughly): use X.
-    insertBefore = draggedCenterX < bestCenter.cx
-  }
-
-  const targetIdx = withoutDragged.findIndex((it) => it.bookmarkId === bestId)
-  const insertIdx = insertBefore ? targetIdx : targetIdx + 1
 
   const ids = withoutDragged.map((it) => it.bookmarkId)
-  ids.splice(insertIdx, 0, draggedId)
+  ids.splice(bestIdx, 0, draggedId)
   return ids
 }
