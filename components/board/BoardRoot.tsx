@@ -35,7 +35,7 @@ function loadSavedTheme(): ThemeId {
 }
 
 export function BoardRoot() {
-  const { items } = useBoardData()
+  const { items, persistSizePreset } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
   const [overrides, setOverrides] = useState<Record<string, CardPosition>>({})
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
@@ -216,6 +216,13 @@ export function BoardRoot() {
     [contentBounds.width, contentBounds.height],
   )
 
+  const handleCyclePreset = useCallback(
+    (bookmarkId: string, next: 'S' | 'M' | 'L'): void => {
+      void persistSizePreset(bookmarkId, next)
+    },
+    [persistSizePreset],
+  )
+
   const handleShare = useCallback((): void => {
     // Plan B (ShareModal) ships the full flow — frame preset picker, PNG
     // export, SNS Web Intents. For Plan A the button is present so the final
@@ -320,6 +327,7 @@ export function BoardRoot() {
             viewport={viewport}
             viewportWidth={effectiveLayoutWidth}
             overrides={overrides}
+            onCyclePreset={handleCyclePreset}
           />
         </div>
       </InteractionLayer>

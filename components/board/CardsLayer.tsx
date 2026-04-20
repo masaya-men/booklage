@@ -4,6 +4,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from 'react'
 import { gsap } from 'gsap'
@@ -17,6 +18,7 @@ import {
 } from '@/lib/board/constants'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { CardNode } from './CardNode'
+import { SizePresetToggle } from './SizePresetToggle'
 
 type Viewport = {
   readonly x: number
@@ -32,6 +34,7 @@ type CardsLayerProps = {
   /** Live overrides — used by reorder drag in a later task to pin a card to
    *  pointer coords while dragging. Keyed by bookmarkId. */
   readonly overrides?: Readonly<Record<string, CardPosition>>
+  readonly onCyclePreset: (bookmarkId: string, next: 'S' | 'M' | 'L') => void
 }
 
 export function CardsLayer({
@@ -39,8 +42,10 @@ export function CardsLayer({
   viewport,
   viewportWidth,
   overrides,
+  onCyclePreset,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   const masonryCards = useMemo<MasonryCard[]>(
     () =>
@@ -112,6 +117,10 @@ export function CardsLayer({
             ref={(el): void => {
               cardRefs.current[it.bookmarkId] = el
             }}
+            onPointerEnter={(): void => setHoveredId(it.bookmarkId)}
+            onPointerLeave={(): void =>
+              setHoveredId((cur) => (cur === it.bookmarkId ? null : cur))
+            }
             style={{
               position: 'absolute',
               top: 0,
@@ -126,6 +135,11 @@ export function CardsLayer({
               id={it.bookmarkId}
               title={it.title}
               thumbnailUrl={it.thumbnail}
+            />
+            <SizePresetToggle
+              preset={it.sizePreset}
+              visible={hoveredId === it.bookmarkId}
+              onCycle={(next): void => onCyclePreset(it.bookmarkId, next)}
             />
           </div>
         )
