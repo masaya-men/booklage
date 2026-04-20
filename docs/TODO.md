@@ -8,18 +8,32 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐、**origin に push 済**)
-- **🔥 最新進捗 (2026-04-20)**: **Plan A (B1 Dashboard Foundation) Batch A 完了** — 左サイドバー (液体ガラス) が `booklage.pages.dev` で visible に。Plan A Task 1-5 実装 + BoardRoot 統合 + 実機確認済
-- **Plan A 次は Batch B** (Task 6-9): layoutMode 削除 + IDB v6→v7 + Align action + Toolbar 2 ボタン化 + FramePresetPopover 削除 → 「グリッドボタンが毎回整列しない」既知バグは Batch B で解決
-- **Plan A ドキュメント**: spec は `docs/superpowers/specs/2026-04-20-b1-dashboard-redesign-design.md`, plan は `docs/superpowers/plans/2026-04-20-b1-dashboard-foundation.md`。brainstorming session 2026-04-20 で Plan 全体を設計
-- **旧進捗 (2026-04-19)**: B1-placement plan の Task 1-10 + 13-20 完了済（27 タスクのうち 18 + UX polish 4 連 + Privacy Phase 3）→ **新 Plan A が旧 plan の Task 11-27 を superseded**（サイドバー + シェアモーダル軸に redesign、Task 14-18 のカード操作系は温存）
-- **🎉 Task 19 マイルストーン**: Toolbar が mount され `layoutMode`/`frameRatio` の UI 切替がついに動く。Task 14 morph + Task 16 free-drag が user 操作可能に
-- **🎉 ユーザー実機確認済み**（2026-04-19 セッション後半）: dev server `localhost:3000/board` で Grid/Free Toolbar 切替・テーマ切替・カード hover ハンドル表示・Space+drag pan・dotted-notebook 背景表示 全部動作確認
-- **本番URL**: `https://booklage.pages.dev`
-- **DBバージョン**: v6（Task 7 で bump 済、worktree ローカル。master にマージ or deploy 時に旧ユーザーの DB が自動 migration される）
+- **🔥 最新進捗 (2026-04-21)**: **Plan A (B1 Dashboard Foundation) Batch B 完了 + 本番デプロイ済** — Task 6-9 (layoutMode 削除 + IDB v6→v7 + alignAllToGrid + Toolbar 2 ボタン化 + FramePresetPopover 削除 + BoardRoot 統合) をワンセッションで実装 → `booklage.pages.dev` 反映済
+- **Plan A 完了、次は Plan B (Share System)**: ShareModal 骨 + URL 埋込み + PNG 書き出し + X Web Intent + watermark。Batch A 〜 Batch B で Plan A のスコープは全て消化
+- **X ブランドアカウント**: `@booklage_app` (display name: Booklage) を作成済、password マネージャー保管。build-in-public は `@men_masaya` から投稿
+- **Plan A ドキュメント**: spec は `docs/superpowers/specs/2026-04-20-b1-dashboard-redesign-design.md`, plan は `docs/superpowers/plans/2026-04-20-b1-dashboard-foundation.md`
+- **本番URL**: `https://booklage.pages.dev`（Batch B 反映済、2026-04-21 deploy）
+- **DBバージョン**: **v7**（Batch B Task 6 で v6→v7、layoutMode 削除 migration 入り）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
-- **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --commit-dirty=true`（手動）
-- **テスト**: **82 PASS / 0 FAIL**（vitest）、tsc strict clean（Task 14 後も維持）
+- **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true`（手動、**`--branch=master` 必須** — production alias に反映するため）
+- **テスト**: **86 PASS / 0 FAIL**（vitest、align.test.ts の 4 件追加）、tsc strict clean
+
+### 直近の作業（2026-04-21 Plan A Batch B 実装 + 本番デプロイ）
+
+**ワンセッションで Task 6-9 全実装 + push + deploy 完了**（subagent が sandbox permission で edit 失敗 → main session 直接編集に切替）。
+
+- **Task 6 (36cf611)** — `layoutMode` 概念完全削除 (`lib/board/types.ts` / `lib/storage/board-config.ts` / `lib/constants.ts` DB_VERSION 6→7 / `lib/storage/indexeddb.ts` migration / `components/board/BoardRoot.tsx` state+hydration+handler / `components/board/CardsLayer.tsx` の grid 分岐+prevModeRef+morph useEffect)。canvas 常に free placement、`CardsLayer.activePositions = freeLayoutPositions` で固定。Toolbar は optional 型化で一時的な互換 bridge に
+- **Task 7 (eb0ac22)** — `lib/board/align.ts` 新規、`alignAllToGrid(items, { containerWidth, targetRowHeight, gap })` pure fn + 4 vitest。`computeAutoLayout` を `direction='2d'` で呼び、positions を各 item の `freePos` に書き戻す。rotation/zIndex/locked/isUserResized は preserve、x/y/w/h だけ上書き
+- **Task 8 (94b8ead)** — Toolbar を `{ onAlign, onShare }` 2-prop 化。`⚡整列` + `📤シェア` の 2 ボタン、primary style は neutral `#1a1a1a`。`FramePresetPopover.tsx` + `.module.css` git rm、`messages/ja.json` の `board.mode`/`board.frame`/`board.toolbar.theme`/`board.toolbar.export` 削除、`board.toolbar.align` 追加。container の `left` を `calc(50% + var(--sidebar-width) / 2)` に変更、sidebar offset を考慮
+- **Task 9 (7a84152)** — BoardRoot に `alignKey` state + `handleAlign` + `handleShare` stub を追加。`alignAllToGrid` の結果を `persistFreePosition` で N 回 optimistic setItems + IDB write、`setAlignKey(k+1)` で CardsLayer に morph trigger。CardsLayer は `useLayoutEffect` 内で `alignKey` 変化を検知、`gsap.to()` 400ms `power2.inOut` で morph（通常は `gsap.set()` で snap）。`effectiveLayoutWidth` / `horizontalOffset` も sidebar 分 offset。`frameRatio` state + `handleFrameRatioChange` は dead になるので削除（Plan B で復活予定）
+- **検証**: tsc --noEmit clean / 86 vitest pass (既存 82 + align 4) / `pnpm build` 成功 (11 静的ページ生成)
+- **Deploy**: `wrangler pages deploy out/ --branch=master --commit-dirty=true` で `booklage.pages.dev` 反映済
+- **既知の dead code**（次スプリントで cleanup 可）:
+  - BoardRoot の `useCardDrag` + `handleCardPointerDown` + `resolveStart` + `onDrag` + `onDragEnd` + `onCardClick` — grid drag 用インフラ全体が未使用（CardsLayer の `onCardPointerDown` prop も `void` で参照だけ）
+  - Toolbar に `frameRatio` / `onFrameRatioChange` / `themeId` / `onThemeClick` / `onExportClick` の optional props が残存（Task 8 で使用箇所は削除済、Plan B で ShareModal 経由に再配線予定）
+
+**X build-in-public 第 1 投稿は保留** — user 判断で「見栄えが上がってから」に延期。投稿予定文面 + スクショ構成は本 TODO 末尾「保留中の tweet 下書き」セクションに保管
 
 ### 直近の作業（2026-04-20 Plan A Batch A 実装）
 
@@ -46,25 +60,33 @@
 
 ### 🚨 次セッション起床後の最優先アクション
 
-1. **`docs/private/launch-plan-2026-04.md` を読む** (非公開、launch 戦略の詳細 day-by-day プラン)
+1. **`docs/private/launch-plan-2026-04.md` を読む** (非公開、launch 戦略の詳細 day-by-day プラン、2026-04-21 大幅改訂版)
 2. **`docs/TODO.md` (このファイル) を読む** ← 今ここ
-3. **Plan A Batch B Task 6 から subagent-driven-development で dispatch**
-4. 並行で X に build-in-public 第 1 投稿 (90 秒)
+3. **現時点の選択肢 (user 判断): "見栄えが上がったら tweet したい" 方針で以下から選ぶ**:
+   - **Plan B (Share System) spec/plan 着手** — ship 必須の magic moment 機能。ShareModal + PNG 書き出し + X Web Intent + watermark。2-3 日スコープ
+   - **液体ガラス refraction 調査** — Fri 4/25 の 1 日 timebox、visual win の可能性あり (原因: Chrome の `backdrop-filter: url(#id)` 互換性 or feDisplacementMap 設定)
+   - **一括インポート MVP** — Pocket JSON / Raindrop export / HTML bookmark export をドラッグ&ドロップで取り込み。Pocket 終了市場を取る key 機能
+   - **LP 3 バリエーション** — `/`(main) / `/ai-moodboard` / `/pocket-alternative` の静的ページ作成。AdSense 申請要件
 
-### Plan A Batch B (次セッションここから)
+### 保留中の tweet 下書き（2026-04-21 作成、見栄え強化後に投稿）
 
-**Task 6-9 (4 タスク)** — 以下の順で subagent-driven-development で実装予定:
+**Task 6 完了 build-in-public 第 1 投稿**（140 字、案 A）:
 
-1. **Task 6**: `layoutMode` 概念を削除 (`lib/board/types.ts` / `lib/storage/board-config.ts` / `lib/storage/indexeddb.ts` v6→v7 migration / `components/board/BoardRoot.tsx` の state・hydration・handleModeChange / `components/board/CardsLayer.tsx` の grid/free 分岐削除)。canvas 常に free placement に
-2. **Task 7**: `lib/board/align.ts` 新規 — `alignAllToGrid(items, { containerWidth, targetRowHeight, gap })` pure fn + 4 vitest。既存 `computeAutoLayout` を呼んで各 item の `freePos` を grid 位置にセットして返す
-3. **Task 8**: Toolbar を `整列` / `シェア` の 2 ボタン化。`FramePresetPopover.tsx` + `.module.css` 削除。`messages/ja.json` の `board.mode` / `board.frame` キー削除
-4. **Task 9**: BoardRoot に `handleAlign` 配線 — `alignAllToGrid` で全 items の freePos 更新 → `setItems` optimistic update → `persistFreePosition` で IDB 書き込み。GSAP morph で 400ms ease-in-out アニメ。`onShare` は stub (Plan B で ShareModal 実装)
+```
+Booklage、ブクマでコラージュを作れる Web アプリを作ってます。今月 5/5 ローンチ目標。
+今日は Task 6 完了：canvas を常時自由配置化して、「整列」はボタン操作に分離しました。
 
-**Task 10** (Batch C): 最終デプロイ + 手動検証チェックリスト (Chrome/Firefox 両方) + TODO.md 更新
+https://booklage.pages.dev
+#個人開発 #buildinpublic
+```
 
-### Plan B (Batch A/B 完了後に書き起こす)
+**スクショ構成**: 通常 Chrome (`@men_masaya` 側) で `booklage.pages.dev/board` を最大化、カード 8-12 枚載ってる状態で **Win+Shift+S で矩形切り取り**。左端: sidebar 左端、右端: カードクラスタ右端付近、上端: Toolbar のすぐ上、下端: カード 2-3 行見える位置。横 1600×縦 900 (16:9) 目安。
 
-Share System — ShareModal full-screen + フレーム drag/resize + SNS Web Intents + Web Share API + brotli URL encoding + importer + ウォーターマーク。Plan A 完成 → 実機フィードバック → Plan B spec → 実装。
+投稿元は `@men_masaya` (既存 562 フォロワー、build-in-public は personal account から)。`@booklage_app` は放置で OK。
+
+### Plan B (次着手候補)
+
+Share System — ShareModal full-screen + フレーム drag/resize + SNS Web Intents + Web Share API + brotli URL encoding + importer + ウォーターマーク。Batch B 完了 → **次セッションで brainstorming → spec → plan → 実装** の流れ。
 
 ### 旧進捗 (2026-04-19 B1-placement Task 1-10 + Task 13-20 実装 — 一部 Plan A で superseded)
 
