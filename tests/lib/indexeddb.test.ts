@@ -4,6 +4,7 @@ import { type IDBPDatabase } from 'idb'
 import {
   initDB, addBookmark, getBookmarksByFolder, addFolder, getAllFolders,
   updateCard, getCardsByFolder, deleteBookmark,
+  updateBookmarkOrderIndex, updateBookmarkSizePreset, updateBookmarkOrderBatch,
 } from '@/lib/storage/indexeddb'
 
 let db: IDBPDatabase<unknown> | null = null
@@ -95,5 +96,76 @@ describe('cards', () => {
     const updated = await getCardsByFolder(database, folder.id)
     expect(updated[0].x).toBe(100)
     expect(updated[0].y).toBe(200)
+  })
+})
+
+describe('v8 migration', () => {
+  it('assigns orderIndex + sizePreset defaults to existing bookmarks', async () => {
+    const database = await initDB()
+    db = database as unknown as IDBPDatabase<unknown>
+    const folder = await addFolder(database, { name: 'T', color: '#51cf66', order: 0 })
+    await addBookmark(database, {
+      url: 'https://a.com', title: 'A', description: '',
+      thumbnail: '', favicon: '', siteName: '', type: 'website', folderId: folder.id,
+    })
+    await addBookmark(database, {
+      url: 'https://b.com', title: 'B', description: '',
+      thumbnail: '', favicon: '', siteName: '', type: 'website', folderId: folder.id,
+    })
+    const bookmarks = await getBookmarksByFolder(database, folder.id)
+    expect(bookmarks).toHaveLength(2)
+    for (const b of bookmarks) {
+      expect(typeof b.orderIndex).toBe('number')
+      expect(b.sizePreset).toBe('S')
+    }
+    // orderIndex values should be unique
+    const orders = bookmarks.map((b) => b.orderIndex).sort((x, y) => (x ?? 0) - (y ?? 0))
+    expect(orders[0]).not.toBe(orders[1])
+  })
+
+  it('updateBookmarkOrderIndex changes the orderIndex', async () => {
+    const database = await initDB()
+    db = database as unknown as IDBPDatabase<unknown>
+    const folder = await addFolder(database, { name: 'T', color: '#51cf66', order: 0 })
+    const bm = await addBookmark(database, {
+      url: 'https://a.com', title: 'A', description: '',
+      thumbnail: '', favicon: '', siteName: '', type: 'website', folderId: folder.id,
+    })
+    await updateBookmarkOrderIndex(database, bm.id, 42)
+    const [updated] = await getBookmarksByFolder(database, folder.id)
+    expect(updated.orderIndex).toBe(42)
+  })
+
+  it('updateBookmarkSizePreset changes the sizePreset', async () => {
+    const database = await initDB()
+    db = database as unknown as IDBPDatabase<unknown>
+    const folder = await addFolder(database, { name: 'T', color: '#51cf66', order: 0 })
+    const bm = await addBookmark(database, {
+      url: 'https://a.com', title: 'A', description: '',
+      thumbnail: '', favicon: '', siteName: '', type: 'website', folderId: folder.id,
+    })
+    await updateBookmarkSizePreset(database, bm.id, 'L')
+    const [updated] = await getBookmarksByFolder(database, folder.id)
+    expect(updated.sizePreset).toBe('L')
+  })
+
+  it('updateBookmarkOrderBatch rewrites orderIndex atomically', async () => {
+    const database = await initDB()
+    db = database as unknown as IDBPDatabase<unknown>
+    const folder = await addFolder(database, { name: 'T', color: '#51cf66', order: 0 })
+    const bm1 = await addBookmark(database, {
+      url: 'https://a.com', title: 'A', description: '',
+      thumbnail: '', favicon: '', siteName: '', type: 'website', folderId: folder.id,
+    })
+    const bm2 = await addBookmark(database, {
+      url: 'https://b.com', title: 'B', description: '',
+      thumbnail: '', favicon: '', siteName: '', type: 'website', folderId: folder.id,
+    })
+    // Reverse the order
+    await updateBookmarkOrderBatch(database, [bm2.id, bm1.id])
+    const bookmarks = await getBookmarksByFolder(database, folder.id)
+    const byId = Object.fromEntries(bookmarks.map((b) => [b.id, b]))
+    expect(byId[bm2.id].orderIndex).toBe(0)
+    expect(byId[bm1.id].orderIndex).toBe(1)
   })
 })

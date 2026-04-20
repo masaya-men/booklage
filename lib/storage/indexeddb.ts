@@ -41,6 +41,11 @@ export interface BookmarkRecord {
   isDeleted?: boolean
   /** ISO 8601 timestamp for 30-day purge (B2) */
   deletedAt?: string
+  // v8 additions
+  /** Board display order (lower = earlier). Dense; rewrite on reorder. */
+  orderIndex?: number
+  /** Board size preset — S (1 col) / M (2 col) / L (3 col). Default 'S'. */
+  sizePreset?: 'S' | 'M' | 'L'
 }
 
 /** Folder record stored in IndexedDB */
@@ -317,6 +322,31 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
           return cursor.continue().then(stripLayoutMode)
         })
       }
+
+      // ── v7 → v8: seed orderIndex (dense, by savedAt) + sizePreset='S'
+      if (oldVersion < 8) {
+        const bookmarkStore = transaction.objectStore('bookmarks')
+        const all: BookmarkRecord[] = []
+        void bookmarkStore.openCursor().then(function collect(
+          cursor: Awaited<ReturnType<typeof bookmarkStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) {
+            all.sort((a, b) => a.savedAt.localeCompare(b.savedAt))
+            for (let i = 0; i < all.length; i++) {
+              const b = all[i]
+              const next: BookmarkRecord = {
+                ...b,
+                orderIndex: b.orderIndex ?? i,
+                sizePreset: b.sizePreset ?? 'S',
+              }
+              void bookmarkStore.put(next)
+            }
+            return
+          }
+          all.push(cursor.value)
+          return cursor.continue().then(collect)
+        })
+      }
     },
   })
 }
@@ -372,6 +402,10 @@ export async function addBookmark(
   db: IDBPDatabase<BooklageDB>,
   input: BookmarkInput,
 ): Promise<BookmarkRecord> {
+  // Compute next orderIndex (append to end of current folder's bookmarks)
+  const existing = await getBookmarksByFolder(db, input.folderId)
+  const nextOrder = existing.length
+
   const bookmark: BookmarkRecord = {
     id: uuid(),
     url: input.url,
@@ -384,6 +418,8 @@ export async function addBookmark(
     savedAt: new Date().toISOString(),
     folderId: input.folderId,
     ogpStatus: input.ogpStatus ?? 'fetched',
+    orderIndex: nextOrder,
+    sizePreset: 'S',
   }
 
   // Use a transaction to atomically create both bookmark and card
@@ -568,6 +604,53 @@ export async function updateBookmarkOgp(
   await db.put('bookmarks', updated)
 }
 
+/**
+ * Set a single bookmark's orderIndex. Caller is responsible for renumber
+ * consistency across siblings (use updateBookmarkOrderBatch for multi-card
+ * reorder).
+ */
+export async function updateBookmarkOrderIndex(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  orderIndex: number,
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  await db.put('bookmarks', { ...existing, orderIndex })
+}
+
+/**
+ * Set a single bookmark's sizePreset. 'S' | 'M' | 'L'.
+ */
+export async function updateBookmarkSizePreset(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  sizePreset: 'S' | 'M' | 'L',
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  await db.put('bookmarks', { ...existing, sizePreset })
+}
+
+/**
+ * Atomically rewrite orderIndex for multiple bookmarks in one transaction.
+ * Use for drag-to-reorder: caller supplies the new complete order by ID.
+ */
+export async function updateBookmarkOrderBatch(
+  db: IDBPDatabase<BooklageDB>,
+  orderedBookmarkIds: readonly string[],
+): Promise<void> {
+  const tx = db.transaction('bookmarks', 'readwrite')
+  const store = tx.objectStore('bookmarks')
+  for (let i = 0; i < orderedBookmarkIds.length; i++) {
+    const id = orderedBookmarkIds[i]
+    const existing = await store.get(id)
+    if (!existing) continue
+    await store.put({ ...existing, orderIndex: i })
+  }
+  await tx.done
+}
+
 // ---------------------------------------------------------------------------
 // Bulk / cross-folder queries
 // ---------------------------------------------------------------------------
@@ -607,7 +690,9 @@ export async function addBookmarkBatch(
     const cardStore = tx.objectStore('cards')
 
     const existingCards = await cardStore.index('by-folder').getAll(batch[0].folderId)
+    const existingBookmarks = await bookmarkStore.index('by-folder').getAll(batch[0].folderId)
     let gridIndex = existingCards.length
+    let nextOrder = existingBookmarks.length
 
     for (const input of batch) {
       const bookmark: BookmarkRecord = {
@@ -622,6 +707,8 @@ export async function addBookmarkBatch(
         savedAt: new Date().toISOString(),
         folderId: input.folderId,
         ogpStatus: input.ogpStatus ?? 'fetched',
+        orderIndex: nextOrder++,
+        sizePreset: 'S',
       }
       await bookmarkStore.put(bookmark)
 
