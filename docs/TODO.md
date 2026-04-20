@@ -19,6 +19,16 @@
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true --commit-message="..."`（手動、**`--branch=master` 必須** — production alias に反映するため。**`--commit-message` に ASCII 文字列を明示** しないと "Invalid commit message, must be a valid UTF-8 string" で失敗する — Windows の terminal encoding で em-dash 等が化ける既知問題）
 - **テスト**: **86 PASS / 0 FAIL**（vitest、align.test.ts の 4 件追加）、tsc strict clean
 
+### 直近の作業（2026-04-21 Batch B 後の緊急 bugfix 第 2 ラウンド）
+
+user 実機テストで新たに 3 件発覚、全て即 fix + deploy 済 (`components/board/CardsLayer.tsx` + `components/board/BoardRoot.tsx`):
+
+- **カードクリックで URL が開かない** — Task 6 で grid-drag ブランチを消した時、useCardDrag の onClick パス (window.open) が dead に。free-drag state machine に click 判定を足した (startPos ⇔ currentPos の距離 < 5px なら click と判定、`window.open(item.url, '_blank', 'noopener,noreferrer')`)。**user の IDEAS 発言**: 「別タブじゃなくても良いかも (GitHub みたいにインライン)」→ Plan B ShareModal か別 issue で再検討
+- **整列ボタンが resize 後のサイズを無視** — handleAlign が `it.aspectRatio` (pristine 値) を使ってたので、整列するとカードが元のアスペクト比に戻る挙動。`it.freePos.w / it.freePos.h` を優先して aspect ratio 導出するよう変更 → resize 後の大きさが grid cell に反映される
+- **resize しても隣のカードが埋まるだけ** — handleCardResizeEnd が persistCardPosition した後に自動整列するよう変更。ref + setTimeout(0) パターンで handleAlign を deferred 実行 (setItems flush 後に実行するため)
+- 付随修正: `resolveResizeSource` ヘルパ追加 — handleCardResize/End/ResetToNative が `item.freePos` を優先参照するようにして、drag 後に resize すると pre-drag grid slot に戻る既存バグも同時 fix
+- 86 vitest pass / tsc clean / `booklage.pages.dev` 反映済
+
 ### 直近の作業（2026-04-21 Batch B 後の緊急 bugfix — user 実機テストで発覚）
 
 **user が実機で触ったら 3 つバグ報告。1 つは cache 起因、2 つは real bug → 即 fix + 再 deploy 済**。
