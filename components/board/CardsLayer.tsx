@@ -157,13 +157,13 @@ export function CardsLayer({
           y: p.y,
           width: p.w,
           height: p.h,
-          scale: 1, // merge scale resolution with position landing — single coherent motion
-          duration: isLiveReflow ? 0.18 : 0.22, // shorter drop duration for a calmer settle
+          // scale removed — already snapped to 1 in onDrop for dragged, non-dragged always 1
+          duration: isLiveReflow ? 0.18 : 0.15, // 0.22 → 0.15 for quieter drop
           ease: 'power2.out',
           overwrite: 'auto',
         })
       } else {
-        gsap.set(el, { x: p.x, y: p.y, width: p.w, height: p.h })
+        gsap.set(el, { x: p.x, y: p.y, width: p.w, height: p.h, overwrite: 'auto' })
       }
       prevPositionsRef.current[it.bookmarkId] = { x: p.x, y: p.y }
     }
@@ -266,6 +266,8 @@ export function CardsLayer({
             const currentX = Number(gsap.getProperty(el, 'x'))
             const currentY = Number(gsap.getProperty(el, 'y'))
             prevPositionsRef.current[draggedId] = { x: currentX, y: currentY }
+            // NEW: instant scale snap — no 0.22s shrink tween, no perceived "re-settle"
+            gsap.set(el, { scale: 1, overwrite: 'auto' })
           }
         }
 
