@@ -14,25 +14,9 @@
       "dottedNotebook": "点線ノート",
       "gridPaper": "方眼紙"
     },
-    "mode": {
-      "grid": "グリッド",
-      "free": "フリー"
-    },
     "toolbar": {
-      "theme": "テーマ",
-      "export": "書き出し",
+      "align": "整列",
       "share": "シェア"
-    },
-    "frame": {
-      "popover": {
-        "title": "フレームプリセット",
-        "applyCustom": "適用",
-        "widthLabel": "幅",
-        "heightLabel": "高さ"
-      },
-      "preset": {
-        "custom": "カスタム"
-      }
     },
     "sidebar": {
       "searchPlaceholder": "検索...",

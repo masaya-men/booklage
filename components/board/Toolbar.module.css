@@ -1,13 +1,14 @@
 .container {
   position: fixed;
   top: 12px;
-  left: 50%;
+  /* Centered over the content area (viewport minus sidebar). Exact centering
+     when the sidebar collapses is Plan B polish; this calc approximates. */
+  left: calc(50% + var(--sidebar-width) / 2);
   transform: translateX(-50%);
   display: flex;
   gap: 2px;
   align-items: center;
-  /* Always-light pill on any board theme (Notion/Figma chrome pattern).
-     Future: add theme-aware variant if dark-mode legibility regresses. */
+  /* Always-light pill on any board theme (Notion/Figma chrome pattern). */
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   border-radius: 999px;
@@ -18,6 +19,7 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
   font-size: 13px;
   letter-spacing: -0.01em;
+  transition: left var(--sidebar-duration) var(--sidebar-ease);
 }
 
 .button {
@@ -33,13 +35,14 @@
   transition: background 120ms ease, color 120ms ease;
 }
 .button:hover { background: rgba(0, 0, 0, 0.05); }
-/* Active state uses neutral near-black, NOT Booklage violet (--color-accent-primary).
-   This is intentional: violet is reserved for edit affordances (selection outlines, handles).
-   System chrome stays neutral (Notion/Figma pattern). */
-.button.active {
+
+/* Primary action — "シェア": neutral near-black, reserved for the single
+   highest-signal CTA. Violet is kept for edit affordances only. */
+.button.primary {
   background: #1a1a1a;
   color: white;
 }
+.button.primary:hover { background: #000; }
 
 .sep {
   width: 1px;

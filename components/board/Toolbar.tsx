@@ -1,69 +1,38 @@
 'use client'
 
-import { useState, type ReactElement } from 'react'
-import type { FrameRatio, ThemeId } from '@/lib/board/types'
+import type { ReactElement } from 'react'
 import { t } from '@/lib/i18n/t'
-import { getPresetById } from '@/lib/board/frame-presets'
-import { FramePresetPopover } from './FramePresetPopover'
 import styles from './Toolbar.module.css'
 
-// TODO(Task 8): Replace Toolbar body with { onAlign, onShare } only.
-// FramePresetPopover + preset button move into ShareModal (Plan B).
 type Props = {
-  readonly frameRatio: FrameRatio
-  readonly onFrameRatioChange: (ratio: FrameRatio) => void
-  readonly themeId: ThemeId
-  readonly onThemeClick?: () => void
-  readonly onShareClick?: () => void
+  readonly onAlign: () => void
+  readonly onShare: () => void
 }
 
-export function Toolbar(props: Props): ReactElement {
-  const [presetOpen, setPresetOpen] = useState<boolean>(false)
-
-  const currentPresetLabel: string =
-    props.frameRatio.kind === 'preset'
-      ? getPresetById(props.frameRatio.presetId)?.label ?? 'Custom'
-      : `${props.frameRatio.width}×${props.frameRatio.height}`
-
-  const togglePresetOpen = (): void => setPresetOpen((v) => !v)
-  const handlePresetSelect = (r: FrameRatio): void => {
-    props.onFrameRatioChange(r)
-    setPresetOpen(false)
-  }
-
+/**
+ * Top-center floating pill: two actions — 整列 (re-grid all cards) and シェア
+ * (open ShareModal — stubbed until Plan B lands). Theme switcher lives in the
+ * sidebar; frame-ratio selection moves into ShareModal.
+ */
+export function Toolbar({ onAlign, onShare }: Props): ReactElement {
   return (
     <div className={styles.container} data-testid="board-toolbar">
       <button
         type="button"
-        className={`${styles.button} ${presetOpen ? styles.active : ''}`}
-        onClick={togglePresetOpen}
-        data-toolbar-button="preset"
+        className={styles.button}
+        onClick={onAlign}
+        data-toolbar-button="align"
       >
-        {currentPresetLabel} ▾
+        ⚡ {t('board.toolbar.align')}
       </button>
-      {presetOpen && (
-        <FramePresetPopover
-          currentRatio={props.frameRatio}
-          onSelect={handlePresetSelect}
-        />
-      )}
-
       <div className={styles.sep} role="separator" aria-orientation="vertical" />
       <button
         type="button"
-        className={styles.button}
-        onClick={props.onThemeClick}
-        data-toolbar-button="theme"
-      >
-        {t('board.toolbar.theme')}
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        onClick={props.onShareClick}
+        className={`${styles.button} ${styles.primary}`.trim()}
+        onClick={onShare}
         data-toolbar-button="share"
       >
-        {t('board.toolbar.share')}
+        📤 {t('board.toolbar.share')}
       </button>
     </div>
   )
