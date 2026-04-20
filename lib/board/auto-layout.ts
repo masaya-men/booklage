@@ -69,3 +69,29 @@ export function computeAutoLayout(input: LayoutInput): LayoutResult {
     totalWidth: viewportWidth,
   }
 }
+
+export type VirtualInsertInput = LayoutInput & {
+  readonly draggedCardId: string
+  readonly virtualIndex: number
+}
+
+/**
+ * Compute auto-layout as if the dragged card were at `virtualIndex` position.
+ * Used during grid-mode drag to preview the drop position.
+ */
+export function computeGridLayoutWithVirtualInsert(input: VirtualInsertInput): LayoutResult {
+  const { cards, draggedCardId, virtualIndex } = input
+
+  const draggedCard = cards.find(c => c.id === draggedCardId)
+  if (!draggedCard) return computeAutoLayout(input)
+
+  const withoutDragged = cards.filter(c => c.id !== draggedCardId)
+  const clampedIdx = Math.max(0, Math.min(virtualIndex, withoutDragged.length))
+  const reordered = [
+    ...withoutDragged.slice(0, clampedIdx),
+    draggedCard,
+    ...withoutDragged.slice(clampedIdx),
+  ]
+
+  return computeAutoLayout({ ...input, cards: reordered })
+}

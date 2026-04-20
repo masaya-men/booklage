@@ -1,0 +1,215 @@
+'use client'
+
+import { useCallback, useRef, useState, type PointerEvent } from 'react'
+import { computeColumnMasonry, type MasonryCard } from '@/lib/board/column-masonry'
+import { SIZE_PRESET_SPAN } from '@/lib/board/constants'
+import type { BoardItem } from '@/lib/storage/use-board-data'
+import type { CardPosition } from '@/lib/board/types'
+
+const CLICK_THRESHOLD_PX = 5
+const CLICK_MAX_MS = 200
+
+export type ReorderDragState = {
+  readonly bookmarkId: string
+  readonly currentX: number
+  readonly currentY: number
+}
+
+export type UseReorderDragParams = {
+  readonly items: ReadonlyArray<BoardItem>
+  readonly positions: Readonly<Record<string, CardPosition>>
+  readonly spaceHeld: boolean
+  readonly onClick: (bookmarkId: string) => void
+  readonly onDragMove: (
+    bookmarkId: string,
+    cardWorldX: number,
+    cardWorldY: number,
+    pointerWorldX: number,
+    pointerWorldY: number,
+  ) => void
+  readonly onDrop: (orderedBookmarkIds: readonly string[]) => void
+}
+
+export function useCardReorderDrag(params: UseReorderDragParams): {
+  dragState: ReorderDragState | null
+  handleCardPointerDown: (e: PointerEvent<HTMLDivElement>, bookmarkId: string) => void
+} {
+  const { items, positions, spaceHeld, onClick, onDragMove, onDrop } = params
+  const [dragState, setDragState] = useState<ReorderDragState | null>(null)
+  // Mirror latest state + params in a ref so handlers registered on the element
+  // see the latest values without rebinding every render.
+  const stateRef = useRef<{
+    state: ReorderDragState | null
+    items: ReadonlyArray<BoardItem>
+    positions: Readonly<Record<string, CardPosition>>
+    onDrop: typeof onDrop
+    onClick: typeof onClick
+    onDragMove: typeof onDragMove
+  }>({ state: null, items, positions, onDrop, onClick, onDragMove })
+  stateRef.current = { state: dragState, items, positions, onDrop, onClick, onDragMove }
+
+  const handleCardPointerDown = useCallback(
+    (e: PointerEvent<HTMLDivElement>, bookmarkId: string): void => {
+      if (spaceHeld) return
+      e.stopPropagation()
+      const el = e.currentTarget
+      const pointerId = e.pointerId
+      el.setPointerCapture(pointerId)
+
+      const startClientX = e.clientX
+      const startClientY = e.clientY
+      const startTime = performance.now()
+      let dragStarted = false
+
+      // Compute delta from client space to world space once on pointerdown.
+      // This delta is constant throughout the drag (we don't support panning
+      // while dragging).
+      const startPos = stateRef.current.positions[bookmarkId]
+      const rect = el.getBoundingClientRect()
+
+      // Fallback: if we can't find world pos, use client coords as world coords
+      const deltaClientToWorldX = startPos ? startPos.x - rect.left : 0
+      const deltaClientToWorldY = startPos ? startPos.y - rect.top : 0
+
+      const move = (ev: globalThis.PointerEvent): void => {
+        const dx = ev.clientX - startClientX
+        const dy = ev.clientY - startClientY
+        const distance = Math.hypot(dx, dy)
+        const elapsed = performance.now() - startTime
+
+        if (!dragStarted) {
+          if (distance < CLICK_THRESHOLD_PX && elapsed < CLICK_MAX_MS) return
+          dragStarted = true
+        }
+
+        // Compute card's new world-space top-left:
+        // startPos (world) + delta from original pointer position
+        const cardWorldX = (startPos?.x ?? 0) + (ev.clientX - startClientX)
+        const cardWorldY = (startPos?.y ?? 0) + (ev.clientY - startClientY)
+
+        // Pointer's world position
+        const pointerWorldX = ev.clientX + deltaClientToWorldX
+        const pointerWorldY = ev.clientY + deltaClientToWorldY
+
+        setDragState({ bookmarkId, currentX: ev.clientX, currentY: ev.clientY })
+        stateRef.current.onDragMove(bookmarkId, cardWorldX, cardWorldY, pointerWorldX, pointerWorldY)
+      }
+
+      const up = (ev: globalThis.PointerEvent): void => {
+        el.removeEventListener('pointermove', move)
+        el.removeEventListener('pointerup', up)
+        el.removeEventListener('pointercancel', up)
+        if (el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId)
+
+        const dx = ev.clientX - startClientX
+        const dy = ev.clientY - startClientY
+        const distance = Math.hypot(dx, dy)
+
+        if (!dragStarted || distance < CLICK_THRESHOLD_PX) {
+          setDragState(null)
+          stateRef.current.onClick(bookmarkId)
+          return
+        }
+
+        // Drag end — CardsLayer's virtualOrderedIds (updated on every
+        // pointermove) is the single source of truth for the final drop order.
+        // Pass [] as a no-op placeholder; CardsLayer.onDrop ignores the arg.
+        setDragState(null)
+        stateRef.current.onDrop([])
+      }
+
+      el.addEventListener('pointermove', move)
+      el.addEventListener('pointerup', up)
+      el.addEventListener('pointercancel', up)
+    },
+    [spaceHeld],
+  )
+
+  return { dragState, handleCardPointerDown }
+}
+
+// --------------------------------------------------------------------------
+// Position-preserving insertion algorithm
+// --------------------------------------------------------------------------
+
+/**
+ * Build masonry input cards from ordered items (module-scope helper).
+ */
+function buildMasonryCards(items: ReadonlyArray<BoardItem>): MasonryCard[] {
+  return items.map((it) => ({
+    id: it.bookmarkId,
+    aspectRatio: it.aspectRatio,
+    columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+  }))
+}
+
+/**
+ * Compute what the card order WOULD BE if the dragged card were dropped at
+ * the current position. Called on every pointermove for live reflow preview.
+ *
+ * Strategy (position-preserving):
+ *   For each candidate insertion index (0 … withoutDragged.length), simulate
+ *   the masonry layout with the dragged card inserted at that index. Record
+ *   where the dragged card lands in the simulation. Pick the index whose
+ *   simulated position is closest to the card's current visual top-left
+ *   (cardWorldX, cardWorldY). This ensures the drop location matches the
+ *   user's spatial intent rather than just a relative order change.
+ *
+ * Complexity: O(N²) per call — acceptable up to ~200 cards at 60Hz with the
+ * 8px movement throttle applied in CardsLayer.
+ */
+export function computeVirtualOrder(params: {
+  items: ReadonlyArray<BoardItem>
+  draggedId: string
+  /** Dragged card's current world-space top-left (pointer-driven transform). */
+  cardWorldX: number
+  cardWorldY: number
+  /** Masonry layout params — the fn runs simulations internally. */
+  containerWidth: number
+  gap: number
+  targetColumnUnit: number
+}): readonly string[] {
+  const { items, draggedId, cardWorldX, cardWorldY, containerWidth, gap, targetColumnUnit } = params
+
+  const ordered = items.slice().sort((a, b) => a.orderIndex - b.orderIndex)
+  const withoutDragged = ordered.filter((it) => it.bookmarkId !== draggedId)
+
+  // Defensive: if dragged isn't in items, return unchanged order.
+  const draggedItem = items.find((it) => it.bookmarkId === draggedId)
+  if (!draggedItem) return ordered.map((it) => it.bookmarkId)
+
+  let bestIdx = 0
+  let bestDist = Infinity
+
+  for (let idx = 0; idx <= withoutDragged.length; idx++) {
+    // Build simulated items array with dragged inserted at idx.
+    const simulatedItems: BoardItem[] = withoutDragged.slice()
+    simulatedItems.splice(idx, 0, draggedItem)
+
+    // Simulate masonry layout.
+    const simMasonryCards = buildMasonryCards(simulatedItems)
+    const sim = computeColumnMasonry({
+      cards: simMasonryCards,
+      containerWidth,
+      gap,
+      targetColumnUnit,
+    })
+
+    const simPos = sim.positions[draggedId]
+    if (!simPos) continue
+
+    // Squared distance between simulated position and current visual top-left.
+    const dx = simPos.x - cardWorldX
+    const dy = simPos.y - cardWorldY
+    const dist = dx * dx + dy * dy
+
+    if (dist < bestDist) {
+      bestDist = dist
+      bestIdx = idx
+    }
+  }
+
+  const ids = withoutDragged.map((it) => it.bookmarkId)
+  ids.splice(bestIdx, 0, draggedId)
+  return ids
+}

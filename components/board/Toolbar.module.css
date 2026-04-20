@@ -1,0 +1,45 @@
+.container {
+  position: fixed;
+  top: 12px;
+  /* Centered over the content area (viewport minus sidebar). Exact centering
+     when the sidebar collapses is Plan B polish; this calc approximates. */
+  left: calc(50% + var(--sidebar-width) / 2);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  /* Always-light pill on any board theme (Notion/Figma chrome pattern). */
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+  padding: 4px;
+  /* Booklage tone: dark-violet-tinted shadow matches handle drop-shadows from Tasks 17-18 */
+  box-shadow: 0 4px 16px rgba(15, 15, 25, 0.1);
+  z-index: 110; /* mirrors BOARD_Z_INDEX.TOOLBAR */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  transition: left var(--sidebar-duration) var(--sidebar-ease);
+}
+
+.button {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  color: #555;
+  font-size: inherit;
+  font-family: inherit;
+  letter-spacing: inherit;
+  transition: background 120ms ease, color 120ms ease;
+}
+.button:hover { background: rgba(0, 0, 0, 0.05); }
+
+/* Primary action — "シェア": neutral near-black, reserved for the single
+   highest-signal CTA. Violet is kept for edit affordances only. */
+.button.primary {
+  background: #1a1a1a;
+  color: white;
+}
+.button.primary:hover { background: #000; }

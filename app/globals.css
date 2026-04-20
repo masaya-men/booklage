@@ -145,6 +145,7 @@ ol {
   --color-card-border: rgba(255, 255, 255, 0.08);
   --color-card-shadow: rgba(0, 0, 0, 0.4);
   --color-card-glow: rgba(124, 92, 252, 0.15);
+  --color-selection-glow: rgba(124, 92, 252, 0.18);
 
   /* ── Folder Colors ── */
   --folder-red: #ff6b6b;
@@ -232,6 +233,32 @@ ol {
   --collage-rotation-range: 5deg;
   --shadow-grid-card: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-collage-card: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* === B1 Dashboard Foundation variables (2026-04-20) === */
+
+  /* Liquid glass — tunable for iteration.
+     clarity 0 = 完全クリア, 1 = opaque white. 0.35 is a mid "visibly present" baseline.
+     blur: always applied as a baseline so chrome is visible even when backdrop-filter:url() fails.
+     displacement-scale: used by feDisplacementMap in the SVG filter (refractive distortion). */
+  --glass-clarity: 0.35;
+  --glass-blur: 6px;
+  --glass-displacement-scale: 12;
+  --glass-edge: rgba(255, 255, 255, 0.6);
+  --glass-specular: rgba(255, 255, 255, 0.95);
+
+  /* Sidebar geometry */
+  --sidebar-width: 240px;
+  --sidebar-collapsed: 52px;
+  --sidebar-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-duration: 340ms;
+
+  /* Asymmetric corners */
+  --corner-radius-outer: 24px;
+  --corner-radius-inner: 6px;
+
+  /* Accents (Plan A naming alias; existing palette uses --color-accent-primary) */
+  --accent-primary: var(--color-accent-primary);
+  --accent-dark: #1a1a1a;
 }
 
 /* ── Light Mode Overrides ──────────────────────────────────── */

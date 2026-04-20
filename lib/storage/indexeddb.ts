@@ -34,6 +34,18 @@ export interface BookmarkRecord {
   folderId: string
   /** OGP fetch status: pending (not yet fetched), fetched (done), failed (needs retry) */
   ogpStatus: OgpStatus
+  // v6 additions
+  /** Whether user has read this bookmark */
+  isRead?: boolean
+  /** Whether this bookmark is soft-deleted (B2 cleanup) */
+  isDeleted?: boolean
+  /** ISO 8601 timestamp for 30-day purge (B2) */
+  deletedAt?: string
+  // v8 additions
+  /** Board display order (lower = earlier). Dense; rewrite on reorder. */
+  orderIndex?: number
+  /** Board size preset — S (1 col) / M (2 col) / L (3 col). Default 'S'. */
+  sizePreset?: 'S' | 'M' | 'L'
 }
 
 /** Folder record stored in IndexedDB */
@@ -76,6 +88,13 @@ export interface CardRecord {
   width: number
   /** Card height in pixels */
   height: number
+  // v6 additions
+  /** Whether card is locked (prevents interaction) */
+  locked?: boolean
+  /** Whether user manually resized this card (prevents aspect-ratio recompute overwrite) */
+  isUserResized?: boolean
+  /** Cached aspect ratio estimation */
+  aspectRatio?: number
 }
 
 export interface UserPreferencesRecord {
@@ -248,6 +267,86 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
           return cursor.continue().then(clearManualPlacement)
         })
       }
+
+      // ── v5 → v6: add locked / isUserResized / aspectRatio to cards;
+      //            add isRead / isDeleted / deletedAt to bookmarks
+      if (oldVersion < 6) {
+        const cardStore = transaction.objectStore('cards')
+        void cardStore.openCursor().then(function addV6CardFields(
+          cursor: Awaited<ReturnType<typeof cardStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          const card = {
+            ...cursor.value,
+            locked: (cursor.value as CardRecord & { locked?: boolean }).locked ?? false,
+            isUserResized: (cursor.value as CardRecord & { isUserResized?: boolean }).isUserResized ?? false,
+            aspectRatio: (cursor.value as CardRecord & { aspectRatio?: number }).aspectRatio,
+          }
+          void cursor.update(card)
+          return cursor.continue().then(addV6CardFields)
+        })
+
+        const bookmarkStore = transaction.objectStore('bookmarks')
+        void bookmarkStore.openCursor().then(function addV6BookmarkFields(
+          cursor: Awaited<ReturnType<typeof bookmarkStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          const b = {
+            ...cursor.value,
+            isRead: (cursor.value as BookmarkRecord & { isRead?: boolean }).isRead ?? false,
+            isDeleted: (cursor.value as BookmarkRecord & { isDeleted?: boolean }).isDeleted ?? false,
+          }
+          void cursor.update(b)
+          return cursor.continue().then(addV6BookmarkFields)
+        })
+      }
+
+      // ── v6 → v7: strip `layoutMode` from BoardConfig (always-free canvas).
+      //            BoardConfig is stored in `settings` as
+      //            { key: 'board-config', config: BoardConfig }; unwrap and
+      //            delete the nested field.
+      if (oldVersion < 7) {
+        const settingsStore = transaction.objectStore('settings')
+        void settingsStore.openCursor().then(function stripLayoutMode(
+          cursor: Awaited<ReturnType<typeof settingsStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          if (cursor.key === 'board-config') {
+            const rec = cursor.value as { key: string; config?: Record<string, unknown> }
+            if (rec.config && 'layoutMode' in rec.config) {
+              const { layoutMode: _drop, ...restConfig } = rec.config
+              void _drop
+              void cursor.update({ key: rec.key, config: restConfig })
+            }
+          }
+          return cursor.continue().then(stripLayoutMode)
+        })
+      }
+
+      // ── v7 → v8: seed orderIndex (dense, by savedAt) + sizePreset='S'
+      if (oldVersion < 8) {
+        const bookmarkStore = transaction.objectStore('bookmarks')
+        const all: BookmarkRecord[] = []
+        void bookmarkStore.openCursor().then(function collect(
+          cursor: Awaited<ReturnType<typeof bookmarkStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) {
+            all.sort((a, b) => a.savedAt.localeCompare(b.savedAt))
+            for (let i = 0; i < all.length; i++) {
+              const b = all[i]
+              const next: BookmarkRecord = {
+                ...b,
+                orderIndex: b.orderIndex ?? i,
+                sizePreset: b.sizePreset ?? 'S',
+              }
+              void bookmarkStore.put(next)
+            }
+            return
+          }
+          all.push(cursor.value)
+          return cursor.continue().then(collect)
+        })
+      }
     },
   })
 }
@@ -303,6 +402,10 @@ export async function addBookmark(
   db: IDBPDatabase<BooklageDB>,
   input: BookmarkInput,
 ): Promise<BookmarkRecord> {
+  // Compute next orderIndex (append to end of current folder's bookmarks)
+  const existing = await getBookmarksByFolder(db, input.folderId)
+  const nextOrder = existing.length
+
   const bookmark: BookmarkRecord = {
     id: uuid(),
     url: input.url,
@@ -315,6 +418,8 @@ export async function addBookmark(
     savedAt: new Date().toISOString(),
     folderId: input.folderId,
     ogpStatus: input.ogpStatus ?? 'fetched',
+    orderIndex: nextOrder,
+    sizePreset: 'S',
   }
 
   // Use a transaction to atomically create both bookmark and card
@@ -499,6 +604,53 @@ export async function updateBookmarkOgp(
   await db.put('bookmarks', updated)
 }
 
+/**
+ * Set a single bookmark's orderIndex. Caller is responsible for renumber
+ * consistency across siblings (use updateBookmarkOrderBatch for multi-card
+ * reorder).
+ */
+export async function updateBookmarkOrderIndex(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  orderIndex: number,
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  await db.put('bookmarks', { ...existing, orderIndex })
+}
+
+/**
+ * Set a single bookmark's sizePreset. 'S' | 'M' | 'L'.
+ */
+export async function updateBookmarkSizePreset(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  sizePreset: 'S' | 'M' | 'L',
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  await db.put('bookmarks', { ...existing, sizePreset })
+}
+
+/**
+ * Atomically rewrite orderIndex for multiple bookmarks in one transaction.
+ * Use for drag-to-reorder: caller supplies the new complete order by ID.
+ */
+export async function updateBookmarkOrderBatch(
+  db: IDBPDatabase<BooklageDB>,
+  orderedBookmarkIds: readonly string[],
+): Promise<void> {
+  const tx = db.transaction('bookmarks', 'readwrite')
+  const store = tx.objectStore('bookmarks')
+  for (let i = 0; i < orderedBookmarkIds.length; i++) {
+    const id = orderedBookmarkIds[i]
+    const existing = await store.get(id)
+    if (!existing) continue
+    await store.put({ ...existing, orderIndex: i })
+  }
+  await tx.done
+}
+
 // ---------------------------------------------------------------------------
 // Bulk / cross-folder queries
 // ---------------------------------------------------------------------------
@@ -538,7 +690,9 @@ export async function addBookmarkBatch(
     const cardStore = tx.objectStore('cards')
 
     const existingCards = await cardStore.index('by-folder').getAll(batch[0].folderId)
+    const existingBookmarks = await bookmarkStore.index('by-folder').getAll(batch[0].folderId)
     let gridIndex = existingCards.length
+    let nextOrder = existingBookmarks.length
 
     for (const input of batch) {
       const bookmark: BookmarkRecord = {
@@ -553,6 +707,8 @@ export async function addBookmarkBatch(
         savedAt: new Date().toISOString(),
         folderId: input.folderId,
         ogpStatus: input.ogpStatus ?? 'fetched',
+        orderIndex: nextOrder++,
+        sizePreset: 'S',
       }
       await bookmarkStore.put(bookmark)
 

@@ -13,15 +13,26 @@ import type { ScrollDirection } from '@/lib/board/types'
 type InteractionLayerProps = {
   readonly direction: ScrollDirection
   readonly onScroll: (deltaX: number, deltaY: number) => void
+  /**
+   * Whether the Space key is currently held. Owned by BoardRoot so CardsLayer
+   * can also observe it and bail card-pointerdown handlers — letting the
+   * event bubble up to InteractionLayer for pan engagement.
+   */
+  readonly spaceHeld: boolean
   readonly children?: ReactNode
 }
 
 export function InteractionLayer({
   direction,
   onScroll,
+  spaceHeld,
   children,
 }: InteractionLayerProps) {
   const dragRef = useRef<{ lastX: number; lastY: number } | null>(null)
+  // Mirror prop in a ref so the pointerdown handler reads the latest value
+  // without forcing useCallback to re-bind every time spaceHeld toggles.
+  const spaceHeldRef = useRef<boolean>(spaceHeld)
+  spaceHeldRef.current = spaceHeld
 
   const isHorizontal = direction === 'horizontal'
 
@@ -39,7 +50,20 @@ export function InteractionLayer({
 
   const handlePointerDown = useCallback(
     (e: PointerEvent<HTMLDivElement>): void => {
-      if (e.target !== e.currentTarget) return
+      // Pan-mode triggers (engage even when the pointer is over a card):
+      //   - middle button (button === 1)
+      //   - left button + Space held
+      // Otherwise fall back to the original behavior: pan only when clicking
+      // the bare interaction layer (no card under pointer).
+      const isPanModifier =
+        e.button === 1 || (e.button === 0 && spaceHeldRef.current)
+      if (!isPanModifier && e.target !== e.currentTarget) return
+      // Suppress the browser's native dragstart + text/element selection that
+      // would otherwise fire when a Space+drag pan starts on a card (event
+      // bubbles up here from CardsLayer's bailed pointerdown). Also covers
+      // middle-button click which would trigger scroll-with-autoscroll on some
+      // browsers — keeps our drag logic in sole control.
+      e.preventDefault()
       e.currentTarget.setPointerCapture(e.pointerId)
       dragRef.current = { lastX: e.clientX, lastY: e.clientY }
     },

@@ -6,16 +6,33 @@
   "board": {
     "urlPlaceholder": "URLをペースト...",
     "save": "保存",
-    "exportImage": "画像として保存",
-    "shareX": "Xでシェア",
     "randomPick": "ランダムピック",
-    "bgTheme": "背景テーマ",
     "newFolder": "+ 新しいフォルダ",
     "folderNamePlaceholder": "フォルダ名...",
     "emptyState": "URLをペーストしてブックマークを追加しましょう",
     "theme": {
       "dottedNotebook": "点線ノート",
       "gridPaper": "方眼紙"
+    },
+    "toolbar": {
+      "align": "整列",
+      "share": "シェア"
+    },
+    "sidebar": {
+      "searchPlaceholder": "検索...",
+      "searchHint": "⌘K",
+      "libraryHeader": "LIBRARY",
+      "all": "すべて",
+      "unread": "未読",
+      "read": "既読",
+      "foldersHeader": "FOLDERS",
+      "foldersPlaceholder": "B2 で実装",
+      "themeLabel": "テーマ",
+      "settingsLabel": "設定",
+      "hideHint": "F で隠す",
+      "collapseAria": "折り畳む",
+      "expandAria": "展開",
+      "signature": "BOARD · 2026"
     }
   },
   "share": {

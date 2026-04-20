@@ -4,9 +4,21 @@ export const LAYOUT_CONFIG = {
   CONTAINER_MARGIN_PX: 16,
 } as const
 
-export const CARD_SIZE_LIMITS = {
-  MIN_PX: 120,
-  MAX_PX: 800,
+/**
+ * Page-level cluster constraints. The cards arrange within a centered column
+ * of width `min(viewport.w, MAX_WIDTH_PX) - 2 * SIDE_PADDING_PX` so the
+ * background remains visible at the edges (mymind / Pinterest / Are.na pattern).
+ */
+export const BOARD_INNER = {
+  MAX_WIDTH_PX: 1400,
+  SIDE_PADDING_PX: 64,
+} as const
+
+export const RESIZE = {
+  MIN_PX: 80,
+  MAX_PX: 1200,
+  HANDLE_SIZE_PX: 10,
+  EDGE_HANDLE_SIZE_PX: 10,
 } as const
 
 export const CULLING = {
@@ -15,10 +27,20 @@ export const CULLING = {
 
 export const BOARD_Z_INDEX = {
   THEME_BG: 0,
+  FRAME_MASK: 5,
   CARDS: 10,
+  FRAME_BORDER: 15,
   INTERACTION_OVERLAY: 20,
+  SNAP_GUIDES: 25,
   RESIZE_HANDLE: 30,
+  SELECTION_OUTLINE: 31,
+  ROTATION_HANDLE: 32,
+  DROP_INDICATOR: 40,
+  CONTEXT_MENU: 90,
   DRAG_GHOST: 100,
+  TOOLBAR: 110,
+  POPOVER: 120,
+  UNDO_TOAST: 130,
 } as const
 
 export const INTERACTION = {
@@ -27,7 +49,58 @@ export const INTERACTION = {
   EMPTY_DRAG_SCROLL_MULTIPLIER: 1.0,
 } as const
 
+export const SNAP = {
+  EDGE_ALIGNMENT_TOLERANCE_PX: 5,
+  INSERT_SLOT_ACTIVATION_PX: 12,
+  SPACING_EQUAL_TOLERANCE_PX: 3,
+} as const
+
+export const ROTATION = {
+  SNAP_STEP_DEG: 15,
+  AUTO_RANDOM_RANGE_DEG: 5,       // ±5° 自動微傾
+  HANDLE_OFFSET_ABOVE_CARD_PX: 24,
+  HANDLE_SIZE_PX: 14,
+} as const
+
+export const Z_ORDER = {
+  AUTO_TOUCHED_TOP: true,
+  LOCK_KEY: 'l',
+  FORWARD_KEY: ']',
+  BACKWARD_KEY: '[',
+  FORWARD_STEP_KEY: { key: ']', modifier: 'ctrl' },
+  BACKWARD_STEP_KEY: { key: '[', modifier: 'ctrl' },
+} as const
+
+export const FRAME = {
+  MIN_PX: 200,
+  MAX_PX: 5000,
+  BORDER_PX: 1.5,
+  BORDER_COLOR: 'rgba(0, 0, 0, 0.3)',
+  OUTSIDE_OVERLAY_BG: 'rgba(210, 210, 210, 0.55)',
+  OUTSIDE_SATURATE: 0.2,
+} as const
+
+export const MODE_TRANSITION = {
+  MORPH_MS: 400,
+  EASING: 'power2.inOut',
+} as const
+
+export const UNDO = {
+  TOAST_DURATION_MS: 10_000,
+} as const
+
 export const PERF = {
   TARGET_FPS: 60,
   MAX_LAYOUT_MS_1000_CARDS: 16,
 } as const
+
+export const COLUMN_MASONRY = {
+  TARGET_COLUMN_UNIT_PX: 220,
+  GAP_PX: 12,
+} as const
+
+export const SIZE_PRESET_SPAN: Readonly<Record<'S' | 'M' | 'L', number>> = {
+  S: 1,
+  M: 2,
+  L: 3,
+}
