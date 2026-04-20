@@ -184,6 +184,15 @@ export function CardsLayer({
   const freeLayoutPositions = useMemo<Readonly<Record<string, CardPosition>>>(() => {
     const result: Record<string, CardPosition> = {}
     for (const it of items) {
+      // Resize override takes highest precedence: while the user is dragging
+      // a resize handle, `overrides[bookmarkId]` holds the live w/h+x/y; this
+      // must be shown immediately, before `it.freePos` (which only updates on
+      // drag-end via persistFreePosition).
+      const override = overrides?.[it.bookmarkId]
+      if (override) {
+        result[it.bookmarkId] = override
+        continue
+      }
       if (it.freePos) {
         result[it.bookmarkId] = {
           x: it.freePos.x,
@@ -198,7 +207,7 @@ export function CardsLayer({
       }
     }
     return result
-  }, [items, gridLayout])
+  }, [items, gridLayout, overrides])
 
   // Canvas is always free placement (v7). Cards fall back to grid positions
   // only until their first manual drag populates `freePos`.

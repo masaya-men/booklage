@@ -177,11 +177,38 @@ export function BoardRoot() {
     return m
   }, [items])
 
+  // Actual content bounds — tracks the furthest right/bottom any card reaches,
+  // whether it's in a grid fallback, persisted freePos, or mid-resize override.
+  // Added 600px margin so the user can scroll past the last card (room to drag
+  // new cards further / add content). Without this, free-dragged cards below
+  // the grid footprint become unreachable via scroll.
+  const contentBounds = useMemo(() => {
+    let maxRight = 0
+    let maxBottom = 0
+    for (const it of items) {
+      const override = overrides[it.bookmarkId]
+      const p = override
+        ?? (it.freePos
+          ? { x: it.freePos.x, y: it.freePos.y, w: it.freePos.w, h: it.freePos.h }
+          : layout.positions[it.bookmarkId])
+      if (!p) continue
+      const right = p.x + p.w
+      const bottom = p.y + p.h
+      if (right > maxRight) maxRight = right
+      if (bottom > maxBottom) maxBottom = bottom
+    }
+    const SCROLL_OVERFLOW_MARGIN = 600
+    return {
+      width: Math.max(layout.totalWidth, maxRight + SCROLL_OVERFLOW_MARGIN),
+      height: Math.max(layout.totalHeight, maxBottom + SCROLL_OVERFLOW_MARGIN),
+    }
+  }, [items, overrides, layout.positions, layout.totalWidth, layout.totalHeight])
+
   const handleScroll = useCallback(
     (dx: number, dy: number): void => {
       setViewport((v) => {
-        const maxX = Math.max(0, layout.totalWidth - v.w)
-        const maxY = Math.max(0, layout.totalHeight - v.h)
+        const maxX = Math.max(0, contentBounds.width - v.w)
+        const maxY = Math.max(0, contentBounds.height - v.h)
         return {
           ...v,
           x: Math.min(Math.max(v.x + dx, 0), maxX),
@@ -189,7 +216,7 @@ export function BoardRoot() {
         }
       })
     },
-    [layout.totalHeight, layout.totalWidth],
+    [contentBounds.width, contentBounds.height],
   )
 
   const resolveStart = useCallback(
@@ -353,8 +380,8 @@ export function BoardRoot() {
     }
   }, [items])
 
-  const contentWidth = Math.max(viewport.w, layout.totalWidth)
-  const contentHeight = Math.max(viewport.h, layout.totalHeight)
+  const contentWidth = Math.max(viewport.w, contentBounds.width)
+  const contentHeight = Math.max(viewport.h, contentBounds.height)
 
   const targetRowHeight =
     themeMeta.layoutParams?.targetRowHeight ?? LAYOUT_CONFIG.TARGET_ROW_HEIGHT_PX
