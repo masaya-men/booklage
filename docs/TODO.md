@@ -19,6 +19,16 @@
 - **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true --commit-message="..."`（手動、**`--branch=master` 必須** — production alias に反映するため。**`--commit-message` に ASCII 文字列を明示** しないと "Invalid commit message, must be a valid UTF-8 string" で失敗する — Windows の terminal encoding で em-dash 等が化ける既知問題）
 - **テスト**: **86 PASS / 0 FAIL**（vitest、align.test.ts の 4 件追加）、tsc strict clean
 
+### 直近の作業（2026-04-21 緊急 bugfix 第 3 ラウンド + UX 余白追加）
+
+第 2 ラウンドで入れた resize 後 auto-align が **「離すと元の大きさに戻る」の新規バグ** を引き起こしたので即撤回。併せて上余白を追加:
+
+- **auto-align 撤回** — computeAutoLayout は row 内 scale factor で row height を normalize するので、resize で 1 カードが大きくなると同 row の scale が縮み、全カード（resize したやつ含む）が pre-resize サイズに shrink する設計矛盾。**ボタン押しの手動 Align は aspect ratio 反映 fix を維持**（前述）、auto-align のみ削除。collision push / pinned masonry での真のリフローは別仕様で後日
+- **board 上部に 120px の breathing room 追加** — `BOARD_TOP_PAD_PX = 120` 定数、cards wrapper の translate3d に `+BOARD_TOP_PAD_PX`、contentBounds.height にも加算してスクロール範囲を追従。ThemeLayer wrapper は world y=0 のまま → 上余白にも dotted 背景が見える設計
+- 86 vitest pass / tsc clean / `booklage.pages.dev` 反映済 (deploy 4 回目/日)
+
+**残課題**: resize で下カードが buried される UX は未解決（auto-align で解消できないことが判明）。collision push（resize したカードに重なる隣接のみ下にシフト）を別 spec で検討。
+
 ### 直近の作業（2026-04-21 Batch B 後の緊急 bugfix 第 2 ラウンド）
 
 user 実機テストで新たに 3 件発覚、全て即 fix + deploy 済 (`components/board/CardsLayer.tsx` + `components/board/BoardRoot.tsx`):
