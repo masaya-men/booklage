@@ -31,13 +31,19 @@
 ### 次セッション最初にやること（2026-04-21 以降）
 
 1. **VSCode 版の Claude Code をメインフォルダ（`C:\Users\masay\Desktop\マイコラージュ`）で開く**（worktree 自動生成なし）
-2. **`docs/TODO.md` を読む**（このファイル、最上段）
-3. **spec + plan が既に完成しているので `subagent-driven-development` で Task 1 から順に実装**:
+2. **物理 worktree ディレクトリの手動削除（最優先）** — `.claude/worktrees/` から以下 4 個を Windows Explorer で削除：
+   - `adoring-mestorf-d27d8c/`
+   - `epic-brown-403380/`
+   - `infallible-cray-c19657/`
+   - `vibrant-euclid-341977/`
+   - **理由**: git 上では削除済 (`git worktree list` に出ない)、Windows ファイルロックで物理削除できなかった。中身は master に全部マージ済なので消しても何も失われない。**削除前に念のため `git worktree prune && git worktree list` で "残 1 個 (メイン) のみ" を確認**
+3. **`docs/TODO.md` を読む**（このファイル、最上段）
+4. **spec + plan が既に完成しているので `subagent-driven-development` で Task 1 から順に実装**:
    - spec: `docs/superpowers/specs/2026-04-20-b-embeds-design.md`
    - plan: `docs/superpowers/plans/2026-04-20-b-embeds.md`（18 TDD tasks）
-4. Task 18（最終 task）で本番 deploy + 目視確認まで完了
-5. B 完了後に C (multi-playback) の brainstorming へ
-6. デプロイ前に必ず `public/sw.js` の `CACHE_VERSION` bump（plan の Task 18 step 1 で明記済）
+5. Task 18（最終 task）で本番 deploy + 目視確認まで完了
+6. B 完了後に C (multi-playback) の brainstorming へ
+7. デプロイ前に必ず `public/sw.js` の `CACHE_VERSION` bump（plan の Task 18 step 1 で明記済）
 
 ### B-embeds 実装開始のコピペ用 prompt
 
