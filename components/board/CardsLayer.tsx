@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type PointerEvent,
   type ReactNode,
 } from 'react'
@@ -21,7 +22,7 @@ import {
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { CardNode } from './CardNode'
 import { SizePresetToggle } from './SizePresetToggle'
-import { useCardReorderDrag } from './use-card-reorder-drag'
+import { useCardReorderDrag, computeVirtualOrder } from './use-card-reorder-drag'
 
 type Viewport = {
   readonly x: number
@@ -55,6 +56,10 @@ export function CardsLayer({
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
+  // Stage 2: virtual order during drag for live reflow preview.
+  // null = no drag in progress (use real masonry order).
+  const [virtualOrderedIds, setVirtualOrderedIds] = useState<readonly string[] | null>(null)
+
   const masonryCards = useMemo<MasonryCard[]>(
     () =>
       items.map((it) => ({
@@ -76,7 +81,34 @@ export function CardsLayer({
     [masonryCards, viewportWidth],
   )
 
-  const displayedPositions = masonryLayout.positions
+  // Stage 2: preview masonry computed from the live virtual order.
+  const previewMasonry = useMemo(() => {
+    if (!virtualOrderedIds) return null
+    const idToItem = new Map(items.map((it) => [it.bookmarkId, it]))
+    const orderedCards: MasonryCard[] = []
+    for (const id of virtualOrderedIds) {
+      const it = idToItem.get(id)
+      if (!it) continue
+      orderedCards.push({
+        id: it.bookmarkId,
+        aspectRatio: it.aspectRatio,
+        columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+      })
+    }
+    return computeColumnMasonry({
+      cards: orderedCards,
+      containerWidth: viewportWidth,
+      gap: COLUMN_MASONRY.GAP_PX,
+      targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+    })
+  }, [virtualOrderedIds, items, viewportWidth])
+
+  // During drag, use preview positions for non-dragged cards.
+  // During drop/idle, use real masonry positions.
+  const displayedPositions = useMemo<Readonly<Record<string, CardPosition>>>(
+    () => previewMasonry?.positions ?? masonryLayout.positions,
+    [previewMasonry, masonryLayout.positions],
+  )
 
   const visibleItems = useMemo(() => {
     const bufferX = viewport.w * CULLING.BUFFER_SCREENS
@@ -97,8 +129,16 @@ export function CardsLayer({
   // Updated at the end of every effect run.
   const prevPositionsRef = useRef<Record<string, { x: number; y: number }>>({})
 
+  // dragState ref for use inside useLayoutEffect without triggering extra renders
+  const dragStateRef = useRef<{ bookmarkId: string } | null>(null)
+
   useLayoutEffect(() => {
+    const draggedId = dragStateRef.current?.bookmarkId ?? null
+
     for (const it of visibleItems) {
+      // Skip the card being dragged — the drag hook owns its transform.
+      if (it.bookmarkId === draggedId) continue
+
       const el = cardRefs.current[it.bookmarkId]
       if (!el) continue
       const p = displayedPositions[it.bookmarkId]
@@ -106,7 +146,9 @@ export function CardsLayer({
 
       const prev = prevPositionsRef.current[it.bookmarkId]
       if (prev && (prev.x !== p.x || prev.y !== p.y)) {
-        // FLIP: invert from previous pos, tween to new pos
+        // FLIP: animate from previous position to new position.
+        // Use a slightly faster duration during live reflow (0.18s) vs drop (0.26s).
+        const isLiveReflow = draggedId !== null
         gsap.fromTo(
           el,
           { x: prev.x, y: prev.y, width: p.w, height: p.h },
@@ -115,7 +157,7 @@ export function CardsLayer({
             y: p.y,
             width: p.w,
             height: p.h,
-            duration: 0.26,
+            duration: isLiveReflow ? 0.18 : 0.26,
             ease: 'power2.out',
             overwrite: 'auto',
           },
@@ -140,40 +182,67 @@ export function CardsLayer({
     positions: masonryLayout.positions,
     spaceHeld,
     onClick,
-    onDragMove: useCallback((id: string, clientX: number, clientY: number): void => {
-      const el = cardRefs.current[id]
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      const p = masonryLayout.positions[id]
-      if (!p) return
-      // Convert client coords to world coords relative to the card's current
-      // on-screen position, centering the card on the pointer.
-      const worldTargetX = p.x + (clientX - rect.left) - p.w / 2
-      const worldTargetY = p.y + (clientY - rect.top) - p.h / 2
-      gsap.to(el, {
-        x: worldTargetX,
-        y: worldTargetY,
-        scale: 1.03,
-        duration: 0.12,
-        ease: 'power2.out',
-        overwrite: 'auto',
-      })
-    }, [masonryLayout.positions]),
-    onDrop: useCallback((orderedIds: readonly string[]): void => {
-      // dragState is read from ref via closure in the hook; we use a local
-      // variable here since dragState React state will still be set at this
-      // point (setDragState(null) happens inside the hook after onDrop call).
-      // We access the dragged card by scanning refs for any card at scale 1.03.
-      // Simpler: iterate all refs and snap scale back.
-      for (const [id, el] of Object.entries(cardRefs.current)) {
-        if (!el) continue
-        const p = masonryLayout.positions[id]
-        if (!p) continue
-        gsap.to(el, { scale: 1, duration: 0.18, ease: 'power2.out' })
-      }
-      onDrop(orderedIds)
-    }, [masonryLayout.positions, onDrop]),
+    onDragMove: useCallback(
+      (
+        id: string,
+        cardWorldX: number,
+        cardWorldY: number,
+        pointerWorldX: number,
+        pointerWorldY: number,
+      ): void => {
+        // Stage 1: instant pointer follow — gsap.set is synchronous, zero lag.
+        const el = cardRefs.current[id]
+        if (el) {
+          gsap.set(el, { x: cardWorldX, y: cardWorldY, scale: 1.03, overwrite: 'auto' })
+        }
+
+        // Stage 2: compute virtual order from current pointer position.
+        const newOrder = computeVirtualOrder({
+          items,
+          positions: masonryLayout.positions,
+          draggedId: id,
+          pointerWorldX,
+          pointerWorldY,
+        })
+
+        // Only update state if order actually changed — avoids re-render storms.
+        setVirtualOrderedIds((prev) => {
+          if (!prev) return newOrder
+          if (prev.length !== newOrder.length) return newOrder
+          for (let i = 0; i < prev.length; i++) {
+            if (prev[i] !== newOrder[i]) return newOrder
+          }
+          return prev
+        })
+      },
+      [items, masonryLayout.positions],
+    ),
+    onDrop: useCallback(
+      (_orderedIds: readonly string[]): void => {
+        // Use virtualOrderedIds as the authoritative final order — it's the
+        // same computation run on the last pointermove, so preview-to-final
+        // is seamless. Fall back to hook's orderedIds if virtual state was
+        // somehow cleared already.
+        setVirtualOrderedIds((currentVirtual) => {
+          const finalOrder = currentVirtual ?? _orderedIds
+
+          // Snap scale back to 1 for all cards (the dragged card had scale 1.03).
+          for (const el of Object.values(cardRefs.current)) {
+            if (!el) continue
+            gsap.to(el, { scale: 1, duration: 0.18, ease: 'power2.out' })
+          }
+
+          onDrop(finalOrder)
+          return null // clear virtual order
+        })
+      },
+      [onDrop],
+    ),
   })
+
+  // Keep dragStateRef in sync so useLayoutEffect can read the dragged id
+  // without a dependency that causes extra FLIP runs.
+  dragStateRef.current = dragState ? { bookmarkId: dragState.bookmarkId } : null
 
   // Esc during drag → restore dragged card to its pre-drag slot (FLIP handles it).
   useEffect(() => {
@@ -187,6 +256,7 @@ export function CardsLayer({
           x: p.x, y: p.y, scale: 1, duration: 0.22, ease: 'power2.out', overwrite: 'auto',
         })
       }
+      setVirtualOrderedIds(null)
     }
     window.addEventListener('keydown', onEsc)
     return (): void => {

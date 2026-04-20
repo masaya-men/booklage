@@ -46,7 +46,7 @@ export function CardNode({
       >
         {children ?? (
           <>
-            {thumbnailUrl && <img className={styles.thumb} src={thumbnailUrl} alt="" />}
+            {thumbnailUrl && <img className={styles.thumb} src={thumbnailUrl} alt="" draggable={false} />}
             <div className={styles.title}>{title}</div>
           </>
         )}

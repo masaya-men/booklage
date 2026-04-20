@@ -18,7 +18,13 @@ export type UseReorderDragParams = {
   readonly positions: Readonly<Record<string, CardPosition>>
   readonly spaceHeld: boolean
   readonly onClick: (bookmarkId: string) => void
-  readonly onDragMove: (bookmarkId: string, x: number, y: number) => void
+  readonly onDragMove: (
+    bookmarkId: string,
+    cardWorldX: number,
+    cardWorldY: number,
+    pointerWorldX: number,
+    pointerWorldY: number,
+  ) => void
   readonly onDrop: (orderedBookmarkIds: readonly string[]) => void
 }
 
@@ -28,7 +34,7 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
 } {
   const { items, positions, spaceHeld, onClick, onDragMove, onDrop } = params
   const [dragState, setDragState] = useState<ReorderDragState | null>(null)
-  // Mirror latest state + params in a ref so handlers registered on window
+  // Mirror latest state + params in a ref so handlers registered on the element
   // see the latest values without rebinding every render.
   const stateRef = useRef<{
     state: ReorderDragState | null
@@ -48,26 +54,43 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
       const pointerId = e.pointerId
       el.setPointerCapture(pointerId)
 
-      const startX = e.clientX
-      const startY = e.clientY
+      const startClientX = e.clientX
+      const startClientY = e.clientY
       const startTime = performance.now()
       let dragStarted = false
 
+      // Compute delta from client space to world space once on pointerdown.
+      // This delta is constant throughout the drag (we don't support panning
+      // while dragging).
+      const startPos = stateRef.current.positions[bookmarkId]
+      const rect = el.getBoundingClientRect()
+
+      // Fallback: if we can't find world pos, use client coords as world coords
+      const deltaClientToWorldX = startPos ? startPos.x - rect.left : 0
+      const deltaClientToWorldY = startPos ? startPos.y - rect.top : 0
+
       const move = (ev: globalThis.PointerEvent): void => {
-        const dx = ev.clientX - startX
-        const dy = ev.clientY - startY
+        const dx = ev.clientX - startClientX
+        const dy = ev.clientY - startClientY
         const distance = Math.hypot(dx, dy)
         const elapsed = performance.now() - startTime
 
         if (!dragStarted) {
           if (distance < CLICK_THRESHOLD_PX && elapsed < CLICK_MAX_MS) return
           dragStarted = true
-          setDragState({ bookmarkId, currentX: ev.clientX, currentY: ev.clientY })
-          stateRef.current.onDragMove(bookmarkId, ev.clientX, ev.clientY)
-          return
         }
+
+        // Compute card's new world-space top-left:
+        // startPos (world) + delta from original pointer position
+        const cardWorldX = (startPos?.x ?? 0) + (ev.clientX - startClientX)
+        const cardWorldY = (startPos?.y ?? 0) + (ev.clientY - startClientY)
+
+        // Pointer's world position
+        const pointerWorldX = ev.clientX + deltaClientToWorldX
+        const pointerWorldY = ev.clientY + deltaClientToWorldY
+
         setDragState({ bookmarkId, currentX: ev.clientX, currentY: ev.clientY })
-        stateRef.current.onDragMove(bookmarkId, ev.clientX, ev.clientY)
+        stateRef.current.onDragMove(bookmarkId, cardWorldX, cardWorldY, pointerWorldX, pointerWorldY)
       }
 
       const up = (ev: globalThis.PointerEvent): void => {
@@ -76,8 +99,8 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
         el.removeEventListener('pointercancel', up)
         if (el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId)
 
-        const dx = ev.clientX - startX
-        const dy = ev.clientY - startY
+        const dx = ev.clientX - startClientX
+        const dy = ev.clientY - startClientY
         const distance = Math.hypot(dx, dy)
 
         if (!dragStarted || distance < CLICK_THRESHOLD_PX) {
@@ -86,14 +109,15 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
           return
         }
 
-        // Drag end — compute new order
-        const newOrder = computeNewOrder({
+        // Drag end — compute new order using the pointer's world coords
+        const pointerWorldX = ev.clientX + deltaClientToWorldX
+        const pointerWorldY = ev.clientY + deltaClientToWorldY
+        const newOrder = computeVirtualOrder({
           items: stateRef.current.items,
           positions: stateRef.current.positions,
           draggedId: bookmarkId,
-          pointerClientX: ev.clientX,
-          pointerClientY: ev.clientY,
-          dropTarget: el,
+          pointerWorldX,
+          pointerWorldY,
         })
         setDragState(null)
         stateRef.current.onDrop(newOrder)
@@ -110,32 +134,21 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
 }
 
 /**
- * Compute the new ordered bookmarkId list after a drop.
+ * Compute what the card order WOULD BE if the dragged card were dropped at
+ * the current pointer world position. Called on every pointermove for live
+ * reflow preview, and also on drop to finalize the order.
  *
  * Strategy: find the non-dragged card whose center is closest to the pointer;
- * if the pointer is to the left/above the center, insert before; otherwise,
- * after.
+ * if the pointer is to the left of that center, insert before; otherwise after.
  */
-function computeNewOrder(params: {
+export function computeVirtualOrder(params: {
   items: ReadonlyArray<BoardItem>
   positions: Readonly<Record<string, CardPosition>>
   draggedId: string
-  pointerClientX: number
-  pointerClientY: number
-  dropTarget: HTMLElement
+  pointerWorldX: number
+  pointerWorldY: number
 }): readonly string[] {
-  const { items, positions, draggedId, pointerClientX, pointerClientY, dropTarget } = params
-
-  // Convert pointer clientX/Y into the cards' coord space. dropTarget is the
-  // dragged card element; its getBoundingClientRect tells us where it is on
-  // screen, and its inline transform gives us its world-space pos.
-  const rect = dropTarget.getBoundingClientRect()
-  const worldPos = positions[draggedId]
-  if (!worldPos) return items.map((it) => it.bookmarkId)
-  const deltaClientToWorldX = worldPos.x - rect.left
-  const deltaClientToWorldY = worldPos.y - rect.top
-  const pointerWorldX = pointerClientX + deltaClientToWorldX
-  const pointerWorldY = pointerClientY + deltaClientToWorldY
+  const { items, positions, draggedId, pointerWorldX, pointerWorldY } = params
 
   let bestId: string | null = null
   let bestDistSq = Infinity
