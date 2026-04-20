@@ -193,11 +193,13 @@ export function CardsLayer({
           gsap.set(el, { x: cardWorldX, y: cardWorldY, scale: 1.03, overwrite: 'auto' })
         }
 
-        // Stage 2: compute virtual order from current pointer position.
+        // Stage 2: compute virtual order from current card world position.
         const newOrder = computeVirtualOrder({
           items,
           positions: masonryLayout.positions,
           draggedId: id,
+          cardWorldX,
+          cardWorldY,
           pointerWorldX,
           pointerWorldY,
         })

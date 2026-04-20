@@ -109,13 +109,17 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
           return
         }
 
-        // Drag end — compute new order using the pointer's world coords
+        // Drag end — compute new order using the card's final world position.
+        const cardWorldX = (startPos?.x ?? 0) + (ev.clientX - startClientX)
+        const cardWorldY = (startPos?.y ?? 0) + (ev.clientY - startClientY)
         const pointerWorldX = ev.clientX + deltaClientToWorldX
         const pointerWorldY = ev.clientY + deltaClientToWorldY
         const newOrder = computeVirtualOrder({
           items: stateRef.current.items,
           positions: stateRef.current.positions,
           draggedId: bookmarkId,
+          cardWorldX,
+          cardWorldY,
           pointerWorldX,
           pointerWorldY,
         })
@@ -135,49 +139,104 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
 
 /**
  * Compute what the card order WOULD BE if the dragged card were dropped at
- * the current pointer world position. Called on every pointermove for live
- * reflow preview, and also on drop to finalize the order.
+ * the current position. Called on every pointermove for live reflow preview,
+ * and also on drop to finalize the order.
  *
- * Strategy: find the non-dragged card whose center is closest to the pointer;
- * if the pointer is to the left of that center, insert before; otherwise after.
+ * Strategy:
+ *  Phase 1 — Primary: find the non-dragged card with the MAX bounding-box
+ *    overlap area with the dragged card.
+ *  Phase 2 — Fallback: if no overlap (dragged card hovering in a gap), use
+ *    nearest-center from the pointer position.
+ *
+ * Insert direction uses Y-first comparison (reading order for column masonry)
+ * with X as tiebreaker. This ensures that a card dragged directly over another
+ * triggers a reorder from any approach angle, not just horizontal.
  */
 export function computeVirtualOrder(params: {
   items: ReadonlyArray<BoardItem>
   positions: Readonly<Record<string, CardPosition>>
   draggedId: string
+  /** Dragged card's current world-space top-left (at the pointer-follow transform). */
+  cardWorldX: number
+  cardWorldY: number
+  /** Pointer world coords — used only as fallback (when card bbox has no overlap). */
   pointerWorldX: number
   pointerWorldY: number
 }): readonly string[] {
-  const { items, positions, draggedId, pointerWorldX, pointerWorldY } = params
+  const { items, positions, draggedId, cardWorldX, cardWorldY, pointerWorldX, pointerWorldY } =
+    params
+  const draggedPos = positions[draggedId]
 
+  const ordered = items.slice().sort((a, b) => a.orderIndex - b.orderIndex)
+  const withoutDragged = ordered.filter((it) => it.bookmarkId !== draggedId)
+
+  if (!draggedPos) {
+    // Defensive: without the dragged card's size, fall back to no-op order.
+    return ordered.map((it) => it.bookmarkId)
+  }
+
+  // Dragged card's bbox at its current pointer-driven world position.
+  const dBox = { x: cardWorldX, y: cardWorldY, w: draggedPos.w, h: draggedPos.h }
+  const draggedCenterX = cardWorldX + draggedPos.w / 2
+  const draggedCenterY = cardWorldY + draggedPos.h / 2
+
+  // Phase 1: find the non-dragged card with MAX bounding-box overlap.
   let bestId: string | null = null
-  let bestDistSq = Infinity
+  let bestOverlap = 0
   let bestCenter = { cx: 0, cy: 0 }
   for (const it of items) {
     if (it.bookmarkId === draggedId) continue
     const p = positions[it.bookmarkId]
     if (!p) continue
-    const cx = p.x + p.w / 2
-    const cy = p.y + p.h / 2
-    const dx = pointerWorldX - cx
-    const dy = pointerWorldY - cy
-    const d = dx * dx + dy * dy
-    if (d < bestDistSq) {
-      bestDistSq = d
+    const overlapW = Math.max(0, Math.min(dBox.x + dBox.w, p.x + p.w) - Math.max(dBox.x, p.x))
+    const overlapH = Math.max(0, Math.min(dBox.y + dBox.h, p.y + p.h) - Math.max(dBox.y, p.y))
+    const area = overlapW * overlapH
+    if (area > bestOverlap) {
+      bestOverlap = area
       bestId = it.bookmarkId
-      bestCenter = { cx, cy }
+      bestCenter = { cx: p.x + p.w / 2, cy: p.y + p.h / 2 }
     }
   }
 
-  const ordered = items.slice().sort((a, b) => a.orderIndex - b.orderIndex)
-  const withoutDragged = ordered.filter((it) => it.bookmarkId !== draggedId)
+  // Phase 2: fallback to nearest-center if the dragged card isn't overlapping anyone
+  // (e.g., user hovering in a gap or outside the grid).
+  if (!bestId) {
+    let bestDistSq = Infinity
+    for (const it of items) {
+      if (it.bookmarkId === draggedId) continue
+      const p = positions[it.bookmarkId]
+      if (!p) continue
+      const cx = p.x + p.w / 2
+      const cy = p.y + p.h / 2
+      const dx = pointerWorldX - cx
+      const dy = pointerWorldY - cy
+      const d = dx * dx + dy * dy
+      if (d < bestDistSq) {
+        bestDistSq = d
+        bestId = it.bookmarkId
+        bestCenter = { cx, cy }
+      }
+    }
+  }
 
   if (!bestId) {
-    // Drop below all cards — append
+    // No other cards at all — append dragged at end.
     return [...withoutDragged.map((it) => it.bookmarkId), draggedId]
   }
 
-  const insertBefore = pointerWorldX < bestCenter.cx
+  // Insert direction: Y-first with X tiebreaker (reading order for column masonry).
+  // This ensures overlapping at a target's exact center still changes order.
+  const Y_SAME_THRESHOLD_PX = 2
+  let insertBefore: boolean
+  if (draggedCenterY < bestCenter.cy - Y_SAME_THRESHOLD_PX) {
+    insertBefore = true
+  } else if (draggedCenterY > bestCenter.cy + Y_SAME_THRESHOLD_PX) {
+    insertBefore = false
+  } else {
+    // Same row (roughly): use X.
+    insertBefore = draggedCenterX < bestCenter.cx
+  }
+
   const targetIdx = withoutDragged.findIndex((it) => it.bookmarkId === bestId)
   const insertIdx = insertBefore ? targetIdx : targetIdx + 1
 
