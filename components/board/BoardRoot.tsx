@@ -9,7 +9,7 @@ import {
   listThemeIds,
 } from '@/lib/board/theme-registry'
 import { BOARD_INNER, COLUMN_MASONRY, SIZE_PRESET_SPAN } from '@/lib/board/constants'
-import type { CardPosition, ThemeId } from '@/lib/board/types'
+import type { ThemeId } from '@/lib/board/types'
 import { useBoardData } from '@/lib/storage/use-board-data'
 import { initDB } from '@/lib/storage/indexeddb'
 import { loadBoardConfig } from '@/lib/storage/board-config'
@@ -35,9 +35,8 @@ function loadSavedTheme(): ThemeId {
 }
 
 export function BoardRoot() {
-  const { items, persistSizePreset } = useBoardData()
+  const { items, persistSizePreset, persistOrderBatch } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
-  const [overrides, setOverrides] = useState<Record<string, CardPosition>>({})
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   // Lifted from InteractionLayer so CardsLayer can also observe Space-held
   // state and bail its pointerdown handler — letting the event bubble up to
@@ -184,8 +183,7 @@ export function BoardRoot() {
     let maxRight = 0
     let maxBottom = 0
     for (const it of items) {
-      const override = overrides[it.bookmarkId]
-      const p = override ?? layout.positions[it.bookmarkId]
+      const p = layout.positions[it.bookmarkId]
       if (!p) continue
       const right = p.x + p.w
       const bottom = p.y + p.h
@@ -200,7 +198,7 @@ export function BoardRoot() {
         maxBottom + BOARD_TOP_PAD_PX + SCROLL_OVERFLOW_MARGIN,
       ),
     }
-  }, [items, overrides, layout.positions, layout.totalWidth, layout.totalHeight])
+  }, [items, layout.positions, layout.totalWidth, layout.totalHeight])
 
   const handleScroll = useCallback(
     (dx: number, dy: number): void => {
@@ -222,6 +220,22 @@ export function BoardRoot() {
       void persistSizePreset(bookmarkId, next)
     },
     [persistSizePreset],
+  )
+
+  const handleCardClick = useCallback(
+    (bookmarkId: string): void => {
+      const item = items.find((it) => it.bookmarkId === bookmarkId)
+      if (!item?.url) return
+      window.open(item.url, '_blank', 'noopener,noreferrer')
+    },
+    [items],
+  )
+
+  const handleDropOrder = useCallback(
+    (orderedBookmarkIds: readonly string[]): void => {
+      void persistOrderBatch(orderedBookmarkIds)
+    },
+    [persistOrderBatch],
   )
 
   const handleShare = useCallback((): void => {
@@ -350,10 +364,12 @@ export function BoardRoot() {
             items={items}
             viewport={viewport}
             viewportWidth={effectiveLayoutWidth}
-            overrides={overrides}
             hoveredBookmarkId={hoveredBookmarkId}
+            spaceHeld={spaceHeld}
             onHoverChange={setHoveredBookmarkId}
             onCyclePreset={handleCyclePreset}
+            onClick={handleCardClick}
+            onDrop={handleDropOrder}
           />
         </div>
       </InteractionLayer>

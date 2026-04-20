@@ -140,7 +140,8 @@ test.describe('B0 board skeleton', () => {
     await expect(page.locator('[data-theme-id="grid-paper"]').first()).toBeVisible()
   })
 
-  // TODO Task 12: restore drag-to-reorder once drag interactions are reinstated
+  // Task 12 DONE — drag-to-reorder changes order (orderIndex), not XY position.
+  // This test asserted free-drag XY change which is obsolete. Reorder E2E deferred.
   test.skip('card drag updates its position', async ({ page }) => {
     const card = page.locator('[data-card-id]').first()
     const before = await card.boundingBox()
