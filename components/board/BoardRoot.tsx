@@ -35,7 +35,7 @@ function loadSavedTheme(): ThemeId {
 }
 
 export function BoardRoot() {
-  const { items, persistSizePreset, persistOrderBatch } = useBoardData()
+  const { items, persistSizePreset, persistOrderBatch, persistMeasuredAspect } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   // Lifted from InteractionLayer so CardsLayer can also observe Space-held
@@ -370,6 +370,7 @@ export function BoardRoot() {
             onCyclePreset={handleCyclePreset}
             onClick={handleCardClick}
             onDrop={handleDropOrder}
+            persistMeasuredAspect={persistMeasuredAspect}
           />
         </div>
       </InteractionLayer>

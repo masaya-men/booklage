@@ -23,6 +23,7 @@ import type { BoardItem } from '@/lib/storage/use-board-data'
 import { CardNode } from './CardNode'
 import { SizePresetToggle } from './SizePresetToggle'
 import { useCardReorderDrag, computeVirtualOrder } from './use-card-reorder-drag'
+import { pickCard } from './cards'
 
 type Viewport = {
   readonly x: number
@@ -41,6 +42,7 @@ type CardsLayerProps = {
   readonly onCyclePreset: (bookmarkId: string, next: 'S' | 'M' | 'L') => void
   readonly onClick: (bookmarkId: string) => void
   readonly onDrop: (orderedBookmarkIds: readonly string[]) => void
+  readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
 }
 
 export function CardsLayer({
@@ -53,6 +55,7 @@ export function CardsLayer({
   onCyclePreset,
   onClick,
   onDrop,
+  persistMeasuredAspect,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -359,7 +362,19 @@ export function CardsLayer({
               id={it.bookmarkId}
               title={it.title}
               thumbnailUrl={it.thumbnail}
-            />
+            >
+              {(() => {
+                const Card = pickCard(it)
+                return (
+                  <Card
+                    item={it}
+                    persistMeasuredAspect={persistMeasuredAspect}
+                    cardWidth={p.w}
+                    cardHeight={p.h}
+                  />
+                )
+              })()}
+            </CardNode>
             <SizePresetToggle
               preset={it.sizePreset}
               visible={hoveredBookmarkId === it.bookmarkId}
