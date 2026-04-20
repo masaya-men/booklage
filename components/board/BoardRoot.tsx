@@ -44,6 +44,7 @@ export function BoardRoot() {
   // InteractionLayer where pan engagement lives.
   const [spaceHeld, setSpaceHeld] = useState<boolean>(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false)
+  const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => setThemeId(loadSavedTheme()), [])
@@ -265,6 +266,29 @@ export function BoardRoot() {
     }
   }, [])
 
+  // 1/2/3 keys cycle hovered card's size preset (S/M/L)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== '1' && e.key !== '2' && e.key !== '3') return
+      if (!hoveredBookmarkId) return
+      const target = e.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      )
+        return
+      e.preventDefault()
+      const preset = e.key === '1' ? 'S' : e.key === '2' ? 'M' : 'L'
+      void persistSizePreset(hoveredBookmarkId, preset)
+    }
+    window.addEventListener('keydown', onKey)
+    return (): void => {
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [hoveredBookmarkId, persistSizePreset])
+
   const sidebarCounts = useMemo(() => {
     const active = items.filter((i) => !i.isDeleted)
     return {
@@ -327,6 +351,8 @@ export function BoardRoot() {
             viewport={viewport}
             viewportWidth={effectiveLayoutWidth}
             overrides={overrides}
+            hoveredBookmarkId={hoveredBookmarkId}
+            onHoverChange={setHoveredBookmarkId}
             onCyclePreset={handleCyclePreset}
           />
         </div>
