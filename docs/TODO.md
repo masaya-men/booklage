@@ -7,7 +7,7 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `claude/infallible-cray-c19657` (worktree、`claude/b1-placement` から分岐、origin に push 済)
+- **ブランチ**: `master`（HEAD = `c83edd0`、`claude/infallible-cray-c19657` をマージ済、worktree 全廃止）
 - **🔥 最新進捗 (2026-04-20)**: **Board content-sized masonry + drag-to-reorder + drag UX 完全磨き上げ + 本番デプロイ済** — 14 main タスク + drag polish 9 ラウンド完了、`booklage.pages.dev` 反映済
   - **Board の方針転換完了**: always-free canvas → 常時 column masonry に pivot。「カードが下に潜る」問題を根本解決（重ならない設計）
   - **content-driven aspect ratio**: YouTube/TikTok/Twitter/Instagram/generic で 12 パターン自動判定
@@ -30,11 +30,19 @@
 
 ### 次セッション最初にやること
 
-1. **`docs/TODO.md` を読む**（このファイル、最上段）
-2. **B (react-tweet + embed) の brainstorming 開始** — `superpowers:brainstorming` → spec → writing-plans → subagent-driven-development の流れ
-3. B 実装 → 本番 deploy → ユーザー確認 → C (multi-playback) へ
-4. デプロイ前に必ず `public/sw.js` の `CACHE_VERSION` bump
-5. 参考資料: `docs/private/card-interaction-recipes.md`（destefanis の lightbox recipe、将来 A で使う）
+1. **メインフォルダ（`C:\Users\masay\Desktop\マイコラージュ`）で開く**。worktree は廃止
+2. **`docs/TODO.md` を読む**（このファイル、最上段）
+3. **B (react-tweet + embed) の brainstorming 開始** — `superpowers:brainstorming` → spec → writing-plans → subagent-driven-development の流れ
+4. B 実装 → 本番 deploy → ユーザー確認 → C (multi-playback) へ
+5. デプロイ前に必ず `public/sw.js` の `CACHE_VERSION` bump
+6. 参考資料: `docs/private/card-interaction-recipes.md`（destefanis の lightbox recipe、将来 A で使う）
+
+### 2026-04-20 worktree 大掃除完了
+
+- `claude/infallible-cray-c19657` を master に merge（merge commit `c83edd0`、本番デプロイ済コードを master に同期）
+- 旧 13 ブランチ全削除（local + remote）。残るは `master` のみ + `backup-pre-filter-repo-2026-04-19`（2026-05-19 以降に削除可）
+- worktree 7 個削除済、3 個（`adoring-mestorf-d27d8c` / `epic-brown-403380` / `infallible-cray-c19657`）が Windows ファイルロックで物理削除残り → 次セッション起動時に手動で `.claude/worktrees/` から削除
+- **以後 worktree は使わない**（1 人 + Claude 1 人なので worktree 不要）
 
 ### B の論点（brainstorming で決める）
 
