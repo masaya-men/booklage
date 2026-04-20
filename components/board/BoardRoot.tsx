@@ -2,20 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { computeAutoLayout } from '@/lib/board/auto-layout'
+import { alignAllToGrid } from '@/lib/board/align'
 import {
   DEFAULT_THEME_ID,
   getThemeMeta,
   listThemeIds,
 } from '@/lib/board/theme-registry'
 import { BOARD_INNER, LAYOUT_CONFIG } from '@/lib/board/constants'
-import type { CardPosition, FrameRatio, LayoutCard, ThemeId } from '@/lib/board/types'
+import type { CardPosition, LayoutCard, ThemeId } from '@/lib/board/types'
 import { useBoardData, type BoardItem } from '@/lib/storage/use-board-data'
 import { initDB } from '@/lib/storage/indexeddb'
-import {
-  DEFAULT_BOARD_CONFIG,
-  loadBoardConfig,
-  saveBoardConfig,
-} from '@/lib/storage/board-config'
+import { loadBoardConfig } from '@/lib/storage/board-config'
 import { ThemeLayer } from './ThemeLayer'
 import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
@@ -35,8 +32,10 @@ function loadSavedTheme(): ThemeId {
 export function BoardRoot() {
   const { items, persistCardPosition, persistFreePosition } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
-  const [frameRatio, setFrameRatio] = useState<FrameRatio>(DEFAULT_BOARD_CONFIG.frameRatio)
   const [overrides, setOverrides] = useState<Record<string, CardPosition>>({})
+  // Monotonic counter bumped on Align; CardsLayer watches this to run a morph
+  // timeline instead of snapping cards to their new positions.
+  const [alignKey, setAlignKey] = useState<number>(0)
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   // Lifted from InteractionLayer so CardsLayer can also observe Space-held
   // state and bail its pointerdown handler — letting the event bubble up to
@@ -102,14 +101,15 @@ export function BoardRoot() {
     }
   }, [spaceHeld])
 
-  // Hydrate frameRatio from IndexedDB on mount
+  // Hydration of saved BoardConfig kept as a side effect so any future config
+  // fields (frameRatio for Plan B ShareModal, etc.) stay warm in IDB; no local
+  // state is bound until a surface actually surfaces them.
   useEffect(() => {
     let cancelled = false
     void (async (): Promise<void> => {
       const db = await initDB()
       if (cancelled) return
-      const cfg = await loadBoardConfig(db)
-      setFrameRatio(cfg.frameRatio)
+      await loadBoardConfig(db)
     })()
     return (): void => { cancelled = true }
   }, [])
@@ -144,16 +144,19 @@ export function BoardRoot() {
   const themeMeta = getThemeMeta(themeId)
 
   // Cap layout width at MAX_WIDTH_PX and reserve SIDE_PADDING_PX of gutter on
-  // each side so the background remains visible. The cards container is then
-  // horizontally centered via `horizontalOffset` (added to the scroll wrapper
-  // transform below). On viewports < (MAX_WIDTH_PX + 2 * SIDE_PADDING_PX) the
-  // gutter stays at exactly SIDE_PADDING_PX; on wider screens the cluster
-  // narrows to MAX_WIDTH_PX and the rest is gutter.
+  // each side so the background remains visible. Cards center in the space to
+  // the right of the sidebar; the background still spans the full viewport so
+  // the theme pattern shows through the liquid-glass sidebar panel.
+  // NOTE: sidebar widths below mirror --sidebar-width / --sidebar-collapsed in
+  // app/globals.css. Moving them to lib/board/constants.ts is a small cleanup
+  // for a follow-up pass.
+  const sidebarReservedPx = sidebarCollapsed ? 52 : 240
+  const availableWidth = Math.max(0, viewport.w - sidebarReservedPx)
   const effectiveLayoutWidth = Math.max(
     0,
-    Math.min(viewport.w, BOARD_INNER.MAX_WIDTH_PX) - 2 * BOARD_INNER.SIDE_PADDING_PX,
+    Math.min(availableWidth, BOARD_INNER.MAX_WIDTH_PX) - 2 * BOARD_INNER.SIDE_PADDING_PX,
   )
-  const horizontalOffset = (viewport.w - effectiveLayoutWidth) / 2
+  const horizontalOffset = sidebarReservedPx + (availableWidth - effectiveLayoutWidth) / 2
 
   const layout = useMemo(
     () =>
@@ -261,22 +264,52 @@ export function BoardRoot() {
     [overrides, layout.positions, itemByBookmark, persistCardPosition],
   )
 
-  const handleFrameRatioChange = useCallback(
-    (next: FrameRatio): void => {
-      setFrameRatio(next)
-      void (async (): Promise<void> => {
-        try {
-          const db = await initDB()
-          await saveBoardConfig(db, { frameRatio: next, themeId })
-        } catch (err) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.error('[BoardRoot] saveBoardConfig failed', err)
-          }
-        }
-      })()
-    },
-    [themeId],
-  )
+  // Align: snap every card into a justified masonry grid via alignAllToGrid,
+  // then fire N optimistic setItems + IDB writes via persistFreePosition.
+  // Bumping `alignKey` signals CardsLayer to run a morph timeline on the next
+  // render (cards glide from their current positions to the newly computed
+  // grid positions instead of snapping).
+  const handleAlign = useCallback((): void => {
+    if (items.length === 0) return
+
+    const sidebarReservedPx = sidebarCollapsed ? 52 : 240
+    const availableWidth = Math.max(0, viewport.w - sidebarReservedPx)
+    const containerWidth = Math.max(
+      0,
+      Math.min(availableWidth, BOARD_INNER.MAX_WIDTH_PX) - 2 * BOARD_INNER.SIDE_PADDING_PX,
+    )
+
+    const aligned = alignAllToGrid(
+      items.map((it) => ({
+        id: it.bookmarkId,
+        aspectRatio: it.aspectRatio,
+        freePos: it.freePos ?? null,
+      })),
+      {
+        containerWidth,
+        targetRowHeight: LAYOUT_CONFIG.TARGET_ROW_HEIGHT_PX,
+        gap: LAYOUT_CONFIG.GAP_PX,
+      },
+    )
+
+    const itemByBookmark = new Map(items.map((it) => [it.bookmarkId, it]))
+    for (const a of aligned) {
+      if (!a.freePos) continue
+      const source = itemByBookmark.get(a.id)
+      if (!source?.cardId) continue
+      void persistFreePosition(source.cardId, a.freePos)
+    }
+    setAlignKey((k) => k + 1)
+  }, [items, persistFreePosition, sidebarCollapsed, viewport.w])
+
+  const handleShare = useCallback((): void => {
+    // Plan B (ShareModal) ships the full flow — frame preset picker, PNG
+    // export, SNS Web Intents. For Plan A the button is present so the final
+    // toolbar shape is observable end-to-end; clicking is a no-op in dev.
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[Booklage] Share modal coming in Plan B')
+    }
+  }, [])
 
   // TODO: unify theme persistence — currently localStorage drives hydration; IDB themeId is write-only dead state.
   const handleThemeClick = useCallback((): void => {
@@ -379,6 +412,7 @@ export function BoardRoot() {
             direction={themeMeta.direction}
             overrides={overrides}
             spaceHeld={spaceHeld}
+            alignKey={alignKey}
             onCardPointerDown={handleCardPointerDown}
             onCardResize={handleCardResize}
             onCardResizeEnd={handleCardResizeEnd}
@@ -387,12 +421,7 @@ export function BoardRoot() {
           />
         </div>
       </InteractionLayer>
-      <Toolbar
-        frameRatio={frameRatio}
-        onFrameRatioChange={handleFrameRatioChange}
-        themeId={themeId}
-        onThemeClick={handleThemeClick}
-      />
+      <Toolbar onAlign={handleAlign} onShare={handleShare} />
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={handleSidebarToggle}
