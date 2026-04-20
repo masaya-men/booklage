@@ -5,7 +5,8 @@
 //   - Network-first: HTML pages and other assets
 //   - Skip: API calls, non-GET requests
 
-const CACHE_VERSION = 'v1'
+// Bump on each deploy to force clients to flush old caches.
+const CACHE_VERSION = 'v2-2026-04-20-drop-polish'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [
