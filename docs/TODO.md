@@ -16,8 +16,17 @@
 - **DBバージョン**: **v7**（Batch B Task 6 で v6→v7、layoutMode 削除 migration 入り）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
-- **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true`（手動、**`--branch=master` 必須** — production alias に反映するため）
+- **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true --commit-message="..."`（手動、**`--branch=master` 必須** — production alias に反映するため。**`--commit-message` に ASCII 文字列を明示** しないと "Invalid commit message, must be a valid UTF-8 string" で失敗する — Windows の terminal encoding で em-dash 等が化ける既知問題）
 - **テスト**: **86 PASS / 0 FAIL**（vitest、align.test.ts の 4 件追加）、tsc strict clean
+
+### 直近の作業（2026-04-21 Batch B 後の緊急 bugfix — user 実機テストで発覚）
+
+**user が実機で触ったら 3 つバグ報告。1 つは cache 起因、2 つは real bug → 即 fix + 再 deploy 済**。
+
+- **"整列押しても全カード戻らない"** — cache 起因（Ctrl+Shift+R で解消）。Task 9 実装は仕様通り動作、新バグではなかった
+- **リサイズで card がすっ飛ぶ** — **real bug、fix 済 (commit + deploy)**。Batch B で `activePositions = freeLayoutPositions` に切替えた時、resize が更新する `overrides` を freeLayoutPositions が無視する状態に。`freeLayoutPositions` で `overrides[bookmarkId]` を最優先するよう修正（`components/board/CardsLayer.tsx`）
+- **スクロールが下まで届かない** — **real bug、fix 済 (同 commit)**。`handleScroll` の maxY が `layout.totalHeight` = grid の底辺だけを見ていて、free-placement で grid 外に出されたカードに追従してなかった。`contentBounds` を items の実 position から動的計算 + 600px margin を足す実装に変更（`components/board/BoardRoot.tsx`）
+- 86 vitest pass / tsc clean、`booklage.pages.dev` 反映済
 
 ### 直近の作業（2026-04-21 Plan A Batch B 実装 + 本番デプロイ）
 
