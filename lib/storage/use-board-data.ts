@@ -103,6 +103,7 @@ export function useBoardData(): {
   persistOrderBatch: (orderedBookmarkIds: readonly string[]) => Promise<void>
   persistReadFlag: (bookmarkId: string, isRead: boolean) => Promise<void>
   persistSoftDelete: (bookmarkId: string, isDeleted: boolean) => Promise<void>
+  persistMeasuredAspect: (cardId: string, aspectRatio: number) => Promise<void>
   /** @deprecated Use persistFreePosition instead. Will be removed after full pivot. */
   persistCardPosition: (cardId: string, pos: CardPosition) => Promise<void>
 } {
@@ -157,6 +158,22 @@ export function useBoardData(): {
         isUserResized: pos.isUserResized,
         isManuallyPlaced: true,
       })
+    },
+    [],
+  )
+
+  const persistMeasuredAspect = useCallback(
+    async (cardId: string, aspectRatio: number): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !cardId || !Number.isFinite(aspectRatio) || aspectRatio <= 0) return
+      setItems((prev) =>
+        prev.map((it) =>
+          it.cardId === cardId && !it.freePos?.isUserResized
+            ? { ...it, aspectRatio }
+            : it,
+        ),
+      )
+      await updateCard(db as Parameters<typeof updateCard>[0], cardId, { aspectRatio })
     },
     [],
   )
@@ -282,6 +299,7 @@ export function useBoardData(): {
     persistOrderBatch,
     persistReadFlag,
     persistSoftDelete,
+    persistMeasuredAspect,
     persistCardPosition,
   }
 }
