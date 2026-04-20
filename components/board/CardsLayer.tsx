@@ -232,58 +232,70 @@ export function CardsLayer({
 
         const draggedId = dragStateRef.current?.bookmarkId
 
-        // Snap all non-dragged cards to their current preview positions + scale 1,
-        // killing any in-flight FLIP tweens from the last drag tick. Without this
-        // tween-kill, cards continue animating after drop for the remaining tween
-        // duration. Scale is included defensively — non-dragged cards should
-        // already be at scale 1 but the set ensures it.
-        if (previewMasonry) {
-          for (const id of Object.keys(previewMasonry.positions)) {
-            if (id === draggedId) continue // dragged card has separate handling below
-            const el = cardRefs.current[id]
-            const p = previewMasonry.positions[id]
-            if (el && p) {
-              gsap.set(el, {
-                x: p.x,
-                y: p.y,
-                width: p.w,
-                height: p.h,
-                scale: 1,
-                overwrite: true,
-              })
-              prevPositionsRef.current[id] = { x: p.x, y: p.y }
-            }
+        // Resolve the final order: use latest virtualOrderedIds if set, else the
+        // hook's _orderedIds (unused but kept as fallback).
+        const finalOrder = virtualOrderedIds ?? _orderedIds
+
+        // Compute the FINAL masonry layout manually — identical to what
+        // masonryLayout will be after React commits the new items order. This
+        // guarantees the positions we snap to match what React will render,
+        // so FLIP's useLayoutEffect sees prev === p and issues no animation.
+        const idToItem = new Map(items.map((it) => [it.bookmarkId, it]))
+        const finalCards: MasonryCard[] = []
+        for (const id of finalOrder) {
+          const it = idToItem.get(id)
+          if (!it) continue
+          finalCards.push({
+            id: it.bookmarkId,
+            aspectRatio: it.aspectRatio,
+            columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+          })
+        }
+        const finalMasonry = computeColumnMasonry({
+          cards: finalCards,
+          containerWidth: viewportWidth,
+          gap: COLUMN_MASONRY.GAP_PX,
+          targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+        })
+
+        // Snap all non-dragged cards to their FINAL masonry positions + scale 1,
+        // killing any in-flight FLIP tweens. Using finalMasonry (not previewMasonry)
+        // guarantees React's next render sees prev === p and issues no animation.
+        for (const id of Object.keys(finalMasonry.positions)) {
+          if (id === draggedId) continue
+          const el = cardRefs.current[id]
+          const p = finalMasonry.positions[id]
+          if (el && p) {
+            gsap.set(el, {
+              x: p.x,
+              y: p.y,
+              width: p.w,
+              height: p.h,
+              scale: 1,
+              overwrite: true,
+            })
+            prevPositionsRef.current[id] = { x: p.x, y: p.y }
           }
         }
 
-        // Fix: capture the dragged card's current DOM transform as its prev
-        // BEFORE clearing virtualOrderedIds / calling onDrop. This prevents
-        // FLIP from seeing a stale pre-drag prev and teleporting the card back
-        // to its original slot before animating to the new masonry slot.
+        // Capture the dragged card's current DOM transform as its prev — FLIP in
+        // the drop render animates from pointer position to new masonry slot.
         if (draggedId) {
           const el = cardRefs.current[draggedId]
           if (el) {
             const currentX = Number(gsap.getProperty(el, 'x'))
             const currentY = Number(gsap.getProperty(el, 'y'))
             prevPositionsRef.current[draggedId] = { x: currentX, y: currentY }
-            // NEW: instant scale snap — no 0.22s shrink tween, no perceived "re-settle"
+            // Instant scale snap — no 0.22s shrink tween
             gsap.set(el, { scale: 1, overwrite: 'auto' })
           }
         }
 
-        // Use virtualOrderedIds as the authoritative final order — it's the
-        // same computation run on the last pointermove, so preview-to-final
-        // is seamless. Fall back to hook's orderedIds if virtual state was
-        // somehow cleared already.
-        // Scale reset for the dragged card is merged into the FLIP landing tween
-        // (see useLayoutEffect below). Non-dragged cards are already at scale 1.
-        setVirtualOrderedIds((currentVirtual) => {
-          const finalOrder = currentVirtual ?? _orderedIds
-          onDrop(finalOrder)
-          return null // clear virtual order
-        })
+        // Commit the new order and clear virtual.
+        onDrop(finalOrder)
+        setVirtualOrderedIds(null)
       },
-      [onDrop, previewMasonry],
+      [onDrop, virtualOrderedIds, items, viewportWidth],
     ),
   })
 
@@ -339,7 +351,6 @@ export function CardsLayer({
               left: 0,
               width: `${p.w}px`,
               height: `${p.h}px`,
-              transform: `translate3d(${p.x}px, ${p.y}px, 0)`,
               pointerEvents: 'auto',
               zIndex: dragState?.bookmarkId === it.bookmarkId ? 1000 : undefined,
             }}
