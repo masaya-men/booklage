@@ -157,7 +157,8 @@ export function CardsLayer({
           y: p.y,
           width: p.w,
           height: p.h,
-          duration: isLiveReflow ? 0.18 : 0.26,
+          scale: 1, // merge scale resolution with position landing — single coherent motion
+          duration: isLiveReflow ? 0.18 : 0.22, // shorter drop duration for a calmer settle
           ease: 'power2.out',
           overwrite: 'auto',
         })
@@ -231,13 +232,11 @@ export function CardsLayer({
 
         const draggedId = dragStateRef.current?.bookmarkId
 
-        // Kill any in-flight FLIP tweens from the last drag tick BEFORE
-        // committing the new order. Without this, non-dragged cards continue
-        // animating for ~100-180ms after drop because the gsap.to tweens
-        // started on the final pointermove are still running when the new
-        // state triggers a re-render. Snapping with overwrite:true freezes
-        // each card at its current preview position so the drop-render's
-        // useLayoutEffect sees prev === new and issues no further animation.
+        // Snap all non-dragged cards to their current preview positions + scale 1,
+        // killing any in-flight FLIP tweens from the last drag tick. Without this
+        // tween-kill, cards continue animating after drop for the remaining tween
+        // duration. Scale is included defensively — non-dragged cards should
+        // already be at scale 1 but the set ensures it.
         if (previewMasonry) {
           for (const id of Object.keys(previewMasonry.positions)) {
             if (id === draggedId) continue // dragged card has separate handling below
@@ -249,6 +248,7 @@ export function CardsLayer({
                 y: p.y,
                 width: p.w,
                 height: p.h,
+                scale: 1,
                 overwrite: true,
               })
               prevPositionsRef.current[id] = { x: p.x, y: p.y }
@@ -273,15 +273,10 @@ export function CardsLayer({
         // same computation run on the last pointermove, so preview-to-final
         // is seamless. Fall back to hook's orderedIds if virtual state was
         // somehow cleared already.
+        // Scale reset for the dragged card is merged into the FLIP landing tween
+        // (see useLayoutEffect below). Non-dragged cards are already at scale 1.
         setVirtualOrderedIds((currentVirtual) => {
           const finalOrder = currentVirtual ?? _orderedIds
-
-          // Snap scale back to 1 for all cards (the dragged card had scale 1.03).
-          for (const el of Object.values(cardRefs.current)) {
-            if (!el) continue
-            gsap.to(el, { scale: 1, duration: 0.18, ease: 'power2.out' })
-          }
-
           onDrop(finalOrder)
           return null // clear virtual order
         })
