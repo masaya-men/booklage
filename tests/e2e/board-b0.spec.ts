@@ -140,7 +140,8 @@ test.describe('B0 board skeleton', () => {
     await expect(page.locator('[data-theme-id="grid-paper"]').first()).toBeVisible()
   })
 
-  test('card drag updates its position', async ({ page }) => {
+  // TODO Task 12: restore drag-to-reorder once drag interactions are reinstated
+  test.skip('card drag updates its position', async ({ page }) => {
     const card = page.locator('[data-card-id]').first()
     const before = await card.boundingBox()
     if (!before) throw new Error('card has no bounding box')

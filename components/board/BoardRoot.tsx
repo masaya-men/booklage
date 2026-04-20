@@ -10,7 +10,7 @@ import {
 } from '@/lib/board/theme-registry'
 import { BOARD_INNER, COLUMN_MASONRY, SIZE_PRESET_SPAN } from '@/lib/board/constants'
 import type { CardPosition, ThemeId } from '@/lib/board/types'
-import { useBoardData, type BoardItem } from '@/lib/storage/use-board-data'
+import { useBoardData } from '@/lib/storage/use-board-data'
 import { initDB } from '@/lib/storage/indexeddb'
 import { loadBoardConfig } from '@/lib/storage/board-config'
 import { ThemeLayer } from './ThemeLayer'
@@ -18,7 +18,6 @@ import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
 import { Toolbar } from './Toolbar'
 import { Sidebar } from './Sidebar'
-import { useCardDrag } from './use-card-drag'
 
 const THEME_LS_KEY = 'booklage.board.themeId'
 
@@ -36,7 +35,7 @@ function loadSavedTheme(): ThemeId {
 }
 
 export function BoardRoot() {
-  const { items, persistCardPosition, persistFreePosition } = useBoardData()
+  const { items } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
   const [overrides, setOverrides] = useState<Record<string, CardPosition>>({})
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
@@ -172,28 +171,20 @@ export function BoardRoot() {
     [masonryCards, effectiveLayoutWidth],
   )
 
-  const itemByBookmark = useMemo(() => {
-    const m = new Map<string, BoardItem>()
-    for (const it of items) m.set(it.bookmarkId, it)
-    return m
-  }, [items])
-
   // Actual content bounds — tracks the furthest right/bottom any card reaches,
-  // whether in a grid fallback, persisted freePos, or mid-resize override.
+  // using masonry positions (freePos not used in masonry mode) plus overrides
+  // that Task 12 will populate during drag-to-reorder.
   // BOARD_TOP_PAD_PX gives the board breathing room at the top so the first
   // row does not collide with the toolbar pill; added to the total so scroll
   // range still reaches cards after the shift in the cards wrapper transform.
-  // SCROLL_OVERFLOW_MARGIN adds room below the last card so a user can drag
-  // cards further down and still scroll to see them.
+  // SCROLL_OVERFLOW_MARGIN adds room below the last card so a user can scroll
+  // further down.
   const contentBounds = useMemo(() => {
     let maxRight = 0
     let maxBottom = 0
     for (const it of items) {
       const override = overrides[it.bookmarkId]
-      const p = override
-        ?? (it.freePos
-          ? { x: it.freePos.x, y: it.freePos.y, w: it.freePos.w, h: it.freePos.h }
-          : layout.positions[it.bookmarkId])
+      const p = override ?? layout.positions[it.bookmarkId]
       if (!p) continue
       const right = p.x + p.w
       const bottom = p.y + p.h
@@ -223,103 +214,6 @@ export function BoardRoot() {
       })
     },
     [contentBounds.width, contentBounds.height],
-  )
-
-  const resolveStart = useCallback(
-    (cardId: string) => layout.positions[cardId],
-    [layout.positions],
-  )
-  const onDrag = useCallback((cardId: string, pos: CardPosition): void => {
-    setOverrides((prev) => ({ ...prev, [cardId]: pos }))
-  }, [])
-  const onDragEnd = useCallback(
-    (cardId: string, pos: CardPosition): void => {
-      const item = itemByBookmark.get(cardId)
-      if (item?.cardId) void persistCardPosition(item.cardId, pos)
-    },
-    [itemByBookmark, persistCardPosition],
-  )
-  const onCardClick = useCallback(
-    (cardId: string): void => {
-      const item = itemByBookmark.get(cardId)
-      if (!item?.url) return
-      window.open(item.url, '_blank', 'noopener,noreferrer')
-    },
-    [itemByBookmark],
-  )
-  const handleCardPointerDown = useCardDrag({
-    resolveStartPos: resolveStart,
-    onDrag,
-    onDragEnd,
-    onClick: onCardClick,
-  })
-
-  // Resolves the current position of a card for resize operations. Prefer
-  // `item.freePos` (most recent persisted state, including any post-load
-  // drags) over `overrides` (live resize tick) over `layout.positions`
-  // (initial grid / userOverridePos snapshot from first mount).
-  //
-  // Without this fallback ladder, resize after a drag would rewind the
-  // card to its pre-drag grid slot because `layout.positions` reads
-  // `item.userOverridePos` which only refreshes on initial hook mount.
-  const resolveResizeSource = useCallback(
-    (bookmarkId: string): CardPosition | undefined => {
-      const override = overrides[bookmarkId]
-      if (override) return override
-      const item = itemByBookmark.get(bookmarkId)
-      if (item?.freePos) {
-        return { x: item.freePos.x, y: item.freePos.y, w: item.freePos.w, h: item.freePos.h }
-      }
-      return layout.positions[bookmarkId]
-    },
-    [overrides, itemByBookmark, layout.positions],
-  )
-
-  // Resize live tick: fires on every pointer move during a resize drag.
-  // Visual-only — updates the local `overrides` map so the card follows the
-  // pointer in real time. IDB persistence is deferred to `handleCardResizeEnd`
-  // so we don't write 60×/sec.
-  const handleCardResize = useCallback(
-    (bookmarkId: string, w: number, h: number): void => {
-      const current = resolveResizeSource(bookmarkId)
-      if (!current) return
-      const next: CardPosition = { ...current, w, h }
-      setOverrides((prev) => ({ ...prev, [bookmarkId]: next }))
-    },
-    [resolveResizeSource],
-  )
-  // Resize commit: persist final size, then clear the live override so
-  // freeLayoutPositions reads the freshly-written freePos.
-  const handleCardResizeEnd = useCallback(
-    (bookmarkId: string, w: number, h: number): void => {
-      const item = itemByBookmark.get(bookmarkId)
-      if (!item?.cardId) return
-      const current = resolveResizeSource(bookmarkId)
-      if (!current) return
-      const next: CardPosition = { ...current, w, h }
-      void persistCardPosition(item.cardId, next)
-      setOverrides((prev) => {
-        if (!(bookmarkId in prev)) return prev
-        const { [bookmarkId]: _drop, ...rest } = prev
-        void _drop
-        return rest
-      })
-    },
-    [itemByBookmark, persistCardPosition, resolveResizeSource],
-  )
-  // Double-click on any resize handle: snap card height back to native
-  // aspect ratio while keeping current width. Per plan §Task 18 Step 3.
-  const handleCardResetToNative = useCallback(
-    (bookmarkId: string): void => {
-      const item = itemByBookmark.get(bookmarkId)
-      if (!item) return
-      const current = resolveResizeSource(bookmarkId)
-      if (!current) return
-      const next: CardPosition = { ...current, h: current.w / item.aspectRatio }
-      setOverrides((prev) => ({ ...prev, [bookmarkId]: next }))
-      if (item.cardId) void persistCardPosition(item.cardId, next)
-    },
-    [itemByBookmark, persistCardPosition, resolveResizeSource],
   )
 
   const handleShare = useCallback((): void => {
@@ -426,12 +320,6 @@ export function BoardRoot() {
             viewport={viewport}
             viewportWidth={effectiveLayoutWidth}
             overrides={overrides}
-            spaceHeld={spaceHeld}
-            onCardPointerDown={handleCardPointerDown}
-            onCardResize={handleCardResize}
-            onCardResizeEnd={handleCardResizeEnd}
-            onCardResetToNative={handleCardResetToNative}
-            onPersistFreePos={persistFreePosition}
           />
         </div>
       </InteractionLayer>
