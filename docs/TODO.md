@@ -7,54 +7,63 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master`（HEAD = `c83edd0`、`claude/infallible-cray-c19657` をマージ済、worktree 全廃止）
-- **🔥 最新進捗 (2026-04-20)**: **Board content-sized masonry + drag-to-reorder + drag UX 完全磨き上げ + 本番デプロイ済** — 14 main タスク + drag polish 9 ラウンド完了、`booklage.pages.dev` 反映済
-  - **Board の方針転換完了**: always-free canvas → 常時 column masonry に pivot。「カードが下に潜る」問題を根本解決（重ならない設計）
-  - **content-driven aspect ratio**: YouTube/TikTok/Twitter/Instagram/generic で 12 パターン自動判定
-  - **S/M/L size preset**: hover で右下にバッジ表示、クリック or `1/2/3` キーで S→M→L サイクル
-  - **drag-to-reorder**: iOS home-screen 風、drop 時 GSAP FLIP reflow、**位置保存型挿入**（全インデックス sim で最適な index 選択）
-  - **drag UX 磨き上げ**: Playwright で root cause 特定 → React inline transform 撤廃（GSAP が唯一の位置 writer）+ onDrop 内で最終 masonry を明示計算。drop 後の「カードが再 animate」症状完全消失
-  - **撤去**: Align ボタン / 自由 resize / 回転ハンドル / snap guides / 自由 drag（全て Share Modal =Plan B へ回す想定）
-- **次フェーズ: B → C → A の順で実装**（ユーザー判断、2026-04-20）:
-  - **B. コンテンツ中身の埋め込み表示** — `react-tweet` で Twitter 全文、YouTube/TikTok はサムネ + ▶ 再生ボタン、OGP 画像は現状維持
+- **ブランチ**: `master`
+- **🔥 最新進捗 (2026-04-21)**: **B-embeds 完了 + 本番デプロイ済** — 18 tasks 全完了、`booklage.pages.dev` 反映済
+  - **TweetCard**: `react-tweet` で全文表示、measurement scheduler で `predictTweetAspectRatio` が idle callback で aspect ratio を IDB キャッシュ → 2 回目以降 flicker ゼロ
+  - **VideoThumbCard**: YouTube = `i.ytimg.com/vi/<id>/maxresdefault.jpg`（maxres → hq → mq → 0 fallback chain）+ ▶ glass overlay。TikTok = oEmbed サムネ（3s タイムアウト）+ ▶ overlay
+  - **ImageCard**: 既存 OGP 画像カードを component 化
+  - **TextCard（白カード解消）**: favicon + タイポグラフィで headline / editorial / index 3 モード自動切替。タイトル 24 char 以下 → display serif 巨大 headline、以降は char count 基準
+  - **pickCard router** (`components/board/cards/index.ts`): URL 種別 → カードコンポーネント選択 pure fn、5 テスト
+  - **IDB schema 変更なし**: `cards.aspectRatio` 既存を measurement 書き込み先として流用（`persistMeasuredAspect` を `useBoardData` に追加）
+- **次フェーズ: C → A の順**（ユーザー判断継続）:
   - **C. Multi-playback** — 動画カード click で in-place 再生、unmute トグルは 1 枚ずつ（auto-mute others）
   - **A. ライトボックス拡大** — B+C で click 意味を確定後、ホバー expand ボタン等で中央拡大 spring（recipe: `docs/private/card-interaction-recipes.md`）
-- **spec**: `docs/superpowers/specs/2026-04-20-board-content-sized-reorder-design.md`
-- **plan**: `docs/superpowers/plans/2026-04-20-board-content-sized-reorder.md`
-- **本番URL**: `https://booklage.pages.dev`（2026-04-20 deploy v4, SW v4-2026-04-20-gsap-owns-transform）
-- **DBバージョン**: **v8**（orderIndex + sizePreset 追加。freePos は dead column として残置）
+- **spec**: `docs/superpowers/specs/2026-04-20-b-embeds-design.md`
+- **plan**: `docs/superpowers/plans/2026-04-20-b-embeds.md`（18 TDD tasks）
+- **本番URL**: `https://booklage.pages.dev`（2026-04-21 deploy v5, SW `v5-2026-04-21-b-embeds`）
+- **DBバージョン**: **v8**（B-embeds ではスキーマ変更なし、既存 aspectRatio 列を流用）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
-- **デプロイ手順**: ⚠️ **必ず `public/sw.js` の `CACHE_VERSION` を bump してから** `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true`（忘れるとキャッシュ問題再発）
-- **テスト**: **98 PASS / 0 FAIL**（vitest、free-layout.test.ts 削除で 106 → 98）、tsc strict clean
+- **デプロイ手順**: ⚠️ **必ず `public/sw.js` の `CACHE_VERSION` を bump してから** `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true`
+- **テスト**: **131 vitest PASS / 0 FAIL** + **4 Playwright E2E PASS**（TextCard / YouTube / TikTok / ImageCard の render 確認。tweet 系はライブネットワーク依存でスキップ）。tsc strict clean
 
-### 次セッション最初にやること（2026-04-21 以降）
+### B-embeds 目視確認チェックリスト（ユーザー実施）
 
-1. **VSCode 版の Claude Code をメインフォルダ（`C:\Users\masay\Desktop\マイコラージュ`）で開く**（worktree 自動生成なし）
-2. **物理 worktree ディレクトリの手動削除（最優先）** — `.claude/worktrees/` から以下 4 個を Windows Explorer で削除：
-   - `adoring-mestorf-d27d8c/`
-   - `epic-brown-403380/`
-   - `infallible-cray-c19657/`
-   - `vibrant-euclid-341977/`
-   - **理由**: git 上では削除済 (`git worktree list` に出ない)、Windows ファイルロックで物理削除できなかった。中身は master に全部マージ済なので消しても何も失われない。**削除前に念のため `git worktree prune && git worktree list` で "残 1 個 (メイン) のみ" を確認**
-3. **`docs/TODO.md` を読む**（このファイル、最上段）
-4. **spec + plan が既に完成しているので `subagent-driven-development` で Task 1 から順に実装**:
-   - spec: `docs/superpowers/specs/2026-04-20-b-embeds-design.md`
-   - plan: `docs/superpowers/plans/2026-04-20-b-embeds.md`（18 TDD tasks）
-5. Task 18（最終 task）で本番 deploy + 目視確認まで完了
-6. B 完了後に C (multi-playback) の brainstorming へ
-7. デプロイ前に必ず `public/sw.js` の `CACHE_VERSION` bump（plan の Task 18 step 1 で明記済）
+デプロイ済。ユーザーは `https://booklage.pages.dev/board` を **Ctrl+Shift+R でハードリロード** してから以下を確認：
 
-### B-embeds 実装開始のコピペ用 prompt
+- [ ] Twitter URL を追加（例 `https://x.com/Twitter/status/1457156983875919876`）→ 全文 + 画像が Booklage tone で描画（AI 感ゼロ、default react-tweet 感ゼロ）
+- [ ] YouTube 通常 URL → 16:9 サムネ上下切れず、▶ glass overlay、タイトルバー
+- [ ] YouTube Shorts URL → 9:16 縦長（`isYoutubeShortsUrl` で判定）
+- [ ] TikTok URL → 9:16、▶ overlay（サムネは oEmbed で遅延 fetch、読み込めなくても placeholder + ▶ で意味が通る設計）
+- [ ] `https://r3f.maximeheckel.com/lens2` 追加 → TextCard で favicon + タイポグラフィ、白カードにならない
+- [ ] 短いタイトル（"Dispersion" 等）→ display serif 巨大 headline
+- [ ] リロード → flicker なし（measurement IDB cache hit）
+- [ ] 削除済 tweet → TextCard fallback で「このツイートは削除または非公開です」
 
-VSCode の新セッションに以下を貼って開始：
+### 次セッション最初にやること
+
+1. **`docs/TODO.md` を読む**（このファイル、最上段）
+2. **ユーザーが実機で B-embeds を触って「違和感あり / バグあり」と言ったら**: 即 fix + redeploy
+3. **問題なければ C (Multi-playback) の brainstorming を開始**: `docs/superpowers/specs/` に新 spec、`docs/superpowers/plans/` に新 plan → subagent-driven-development で実装
+4. **worktree 物理削除の積み残し**: `.claude/worktrees/` に `epic-brown-403380/` / `infallible-cray-c19657/` / `vibrant-euclid-341977/` が Windows ファイルロックで残存。触らなくても邪魔にはならない（git は無視）ので急がない
+
+### C-multi-playback 実装開始のコピペ用 prompt
 
 ```
-docs/TODO.md を読んで、次に docs/superpowers/plans/2026-04-20-b-embeds.md の Task 1 から順に
-subagent-driven-development で実装開始してください。
-spec は docs/superpowers/specs/2026-04-20-b-embeds-design.md。
-各 Task 完了ごとに commit、Task 18 で本番 deploy + 目視確認まで。
+docs/TODO.md を読んで、次に C (Multi-playback) の brainstorming を開始してください。
+spec: docs/private/IDEAS.md のマルチ再生関連 + B-embeds spec §Part C の外スコ記述
+着地点: 動画カード click で in-place 再生、unmute は 1 枚ずつ auto-mute others
+brainstorming → spec → plan → subagent-driven-development で実装の流れ
 ```
+
+### B-embeds 実装時のメモ（次セッションで参照する場合）
+
+- **predict-tweet-height の chrome 定数は TDD で calibrated**: plan の literal 値（HEADER_PX: 60, FOOTER_PX: 40, PADDING_PX: 32）では plan 自身のテストが fail したので、実装は `52 / 30 / 16` + `MIN_TEXT_HEIGHT_PX = 140` に調整。テスト 8 本 green で確定
+- **vitest.setup.ts を追加**（`CSS.supports` stub）— Task 14 の pickCard test で CSS module loading を避けるため。必要になった contextual fix、恒久的に残置
+- **TweetCard の cachedRef 判定**: `item.aspectRatio > 0 && item.aspectRatio !== 0.75` を「測定済み」の sentinel として使用。`0.75` は既存 `aspect-ratio.ts` の tweet 推定値。将来 `aspect-ratio.ts` を変えるならここも追従
+- **Twitter syndication の CORS**: `cdn.syndication.twimg.com` は CORS 全許可なので Cloudflare Pages から直接 fetch 可能。Worker proxy 不要
+- **TikTok oEmbed の timeout**: 3s で AbortController でタイムアウト。失敗時は placeholder + ▶ で静かに縮退
+- **react-tweet の default styling**: `TweetCard.module.css` で `:global([data-theme])` を override（margin / border / radius / shadow / font-family リセット + actions bar 非表示）
 
 ### 2026-04-20 worktree 大掃除完了
 
