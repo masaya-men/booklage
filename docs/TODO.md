@@ -116,11 +116,7 @@ user 実機テストで新たに 3 件発覚、全て即 fix + deploy 済 (`comp
 
 1. **`docs/private/launch-plan-2026-04.md` を読む** (非公開、launch 戦略の詳細 day-by-day プラン、2026-04-21 大幅改訂版)
 2. **`docs/TODO.md` (このファイル) を読む** ← 今ここ
-3. **現時点の選択肢 (user 判断): "見栄えが上がったら tweet したい" 方針で以下から選ぶ**:
-   - **Plan B (Share System) spec/plan 着手** — ship 必須の magic moment 機能。ShareModal + PNG 書き出し + X Web Intent + watermark。2-3 日スコープ
-   - **液体ガラス refraction 調査** — Fri 4/25 の 1 日 timebox、visual win の可能性あり (原因: Chrome の `backdrop-filter: url(#id)` 互換性 or feDisplacementMap 設定)
-   - **一括インポート MVP** — Pocket JSON / Raindrop export / HTML bookmark export をドラッグ&ドロップで取り込み。Pocket 終了市場を取る key 機能
-   - **LP 3 バリエーション** — `/`(main) / `/ai-moodboard` / `/pocket-alternative` の静的ページ作成。AdSense 申請要件
+3. **現時点の選択肢 (user 判断)**: 詳細は `docs/private/launch-plan-2026-04.md` および `docs/private/IDEAS.md` 参照。次着手候補のラインナップは private 側で管理。
 
 ### 保留中の tweet 下書き（2026-04-21 作成、見栄え強化後に投稿）
 
