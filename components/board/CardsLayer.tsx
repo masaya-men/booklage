@@ -229,11 +229,37 @@ export function CardsLayer({
         // Reset throttle ref so next drag starts fresh.
         lastComputeRef.current = null
 
+        const draggedId = dragStateRef.current?.bookmarkId
+
+        // Kill any in-flight FLIP tweens from the last drag tick BEFORE
+        // committing the new order. Without this, non-dragged cards continue
+        // animating for ~100-180ms after drop because the gsap.to tweens
+        // started on the final pointermove are still running when the new
+        // state triggers a re-render. Snapping with overwrite:true freezes
+        // each card at its current preview position so the drop-render's
+        // useLayoutEffect sees prev === new and issues no further animation.
+        if (previewMasonry) {
+          for (const id of Object.keys(previewMasonry.positions)) {
+            if (id === draggedId) continue // dragged card has separate handling below
+            const el = cardRefs.current[id]
+            const p = previewMasonry.positions[id]
+            if (el && p) {
+              gsap.set(el, {
+                x: p.x,
+                y: p.y,
+                width: p.w,
+                height: p.h,
+                overwrite: true,
+              })
+              prevPositionsRef.current[id] = { x: p.x, y: p.y }
+            }
+          }
+        }
+
         // Fix: capture the dragged card's current DOM transform as its prev
         // BEFORE clearing virtualOrderedIds / calling onDrop. This prevents
         // FLIP from seeing a stale pre-drag prev and teleporting the card back
         // to its original slot before animating to the new masonry slot.
-        const draggedId = dragStateRef.current?.bookmarkId
         if (draggedId) {
           const el = cardRefs.current[draggedId]
           if (el) {
@@ -260,7 +286,7 @@ export function CardsLayer({
           return null // clear virtual order
         })
       },
-      [onDrop],
+      [onDrop, previewMasonry],
     ),
   })
 
