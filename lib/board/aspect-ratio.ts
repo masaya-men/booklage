@@ -2,10 +2,12 @@ import type { UrlType } from '@/lib/utils/url'
 
 export type AspectRatioSource =
   | { type: 'youtube' }
+  | { type: 'youtube-shorts' }
   | { type: 'tiktok' }
   | { type: 'instagram-post' }
   | { type: 'instagram-story' }
-  | { type: 'tweet'; hasImage: boolean; textLength: number }
+  | { type: 'instagram-reels' }
+  | { type: 'tweet'; hasImage: boolean; textLength: number; ogImageRatio?: number }
   | { type: 'pinterest' }
   | { type: 'soundcloud' | 'spotify' }
   | { type: 'image'; intrinsicRatio?: number }
@@ -15,16 +17,22 @@ export function estimateAspectRatio(source: AspectRatioSource): number {
   switch (source.type) {
     case 'youtube':
       return 16 / 9
+    case 'youtube-shorts':
+      return 9 / 16
     case 'tiktok':
       return 9 / 16
     case 'instagram-post':
       return 1
     case 'instagram-story':
       return 9 / 16
+    case 'instagram-reels':
+      return 9 / 16
     case 'tweet':
+      if (source.hasImage && source.ogImageRatio) return source.ogImageRatio
       if (source.hasImage) return 16 / 9
-      if (source.textLength > 140) return 3 / 4
-      return 1
+      if (source.textLength > 280) return 1 / 2
+      if (source.textLength > 140) return 2 / 3
+      return 3 / 4
     case 'pinterest':
       return 2 / 3
     case 'soundcloud':
@@ -54,10 +62,14 @@ const PINTEREST_RE = /pinterest\.com\/pin\//i
 export function detectAspectRatioSource(input: DetectInput): AspectRatioSource {
   const { url, urlType, title, description, ogImageRatio, intrinsicImageRatio } = input
 
-  if (urlType === 'youtube') return { type: 'youtube' }
+  if (urlType === 'youtube') {
+    if (/\/shorts\//i.test(url)) return { type: 'youtube-shorts' }
+    return { type: 'youtube' }
+  }
   if (urlType === 'tiktok') return { type: 'tiktok' }
 
   if (urlType === 'instagram') {
+    if (/\/reels?\//i.test(url)) return { type: 'instagram-reels' }
     if (STORY_URL_RE.test(url)) return { type: 'instagram-story' }
     return { type: 'instagram-post' }
   }
@@ -67,6 +79,7 @@ export function detectAspectRatioSource(input: DetectInput): AspectRatioSource {
       type: 'tweet',
       hasImage: Boolean(input.ogImage),
       textLength: (description || title).length,
+      ogImageRatio,
     }
   }
 
