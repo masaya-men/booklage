@@ -22,6 +22,12 @@ import { useCardDrag } from './use-card-drag'
 
 const THEME_LS_KEY = 'booklage.board.themeId'
 
+// Visible breathing room above the board's first card, in CSS pixels.
+// Cards' world coords start at y=0 (masonry cursor); this offset is applied
+// in the cards wrapper's transform so the first row never kisses the Toolbar
+// pill. Extends the scroll range via contentBounds.height.
+const BOARD_TOP_PAD_PX = 120
+
 function loadSavedTheme(): ThemeId {
   if (typeof window === 'undefined') return DEFAULT_THEME_ID
   const saved = window.localStorage.getItem(THEME_LS_KEY)
@@ -178,10 +184,12 @@ export function BoardRoot() {
   }, [items])
 
   // Actual content bounds — tracks the furthest right/bottom any card reaches,
-  // whether it's in a grid fallback, persisted freePos, or mid-resize override.
-  // Added 600px margin so the user can scroll past the last card (room to drag
-  // new cards further / add content). Without this, free-dragged cards below
-  // the grid footprint become unreachable via scroll.
+  // whether in a grid fallback, persisted freePos, or mid-resize override.
+  // BOARD_TOP_PAD_PX gives the board breathing room at the top so the first
+  // row does not collide with the toolbar pill; added to the total so scroll
+  // range still reaches cards after the shift in the cards wrapper transform.
+  // SCROLL_OVERFLOW_MARGIN adds room below the last card so a user can drag
+  // cards further down and still scroll to see them.
   const contentBounds = useMemo(() => {
     let maxRight = 0
     let maxBottom = 0
@@ -200,7 +208,10 @@ export function BoardRoot() {
     const SCROLL_OVERFLOW_MARGIN = 600
     return {
       width: Math.max(layout.totalWidth, maxRight + SCROLL_OVERFLOW_MARGIN),
-      height: Math.max(layout.totalHeight, maxBottom + SCROLL_OVERFLOW_MARGIN),
+      height: Math.max(
+        layout.totalHeight + BOARD_TOP_PAD_PX,
+        maxBottom + BOARD_TOP_PAD_PX + SCROLL_OVERFLOW_MARGIN,
+      ),
     }
   }, [items, overrides, layout.positions, layout.totalWidth, layout.totalHeight])
 
@@ -248,10 +259,6 @@ export function BoardRoot() {
     onClick: onCardClick,
   })
 
-  // Ref slot for handleAlign so resize-end can trigger auto-align without a
-  // forward reference. handleAlign is declared below; assignment after it.
-  const handleAlignRef = useRef<() => void>(() => undefined)
-
   // Resolves the current position of a card for resize operations. Prefer
   // `item.freePos` (most recent persisted state, including any post-load
   // drags) over `overrides` (live resize tick) over `layout.positions`
@@ -286,10 +293,19 @@ export function BoardRoot() {
     },
     [resolveResizeSource],
   )
-  // Resize commit: persist final size → clear stale override → auto-align
-  // so neighbouring cards reflow around the new size (deferred to next tick
-  // so persistCardPosition's optimistic setItems flushes first, letting
-  // handleAlign read the updated freePos for the new aspect ratio).
+  // Resize commit: persist final size, then clear the live override so
+  // freeLayoutPositions reads the freshly-written freePos.
+  //
+  // NOTE: auto-align intentionally NOT triggered here. computeAutoLayout
+  // normalizes row heights via a `scale` factor derived from the sum of
+  // each card's aspect ratio in the row. When one card is resized larger,
+  // the row's scale shrinks to fit containerWidth → every card (including
+  // the just-resized one) collapses to roughly the pre-resize size. That
+  // makes auto-align directly defeat user intent. Manual Align (⚡ button)
+  // still respects the new aspect ratio via the freePos.w / freePos.h
+  // override in handleAlign below. Cleaner "resize-then-reflow without
+  // shrinking" needs a different algorithm (collision push or masonry
+  // with pinned cards) — deferred to a dedicated spec.
   const handleCardResizeEnd = useCallback(
     (bookmarkId: string, w: number, h: number): void => {
       const item = itemByBookmark.get(bookmarkId)
@@ -304,7 +320,6 @@ export function BoardRoot() {
         void _drop
         return rest
       })
-      setTimeout(() => handleAlignRef.current(), 0)
     },
     [itemByBookmark, persistCardPosition, resolveResizeSource],
   )
@@ -367,9 +382,6 @@ export function BoardRoot() {
     }
     setAlignKey((k) => k + 1)
   }, [items, persistFreePosition, sidebarCollapsed, viewport.w])
-  // Keep the ref in sync so handleCardResizeEnd's deferred auto-align call
-  // always reaches the latest closure (with current items / viewport).
-  handleAlignRef.current = handleAlign
 
   const handleShare = useCallback((): void => {
     // Plan B (ShareModal) ships the full flow — frame preset picker, PNG
@@ -461,13 +473,15 @@ export function BoardRoot() {
         </div>
         {/* Cards — centered with horizontalOffset so the cluster sits in the
             middle of wide viewports while the background above keeps full
-            coverage. */}
+            coverage. Vertical transform adds BOARD_TOP_PAD_PX so the first
+            row gets breathing room below the toolbar; the ThemeLayer wrapper
+            stays at world y=0 so the pattern is still visible in that gap. */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
-            transform: `translate3d(${horizontalOffset - viewport.x}px, ${-viewport.y}px, 0)`,
+            transform: `translate3d(${horizontalOffset - viewport.x}px, ${BOARD_TOP_PAD_PX - viewport.y}px, 0)`,
             willChange: 'transform',
             pointerEvents: 'none',
           }}
