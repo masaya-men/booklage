@@ -146,22 +146,19 @@ export function CardsLayer({
 
       const prev = prevPositionsRef.current[it.bookmarkId]
       if (prev && (prev.x !== p.x || prev.y !== p.y)) {
-        // FLIP: animate from previous position to new position.
-        // Use a slightly faster duration during live reflow (0.18s) vs drop (0.26s).
+        // FLIP: animate from element's current live transform to new position.
+        // gsap.to (not fromTo) continues from wherever the element is now —
+        // avoids the per-tick snap-back to stored prev on fast pointer movement.
         const isLiveReflow = draggedId !== null
-        gsap.fromTo(
-          el,
-          { x: prev.x, y: prev.y, width: p.w, height: p.h },
-          {
-            x: p.x,
-            y: p.y,
-            width: p.w,
-            height: p.h,
-            duration: isLiveReflow ? 0.18 : 0.26,
-            ease: 'power2.out',
-            overwrite: 'auto',
-          },
-        )
+        gsap.to(el, {
+          x: p.x,
+          y: p.y,
+          width: p.w,
+          height: p.h,
+          duration: isLiveReflow ? 0.18 : 0.26,
+          ease: 'power2.out',
+          overwrite: 'auto',
+        })
       } else {
         gsap.set(el, { x: p.x, y: p.y, width: p.w, height: p.h })
       }
@@ -219,6 +216,20 @@ export function CardsLayer({
     ),
     onDrop: useCallback(
       (_orderedIds: readonly string[]): void => {
+        // Fix: capture the dragged card's current DOM transform as its prev
+        // BEFORE clearing virtualOrderedIds / calling onDrop. This prevents
+        // FLIP from seeing a stale pre-drag prev and teleporting the card back
+        // to its original slot before animating to the new masonry slot.
+        const draggedId = dragStateRef.current?.bookmarkId
+        if (draggedId) {
+          const el = cardRefs.current[draggedId]
+          if (el) {
+            const currentX = Number(gsap.getProperty(el, 'x'))
+            const currentY = Number(gsap.getProperty(el, 'y'))
+            prevPositionsRef.current[draggedId] = { x: currentX, y: currentY }
+          }
+        }
+
         // Use virtualOrderedIds as the authoritative final order — it's the
         // same computation run on the last pointermove, so preview-to-final
         // is seamless. Fall back to hook's orderedIds if virtual state was
