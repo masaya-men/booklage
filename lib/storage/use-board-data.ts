@@ -9,6 +9,9 @@ import {
   initDB,
   getAllBookmarks,
   updateCard,
+  updateBookmarkOrderIndex,
+  updateBookmarkSizePreset,
+  updateBookmarkOrderBatch,
   type BookmarkRecord,
   type CardRecord,
 } from './indexeddb'
@@ -21,6 +24,8 @@ export type BoardItem = {
   readonly url: string
   readonly aspectRatio: number
   readonly gridIndex: number
+  readonly orderIndex: number
+  readonly sizePreset: 'S' | 'M' | 'L'
   readonly freePos?: FreePosition
   readonly userOverridePos?: CardPosition  // legacy compat: same data as freePos for grid-side consumers
   readonly isRead: boolean
@@ -79,6 +84,8 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     url: b.url,
     aspectRatio,
     gridIndex: c?.gridIndex ?? 0,
+    orderIndex: b.orderIndex ?? 0,
+    sizePreset: b.sizePreset ?? 'S',
     freePos,
     userOverridePos: hasPlacement ? { x: c.x, y: c.y, w, h } : undefined,
     isRead: b.isRead ?? false,
@@ -91,9 +98,12 @@ export function useBoardData(): {
   loading: boolean
   persistFreePosition: (cardId: string, pos: FreePosition) => Promise<void>
   persistGridIndex: (cardId: string, gridIndex: number) => Promise<void>
+  persistOrderIndex: (bookmarkId: string, orderIndex: number) => Promise<void>
+  persistSizePreset: (bookmarkId: string, sizePreset: 'S' | 'M' | 'L') => Promise<void>
+  persistOrderBatch: (orderedBookmarkIds: readonly string[]) => Promise<void>
   persistReadFlag: (bookmarkId: string, isRead: boolean) => Promise<void>
   persistSoftDelete: (bookmarkId: string, isDeleted: boolean) => Promise<void>
-  /** @deprecated Use persistFreePosition instead. Removed in Task 13. */
+  /** @deprecated Use persistFreePosition instead. Will be removed after full pivot. */
   persistCardPosition: (cardId: string, pos: CardPosition) => Promise<void>
 } {
   const [items, setItems] = useState<BoardItem[]>([])
@@ -114,6 +124,7 @@ export function useBoardData(): {
       const all = bookmarks
         .filter(b => !b.isDeleted)
         .map((b) => toItem(b, cardByBookmark.get(b.id)))
+        .sort((a, b) => a.orderIndex - b.orderIndex)
       setItems(all)
       setLoading(false)
     })().catch(() => {
@@ -155,6 +166,56 @@ export function useBoardData(): {
       const db = dbRef.current
       if (!db || !cardId) return
       await updateCard(db as Parameters<typeof updateCard>[0], cardId, { gridIndex })
+    },
+    [],
+  )
+
+  const persistOrderIndex = useCallback(
+    async (bookmarkId: string, orderIndex: number): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      setItems((prev) =>
+        prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, orderIndex } : it)),
+      )
+      await updateBookmarkOrderIndex(db as Parameters<typeof updateBookmarkOrderIndex>[0], bookmarkId, orderIndex)
+    },
+    [],
+  )
+
+  const persistSizePreset = useCallback(
+    async (bookmarkId: string, sizePreset: 'S' | 'M' | 'L'): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      setItems((prev) =>
+        prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, sizePreset } : it)),
+      )
+      await updateBookmarkSizePreset(db as Parameters<typeof updateBookmarkSizePreset>[0], bookmarkId, sizePreset)
+    },
+    [],
+  )
+
+  const persistOrderBatch = useCallback(
+    async (orderedBookmarkIds: readonly string[]): Promise<void> => {
+      const db = dbRef.current
+      if (!db) return
+      // Optimistic local update — produce items array in the new order with
+      // refreshed orderIndex fields, preserving other fields.
+      setItems((prev) => {
+        const byId = new Map<string, BoardItem>()
+        for (const it of prev) byId.set(it.bookmarkId, it)
+        const reordered: BoardItem[] = []
+        for (let i = 0; i < orderedBookmarkIds.length; i++) {
+          const it = byId.get(orderedBookmarkIds[i])
+          if (!it) continue
+          reordered.push({ ...it, orderIndex: i })
+        }
+        // Append items not mentioned (defensive) — preserve their current orderIndex
+        for (const it of prev) {
+          if (!orderedBookmarkIds.includes(it.bookmarkId)) reordered.push(it)
+        }
+        return reordered
+      })
+      await updateBookmarkOrderBatch(db as Parameters<typeof updateBookmarkOrderBatch>[0], orderedBookmarkIds)
     },
     [],
   )
@@ -211,5 +272,16 @@ export function useBoardData(): {
     [persistFreePosition],
   )
 
-  return { items, loading, persistFreePosition, persistGridIndex, persistReadFlag, persistSoftDelete, persistCardPosition }
+  return {
+    items,
+    loading,
+    persistFreePosition,
+    persistGridIndex,
+    persistOrderIndex,
+    persistSizePreset,
+    persistOrderBatch,
+    persistReadFlag,
+    persistSoftDelete,
+    persistCardPosition,
+  }
 }
