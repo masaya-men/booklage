@@ -7,17 +7,22 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `claude/b1-placement` (worktree `.claude/worktrees/b1-placement/`、master から分岐、**origin に push 済**)
-- **🔥 最新進捗 (2026-04-21)**: **Plan A (B1 Dashboard Foundation) Batch B 完了 + 本番デプロイ済** — Task 6-9 (layoutMode 削除 + IDB v6→v7 + alignAllToGrid + Toolbar 2 ボタン化 + FramePresetPopover 削除 + BoardRoot 統合) をワンセッションで実装 → `booklage.pages.dev` 反映済
-- **Plan A 完了、次は Plan B (Share System)**: ShareModal 骨 + URL 埋込み + PNG 書き出し + X Web Intent + watermark。Batch A 〜 Batch B で Plan A のスコープは全て消化
-- **X ブランドアカウント**: `@booklage_app` (display name: Booklage) を作成済、password マネージャー保管。build-in-public は `@men_masaya` から投稿
-- **Plan A ドキュメント**: spec は `docs/superpowers/specs/2026-04-20-b1-dashboard-redesign-design.md`, plan は `docs/superpowers/plans/2026-04-20-b1-dashboard-foundation.md`
-- **本番URL**: `https://booklage.pages.dev`（Batch B 反映済、2026-04-21 deploy）
-- **DBバージョン**: **v7**（Batch B Task 6 で v6→v7、layoutMode 削除 migration 入り）
+- **ブランチ**: `claude/infallible-cray-c19657` (worktree、`claude/b1-placement` から分岐、13 commits ahead、**origin には未 push**)
+- **🔥 最新進捗 (2026-04-20)**: **Board content-sized masonry + drag-to-reorder 完全実装 + 本番デプロイ済** — 14 タスク全完了、`booklage.pages.dev` 反映済
+  - **Board の方針転換完了**: always-free canvas → 常時 column masonry に pivot。「カードが下に潜る」問題を根本解決（重ならない設計）
+  - **content-driven aspect ratio**: YouTube/TikTok/Twitter/Instagram/generic で 12 パターン自動判定
+  - **S/M/L size preset**: hover で右下にバッジ表示、クリック or `1/2/3` キーで S→M→L サイクル
+  - **drag-to-reorder**: iOS home-screen 風、drop 時 GSAP FLIP reflow。click 判定（5px/200ms 未満）は URL 開く
+  - **撤去**: Align ボタン / 自由 resize / 回転ハンドル / snap guides / 自由 drag（全て Share Modal =Plan B へ回す想定）
+- **次フェーズ候補**: Plan B (Share Modal) か、Phase 2 (drag 中 live reflow) か、別機能
+- **spec**: `docs/superpowers/specs/2026-04-20-board-content-sized-reorder-design.md`
+- **plan**: `docs/superpowers/plans/2026-04-20-board-content-sized-reorder.md`
+- **本番URL**: `https://booklage.pages.dev`（2026-04-20 deploy）
+- **DBバージョン**: **v8**（orderIndex + sizePreset 追加。freePos は dead column として残置）
 - **GitHub**: `origin` → `https://github.com/masaya-men/booklage.git`（Public）
 - **ビルド**: `output: 'export'`（静的書き出し）、出力先は `out/`
-- **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true --commit-message="..."`（手動、**`--branch=master` 必須** — production alias に反映するため。**`--commit-message` に ASCII 文字列を明示** しないと "Invalid commit message, must be a valid UTF-8 string" で失敗する — Windows の terminal encoding で em-dash 等が化ける既知問題）
-- **テスト**: **86 PASS / 0 FAIL**（vitest、align.test.ts の 4 件追加）、tsc strict clean
+- **デプロイ**: `npx wrangler pages deploy out/ --project-name=booklage --branch=main --commit-dirty=true`
+- **テスト**: **98 PASS / 0 FAIL**（vitest、free-layout.test.ts 削除で 106 → 98）、tsc strict clean
 
 ### 直近の作業（2026-04-21 緊急 bugfix 第 3 ラウンド + UX 余白追加）
 
