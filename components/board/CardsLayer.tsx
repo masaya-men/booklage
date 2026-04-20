@@ -366,7 +366,23 @@ export function CardsLayer({
     setSnapGuides([])
     if (!state || state.bookmarkId !== bookmarkId) return
     const item = items.find((it) => it.bookmarkId === bookmarkId)
-    if (!item || !item.cardId) return // no IDB record yet — skip persist
+    if (!item) return
+
+    // Click vs drag: if the pointer barely moved, treat as click and open the
+    // bookmark URL in a new tab. Previously handled by useCardDrag's onClick
+    // prop (grid-mode path); Task 6 dropped the grid branch so this state
+    // machine now owns both drag AND click intent.
+    const dx = state.currentPos.x - state.startPos.x
+    const dy = state.currentPos.y - state.startPos.y
+    const CLICK_THRESHOLD_PX = 5
+    if (Math.sqrt(dx * dx + dy * dy) < CLICK_THRESHOLD_PX) {
+      if (item.url) {
+        window.open(item.url, '_blank', 'noopener,noreferrer')
+      }
+      return
+    }
+
+    if (!item.cardId) return // no IDB record yet — skip persist
     await onPersistFreePos(item.cardId, state.currentPos)
   }
 

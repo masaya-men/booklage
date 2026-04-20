@@ -248,33 +248,65 @@ export function BoardRoot() {
     onClick: onCardClick,
   })
 
+  // Ref slot for handleAlign so resize-end can trigger auto-align without a
+  // forward reference. handleAlign is declared below; assignment after it.
+  const handleAlignRef = useRef<() => void>(() => undefined)
+
+  // Resolves the current position of a card for resize operations. Prefer
+  // `item.freePos` (most recent persisted state, including any post-load
+  // drags) over `overrides` (live resize tick) over `layout.positions`
+  // (initial grid / userOverridePos snapshot from first mount).
+  //
+  // Without this fallback ladder, resize after a drag would rewind the
+  // card to its pre-drag grid slot because `layout.positions` reads
+  // `item.userOverridePos` which only refreshes on initial hook mount.
+  const resolveResizeSource = useCallback(
+    (bookmarkId: string): CardPosition | undefined => {
+      const override = overrides[bookmarkId]
+      if (override) return override
+      const item = itemByBookmark.get(bookmarkId)
+      if (item?.freePos) {
+        return { x: item.freePos.x, y: item.freePos.y, w: item.freePos.w, h: item.freePos.h }
+      }
+      return layout.positions[bookmarkId]
+    },
+    [overrides, itemByBookmark, layout.positions],
+  )
+
   // Resize live tick: fires on every pointer move during a resize drag.
   // Visual-only — updates the local `overrides` map so the card follows the
   // pointer in real time. IDB persistence is deferred to `handleCardResizeEnd`
-  // so we don't write 60×/sec (which would also re-trigger persistFreePosition's
-  // optimistic setItems and run computeAutoLayout on every tick — see code
-  // review I1).
+  // so we don't write 60×/sec.
   const handleCardResize = useCallback(
     (bookmarkId: string, w: number, h: number): void => {
-      const current = overrides[bookmarkId] ?? layout.positions[bookmarkId]
+      const current = resolveResizeSource(bookmarkId)
       if (!current) return
       const next: CardPosition = { ...current, w, h }
       setOverrides((prev) => ({ ...prev, [bookmarkId]: next }))
     },
-    [overrides, layout.positions],
+    [resolveResizeSource],
   )
-  // Resize commit: fires once when the resize drag ends. Persists the final
-  // size to IDB. Mirrors the persistence pattern used by handleCardResetToNative.
+  // Resize commit: persist final size → clear stale override → auto-align
+  // so neighbouring cards reflow around the new size (deferred to next tick
+  // so persistCardPosition's optimistic setItems flushes first, letting
+  // handleAlign read the updated freePos for the new aspect ratio).
   const handleCardResizeEnd = useCallback(
     (bookmarkId: string, w: number, h: number): void => {
       const item = itemByBookmark.get(bookmarkId)
       if (!item?.cardId) return
-      const current = overrides[bookmarkId] ?? layout.positions[bookmarkId]
+      const current = resolveResizeSource(bookmarkId)
       if (!current) return
       const next: CardPosition = { ...current, w, h }
       void persistCardPosition(item.cardId, next)
+      setOverrides((prev) => {
+        if (!(bookmarkId in prev)) return prev
+        const { [bookmarkId]: _drop, ...rest } = prev
+        void _drop
+        return rest
+      })
+      setTimeout(() => handleAlignRef.current(), 0)
     },
-    [overrides, layout.positions, itemByBookmark, persistCardPosition],
+    [itemByBookmark, persistCardPosition, resolveResizeSource],
   )
   // Double-click on any resize handle: snap card height back to native
   // aspect ratio while keeping current width. Per plan §Task 18 Step 3.
@@ -282,13 +314,13 @@ export function BoardRoot() {
     (bookmarkId: string): void => {
       const item = itemByBookmark.get(bookmarkId)
       if (!item) return
-      const current = overrides[bookmarkId] ?? layout.positions[bookmarkId]
+      const current = resolveResizeSource(bookmarkId)
       if (!current) return
       const next: CardPosition = { ...current, h: current.w / item.aspectRatio }
       setOverrides((prev) => ({ ...prev, [bookmarkId]: next }))
       if (item.cardId) void persistCardPosition(item.cardId, next)
     },
-    [overrides, layout.positions, itemByBookmark, persistCardPosition],
+    [itemByBookmark, persistCardPosition, resolveResizeSource],
   )
 
   // Align: snap every card into a justified masonry grid via alignAllToGrid,
@@ -309,7 +341,14 @@ export function BoardRoot() {
     const aligned = alignAllToGrid(
       items.map((it) => ({
         id: it.bookmarkId,
-        aspectRatio: it.aspectRatio,
+        // If the user resized the card, `it.freePos` carries the current w/h;
+        // use that to derive aspect ratio so Align reflows the grid cell to
+        // match the resized dimensions. Fall back to the type's stored ratio
+        // for fresh (never-resized) cards.
+        aspectRatio:
+          it.freePos && it.freePos.w > 0 && it.freePos.h > 0
+            ? it.freePos.w / it.freePos.h
+            : it.aspectRatio,
         freePos: it.freePos ?? null,
       })),
       {
@@ -328,6 +367,9 @@ export function BoardRoot() {
     }
     setAlignKey((k) => k + 1)
   }, [items, persistFreePosition, sidebarCollapsed, viewport.w])
+  // Keep the ref in sync so handleCardResizeEnd's deferred auto-align call
+  // always reaches the latest closure (with current items / viewport).
+  handleAlignRef.current = handleAlign
 
   const handleShare = useCallback((): void => {
     // Plan B (ShareModal) ships the full flow — frame preset picker, PNG
