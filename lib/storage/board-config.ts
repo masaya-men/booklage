@@ -7,7 +7,6 @@ import { DEFAULT_PRESET_ID } from '@/lib/board/frame-presets'
 const CONFIG_KEY = 'board-config'
 
 export const DEFAULT_BOARD_CONFIG: BoardConfig = {
-  layoutMode: 'grid',
   frameRatio: { kind: 'preset', presetId: DEFAULT_PRESET_ID },
   themeId: DEFAULT_THEME_ID,
 }

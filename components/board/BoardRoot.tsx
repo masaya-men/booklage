@@ -8,7 +8,7 @@ import {
   listThemeIds,
 } from '@/lib/board/theme-registry'
 import { BOARD_INNER, LAYOUT_CONFIG } from '@/lib/board/constants'
-import type { CardPosition, FrameRatio, LayoutCard, LayoutMode, ThemeId } from '@/lib/board/types'
+import type { CardPosition, FrameRatio, LayoutCard, ThemeId } from '@/lib/board/types'
 import { useBoardData, type BoardItem } from '@/lib/storage/use-board-data'
 import { initDB } from '@/lib/storage/indexeddb'
 import {
@@ -35,7 +35,6 @@ function loadSavedTheme(): ThemeId {
 export function BoardRoot() {
   const { items, persistCardPosition, persistFreePosition } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>(DEFAULT_BOARD_CONFIG.layoutMode)
   const [frameRatio, setFrameRatio] = useState<FrameRatio>(DEFAULT_BOARD_CONFIG.frameRatio)
   const [overrides, setOverrides] = useState<Record<string, CardPosition>>({})
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
@@ -103,14 +102,13 @@ export function BoardRoot() {
     }
   }, [spaceHeld])
 
-  // Hydrate layoutMode + frameRatio from IndexedDB on mount
+  // Hydrate frameRatio from IndexedDB on mount
   useEffect(() => {
     let cancelled = false
     void (async (): Promise<void> => {
       const db = await initDB()
       if (cancelled) return
       const cfg = await loadBoardConfig(db)
-      setLayoutMode(cfg.layoutMode)
       setFrameRatio(cfg.frameRatio)
     })()
     return (): void => { cancelled = true }
@@ -263,30 +261,13 @@ export function BoardRoot() {
     [overrides, layout.positions, itemByBookmark, persistCardPosition],
   )
 
-  const handleModeChange = useCallback(
-    (next: LayoutMode): void => {
-      setLayoutMode(next)
-      void (async (): Promise<void> => {
-        try {
-          const db = await initDB()
-          await saveBoardConfig(db, { layoutMode: next, frameRatio, themeId })
-        } catch (err) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.error('[BoardRoot] saveBoardConfig failed', err)
-          }
-        }
-      })()
-    },
-    [frameRatio, themeId],
-  )
-
   const handleFrameRatioChange = useCallback(
     (next: FrameRatio): void => {
       setFrameRatio(next)
       void (async (): Promise<void> => {
         try {
           const db = await initDB()
-          await saveBoardConfig(db, { layoutMode, frameRatio: next, themeId })
+          await saveBoardConfig(db, { frameRatio: next, themeId })
         } catch (err) {
           if (process.env.NODE_ENV !== 'production') {
             console.error('[BoardRoot] saveBoardConfig failed', err)
@@ -294,7 +275,7 @@ export function BoardRoot() {
         }
       })()
     },
-    [layoutMode, themeId],
+    [themeId],
   )
 
   // TODO: unify theme persistence — currently localStorage drives hydration; IDB themeId is write-only dead state.
@@ -391,7 +372,6 @@ export function BoardRoot() {
         >
           <CardsLayer
             items={items}
-            layoutMode={layoutMode}
             viewport={viewport}
             viewportWidth={effectiveLayoutWidth}
             targetRowHeight={targetRowHeight}
@@ -408,8 +388,6 @@ export function BoardRoot() {
         </div>
       </InteractionLayer>
       <Toolbar
-        layoutMode={layoutMode}
-        onModeChange={handleModeChange}
         frameRatio={frameRatio}
         onFrameRatioChange={handleFrameRatioChange}
         themeId={themeId}

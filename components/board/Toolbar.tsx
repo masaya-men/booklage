@@ -1,20 +1,19 @@
 'use client'
 
 import { useState, type ReactElement } from 'react'
-import type { FrameRatio, LayoutMode, ThemeId } from '@/lib/board/types'
+import type { FrameRatio, ThemeId } from '@/lib/board/types'
 import { t } from '@/lib/i18n/t'
 import { getPresetById } from '@/lib/board/frame-presets'
 import { FramePresetPopover } from './FramePresetPopover'
 import styles from './Toolbar.module.css'
 
+// TODO(Task 8): Replace Toolbar body with { onAlign, onShare } only.
+// FramePresetPopover + preset button move into ShareModal (Plan B).
 type Props = {
-  readonly layoutMode: LayoutMode
-  readonly onModeChange: (mode: LayoutMode) => void
   readonly frameRatio: FrameRatio
   readonly onFrameRatioChange: (ratio: FrameRatio) => void
   readonly themeId: ThemeId
   readonly onThemeClick?: () => void
-  readonly onExportClick?: () => void
   readonly onShareClick?: () => void
 }
 
@@ -26,8 +25,6 @@ export function Toolbar(props: Props): ReactElement {
       ? getPresetById(props.frameRatio.presetId)?.label ?? 'Custom'
       : `${props.frameRatio.width}×${props.frameRatio.height}`
 
-  const handleGridClick = (): void => props.onModeChange('grid')
-  const handleFreeClick = (): void => props.onModeChange('free')
   const togglePresetOpen = (): void => setPresetOpen((v) => !v)
   const handlePresetSelect = (r: FrameRatio): void => {
     props.onFrameRatioChange(r)
@@ -38,39 +35,17 @@ export function Toolbar(props: Props): ReactElement {
     <div className={styles.container} data-testid="board-toolbar">
       <button
         type="button"
-        className={`${styles.button} ${props.layoutMode === 'grid' ? styles.active : ''}`}
-        onClick={handleGridClick}
-        data-mode-button="grid"
+        className={`${styles.button} ${presetOpen ? styles.active : ''}`}
+        onClick={togglePresetOpen}
+        data-toolbar-button="preset"
       >
-        ⊞ {t('board.mode.grid')}
+        {currentPresetLabel} ▾
       </button>
-      <button
-        type="button"
-        className={`${styles.button} ${props.layoutMode === 'free' ? styles.active : ''}`}
-        onClick={handleFreeClick}
-        data-mode-button="free"
-      >
-        ◇ {t('board.mode.free')}
-      </button>
-
-      {props.layoutMode === 'free' && (
-        <>
-          <div className={styles.sep} role="separator" aria-orientation="vertical" />
-          <button
-            type="button"
-            className={`${styles.button} ${presetOpen ? styles.active : ''}`}
-            onClick={togglePresetOpen}
-            data-toolbar-button="preset"
-          >
-            {currentPresetLabel} ▾
-          </button>
-          {presetOpen && (
-            <FramePresetPopover
-              currentRatio={props.frameRatio}
-              onSelect={handlePresetSelect}
-            />
-          )}
-        </>
+      {presetOpen && (
+        <FramePresetPopover
+          currentRatio={props.frameRatio}
+          onSelect={handlePresetSelect}
+        />
       )}
 
       <div className={styles.sep} role="separator" aria-orientation="vertical" />
@@ -82,25 +57,14 @@ export function Toolbar(props: Props): ReactElement {
       >
         {t('board.toolbar.theme')}
       </button>
-      {props.layoutMode === 'grid' ? (
-        <button
-          type="button"
-          className={styles.button}
-          onClick={props.onExportClick}
-          data-toolbar-button="export"
-        >
-          {t('board.toolbar.export')}
-        </button>
-      ) : (
-        <button
-          type="button"
-          className={styles.button}
-          onClick={props.onShareClick}
-          data-toolbar-button="share"
-        >
-          {t('board.toolbar.share')}
-        </button>
-      )}
+      <button
+        type="button"
+        className={styles.button}
+        onClick={props.onShareClick}
+        data-toolbar-button="share"
+      >
+        {t('board.toolbar.share')}
+      </button>
     </div>
   )
 }

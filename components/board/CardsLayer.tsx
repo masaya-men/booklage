@@ -16,14 +16,12 @@ import type {
   CardPosition,
   FreePosition,
   LayoutCard,
-  LayoutMode,
   ScrollDirection,
   SnapGuideLine,
 } from '@/lib/board/types'
 import {
   BOARD_Z_INDEX,
   CULLING,
-  MODE_TRANSITION,
 } from '@/lib/board/constants'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { CardNode } from './CardNode'
@@ -39,7 +37,6 @@ type Viewport = {
 
 type CardsLayerProps = {
   readonly items: ReadonlyArray<BoardItem>
-  readonly layoutMode: LayoutMode
   readonly viewport: Viewport
   readonly viewportWidth: number
   readonly targetRowHeight: number
@@ -113,7 +110,6 @@ type FreeDragState = {
 
 export function CardsLayer({
   items,
-  layoutMode,
   viewport,
   viewportWidth,
   targetRowHeight,
@@ -128,7 +124,8 @@ export function CardsLayer({
   onPersistFreePos,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const prevModeRef = useRef<LayoutMode>(layoutMode)
+  // Morph timeline slot kept alive for Task 9 Align action; the useLayoutEffect
+  // below bails while a morph is running so it does not snap cards to the end.
   const morphTimelineRef = useRef<gsap.core.Timeline | null>(null)
 
   // Which card the pointer is currently over. Drives ResizeHandle visibility:
@@ -195,8 +192,9 @@ export function CardsLayer({
     return result
   }, [items, gridLayout])
 
-  const activePositions: Readonly<Record<string, CardPosition>> =
-    layoutMode === 'grid' ? gridLayout.positions : freeLayoutPositions
+  // Canvas is always free placement (v7). Cards fall back to grid positions
+  // only until their first manual drag populates `freePos`.
+  const activePositions: Readonly<Record<string, CardPosition>> = freeLayoutPositions
 
   // While free-dragging, override the dragged card's position so render +
   // GSAP follow the pointer in real time (persistence happens on drag end).
@@ -229,19 +227,11 @@ export function CardsLayer({
     })
   }, [items, displayedPositions, viewport])
 
-  // Initial / non-mode-change positioning: GSAP owns the transform.
-  // Use useLayoutEffect to set position before paint so the card never
-  // flashes at the wrong spot.
-  //
-  // Two bail conditions guard against races with the morph effect below:
-  //   1. If layoutMode just changed, the morph effect (useEffect) is about
-  //      to take over this transition — do not snap to the final position
-  //      synchronously, or the user never sees the animation (C1).
-  //   2. If a morph timeline is currently in flight, an unrelated re-render
-  //      (viewport scroll, parent state change) must not snap cards to the
-  //      end state and kill the running tween (C2).
+  // Positioning: GSAP owns the transform. useLayoutEffect runs before paint so
+  // cards never flash at the wrong spot. Bails while a morph timeline is in
+  // flight (Task 9 Align action) so an unrelated re-render doesn't snap cards
+  // to the end state and kill the running tween.
   useLayoutEffect(() => {
-    if (prevModeRef.current !== layoutMode) return
     if (morphTimelineRef.current?.isActive()) return
     for (const it of visibleItems) {
       const el = cardRefs.current[it.bookmarkId]
@@ -250,39 +240,7 @@ export function CardsLayer({
       if (!p) continue
       gsap.set(el, { x: p.x, y: p.y, width: p.w, height: p.h })
     }
-  }, [visibleItems, displayedPositions, layoutMode])
-
-  // Animated morph when layoutMode toggles. Owns transforms for the
-  // duration of the tween; the useLayoutEffect above bails while this
-  // timeline is active so it does not get snapped to the end state.
-  useEffect(() => {
-    if (prevModeRef.current === layoutMode) return
-    morphTimelineRef.current?.kill()
-    const tl = gsap.timeline()
-    for (const it of items) {
-      const el = cardRefs.current[it.bookmarkId]
-      if (!el) continue
-      const p = activePositions[it.bookmarkId]
-      if (!p) continue
-      tl.to(
-        el,
-        {
-          x: p.x,
-          y: p.y,
-          width: p.w,
-          height: p.h,
-          duration: MODE_TRANSITION.MORPH_MS / 1000,
-          ease: MODE_TRANSITION.EASING,
-        },
-        0,
-      )
-    }
-    morphTimelineRef.current = tl
-    prevModeRef.current = layoutMode
-    return (): void => {
-      tl.kill()
-    }
-  }, [layoutMode, items, activePositions])
+  }, [visibleItems, displayedPositions])
 
   // Track Shift while dragging so the user can toggle snap on/off mid-drag
   // without releasing the pointer. No-op when not dragging.
@@ -361,22 +319,18 @@ export function CardsLayer({
     await onPersistFreePos(item.cardId, state.currentPos)
   }
 
-  // Branched pointer-down: free mode runs an internal drag state machine,
-  // grid mode delegates to the prop (BoardRoot's useCardDrag).
+  // Pointer-down always engages the free-drag state machine. Space-held bails
+  // WITHOUT stopPropagation so the event bubbles to InteractionLayer for pan.
+  // `onCardPointerDown` prop is retained for BoardRoot's useCardDrag wiring
+  // but no longer invoked — removal deferred to a follow-up cleanup pass.
   const handleCardPointerDown = (
     e: PointerEvent<HTMLDivElement>,
     bookmarkId: string,
   ): void => {
-    // Space-held → bail WITHOUT stopPropagation so the pointerdown bubbles
-    // up to InteractionLayer where pan engagement lives. Without this, both
-    // grid mode (useCardDrag stopPropagation) and free mode (explicit
-    // stopPropagation below) swallow the event and the user only sees the
-    // grab cursor change with no actual pan.
     if (spaceHeld) return
-    if (layoutMode === 'grid') {
-      onCardPointerDown(e, bookmarkId)
-      return
-    }
+    // Reference the prop to keep the contract alive for future reintroduction
+    // of grid-drag semantics without triggering a dead-destructure lint.
+    void onCardPointerDown
     e.stopPropagation()
     const el = e.currentTarget
     const pointerId = e.pointerId
@@ -408,7 +362,7 @@ export function CardsLayer({
         pointerEvents: 'none',
       }}
     >
-      {layoutMode === 'free' && <SnapGuides guides={snapGuides} />}
+      <SnapGuides guides={snapGuides} />
       {visibleItems.map((it) => {
         const p = displayedPositions[it.bookmarkId]
         if (!p) return null

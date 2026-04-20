@@ -58,8 +58,6 @@ export type ThemeMeta = {
   readonly layoutParams?: ThemeLayoutParams
 }
 
-export type LayoutMode = 'grid' | 'free'
-
 export type FreePosition = {
   readonly x: number
   readonly y: number
@@ -76,7 +74,6 @@ export type FrameRatio =
   | { readonly kind: 'custom'; readonly width: number; readonly height: number }
 
 export type BoardConfig = {
-  readonly layoutMode: LayoutMode
   readonly frameRatio: FrameRatio
   readonly themeId: ThemeId
 }

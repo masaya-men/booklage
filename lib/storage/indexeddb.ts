@@ -295,6 +295,28 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
           return cursor.continue().then(addV6BookmarkFields)
         })
       }
+
+      // ── v6 → v7: strip `layoutMode` from BoardConfig (always-free canvas).
+      //            BoardConfig is stored in `settings` as
+      //            { key: 'board-config', config: BoardConfig }; unwrap and
+      //            delete the nested field.
+      if (oldVersion < 7) {
+        const settingsStore = transaction.objectStore('settings')
+        void settingsStore.openCursor().then(function stripLayoutMode(
+          cursor: Awaited<ReturnType<typeof settingsStore.openCursor>>,
+        ): Promise<void> | undefined {
+          if (!cursor) return
+          if (cursor.key === 'board-config') {
+            const rec = cursor.value as { key: string; config?: Record<string, unknown> }
+            if (rec.config && 'layoutMode' in rec.config) {
+              const { layoutMode: _drop, ...restConfig } = rec.config
+              void _drop
+              void cursor.update({ key: rec.key, config: restConfig })
+            }
+          }
+          return cursor.continue().then(stripLayoutMode)
+        })
+      }
     },
   })
 }

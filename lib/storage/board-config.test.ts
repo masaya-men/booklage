@@ -24,7 +24,6 @@ describe('board config storage', () => {
 
   it('round-trips saved config', async () => {
     const saved: BoardConfig = {
-      layoutMode: 'free',
       frameRatio: { kind: 'preset', presetId: 'story-reels' },
       themeId: 'grid-paper',
     }
