@@ -12,7 +12,7 @@ async function seedBoard(page: Page, seedCount: number): Promise<void> {
   await page.evaluate(
     async ({ dbName, count }) => {
       await new Promise<void>((resolve, reject) => {
-        const req = indexedDB.open(dbName, 5)
+        const req = indexedDB.open(dbName, 8)
         req.onsuccess = () => {
           const db = req.result
           const tx = db.transaction(['bookmarks', 'cards'], 'readwrite')
@@ -35,6 +35,8 @@ async function seedBoard(page: Page, seedCount: number): Promise<void> {
               savedAt: now,
               folderId: 'default',
               ogpStatus: 'fetched',
+              sizePreset: 'S',
+              orderIndex: i,
             })
             cStore.put({
               id: `perf-c-${i}`,

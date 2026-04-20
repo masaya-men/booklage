@@ -93,3 +93,14 @@ export const PERF = {
   TARGET_FPS: 60,
   MAX_LAYOUT_MS_1000_CARDS: 16,
 } as const
+
+export const COLUMN_MASONRY = {
+  TARGET_COLUMN_UNIT_PX: 220,
+  GAP_PX: 12,
+} as const
+
+export const SIZE_PRESET_SPAN: Readonly<Record<'S' | 'M' | 'L', number>> = {
+  S: 1,
+  M: 2,
+  L: 3,
+}

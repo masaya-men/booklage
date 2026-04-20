@@ -1,15 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { computeAutoLayout } from '@/lib/board/auto-layout'
+import { computeColumnMasonry } from '@/lib/board/column-masonry'
+import type { MasonryCard } from '@/lib/board/column-masonry'
 import { alignAllToGrid } from '@/lib/board/align'
 import {
   DEFAULT_THEME_ID,
   getThemeMeta,
   listThemeIds,
 } from '@/lib/board/theme-registry'
-import { BOARD_INNER, LAYOUT_CONFIG } from '@/lib/board/constants'
-import type { CardPosition, LayoutCard, ThemeId } from '@/lib/board/types'
+import { BOARD_INNER, COLUMN_MASONRY, LAYOUT_CONFIG, SIZE_PRESET_SPAN } from '@/lib/board/constants'
+import type { CardPosition, ThemeId } from '@/lib/board/types'
 import { useBoardData, type BoardItem } from '@/lib/storage/use-board-data'
 import { initDB } from '@/lib/storage/indexeddb'
 import { loadBoardConfig } from '@/lib/storage/board-config'
@@ -137,14 +138,14 @@ export function BoardRoot() {
     return (): void => window.removeEventListener('resize', update)
   }, [])
 
-  const layoutCards = useMemo<LayoutCard[]>(
+  const masonryCards = useMemo<MasonryCard[]>(
     () =>
       items.map((it) => ({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
-        userOverridePos: overrides[it.bookmarkId] ?? it.userOverridePos,
+        columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
       })),
-    [items, overrides],
+    [items],
   )
 
   const themeMeta = getThemeMeta(themeId)
@@ -166,15 +167,13 @@ export function BoardRoot() {
 
   const layout = useMemo(
     () =>
-      computeAutoLayout({
-        cards: layoutCards,
-        viewportWidth: effectiveLayoutWidth,
-        targetRowHeight:
-          themeMeta.layoutParams?.targetRowHeight ?? LAYOUT_CONFIG.TARGET_ROW_HEIGHT_PX,
-        gap: themeMeta.layoutParams?.gap ?? LAYOUT_CONFIG.GAP_PX,
-        direction: themeMeta.direction,
+      computeColumnMasonry({
+        cards: masonryCards,
+        containerWidth: effectiveLayoutWidth,
+        gap: COLUMN_MASONRY.GAP_PX,
+        targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
       }),
-    [layoutCards, effectiveLayoutWidth, themeMeta],
+    [masonryCards, effectiveLayoutWidth],
   )
 
   const itemByBookmark = useMemo(() => {
@@ -437,10 +436,6 @@ export function BoardRoot() {
   const contentWidth = Math.max(viewport.w, contentBounds.width)
   const contentHeight = Math.max(viewport.h, contentBounds.height)
 
-  const targetRowHeight =
-    themeMeta.layoutParams?.targetRowHeight ?? LAYOUT_CONFIG.TARGET_ROW_HEIGHT_PX
-  const layoutGap = themeMeta.layoutParams?.gap ?? LAYOUT_CONFIG.GAP_PX
-
   return (
     <div
       ref={containerRef}
@@ -490,9 +485,6 @@ export function BoardRoot() {
             items={items}
             viewport={viewport}
             viewportWidth={effectiveLayoutWidth}
-            targetRowHeight={targetRowHeight}
-            gap={layoutGap}
-            direction={themeMeta.direction}
             overrides={overrides}
             spaceHeld={spaceHeld}
             alignKey={alignKey}

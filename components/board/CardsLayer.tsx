@@ -10,18 +10,19 @@ import {
   type ReactNode,
 } from 'react'
 import { gsap } from 'gsap'
-import { computeAutoLayout } from '@/lib/board/auto-layout'
+import { computeColumnMasonry } from '@/lib/board/column-masonry'
+import type { MasonryCard } from '@/lib/board/column-masonry'
 import { applySnapToPosition, computeSnapGuides } from '@/lib/board/free-layout'
 import type {
   CardPosition,
   FreePosition,
-  LayoutCard,
-  ScrollDirection,
   SnapGuideLine,
 } from '@/lib/board/types'
 import {
   BOARD_Z_INDEX,
+  COLUMN_MASONRY,
   CULLING,
+  SIZE_PRESET_SPAN,
 } from '@/lib/board/constants'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { CardNode } from './CardNode'
@@ -39,9 +40,6 @@ type CardsLayerProps = {
   readonly items: ReadonlyArray<BoardItem>
   readonly viewport: Viewport
   readonly viewportWidth: number
-  readonly targetRowHeight: number
-  readonly gap: number
-  readonly direction: ScrollDirection
   /**
    * Optional per-card user override (e.g. while dragging in grid mode).
    * Keyed by bookmarkId. Takes precedence over computed grid position.
@@ -118,9 +116,6 @@ export function CardsLayer({
   items,
   viewport,
   viewportWidth,
-  targetRowHeight,
-  gap,
-  direction,
   overrides,
   spaceHeld,
   alignKey,
@@ -157,28 +152,26 @@ export function CardsLayer({
   const freeDragStateRef = useRef<FreeDragState | null>(null)
   freeDragStateRef.current = freeDragState
 
-  // Build LayoutCard[] from items, applying any overrides as userOverridePos
-  // so computeAutoLayout will respect drag positions in grid mode too.
-  const layoutCards = useMemo<LayoutCard[]>(
+  // Build MasonryCard[] from items for column-masonry layout.
+  const masonryCards = useMemo<MasonryCard[]>(
     () =>
       items.map((it) => ({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
-        userOverridePos: overrides?.[it.bookmarkId] ?? it.userOverridePos,
+        columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
       })),
-    [items, overrides],
+    [items],
   )
 
-  const gridLayout = useMemo(
+  const masonryLayout = useMemo(
     () =>
-      computeAutoLayout({
-        cards: layoutCards,
-        viewportWidth,
-        targetRowHeight,
-        gap,
-        direction,
+      computeColumnMasonry({
+        cards: masonryCards,
+        containerWidth: viewportWidth,
+        gap: COLUMN_MASONRY.GAP_PX,
+        targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
       }),
-    [layoutCards, viewportWidth, targetRowHeight, gap, direction],
+    [masonryCards, viewportWidth],
   )
 
   const freeLayoutPositions = useMemo<Readonly<Record<string, CardPosition>>>(() => {
@@ -201,13 +194,13 @@ export function CardsLayer({
           h: it.freePos.h,
         }
       } else {
-        // Fallback to grid position so newly-added cards have a home when mode=free.
-        const gridPos = gridLayout.positions[it.bookmarkId]
+        // Fallback to masonry position so newly-added cards have a home when mode=free.
+        const gridPos = masonryLayout.positions[it.bookmarkId]
         if (gridPos) result[it.bookmarkId] = gridPos
       }
     }
     return result
-  }, [items, gridLayout, overrides])
+  }, [items, masonryLayout, overrides])
 
   // Canvas is always free placement (v7). Cards fall back to grid positions
   // only until their first manual drag populates `freePos`.
@@ -314,7 +307,7 @@ export function CardsLayer({
   ): void => {
     const item = items.find((it) => it.bookmarkId === bookmarkId)
     if (!item) return
-    const gridPos = gridLayout.positions[bookmarkId]
+    const gridPos = masonryLayout.positions[bookmarkId]
     const pos: FreePosition =
       item.freePos ?? (gridPos ? gridToFreePosition(item, gridPos) : null) ?? {
         x: 0, y: 0, w: 240, h: 180,
