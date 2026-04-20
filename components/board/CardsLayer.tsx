@@ -76,12 +76,6 @@ type CardsLayerProps = {
    * (no IDB record yet).
    */
   readonly onPersistFreePos: (cardId: string, pos: FreePosition) => Promise<void>
-  /**
-   * Monotonic counter from BoardRoot. Each bump signals "the Align action
-   * just fired — morph instead of snap". CardsLayer tracks the last-seen
-   * value and runs a GSAP timeline when it changes.
-   */
-  readonly alignKey: number
 }
 
 /**
@@ -118,7 +112,6 @@ export function CardsLayer({
   viewportWidth,
   overrides,
   spaceHeld,
-  alignKey,
   onCardPointerDown,
   onCardResize,
   onCardResizeEnd,
@@ -126,10 +119,6 @@ export function CardsLayer({
   onPersistFreePos,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  // Morph timeline + previous alignKey: when BoardRoot bumps `alignKey`, the
-  // useLayoutEffect below tweens cards instead of snapping them.
-  const morphTimelineRef = useRef<gsap.core.Timeline | null>(null)
-  const prevAlignKeyRef = useRef<number>(alignKey)
 
   // Which card the pointer is currently over. Drives ResizeHandle visibility:
   // we render the 8-dot handle group only on the hovered card so the board
@@ -238,45 +227,9 @@ export function CardsLayer({
   }, [items, displayedPositions, viewport])
 
   // Positioning: GSAP owns the transform. useLayoutEffect runs before paint so
-  // cards never flash at the wrong spot. Two paths:
-  //   1. Normal render — snap each visible card to its current `displayedPositions`.
-  //   2. Align morph — BoardRoot bumped `alignKey`. Instead of snapping, start a
-  //      GSAP timeline that tweens each card to the new position over 400ms.
-  //      `gsap.to` starts from whatever transform the element currently holds,
-  //      so cards glide smoothly from their pre-align spot.
-  // Bails in both branches while a morph timeline is still in flight so an
-  // unrelated re-render doesn't snap/restart the tween mid-flight.
+  // cards never flash at the wrong spot. Snap each visible card to its current
+  // `displayedPositions`.
   useLayoutEffect(() => {
-    const alignChanged = prevAlignKeyRef.current !== alignKey
-    prevAlignKeyRef.current = alignKey
-
-    if (morphTimelineRef.current?.isActive()) return
-
-    if (alignChanged) {
-      morphTimelineRef.current?.kill()
-      const tl = gsap.timeline()
-      for (const it of visibleItems) {
-        const el = cardRefs.current[it.bookmarkId]
-        if (!el) continue
-        const p = displayedPositions[it.bookmarkId]
-        if (!p) continue
-        tl.to(
-          el,
-          {
-            x: p.x,
-            y: p.y,
-            width: p.w,
-            height: p.h,
-            duration: 0.4,
-            ease: 'power2.inOut',
-          },
-          0,
-        )
-      }
-      morphTimelineRef.current = tl
-      return
-    }
-
     for (const it of visibleItems) {
       const el = cardRefs.current[it.bookmarkId]
       if (!el) continue
@@ -284,7 +237,7 @@ export function CardsLayer({
       if (!p) continue
       gsap.set(el, { x: p.x, y: p.y, width: p.w, height: p.h })
     }
-  }, [visibleItems, displayedPositions, alignKey])
+  }, [visibleItems, displayedPositions])
 
   // Track Shift while dragging so the user can toggle snap on/off mid-drag
   // without releasing the pointer. No-op when not dragging.

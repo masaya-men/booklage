@@ -43,10 +43,3 @@
   color: white;
 }
 .button.primary:hover { background: #000; }
-
-.sep {
-  width: 1px;
-  height: 20px;
-  background: rgba(0, 0, 0, 0.1);
-  margin: 0 4px;
-}

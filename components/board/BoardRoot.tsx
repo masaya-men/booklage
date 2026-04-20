@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { computeColumnMasonry } from '@/lib/board/column-masonry'
 import type { MasonryCard } from '@/lib/board/column-masonry'
-import { alignAllToGrid } from '@/lib/board/align'
 import {
   DEFAULT_THEME_ID,
   getThemeMeta,
   listThemeIds,
 } from '@/lib/board/theme-registry'
-import { BOARD_INNER, COLUMN_MASONRY, LAYOUT_CONFIG, SIZE_PRESET_SPAN } from '@/lib/board/constants'
+import { BOARD_INNER, COLUMN_MASONRY, SIZE_PRESET_SPAN } from '@/lib/board/constants'
 import type { CardPosition, ThemeId } from '@/lib/board/types'
 import { useBoardData, type BoardItem } from '@/lib/storage/use-board-data'
 import { initDB } from '@/lib/storage/indexeddb'
@@ -40,9 +39,6 @@ export function BoardRoot() {
   const { items, persistCardPosition, persistFreePosition } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
   const [overrides, setOverrides] = useState<Record<string, CardPosition>>({})
-  // Monotonic counter bumped on Align; CardsLayer watches this to run a morph
-  // timeline instead of snapping cards to their new positions.
-  const [alignKey, setAlignKey] = useState<number>(0)
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   // Lifted from InteractionLayer so CardsLayer can also observe Space-held
   // state and bail its pointerdown handler — letting the event bubble up to
@@ -294,17 +290,6 @@ export function BoardRoot() {
   )
   // Resize commit: persist final size, then clear the live override so
   // freeLayoutPositions reads the freshly-written freePos.
-  //
-  // NOTE: auto-align intentionally NOT triggered here. computeAutoLayout
-  // normalizes row heights via a `scale` factor derived from the sum of
-  // each card's aspect ratio in the row. When one card is resized larger,
-  // the row's scale shrinks to fit containerWidth → every card (including
-  // the just-resized one) collapses to roughly the pre-resize size. That
-  // makes auto-align directly defeat user intent. Manual Align (⚡ button)
-  // still respects the new aspect ratio via the freePos.w / freePos.h
-  // override in handleAlign below. Cleaner "resize-then-reflow without
-  // shrinking" needs a different algorithm (collision push or masonry
-  // with pinned cards) — deferred to a dedicated spec.
   const handleCardResizeEnd = useCallback(
     (bookmarkId: string, w: number, h: number): void => {
       const item = itemByBookmark.get(bookmarkId)
@@ -336,51 +321,6 @@ export function BoardRoot() {
     },
     [itemByBookmark, persistCardPosition, resolveResizeSource],
   )
-
-  // Align: snap every card into a justified masonry grid via alignAllToGrid,
-  // then fire N optimistic setItems + IDB writes via persistFreePosition.
-  // Bumping `alignKey` signals CardsLayer to run a morph timeline on the next
-  // render (cards glide from their current positions to the newly computed
-  // grid positions instead of snapping).
-  const handleAlign = useCallback((): void => {
-    if (items.length === 0) return
-
-    const sidebarReservedPx = sidebarCollapsed ? 52 : 240
-    const availableWidth = Math.max(0, viewport.w - sidebarReservedPx)
-    const containerWidth = Math.max(
-      0,
-      Math.min(availableWidth, BOARD_INNER.MAX_WIDTH_PX) - 2 * BOARD_INNER.SIDE_PADDING_PX,
-    )
-
-    const aligned = alignAllToGrid(
-      items.map((it) => ({
-        id: it.bookmarkId,
-        // If the user resized the card, `it.freePos` carries the current w/h;
-        // use that to derive aspect ratio so Align reflows the grid cell to
-        // match the resized dimensions. Fall back to the type's stored ratio
-        // for fresh (never-resized) cards.
-        aspectRatio:
-          it.freePos && it.freePos.w > 0 && it.freePos.h > 0
-            ? it.freePos.w / it.freePos.h
-            : it.aspectRatio,
-        freePos: it.freePos ?? null,
-      })),
-      {
-        containerWidth,
-        targetRowHeight: LAYOUT_CONFIG.TARGET_ROW_HEIGHT_PX,
-        gap: LAYOUT_CONFIG.GAP_PX,
-      },
-    )
-
-    const itemByBookmark = new Map(items.map((it) => [it.bookmarkId, it]))
-    for (const a of aligned) {
-      if (!a.freePos) continue
-      const source = itemByBookmark.get(a.id)
-      if (!source?.cardId) continue
-      void persistFreePosition(source.cardId, a.freePos)
-    }
-    setAlignKey((k) => k + 1)
-  }, [items, persistFreePosition, sidebarCollapsed, viewport.w])
 
   const handleShare = useCallback((): void => {
     // Plan B (ShareModal) ships the full flow — frame preset picker, PNG
@@ -487,7 +427,6 @@ export function BoardRoot() {
             viewportWidth={effectiveLayoutWidth}
             overrides={overrides}
             spaceHeld={spaceHeld}
-            alignKey={alignKey}
             onCardPointerDown={handleCardPointerDown}
             onCardResize={handleCardResize}
             onCardResizeEnd={handleCardResizeEnd}
@@ -496,7 +435,7 @@ export function BoardRoot() {
           />
         </div>
       </InteractionLayer>
-      <Toolbar onAlign={handleAlign} onShare={handleShare} />
+      <Toolbar onShare={handleShare} />
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={handleSidebarToggle}
