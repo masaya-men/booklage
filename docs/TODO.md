@@ -28,14 +28,27 @@
 - **デプロイ手順**: ⚠️ **必ず `public/sw.js` の `CACHE_VERSION` を bump してから** `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true`（忘れるとキャッシュ問題再発）
 - **テスト**: **98 PASS / 0 FAIL**（vitest、free-layout.test.ts 削除で 106 → 98）、tsc strict clean
 
-### 次セッション最初にやること
+### 次セッション最初にやること（2026-04-21 以降）
 
-1. **メインフォルダ（`C:\Users\masay\Desktop\マイコラージュ`）で開く**。worktree は廃止
+1. **VSCode 版の Claude Code をメインフォルダ（`C:\Users\masay\Desktop\マイコラージュ`）で開く**（worktree 自動生成なし）
 2. **`docs/TODO.md` を読む**（このファイル、最上段）
-3. **B (react-tweet + embed) の brainstorming 開始** — `superpowers:brainstorming` → spec → writing-plans → subagent-driven-development の流れ
-4. B 実装 → 本番 deploy → ユーザー確認 → C (multi-playback) へ
-5. デプロイ前に必ず `public/sw.js` の `CACHE_VERSION` bump
-6. 参考資料: `docs/private/card-interaction-recipes.md`（destefanis の lightbox recipe、将来 A で使う）
+3. **spec + plan が既に完成しているので `subagent-driven-development` で Task 1 から順に実装**:
+   - spec: `docs/superpowers/specs/2026-04-20-b-embeds-design.md`
+   - plan: `docs/superpowers/plans/2026-04-20-b-embeds.md`（18 TDD tasks）
+4. Task 18（最終 task）で本番 deploy + 目視確認まで完了
+5. B 完了後に C (multi-playback) の brainstorming へ
+6. デプロイ前に必ず `public/sw.js` の `CACHE_VERSION` bump（plan の Task 18 step 1 で明記済）
+
+### B-embeds 実装開始のコピペ用 prompt
+
+VSCode の新セッションに以下を貼って開始：
+
+```
+docs/TODO.md を読んで、次に docs/superpowers/plans/2026-04-20-b-embeds.md の Task 1 から順に
+subagent-driven-development で実装開始してください。
+spec は docs/superpowers/specs/2026-04-20-b-embeds-design.md。
+各 Task 完了ごとに commit、Task 18 で本番 deploy + 目視確認まで。
+```
 
 ### 2026-04-20 worktree 大掃除完了
 
