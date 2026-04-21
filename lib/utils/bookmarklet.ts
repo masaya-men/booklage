@@ -33,3 +33,21 @@ export function extractOgpFromDocument(doc: Document): OgpData {
 
   return { title, image, description, siteName, favicon, url }
 }
+
+/**
+ * Inline bookmarklet source. Mirrors extractOgpFromDocument semantics but
+ * written as a compact ES5-safe IIFE so the `javascript:` URI stays well
+ * under the 2000-char browser limit and works on arbitrary pages.
+ *
+ * Keep this in sync with extractOgpFromDocument.
+ */
+const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,m=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},k=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},u=l.href,t=m('meta[property="og:title"]')||d.title||u,i=m('meta[property="og:image"]')||m('meta[name="twitter:image"]')||'',ds=(m('meta[property="og:description"]')||m('meta[name="description"]')||'').slice(0,200),sn=m('meta[property="og:site_name"]')||l.hostname,f=k('link[rel="icon"]')||k('link[rel="shortcut icon"]')||'/favicon.ico';if(f&&!/^https?:/.test(f)){try{f=new URL(f,u).href}catch(e){f=''}}var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f});window.open(__APP_URL__+'/save?'+p.toString(),'booklage-save','width=480,height=600,scrollbars=yes')})();`
+
+/**
+ * Generate the `javascript:` URI for the Booklage bookmarklet.
+ * @param appUrl — Booklage origin (e.g. https://booklage.pages.dev or http://localhost:3000)
+ * @returns Full `javascript:...` URI ready to be placed in an `<a href>`
+ */
+export function generateBookmarkletUri(appUrl: string): string {
+  return 'javascript:' + BOOKMARKLET_SOURCE.replace('__APP_URL__', JSON.stringify(appUrl))
+}

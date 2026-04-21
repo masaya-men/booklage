@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractOgpFromDocument } from './bookmarklet'
+import { extractOgpFromDocument, generateBookmarkletUri } from './bookmarklet'
 
 describe('extractOgpFromDocument', () => {
   function makeDoc(html: string, href = 'https://example.com/page'): Document {
@@ -87,5 +87,101 @@ describe('extractOgpFromDocument', () => {
   it('returns url field from document.location.href', () => {
     const doc = makeDoc(``, 'https://example.com/article?id=1')
     expect(extractOgpFromDocument(doc).url).toBe('https://example.com/article?id=1')
+  })
+})
+
+describe('generateBookmarkletUri', () => {
+  it('returns a URI starting with "javascript:"', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri.startsWith('javascript:')).toBe(true)
+  })
+
+  it('includes the provided appUrl in the output', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('https://booklage.pages.dev')
+  })
+
+  it('uses a different appUrl when provided', () => {
+    const uri = generateBookmarkletUri('http://localhost:3000')
+    expect(uri).toContain('http://localhost:3000')
+    expect(uri).not.toContain('booklage.pages.dev')
+  })
+
+  it('produces a URI shorter than 2000 characters', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri.length).toBeLessThan(2000)
+  })
+
+  it('contains the /save path reference', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('/save')
+  })
+
+  it('is wrapped in an IIFE (function invocation)', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toMatch(/\(function\(\)\{[\s\S]*\}\)\(\);?$/)
+  })
+
+  it('inline JS matches extractOgpFromDocument semantics for a shared fixture', () => {
+    // Shared fixture: HTML head with og:title, og:image, og:description, og:site_name, favicon
+    const fixtureHead = `
+      <meta property="og:title" content="Drift Check" />
+      <meta property="og:image" content="https://cdn.example.com/og.png" />
+      <meta property="og:description" content="Ensure inline JS produces same OGP as TS extractor" />
+      <meta property="og:site_name" content="Drift Site" />
+      <link rel="icon" href="/favicon.png" />
+    `
+    const fixtureHref = 'https://example.com/article?id=1'
+
+    // 1. Run the TS extractor on a jsdom document
+    const parser = new DOMParser()
+    const tsDoc = parser.parseFromString(
+      `<!DOCTYPE html><html><head>${fixtureHead}</head><body></body></html>`,
+      'text/html',
+    )
+    // Provide a location proxy (same pattern as the top of this file's makeDoc helper)
+    const tsDocProxy = new Proxy(tsDoc, {
+      get(target, prop, receiver) {
+        if (prop === 'location') return new URL(fixtureHref)
+        const v = Reflect.get(target, prop, receiver)
+        return typeof v === 'function' ? v.bind(target) : v
+      },
+    })
+    const tsResult = extractOgpFromDocument(tsDocProxy as Document)
+
+    // 2. Run the inline JS on a separate jsdom document by evaluating the IIFE with captured window.open
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    const iife = uri.replace(/^javascript:/, '')
+
+    const inlineDoc = parser.parseFromString(
+      `<!DOCTYPE html><html><head>${fixtureHead}</head><body></body></html>`,
+      'text/html',
+    )
+    let capturedUrl = ''
+    const fakeWindow = {
+      open: (u: string) => { capturedUrl = u },
+      URL: URL,
+    }
+    const fakeLocation = new URL(fixtureHref)
+    // Run the IIFE with a shimmed `document`, `location`, `window`, `URLSearchParams`
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function('document', 'location', 'window', 'URL', 'URLSearchParams', iife)(
+      inlineDoc,
+      fakeLocation,
+      fakeWindow,
+      URL,
+      URLSearchParams,
+    )
+
+    // 3. Parse the opened URL and compare fields
+    expect(capturedUrl.length).toBeGreaterThan(0)
+    const openedUrl = new URL(capturedUrl)
+    const params = openedUrl.searchParams
+    expect(params.get('url')).toBe(tsResult.url)
+    expect(params.get('title')).toBe(tsResult.title)
+    expect(params.get('image')).toBe(tsResult.image)
+    expect(params.get('desc')).toBe(tsResult.description)
+    expect(params.get('site')).toBe(tsResult.siteName)
+    expect(params.get('favicon')).toBe(tsResult.favicon)
   })
 })
