@@ -122,37 +122,29 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toMatch(/\(function\(\)\{[\s\S]*\}\)\(\);?$/)
   })
 
-  it('inline JS matches extractOgpFromDocument semantics for a shared fixture', () => {
-    // Shared fixture: HTML head with og:title, og:image, og:description, og:site_name, favicon
-    const fixtureHead = `
-      <meta property="og:title" content="Drift Check" />
-      <meta property="og:image" content="https://cdn.example.com/og.png" />
-      <meta property="og:description" content="Ensure inline JS produces same OGP as TS extractor" />
-      <meta property="og:site_name" content="Drift Site" />
-      <link rel="icon" href="/favicon.png" />
-    `
-    const fixtureHref = 'https://example.com/article?id=1'
-
-    // 1. Run the TS extractor on a jsdom document
+  // Parametrized drift-gap test: compare the TS extractor against the inline JS
+  // IIFE across multiple fixture variations. Each variation exercises a different
+  // set of fallback branches so inline/TS drift can't hide in unused code paths.
+  function compareExtraction(fixtureHead: string, fixtureHref: string): void {
     const parser = new DOMParser()
+
+    // 1. TS extractor on a jsdom document with a location proxy
     const tsDoc = parser.parseFromString(
       `<!DOCTYPE html><html><head>${fixtureHead}</head><body></body></html>`,
       'text/html',
     )
-    // Provide a location proxy (same pattern as the top of this file's makeDoc helper)
     const tsDocProxy = new Proxy(tsDoc, {
       get(target, prop, receiver) {
         if (prop === 'location') return new URL(fixtureHref)
         const v = Reflect.get(target, prop, receiver)
-        return typeof v === 'function' ? v.bind(target) : v
+        return typeof v === 'function' ? (v as (...args: unknown[]) => unknown).bind(target) : v
       },
     })
     const tsResult = extractOgpFromDocument(tsDocProxy as Document)
 
-    // 2. Run the inline JS on a separate jsdom document by evaluating the IIFE with captured window.open
+    // 2. Inline JS IIFE on a fresh jsdom document with a captured window.open
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
     const iife = uri.replace(/^javascript:/, '')
-
     const inlineDoc = parser.parseFromString(
       `<!DOCTYPE html><html><head>${fixtureHead}</head><body></body></html>`,
       'text/html',
@@ -163,7 +155,6 @@ describe('generateBookmarkletUri', () => {
       URL: URL,
     }
     const fakeLocation = new URL(fixtureHref)
-    // Run the IIFE with a shimmed `document`, `location`, `window`, `URLSearchParams`
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
     new Function('document', 'location', 'window', 'URL', 'URLSearchParams', iife)(
       inlineDoc,
@@ -173,7 +164,7 @@ describe('generateBookmarkletUri', () => {
       URLSearchParams,
     )
 
-    // 3. Parse the opened URL and compare fields
+    // 3. Compare all 6 OGP fields between the two implementations
     expect(capturedUrl.length).toBeGreaterThan(0)
     const openedUrl = new URL(capturedUrl)
     const params = openedUrl.searchParams
@@ -183,5 +174,51 @@ describe('generateBookmarkletUri', () => {
     expect(params.get('desc')).toBe(tsResult.description)
     expect(params.get('site')).toBe(tsResult.siteName)
     expect(params.get('favicon')).toBe(tsResult.favicon)
-  })
+  }
+
+  const driftFixtures = [
+    {
+      name: 'all OGP tags present (happy path)',
+      href: 'https://example.com/article?id=1',
+      head: `
+        <meta property="og:title" content="Drift Check" />
+        <meta property="og:image" content="https://cdn.example.com/og.png" />
+        <meta property="og:description" content="Ensure inline JS produces same OGP as TS extractor" />
+        <meta property="og:site_name" content="Drift Site" />
+        <link rel="icon" href="/favicon.png" />
+      `,
+    },
+    {
+      name: 'no og:* tags, falls back to title/description/twitter:image/shortcut icon/hostname',
+      href: 'https://news.example.com/story/42',
+      head: `
+        <title>Plain Title Fallback</title>
+        <meta name="description" content="Plain description fallback via meta[name]" />
+        <meta name="twitter:image" content="https://cdn.example.com/twitter.png" />
+        <link rel="shortcut icon" href="https://cdn.example.com/short.ico" />
+      `,
+    },
+    {
+      name: 'empty head — title→URL, site→hostname, favicon→/favicon.ico default',
+      href: 'https://bare.example.org/deep/path?x=1',
+      head: ``,
+    },
+    {
+      name: 'long og:description — both sides must truncate to 200 chars',
+      href: 'https://example.com/long',
+      head: `
+        <meta property="og:title" content="Long Desc Fixture" />
+        <meta property="og:description" content="${'a'.repeat(500)}" />
+        <meta property="og:site_name" content="Long Site" />
+        <link rel="icon" href="https://cdn.example.com/fav.ico" />
+      `,
+    },
+  ]
+
+  it.each(driftFixtures)(
+    'inline JS matches extractOgpFromDocument: $name',
+    ({ head, href }) => {
+      compareExtraction(head, href)
+    },
+  )
 })
