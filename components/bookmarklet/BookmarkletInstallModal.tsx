@@ -15,13 +15,18 @@ type Props = {
 export function BookmarkletInstallModal({ isOpen, onClose, appUrl }: Props): ReactElement | null {
   const closeBtnRef = useRef<HTMLButtonElement>(null)
 
+  // Focus close button only when transitioning to open
+  useEffect(() => {
+    if (isOpen) closeBtnRef.current?.focus()
+  }, [isOpen])
+
+  // ESC listener
   useEffect(() => {
     if (!isOpen) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
-    closeBtnRef.current?.focus()
     return () => window.removeEventListener('keydown', onKey)
   }, [isOpen, onClose])
 

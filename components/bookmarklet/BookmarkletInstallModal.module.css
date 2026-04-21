@@ -5,14 +5,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 200; /* mirrors BOARD_Z_INDEX.MODAL_OVERLAY */
   animation: fadeIn 160ms ease-out;
 }
 
 .modal {
-  background: var(--color-surface, #fff);
-  border-radius: var(--radius-lg, 16px);
-  box-shadow: var(--shadow-xl, 0 20px 60px rgba(0, 0, 0, 0.3));
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
   padding: 24px 28px;
   width: 480px;
   max-width: calc(100vw - 32px);
@@ -32,7 +32,7 @@
   font-size: 18px;
   font-weight: 600;
   margin: 0;
-  color: var(--color-text-primary, #1a1a1a);
+  color: var(--color-text-primary);
 }
 
 .closeBtn {
@@ -42,11 +42,11 @@
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
-  color: var(--color-text-secondary, #666);
+  color: var(--color-text-secondary);
 }
 
 .closeBtn:hover {
-  background: var(--color-surface-hover, #f5f5f5);
+  background: var(--color-glass-bg-hover);
 }
 
 .dragLinkWrap {
@@ -59,13 +59,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--color-surface-raised, #fafafa);
-  border: 1px solid var(--color-border, #e0e0e0);
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
   border-radius: 10px;
   padding: 12px 20px;
   font-size: 15px;
   font-weight: 500;
-  color: var(--color-text-primary, #1a1a1a);
+  color: var(--color-text-primary);
   text-decoration: none;
   cursor: grab;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
@@ -85,28 +85,28 @@
 .dragInstruction {
   text-align: center;
   font-size: 13px;
-  color: var(--color-text-secondary, #666);
+  color: var(--color-text-secondary);
   margin: 0 0 20px;
 }
 
 .divider {
   height: 1px;
-  background: var(--color-border, #e0e0e0);
+  background: var(--color-card-border);
   margin: 20px 0;
   border: none;
 }
 
 .barHint {
   font-size: 13px;
-  color: var(--color-text-secondary, #666);
+  color: var(--color-text-secondary);
   margin: 0 0 6px;
 }
 
 .shortcuts {
   font-size: 12px;
-  color: var(--color-text-tertiary, #888);
+  color: var(--color-text-tertiary);
   margin: 0;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   line-height: 1.6;
 }
 
@@ -114,12 +114,12 @@
   font-size: 14px;
   font-weight: 600;
   margin: 0 0 8px;
-  color: var(--color-text-primary, #1a1a1a);
+  color: var(--color-text-primary);
 }
 
 .usageList {
   font-size: 13px;
-  color: var(--color-text-secondary, #555);
+  color: var(--color-text-secondary);
   margin: 0;
   padding: 0;
   list-style: none;

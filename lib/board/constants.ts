@@ -41,6 +41,7 @@ export const BOARD_Z_INDEX = {
   TOOLBAR: 110,
   POPOVER: 120,
   UNDO_TOAST: 130,
+  MODAL_OVERLAY: 200,  // App-level modal overlay (Bookmarklet install, etc.)
 } as const
 
 export const INTERACTION = {
