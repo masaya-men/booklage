@@ -8,7 +8,34 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master`
-- **🔥 最新進捗 (2026-04-21)**: **ブックマーレット復活 完了 + 本番デプロイ済** (v9)、`booklage.pages.dev` 反映済
+- **🚨 最優先バグ (2026-04-21 user 実機報告)**: **bookmarklet をドラッグ→クリックすると `javascript:throw new Error('React has blocked a javascript: URL as a security precaution.')` エラー**。**次セッション最初にこれを修正**
+  - **原因**: React 19 は `<a href="javascript:...">` を render 時に検知して href を error-throw に置換するセキュリティ機構。[components/bookmarklet/BookmarkletInstallModal.tsx](components/bookmarklet/BookmarkletInstallModal.tsx) の `<a href={uri}>` が JSX を通るためここで無効化される
+  - **修正方法（確定済、数行差分）**:
+    ```tsx
+    // BookmarkletInstallModal.tsx
+    const linkRef = useRef<HTMLAnchorElement>(null)
+    useEffect(() => {
+      if (linkRef.current) {
+        linkRef.current.setAttribute('href', uri)  // JSX 経由せず DOM 直指定で React のブロックを回避
+      }
+    }, [uri])
+
+    // JSX からは href 属性を削除
+    <a
+      ref={linkRef}
+      data-testid="bookmarklet-drag-link"
+      className={styles.dragLink}
+      draggable="true"
+      onClick={(e) => e.preventDefault()}
+    >
+      {t('board.bookmarkletModal.linkLabel')}
+    </a>
+    ```
+  - **テスト影響**: `BookmarkletInstallModal.test.tsx` の test 3 (「draggable link has javascript: URI」) は `link.getAttribute('href')?.startsWith('javascript:')` を assert しているので、useEffect 実行後に初めて href が入る形になる。jsdom 環境だと `render()` の return 後に useEffect は同期実行されるので従来通り pass する想定。もし fail したら `await waitFor(() => expect(...))` を追加
+  - **検証後**: `public/sw.js` の CACHE_VERSION を `v10-2026-04-21-bookmarklet-href-fix` に bump → `pnpm build` → `wrangler pages deploy` で再デプロイ → user に再度実機検証依頼
+  - **commit message**: `fix(bookmarklet): set href via ref to bypass React 19 javascript: URL block`
+
+- **🔥 最新進捗 (2026-04-21)**: **ブックマーレット復活 実装完了 + 本番デプロイ済** (v9)、`booklage.pages.dev` 反映済（ただし**上記バグで機能はしてない**）
   - **新規実装**:
     - `lib/utils/bookmarklet.ts` — `extractOgpFromDocument` + `generateBookmarkletUri` (pure inline `javascript:` URI 方式、外部 script 非注入で CSP 厳格サイトでも動く)
     - Board サイドバー に「📌 ブックマークレット」行（LIBRARY と Folders の間）→ click で導入モーダル開く
@@ -67,8 +94,16 @@
 ### 次セッション最初にやること
 
 1. **`docs/TODO.md` を読む**（このファイル）
-2. **user に実機検証マトリクス 7 パターンを実行してもらう**（上記テーブル）→ bug 報告あれば即 fix
-3. **検証 OK なら C (Multi-playback) に進む** — brainstorming → spec → plan → subagent-driven-development
+2. **🚨 最優先: bookmarklet の href bug 修正** — 上記「最優先バグ」セクションの修正方法通り `BookmarkletInstallModal.tsx` を ref + useEffect + setAttribute パターンに書き換え → tsc + vitest 通す → SW bump → build → deploy → user に再検証依頼
+3. **同時に議論したい次の UX 論点（user から 2026-04-21 提起）**:
+   - **(a) 新規カード追加位置** — 現状は `addBookmark()` 内で `randomPosition()` がランダム座標を返す実装（[lib/storage/indexeddb.ts:433](lib/storage/indexeddb.ts)）。「どこに追加されたかわからない」UX 問題。改善候補:
+     - 案 A: 常に board 最下段（`maxY + gap`）に追加 → 視覚的に追跡しやすい
+     - 案 B: 保存直後に追加カードを spring-in アニメ + 自動スクロール追従（focus moment 演出）
+     - 案 C: 一時的にハイライト枠 + 3s フェードアウト
+     - brainstorming で決めてから実装
+   - **(b) 保存後の全体挙動磨き込み** — user から以前共有されているアイデア群（詳細は `docs/private/IDEAS.md` 参照、保存後の celebration、音、動きなど）。(a) とセットで議論
+4. **bookmarklet 機能検証が OK になったら** → 実機検証マトリクス 7 パターンを user に実行依頼（上記テーブル）
+5. **7 パターン全部 OK なら C (Multi-playback) に進む** — brainstorming → spec → plan → subagent-driven-development
 
 ### C-multi-playback 実装開始のコピペ用 prompt
 
