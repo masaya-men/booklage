@@ -2,6 +2,7 @@
 
 import type { ReactElement } from 'react'
 import { LiquidGlass } from './LiquidGlass'
+import { BookmarkletInstall } from '@/components/bookmarklet/BookmarkletInstall'
 import { t } from '@/lib/i18n/t'
 import styles from './Sidebar.module.css'
 
@@ -14,9 +15,10 @@ type Props = {
     readonly read: number
   }
   readonly onThemeClick: () => void
+  readonly onOpenBookmarkletModal?: () => void
 }
 
-export function Sidebar({ collapsed, onToggle, counts, onThemeClick }: Props): ReactElement {
+export function Sidebar({ collapsed, onToggle, counts, onThemeClick, onOpenBookmarkletModal }: Props): ReactElement {
   return (
     <aside
       className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`.trim()}
@@ -60,6 +62,9 @@ export function Sidebar({ collapsed, onToggle, counts, onThemeClick }: Props): R
             <span className={styles.navLabel}>{t('board.sidebar.read')}</span>
             <span className={styles.navCount}>{counts.read}</span>
           </button>
+
+          {/* Bookmarklet install entry point */}
+          <BookmarkletInstall onClick={onOpenBookmarkletModal ?? (() => {})} />
 
           {/* Folders (placeholder) */}
           <div className={styles.sectionHeader}>{t('board.sidebar.foldersHeader')}</div>
