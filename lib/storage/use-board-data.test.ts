@@ -14,6 +14,7 @@ const baseBookmark: BookmarkRecord = {
   savedAt: '2026-04-19T00:00:00Z',
   folderId: 'root',
   ogpStatus: 'fetched',
+  tags: ['root'],
 }
 
 const baseCard: CardRecord = {
