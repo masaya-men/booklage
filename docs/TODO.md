@@ -7,35 +7,60 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master`
-- **🚨 最優先バグ (2026-04-21 user 実機報告)**: **bookmarklet をドラッグ→クリックすると `javascript:throw new Error('React has blocked a javascript: URL as a security precaution.')` エラー**。**次セッション最初にこれを修正**
-  - **原因**: React 19 は `<a href="javascript:...">` を render 時に検知して href を error-throw に置換するセキュリティ機構。[components/bookmarklet/BookmarkletInstallModal.tsx](components/bookmarklet/BookmarkletInstallModal.tsx) の `<a href={uri}>` が JSX を通るためここで無効化される
-  - **修正方法（確定済、数行差分）**:
-    ```tsx
-    // BookmarkletInstallModal.tsx
-    const linkRef = useRef<HTMLAnchorElement>(null)
-    useEffect(() => {
-      if (linkRef.current) {
-        linkRef.current.setAttribute('href', uri)  // JSX 経由せず DOM 直指定で React のブロックを回避
-      }
-    }, [uri])
+- **ブランチ**: `master`（worktree 未使用）
+- **未 push commits**: 3 個（次セッション起動時に `git push origin master` してください）
+  - `6651f20` — bookmarklet href bug fix (React 19 javascript: URL block 回避、ref + useEffect + setAttribute)
+  - `bf4fe78` — destefanis pivot design spec 初版
+  - `37cfc67` — spec 更新 (/save トースト化の反映)
 
-    // JSX からは href 属性を削除
-    <a
-      ref={linkRef}
-      data-testid="bookmarklet-drag-link"
-      className={styles.dragLink}
-      draggable="true"
-      onClick={(e) => e.preventDefault()}
-    >
-      {t('board.bookmarkletModal.linkLabel')}
-    </a>
-    ```
-  - **テスト影響**: `BookmarkletInstallModal.test.tsx` の test 3 (「draggable link has javascript: URI」) は `link.getAttribute('href')?.startsWith('javascript:')` を assert しているので、useEffect 実行後に初めて href が入る形になる。jsdom 環境だと `render()` の return 後に useEffect は同期実行されるので従来通り pass する想定。もし fail したら `await waitFor(() => expect(...))` を追加
-  - **検証後**: `public/sw.js` の CACHE_VERSION を `v10-2026-04-21-bookmarklet-href-fix` に bump → `pnpm build` → `wrangler pages deploy` で再デプロイ → user に再度実機検証依頼
-  - **commit message**: `fix(bookmarklet): set href via ref to bypass React 19 javascript: URL block`
+---
 
-- **🔥 最新進捗 (2026-04-21)**: **ブックマーレット復活 実装完了 + 本番デプロイ済** (v9)、`booklage.pages.dev` 反映済（ただし**上記バグで機能はしてない**）
+### 🎯 次セッション最初にやること (順番に)
+
+1. **spec を読む**: [docs/superpowers/specs/2026-04-21-destefanis-pivot-design.md](docs/superpowers/specs/2026-04-21-destefanis-pivot-design.md)（472 行）
+2. **user に spec レビュー結果を聞く**: 修正箇所あるか、OK か
+3. **OK なら `writing-plans` スキル invoke** → 詳細実装プラン生成
+4. **プラン OK なら `subagent-driven-development` or TDD で実装開始**
+
+---
+
+### 🌟 2026-04-21 brainstorm のまとめ (spec に全部入ってるが要約)
+
+**lock した 14 項目**:
+1. 分類モデル: フォルダ廃止 → タグ主体 (mood buckets、mymind 方式)
+2. Tagger 抽象化: MVP HeuristicTagger、将来 Gemma 270M 差替え可能な interface
+3. Save flow: **Zero-friction Inbox** (タグ選択なし、Inbox 直行)
+4. 視覚スコープ: 案 X hybrid (destefanis board + Booklage サイドバー identity)
+5. コピー戦略: **destefanis を wholesale copy してから個性化** (個性化は launch 後)
+6. サイドバー哲学: テーマ駆動統一 (destefanis theme では dark minimal)
+7. TextCard typography: **現状維持** (大 serif + favicon + domain)
+8. 本文+画像カード: M (image-first minimal) デフォルト + PEM ユーザー切替
+9. Lightbox layout: F2 floating 横並び (desktop) / F1 縦積み (mobile)、card chrome なし
+10. Lightbox animation: destefanis Motion One spring 複製
+11. Board entrance: A 静かな fade-in 400ms + FLIP reflow
+12. Triage layout: T1 Linear (tag chip + 1-9 数字キー)
+13. Triage animation: fade-out 120ms / fade-in 180ms 最小限
+14. **ブランドカラー: 未決定**。紫は placeholder、brand color として扱わない
+
+**保存フロー (§5.1 更新後)**: bookmarklet click → `window.open(320×120, top-center)` → auto-save on load → spinner → ✓ checkmark → `window.close()` (~1.3s)。**現バグ** (BroadcastChannel listener 無し) も §5.1 step 8 で同時解消
+
+**IDEAS.md に退避した deferred ideas**: WASD Directional Triage / HTML-in-canvas ピーリングアニメ / Multi-playback / Gemma 270M
+
+---
+
+### 🚨 以前の最優先バグ: bookmarklet href React 19 block — **2026-04-21 修正 + デプロイ済**
+
+- commit `6651f20` で [components/bookmarklet/BookmarkletInstallModal.tsx](components/bookmarklet/BookmarkletInstallModal.tsx) を ref + useEffect + setAttribute パターンに書き換え
+- SW CACHE_VERSION `v10-2026-04-21-bookmarklet-href-fix` bump 済
+- `booklage.pages.dev` 本番反映済 (deploy URL: `https://75949651.booklage.pages.dev`)
+- tsc clean / vitest 173/173 pass / Playwright 11/11 pass
+- **user 実機検証まだ** — `booklage.pages.dev` をハードリロード → bookmarklet 再ドラッグ → 任意サイトで click → エラー無しで /save が開けば成功
+
+この検証結果は次セッションで確認。失敗していたら destefanis pivot 実装前に修正必要。
+
+---
+
+### 🔥 以前の進捗 (2026-04-21 前半)：ブックマーレット復活 v9 デプロイ済
   - **新規実装**:
     - `lib/utils/bookmarklet.ts` — `extractOgpFromDocument` + `generateBookmarkletUri` (pure inline `javascript:` URI 方式、外部 script 非注入で CSP 厳格サイトでも動く)
     - Board サイドバー に「📌 ブックマークレット」行（LIBRARY と Folders の間）→ click で導入モーダル開く
@@ -91,27 +116,26 @@
 2. **YouTube カードのタイトルバー視認性** — 暗いサムネでは白文字 + 下からのグラデ overlay でも読みづらい。user 了解済の「後でブラッシュアップ」項目
 3. **YouTube タイトルが「タイトル見えないことがある」問題** — 一部の既存ブクマは oEmbed fetch が 404 / ネットワーク失敗で degenerate title のまま残留
 
-### 次セッション最初にやること
+### 次セッション最初にやること（2026-04-21 夜 更新、destefanis pivot 採択後）
 
 1. **`docs/TODO.md` を読む**（このファイル）
-2. **🚨 最優先: bookmarklet の href bug 修正** — 上記「最優先バグ」セクションの修正方法通り `BookmarkletInstallModal.tsx` を ref + useEffect + setAttribute パターンに書き換え → tsc + vitest 通す → SW bump → build → deploy → user に再検証依頼
-3. **同時に議論したい次の UX 論点（user から 2026-04-21 提起）**:
-   - **(a) 新規カード追加位置** — 現状は `addBookmark()` 内で `randomPosition()` がランダム座標を返す実装（[lib/storage/indexeddb.ts:433](lib/storage/indexeddb.ts)）。「どこに追加されたかわからない」UX 問題。改善候補:
-     - 案 A: 常に board 最下段（`maxY + gap`）に追加 → 視覚的に追跡しやすい
-     - 案 B: 保存直後に追加カードを spring-in アニメ + 自動スクロール追従（focus moment 演出）
-     - 案 C: 一時的にハイライト枠 + 3s フェードアウト
-     - brainstorming で決めてから実装
-   - **(b) 保存後の全体挙動磨き込み** — user から以前共有されているアイデア群（詳細は `docs/private/IDEAS.md` 参照、保存後の celebration、音、動きなど）。(a) とセットで議論
-4. **bookmarklet 機能検証が OK になったら** → 実機検証マトリクス 7 パターンを user に実行依頼（上記テーブル）
-5. **7 パターン全部 OK なら C (Multi-playback) に進む** — brainstorming → spec → plan → subagent-driven-development
+2. **`git push origin master`** — 未 push commits 3 個
+3. **[docs/superpowers/specs/2026-04-21-destefanis-pivot-design.md](docs/superpowers/specs/2026-04-21-destefanis-pivot-design.md) を読む** (472 行)
+4. **user に spec レビュー結果を聞く** — 修正箇所 or approval
+5. **spec OK → `writing-plans` スキル invoke** で詳細実装プラン生成
+6. **plan OK → `subagent-driven-development` or TDD で実装開始**
 
-### C-multi-playback 実装開始のコピペ用 prompt
+以前の論点 (a) 新規カード追加位置 / (b) 保存後の celebration は brainstorm で以下に集約されて解決:
+- (a) → destefanis masonry は auto-computed なので「どこに追加」問題は消滅。top-left 挿入固定
+- (b) → SaveToast (§6.5) + 静かな entrance animation (A) で確定
+
+### destefanis pivot 実装開始のコピペ用 prompt
 
 ```
-docs/TODO.md を読んで、次に C (Multi-playback) の brainstorming を開始してください。
-spec: docs/private/IDEAS.md のマルチ再生関連 + B-embeds spec §Part C の外スコ記述
-着地点: 動画カード click で in-place 再生、unmute は 1 枚ずつ auto-mute others
-brainstorming → spec → plan → subagent-driven-development で実装の流れ
+docs/TODO.md を読んで、次に destefanis pivot の writing-plans を開始してください。
+spec: docs/superpowers/specs/2026-04-21-destefanis-pivot-design.md (全文必読、472 行)
+方針: 14 lock 項目を MVP で全部実装。launch 2026-05-05 目標、+1 週間遅延許容。
+plan → subagent-driven-development で実装の流れ
 ```
 
 ### 便利ツール
