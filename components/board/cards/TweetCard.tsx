@@ -24,50 +24,74 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280 }: Prop
   const hostRef = useRef<HTMLDivElement>(null)
   const [errored] = useState(false)
 
-  // Measure the actual rendered <article> after react-tweet finishes loading
-  // and on any subsequent resize (media load, quoted tweet expansion).
-  // Heuristic prediction was removed — it was inaccurate for CJK text,
-  // image-bearing tweets, and tweets with quotes. Real DOM measurement always
-  // gives the correct height; masonry reflows when persistMeasuredAspect runs.
+  // Measure the total rendered height of everything react-tweet emits, including
+  // <article> AND its siblings like the "Read N replies" link that react-tweet
+  // appends below article. Measuring article alone clipped that footer.
+  //
+  // Strategy: scan host.children, take the max of (offsetTop + offsetHeight).
+  // Observe every descendant for resize (images/videos loading), plus a
+  // MutationObserver to re-attach if react-tweet swaps subtrees.
   useEffect(() => {
     const host = hostRef.current
     if (!host || !tweetId || !persistMeasuredAspect) return
 
     let lastReportedH = 0
-    let currentObserver: ResizeObserver | null = null
+    const observedNodes = new Set<Element>()
+    const ro = new ResizeObserver(() => report())
 
-    const reportHeight = (): void => {
-      const article = host.querySelector('article')
-      if (!article) return
-      const h = article.offsetHeight
-      if (h < 60) return // react-tweet skeleton — wait for real content
-      if (Math.abs(h - lastReportedH) < MEASUREMENT_EPSILON_PX) return
-      lastReportedH = h
-      void persistMeasuredAspect(item.cardId, cardWidth / h)
+    const report = (): void => {
+      const children = host.children
+      if (children.length === 0) return
+      let maxBottom = 0
+      for (let i = 0; i < children.length; i++) {
+        const el = children[i] as HTMLElement
+        const bottom = el.offsetTop + el.offsetHeight
+        if (bottom > maxBottom) maxBottom = bottom
+      }
+      if (maxBottom < 60) return // still loading skeleton
+      if (Math.abs(maxBottom - lastReportedH) < MEASUREMENT_EPSILON_PX) return
+      lastReportedH = maxBottom
+      void persistMeasuredAspect(item.cardId, cardWidth / maxBottom)
     }
 
-    const attachToArticle = (article: Element): void => {
-      currentObserver = new ResizeObserver(reportHeight)
-      currentObserver.observe(article)
-      reportHeight()
+    const observeDeep = (root: Element): void => {
+      if (observedNodes.has(root)) return
+      observedNodes.add(root)
+      ro.observe(root)
+      // Observe direct children too — text re-wraps and image loads trigger
+      // size changes at the leaf level.
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
+      let node = walker.nextNode() as Element | null
+      while (node) {
+        if (!observedNodes.has(node)) {
+          observedNodes.add(node)
+          ro.observe(node)
+        }
+        node = walker.nextNode() as Element | null
+      }
     }
 
-    // Watch for <article> to appear (react-tweet renders it asynchronously
-    // after fetching tweet data from cdn.syndication.twimg.com).
-    const mo = new MutationObserver(() => {
-      if (currentObserver) return
-      const article = host.querySelector('article')
-      if (article) attachToArticle(article)
+    // Catch new DOM (article mount, "Read N replies" link append, image inserts)
+    const mo = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const n of m.addedNodes) {
+          if (n.nodeType === Node.ELEMENT_NODE) observeDeep(n as Element)
+        }
+      }
+      report()
     })
     mo.observe(host, { childList: true, subtree: true })
 
-    // If article is already present (warm cache or re-render), attach immediately.
-    const existing = host.querySelector('article')
-    if (existing) attachToArticle(existing)
+    // Seed observations for anything already rendered
+    for (let i = 0; i < host.children.length; i++) {
+      observeDeep(host.children[i])
+    }
+    report()
 
     return (): void => {
       mo.disconnect()
-      currentObserver?.disconnect()
+      ro.disconnect()
+      observedNodes.clear()
     }
   }, [tweetId, item.cardId, persistMeasuredAspect, cardWidth])
 
