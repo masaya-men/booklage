@@ -262,6 +262,13 @@ export function BoardRoot() {
     setSidebarCollapsed((prev) => !prev)
   }, [])
 
+  const handleOpenBookmarkletModal = useCallback((): void => {
+    setBookmarkletModalOpen(true)
+  }, [])
+  const handleCloseBookmarkletModal = useCallback((): void => {
+    setBookmarkletModalOpen(false)
+  }, [])
+
   // F key toggles sidebar collapse (ignored while typing in an input/textarea)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -383,15 +390,15 @@ export function BoardRoot() {
         onToggle={handleSidebarToggle}
         counts={sidebarCounts}
         onThemeClick={handleThemeClick}
-        onOpenBookmarkletModal={() => setBookmarkletModalOpen(true)}
+        onOpenBookmarkletModal={handleOpenBookmarkletModal}
       />
       <BookmarkletInstallModal
         isOpen={bookmarkletModalOpen}
-        onClose={() => setBookmarkletModalOpen(false)}
+        onClose={handleCloseBookmarkletModal}
         appUrl={typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? 'https://booklage.pages.dev')}
       />
       {!loading && items.length === 0 && (
-        <EmptyStateWelcome onOpenModal={() => setBookmarkletModalOpen(true)} />
+        <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
       )}
     </div>
   )
