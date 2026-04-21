@@ -7,20 +7,38 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master`（worktree 未使用）
-- **未 push commits**: 3 個（次セッション起動時に `git push origin master` してください）
-  - `6651f20` — bookmarklet href bug fix (React 19 javascript: URL block 回避、ref + useEffect + setAttribute)
-  - `bf4fe78` — destefanis pivot design spec 初版
-  - `37cfc67` — spec 更新 (/save トースト化の反映)
+- **ブランチ**: `destefanis-pivot` (origin に push 済、master からの分岐)
+- **master**: 全 push 済（plan doc も含む）
+- **destefanis-pivot の commits**:
+  - `5c5df1a` — Task 1: IDB v9 migration (folders→moods, folderId→tags[]) ✅ spec+code review 両方 pass
+- **進捗**: 全 25 タスク中 **Task 1 完了**。Task 2 から再開
+- **セッションメモ**: 2026-04-21 夜、制限近いため Task 1 完了地点で一時停止。subagent-driven-development で進行中
 
 ---
 
 ### 🎯 次セッション最初にやること (順番に)
 
-1. **spec を読む**: [docs/superpowers/specs/2026-04-21-destefanis-pivot-design.md](docs/superpowers/specs/2026-04-21-destefanis-pivot-design.md)（472 行）
-2. **user に spec レビュー結果を聞く**: 修正箇所あるか、OK か
-3. **OK なら `writing-plans` スキル invoke** → 詳細実装プラン生成
-4. **プラン OK なら `subagent-driven-development` or TDD で実装開始**
+1. **このファイル (docs/TODO.md) を読む** ← 今ここ
+2. **branch checkout**: `git checkout destefanis-pivot`
+3. **plan を再読**: [docs/superpowers/plans/2026-04-21-destefanis-pivot.md](docs/superpowers/plans/2026-04-21-destefanis-pivot.md) の **Task 2** から再開
+4. **`subagent-driven-development` スキルを再 invoke** して Task 2 以降を順次実行
+   - ワークフロー: implementer dispatch → spec review → code quality review → 次タスク
+   - 各タスクは fresh subagent を dispatch（context 汚染防止）
+   - 25 タスク全完了後に `finishing-a-development-branch` で master merge + deploy
+
+### 📋 Task 1 で code reviewer が挙げた minor follow-ups (Task 2-3 で対応推奨)
+
+1. **Important**: `lib/storage/indexeddb.ts:452, :472` の `addFolder` / `getAllFolders` は v9 で `folders` store が無くなったため runtime で `NotFoundError` を投げる。Task 2 で削除予定だが、万一 preview deploy が間に挟まる場合は descriptive throw を追加する判断あり。**Task 2 ですぐ削除するのでスキップ可**
+2. **Minor**: 「v9 migration 後、全 bookmark に `tags` 配列が存在する」ことを assertion する sentinel test 追加（Task 2 の moods test に混ぜてもよい）
+3. **Minor**: migration block の `.then()` chain（`lib/storage/indexeddb.ts:383-384` 付近）に「microtask/auto-commit invariant」の 1-liner コメント
+
+### 📋 plan の主な deviations（Task 1 で適用済、plan 改訂は不要）
+
+- plan の `async/await cursor.continue()` パターンを既存コードベース style の `function recur(cursor) { ...; return cursor.continue().then(recur) }` に揃えた
+- `deleteObjectStore('folders')` は plan の synchronous call だと cursor が生きている間に store を消してしまう bug あり → `.then()` chain で cursor drain 後に実行するよう修正済
+- plan 内の `folderMap` 変数は未使用 dead code だったため削除
+
+---
 
 ---
 
