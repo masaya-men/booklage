@@ -17,11 +17,10 @@ describe('BookmarkletInstall', () => {
     expect(onClick).toHaveBeenCalledOnce()
   })
 
-  it('calls onClick when Enter is pressed', () => {
-    const onClick = vi.fn()
-    render(<BookmarkletInstall onClick={onClick} />)
+  it('renders a button element (native keyboard activation inherited)', () => {
+    render(<BookmarkletInstall onClick={() => {}} />)
     const btn = screen.getByRole('button')
-    fireEvent.keyDown(btn, { key: 'Enter' })
-    expect(onClick).toHaveBeenCalledOnce()
+    expect(btn.tagName).toBe('BUTTON')
+    expect(btn.getAttribute('type')).toBe('button')
   })
 })
