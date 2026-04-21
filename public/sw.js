@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v9-2026-04-21-bookmarklet-revival'
+const CACHE_VERSION = 'v10-2026-04-21-bookmarklet-href-fix'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

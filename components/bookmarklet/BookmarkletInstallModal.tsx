@@ -14,11 +14,21 @@ type Props = {
 
 export function BookmarkletInstallModal({ isOpen, onClose, appUrl }: Props): ReactElement | null {
   const closeBtnRef = useRef<HTMLButtonElement>(null)
+  const linkRef = useRef<HTMLAnchorElement>(null)
+
+  const uri = isOpen ? generateBookmarkletUri(appUrl) : ''
 
   // Focus close button only when transitioning to open
   useEffect(() => {
     if (isOpen) closeBtnRef.current?.focus()
   }, [isOpen])
+
+  // Set href via DOM to bypass React 19's javascript: URL security block
+  useEffect(() => {
+    if (isOpen && linkRef.current) {
+      linkRef.current.setAttribute('href', uri)
+    }
+  }, [isOpen, uri])
 
   // ESC listener
   useEffect(() => {
@@ -31,8 +41,6 @@ export function BookmarkletInstallModal({ isOpen, onClose, appUrl }: Props): Rea
   }, [isOpen, onClose])
 
   if (!isOpen) return null
-
-  const uri = generateBookmarkletUri(appUrl)
 
   return (
     <div
@@ -64,9 +72,9 @@ export function BookmarkletInstallModal({ isOpen, onClose, appUrl }: Props): Rea
 
         <div className={styles.dragLinkWrap}>
           <a
+            ref={linkRef}
             data-testid="bookmarklet-drag-link"
             className={styles.dragLink}
-            href={uri}
             draggable="true"
             onClick={(e) => e.preventDefault()}
           >
