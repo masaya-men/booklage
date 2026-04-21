@@ -18,6 +18,8 @@ import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
 import { Toolbar } from './Toolbar'
 import { Sidebar } from './Sidebar'
+import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
+import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
 
 const THEME_LS_KEY = 'booklage.board.themeId'
 
@@ -35,7 +37,7 @@ function loadSavedTheme(): ThemeId {
 }
 
 export function BoardRoot() {
-  const { items, persistSizePreset, persistOrderBatch, persistMeasuredAspect } = useBoardData()
+  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect } = useBoardData()
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   // Lifted from InteractionLayer so CardsLayer can also observe Space-held
@@ -43,6 +45,7 @@ export function BoardRoot() {
   // InteractionLayer where pan engagement lives.
   const [spaceHeld, setSpaceHeld] = useState<boolean>(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false)
+  const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState<boolean>(false)
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -380,7 +383,16 @@ export function BoardRoot() {
         onToggle={handleSidebarToggle}
         counts={sidebarCounts}
         onThemeClick={handleThemeClick}
+        onOpenBookmarkletModal={() => setBookmarkletModalOpen(true)}
       />
+      <BookmarkletInstallModal
+        isOpen={bookmarkletModalOpen}
+        onClose={() => setBookmarkletModalOpen(false)}
+        appUrl={typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? 'https://booklage.pages.dev')}
+      />
+      {!loading && items.length === 0 && (
+        <EmptyStateWelcome onOpenModal={() => setBookmarkletModalOpen(true)} />
+      )}
     </div>
   )
 }
