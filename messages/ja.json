@@ -32,7 +32,28 @@
       "hideHint": "F で隠す",
       "collapseAria": "折り畳む",
       "expandAria": "展開",
-      "signature": "BOARD · 2026"
+      "signature": "BOARD · 2026",
+      "bookmarklet": "ブックマークレット",
+      "bookmarkletHint": "サイトから 1 クリックで保存"
+    },
+    "empty": {
+      "title": "ブックマークをはじめよう",
+      "description": "Booklage は、どのサイトからでも 1 クリックで保存できるブックマークレットを使います",
+      "installButton": "📌 Booklage を設置",
+      "alreadyInstalled": "既に設置済？ 別サイトで 📌 をクリック"
+    },
+    "bookmarkletModal": {
+      "title": "ブックマークレットを設置する",
+      "linkLabel": "📌 Booklage",
+      "dragInstruction": "↑ これをブラウザのブックマークバーにドラッグしてください",
+      "barHint": "ブックマークバーが見えない場合:",
+      "barShortcutWindows": "Windows: Ctrl + Shift + B",
+      "barShortcutMac": "Mac: ⌘ + Shift + B",
+      "usageTitle": "設置後の使い方",
+      "usageStep1": "1. 保存したいサイトを開く",
+      "usageStep2": "2. ブックマークバーの 📌 をクリック",
+      "usageStep3": "3. フォルダ選択 → 保存",
+      "closeLabel": "閉じる"
     },
     "tweet": {
       "deleted": "このツイートは削除または非公開です",
