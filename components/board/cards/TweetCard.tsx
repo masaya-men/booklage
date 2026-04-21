@@ -29,14 +29,19 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280 }: Prop
   // appends below article. Measuring article alone clipped that footer.
   //
   // Strategy: scan host.children, take the max of (offsetTop + offsetHeight).
-  // Observe every descendant for resize (images/videos loading), plus a
-  // MutationObserver to re-attach if react-tweet swaps subtrees.
+  // Observe every descendant for resize (images/videos loading), watch for
+  // MutationObserver subtree changes (late-appended elements, swaps), listen
+  // for media `load` / `loadedmetadata` events (video thumbnails in
+  // react-tweet settle their dimensions only after metadata loads), and a
+  // handful of timer-based safety retries to catch anything that still slipped.
   useEffect(() => {
     const host = hostRef.current
     if (!host || !tweetId || !persistMeasuredAspect) return
 
     let lastReportedH = 0
     const observedNodes = new Set<Element>()
+    const mediaListeners: Array<() => void> = []
+    const timers: number[] = []
     const ro = new ResizeObserver(() => report())
 
     const report = (): void => {
@@ -54,18 +59,39 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280 }: Prop
       void persistMeasuredAspect(item.cardId, cardWidth / maxBottom)
     }
 
+    const attachMediaListener = (el: Element): void => {
+      if (el instanceof HTMLImageElement) {
+        if (el.complete) return // already loaded
+        const handler = (): void => report()
+        el.addEventListener('load', handler)
+        el.addEventListener('error', handler)
+        mediaListeners.push(() => {
+          el.removeEventListener('load', handler)
+          el.removeEventListener('error', handler)
+        })
+      } else if (el instanceof HTMLVideoElement) {
+        const handler = (): void => report()
+        el.addEventListener('loadedmetadata', handler)
+        el.addEventListener('loadeddata', handler)
+        mediaListeners.push(() => {
+          el.removeEventListener('loadedmetadata', handler)
+          el.removeEventListener('loadeddata', handler)
+        })
+      }
+    }
+
     const observeDeep = (root: Element): void => {
       if (observedNodes.has(root)) return
       observedNodes.add(root)
       ro.observe(root)
-      // Observe direct children too — text re-wraps and image loads trigger
-      // size changes at the leaf level.
+      attachMediaListener(root)
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
       let node = walker.nextNode() as Element | null
       while (node) {
         if (!observedNodes.has(node)) {
           observedNodes.add(node)
           ro.observe(node)
+          attachMediaListener(node)
         }
         node = walker.nextNode() as Element | null
       }
@@ -88,9 +114,21 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280 }: Prop
     }
     report()
 
+    // Safety-net timer re-measurements. react-tweet's video placeholders
+    // sometimes take up to ~2s to settle their final dimensions even after
+    // the article has mounted (because poster images and metadata load
+    // asynchronously from Twitter's CDN). ResizeObserver SHOULD fire for
+    // those but doesn't always in production; these retries ensure we
+    // always converge on the correct height.
+    for (const delay of [300, 800, 1800, 3500]) {
+      timers.push(window.setTimeout(report, delay))
+    }
+
     return (): void => {
       mo.disconnect()
       ro.disconnect()
+      for (const remove of mediaListeners) remove()
+      for (const t of timers) clearTimeout(t)
       observedNodes.clear()
     }
   }, [tweetId, item.cardId, persistMeasuredAspect, cardWidth])

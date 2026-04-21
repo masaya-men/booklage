@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v7-2026-04-21-b-embeds-tweet-full-height'
+const CACHE_VERSION = 'v8-2026-04-21-b-embeds-media-load-retries'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [
