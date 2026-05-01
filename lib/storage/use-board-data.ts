@@ -30,6 +30,8 @@ export type BoardItem = {
   readonly userOverridePos?: CardPosition  // legacy compat: same data as freePos for grid-side consumers
   readonly isRead: boolean
   readonly isDeleted: boolean
+  readonly tags: string[]
+  readonly displayMode: 'visual' | 'editorial' | 'native' | null
 }
 
 type DbLike = IDBPDatabase<unknown>
@@ -90,6 +92,8 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     userOverridePos: hasPlacement ? { x: c.x, y: c.y, w, h } : undefined,
     isRead: b.isRead ?? false,
     isDeleted: b.isDeleted ?? false,
+    tags: b.tags ?? [],
+    displayMode: b.displayMode ?? null,
   }
 }
 

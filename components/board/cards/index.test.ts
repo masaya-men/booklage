@@ -19,6 +19,8 @@ const baseItem: BoardItem = {
   sizePreset: 'S',
   isRead: false,
   isDeleted: false,
+  tags: [],
+  displayMode: null,
 }
 
 describe('pickCard', () => {
