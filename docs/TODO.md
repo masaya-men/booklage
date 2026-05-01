@@ -7,36 +7,64 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `destefanis-pivot` (origin に push 済、master からの分岐)
+- **ブランチ**: `destefanis-pivot` (ローカルのみ、未 push)
 - **master**: 全 push 済（plan doc も含む）
-- **destefanis-pivot の commits**:
-  - `5c5df1a` — Task 1: IDB v9 migration (folders→moods, folderId→tags[]) ✅ spec+code review 両方 pass
-- **進捗**: 全 25 タスク中 **Task 1 完了**。Task 2 から再開
-- **セッションメモ**: 2026-04-21 夜、制限近いため Task 1 完了地点で一時停止。subagent-driven-development で進行中
+- **destefanis-pivot の commits（10 個 = Task 1-10 + Playfair font fix）**:
+  - `5c5df1a` — Task 1: IDB v9 migration (folders→moods, folderId→tags[])
+  - `51374b4` — Task 2: MoodRecord CRUD, 旧 folder API 削除
+  - `26f6cd8` — Task 3: BoardConfig に displayMode + activeFilter
+  - `1114d31` — Task 4: applyFilter 純関数
+  - `1c9a86a` — Task 5: useBoardData に tags/displayMode/persistTags/persistDisplayMode/reload
+  - `3fe3db6` — Task 6: BookmarkTagger インターフェース + HeuristicTagger MVP
+  - `699e618` — Task 7: BroadcastChannel helper
+  - `d3b4570` — Task 8: ブックマークレット 320×120 トップセンターポップアップ
+  - `fb7bd06` — Task 9: SavePopup → SaveToast 置換
+  - `b951cdc` — Task 9 polish: Playfair Display フォントを globally load
+  - `634a131` — Task 10: bookmarklet-save E2E を SaveToast flow 用に書き直し
+- **進捗**: 全 25 タスク中 **Task 1-10 完了**（10/25、40%）。データ層 + save flow 完了
+- **セッションメモ**: 2026-05-01、user 判断でデータ層+save flow 完了地点（Task 10）でセッション分割。Task 11 以降は次セッション
+- **テスト**: vitest 197/197 PASS、tsc clean、pnpm build 成功
+- **E2E**: bookmarklet-save 2/2 PASS。**他 9 specs 失敗** — `board-b-embeds.spec.ts` / `board-b0-perf.spec.ts` / `board-b0.spec.ts` が DB v8 ハードコードで VersionError。Task 11+ で v9 + folders→moods 対応必要
 
 ---
 
 ### 🎯 次セッション最初にやること (順番に)
 
 1. **このファイル (docs/TODO.md) を読む** ← 今ここ
-2. **branch checkout**: `git checkout destefanis-pivot`
-3. **plan を再読**: [docs/superpowers/plans/2026-04-21-destefanis-pivot.md](docs/superpowers/plans/2026-04-21-destefanis-pivot.md) の **Task 2** から再開
-4. **`subagent-driven-development` スキルを再 invoke** して Task 2 以降を順次実行
+2. **branch 確認**: 既に `destefanis-pivot` チェックアウト済（前セッションから継続）
+3. **branch を origin に push**（前セッション中は未 push）: `rtk git push -u origin destefanis-pivot`
+4. **plan を再読**: [docs/superpowers/plans/2026-04-21-destefanis-pivot.md](docs/superpowers/plans/2026-04-21-destefanis-pivot.md) の **Task 11** から再開（line 1634〜）
+5. **`subagent-driven-development` スキルを再 invoke** して Task 11 以降を順次実行
    - ワークフロー: implementer dispatch → spec review → code quality review → 次タスク
    - 各タスクは fresh subagent を dispatch（context 汚染防止）
    - 25 タスク全完了後に `finishing-a-development-branch` で master merge + deploy
 
-### 📋 Task 1 で code reviewer が挙げた minor follow-ups (Task 2-3 で対応推奨)
+### ⚠️ 次セッションで絶対対応すべき副次タスク（Task 11 着手前 or 並行）
 
-1. **Important**: `lib/storage/indexeddb.ts:452, :472` の `addFolder` / `getAllFolders` は v9 で `folders` store が無くなったため runtime で `NotFoundError` を投げる。Task 2 で削除予定だが、万一 preview deploy が間に挟まる場合は descriptive throw を追加する判断あり。**Task 2 ですぐ削除するのでスキップ可**
-2. **Minor**: 「v9 migration 後、全 bookmark に `tags` 配列が存在する」ことを assertion する sentinel test 追加（Task 2 の moods test に混ぜてもよい）
-3. **Minor**: migration block の `.then()` chain（`lib/storage/indexeddb.ts:383-384` 付近）に「microtask/auto-commit invariant」の 1-liner コメント
+**E2E の v8 ハードコード問題** — 9 specs が破綻している（pre-existing、Task 1 v9 migration の副作用）:
+- `tests/e2e/board-b0.spec.ts`、`tests/e2e/board-b0-perf.spec.ts`、`tests/e2e/board-b-embeds.spec.ts`
+- 全部 `indexedDB.open(dbName, 8)` ハードコード + `folderId: 'default'` で seed
+- Task 11 (visual tuning) や Task 17 (entrance animation) と互換しないので、Task 11 に着手したらすぐに DB_VERSION = 9 + folders 削除に書き換える（plan は明示的に Task 25 verification で「全 E2E 緑」を要求）
+- 余計な機能追加は不要。最小書き換えで OK
 
-### 📋 plan の主な deviations（Task 1 で適用済、plan 改訂は不要）
+### 📋 Task 6 で plan-bug fix を適用済（plan 側を後で更新するか判断）
 
-- plan の `async/await cursor.continue()` パターンを既存コードベース style の `function recur(cursor) { ...; return cursor.continue().then(recur) }` に揃えた
-- `deleteObjectStore('folders')` は plan の synchronous call だと cursor が生きている間に store を消してしまう bug あり → `.then()` chain で cursor drain 後に実行するよう修正済
-- plan 内の `folderMap` 変数は未使用 dead code だったため削除
+**HeuristicTagger keyword branch**: plan-verbatim だと test #2（`'My photo diary'` → `'photography'` mood）が pass しない。Implementer が `haystackWords.some((w) => moodName.includes(w))` の symmetric clause を追加して解決。inline コメントあり。次セッションで余裕があれば plan の Task 6 markdown を後追い修正してもよい（緊急ではない）。
+
+### 📋 Task 8 で plan-bug fix を 2 件適用済（plan 側を後で更新するか判断）
+
+1. **`screen.width-w` vs test regex `screen.width-320`**: 変数 `w` を使う plan source と literal `320` を要求する test regex の矛盾。Implementer が IIFE 内で literal 320 を inline 化して解決。
+2. **`JSON.stringify(appUrl)` vs origin substring test**: `JSON.stringify` だと `"https://booklage.pages.dev"` で literal substring が壊れる。Implementer が inline-with-escape (`\\` → `\\\\`, `'` → `\\'`) に変更。production の appUrl は `https://...` / `http://localhost:...` のみで escape 影響なし。security posture は内部 config 限定で acceptable。
+
+### 📋 Task 9 で plan に明記されてない決定事項
+
+- `/save` ルートを `app/(app)/save/page.tsx` から **top-level `app/save/page.tsx`** へ移動（plan は recommend、impl は採用）
+- 理由: `app/(app)/layout.tsx` が `100vh flex` shell を被せて 320×120 popup viewport を破壊するため
+- `app/save/page.tsx` 配下は global `app/layout.tsx` のみ継承 → クリーンな body で SaveToast が `width:100%; height:100%` で popup を埋める
+
+### 📋 Task 9 polish で global font 追加
+
+`app/layout.tsx` に `Playfair_Display` を追加（italic、weight 400/700、`--font-playfair`）。`SaveToast.module.css` `.brand` と `Sidebar.module.css` `.brandName` を `var(--font-playfair, 'Playfair Display'), Georgia, serif` に統一。`TextCard.module.css` は Fraunces primary なので未対応（将来 Fraunces loader 追加時に migrate）。
 
 ---
 
