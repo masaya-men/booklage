@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Outfit, Caveat } from 'next/font/google'
+import { Inter, Outfit, Caveat, Playfair_Display } from 'next/font/google'
 import { APP_NAME, APP_URL } from '@/lib/constants'
 import './globals.css'
 
@@ -18,6 +18,14 @@ const outfit = Outfit({
 const caveat = Caveat({
   subsets: ['latin'],
   variable: '--font-handwriting',
+  display: 'swap',
+})
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  style: ['italic'],
+  weight: ['400', '700'],
   display: 'swap',
 })
 
@@ -64,7 +72,9 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
           }
         `}} />
       </head>
-      <body className={`${inter.variable} ${outfit.variable} ${caveat.variable}`}>
+      <body
+        className={`${inter.variable} ${outfit.variable} ${caveat.variable} ${playfair.variable}`}
+      >
         {children}
       </body>
     </html>

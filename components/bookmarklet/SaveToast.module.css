@@ -43,7 +43,7 @@
   100% { transform: scale(1); opacity: 1; }
 }
 .body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.brand { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 15px; color: #1a1a1a; }
+.brand { font-family: var(--font-playfair, 'Playfair Display'), Georgia, serif; font-style: italic; font-size: 15px; color: #1a1a1a; }
 .label { font-size: 13px; color: #6a6a6a; }
 .label.saved { color: #1a1a1a; font-weight: 600; animation: fadeIn 280ms ease-out; }
 .label.error { color: #d04a4a; font-weight: 600; }

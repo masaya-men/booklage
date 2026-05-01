@@ -48,7 +48,7 @@
   padding: 0 4px;
 }
 .brandName {
-  font-family: 'Playfair Display', 'Hiragino Mincho ProN', serif;
+  font-family: var(--font-playfair, 'Playfair Display'), 'Hiragino Mincho ProN', serif;
   font-style: italic;
   font-weight: 700;
   font-size: 20px;
