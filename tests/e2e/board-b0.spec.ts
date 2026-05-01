@@ -13,7 +13,7 @@ async function seedBoard(page: Page): Promise<void> {
   await page.evaluate(
     async ({ dbName, seedCount }) => {
       await new Promise<void>((resolve, reject) => {
-        const req = indexedDB.open(dbName, 8)
+        const req = indexedDB.open(dbName, 9)
         const timer = window.setTimeout(() => reject(new Error('seed open timeout 10s')), 10_000)
         req.onsuccess = () => {
           window.clearTimeout(timer)
@@ -33,7 +33,8 @@ async function seedBoard(page: Page): Promise<void> {
               siteName: '',
               type: 'website',
               savedAt: now,
-              folderId: 'default',
+              tags: [],
+              displayMode: null,
               ogpStatus: 'fetched',
               sizePreset: 'S',
               orderIndex: i,
@@ -41,7 +42,7 @@ async function seedBoard(page: Page): Promise<void> {
             cStore.put({
               id: `seed-c-${i}`,
               bookmarkId: `seed-b-${i}`,
-              folderId: 'default',
+              folderId: '',
               x: 0,
               y: 0,
               rotation: 0,

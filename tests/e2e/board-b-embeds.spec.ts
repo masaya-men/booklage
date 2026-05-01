@@ -17,14 +17,14 @@ type CardSeed = {
 }
 
 /**
- * Open the existing IDB (version 8), clear bookmarks+cards stores, then insert one record pair.
+ * Open the existing IDB (version 9), clear bookmarks+cards stores, then insert one record pair.
  * We do NOT delete the DB — the app holds the connection open and deleteDatabase would block.
  */
 async function seedOne(page: Page, bookmark: BookmarkSeed, card: CardSeed): Promise<void> {
   await page.evaluate(
     async ({ dbName, bm, c }) => {
       await new Promise<void>((resolve, reject) => {
-        const req = indexedDB.open(dbName, 8)
+        const req = indexedDB.open(dbName, 9)
         const timer = window.setTimeout(() => reject(new Error('seedOne open timeout')), 10_000)
         req.onsuccess = () => {
           window.clearTimeout(timer)
@@ -46,7 +46,8 @@ async function seedOne(page: Page, bookmark: BookmarkSeed, card: CardSeed): Prom
             siteName: '',
             type: 'website',
             savedAt: now,
-            folderId: 'default',
+            tags: [],
+            displayMode: null,
             ogpStatus: 'fetched',
             sizePreset: 'M',
             orderIndex: 0,
@@ -54,7 +55,7 @@ async function seedOne(page: Page, bookmark: BookmarkSeed, card: CardSeed): Prom
           cStore.put({
             id: c.id,
             bookmarkId: bm.id,
-            folderId: 'default',
+            folderId: '',
             x: 0,
             y: 0,
             rotation: 0,
