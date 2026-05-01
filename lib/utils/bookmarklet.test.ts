@@ -122,6 +122,24 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toMatch(/\(function\(\)\{[\s\S]*\}\)\(\);?$/)
   })
 
+  it('uses 320x120 popup window dims', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('width=320')
+    expect(uri).toContain('height=120')
+  })
+
+  it('positions popup at top-center via dynamic left calc', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    // source contains `(screen.width-320)/2` and `top=40`
+    expect(uri).toMatch(/left=.*screen\.width-320.*\/2/)
+    expect(uri).toContain('top=40')
+  })
+
+  it('includes Booklage origin', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('https://booklage.pages.dev/save')
+  })
+
   // Parametrized drift-gap test: compare the TS extractor against the inline JS
   // IIFE across multiple fixture variations. Each variation exercises a different
   // set of fallback branches so inline/TS drift can't hide in unused code paths.
