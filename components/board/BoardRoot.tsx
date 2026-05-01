@@ -1,18 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { computeColumnMasonry } from '@/lib/board/column-masonry'
 import type { MasonryCard } from '@/lib/board/column-masonry'
 import {
   DEFAULT_THEME_ID,
   getThemeMeta,
-  listThemeIds,
 } from '@/lib/board/theme-registry'
 import { BOARD_INNER, COLUMN_MASONRY, SIZE_PRESET_SPAN } from '@/lib/board/constants'
-import type { ThemeId } from '@/lib/board/types'
+import type { BoardFilter } from '@/lib/board/types'
+import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
+import { useMoods } from '@/lib/storage/use-moods'
 import { initDB } from '@/lib/storage/indexeddb'
-import { loadBoardConfig } from '@/lib/storage/board-config'
+import { loadBoardConfig, saveBoardConfig } from '@/lib/storage/board-config'
 import { ThemeLayer } from './ThemeLayer'
 import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
@@ -21,24 +23,19 @@ import { Sidebar } from './Sidebar'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
 
-const THEME_LS_KEY = 'booklage.board.themeId'
-
 // Visible breathing room above the board's first card, in CSS pixels.
 // Cards' world coords start at y=0 (masonry cursor); this offset is applied
 // in the cards wrapper's transform so the first row never kisses the Toolbar
 // pill. Extends the scroll range via contentBounds.height.
 const BOARD_TOP_PAD_PX = 120
 
-function loadSavedTheme(): ThemeId {
-  if (typeof window === 'undefined') return DEFAULT_THEME_ID
-  const saved = window.localStorage.getItem(THEME_LS_KEY)
-  if (saved && listThemeIds().includes(saved as ThemeId)) return saved as ThemeId
-  return DEFAULT_THEME_ID
-}
+const DEFAULT_MOOD_COLORS = ['#7c5cfc', '#e066d7', '#4ecdc4', '#f5a623', '#ff6b6b'] as const
 
 export function BoardRoot() {
   const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect } = useBoardData()
-  const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME_ID)
+  const { moods, create: createMood } = useMoods()
+  const router = useRouter()
+  const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   // Lifted from InteractionLayer so CardsLayer can also observe Space-held
   // state and bail its pointerdown handler — letting the event bubble up to
@@ -48,8 +45,6 @@ export function BoardRoot() {
   const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState<boolean>(false)
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => setThemeId(loadSavedTheme()), [])
 
   // Window-level Space-key tracking for hold-to-pan. Lifted here from
   // InteractionLayer so both InteractionLayer (engagement) and CardsLayer
@@ -106,24 +101,18 @@ export function BoardRoot() {
     }
   }, [spaceHeld])
 
-  // Hydration of saved BoardConfig kept as a side effect so any future config
-  // fields (frameRatio for Plan B ShareModal, etc.) stay warm in IDB; no local
-  // state is bound until a surface actually surfaces them.
+  // Hydrate activeFilter from persisted BoardConfig.
   useEffect(() => {
     let cancelled = false
     void (async (): Promise<void> => {
       const db = await initDB()
       if (cancelled) return
-      await loadBoardConfig(db)
+      const cfg = await loadBoardConfig(db)
+      if (cancelled) return
+      setActiveFilter(cfg.activeFilter)
     })()
     return (): void => { cancelled = true }
   }, [])
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(THEME_LS_KEY, themeId)
-    }
-  }, [themeId])
 
   useEffect(() => {
     const update = (): void => {
@@ -136,17 +125,28 @@ export function BoardRoot() {
     return (): void => window.removeEventListener('resize', update)
   }, [])
 
+  const moodCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const it of items) {
+      if (it.isDeleted) continue
+      for (const tag of it.tags) counts[tag] = (counts[tag] ?? 0) + 1
+    }
+    return counts
+  }, [items])
+
+  const filteredItems = useMemo(() => applyFilter(items, activeFilter), [items, activeFilter])
+
   const masonryCards = useMemo<MasonryCard[]>(
     () =>
-      items.map((it) => ({
+      filteredItems.map((it) => ({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
         columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
       })),
-    [items],
+    [filteredItems],
   )
 
-  const themeMeta = getThemeMeta(themeId)
+  const themeMeta = getThemeMeta(DEFAULT_THEME_ID)
 
   // Cap layout width at MAX_WIDTH_PX and reserve SIDE_PADDING_PX of gutter on
   // each side so the background remains visible. Cards center in the space to
@@ -185,7 +185,7 @@ export function BoardRoot() {
   const contentBounds = useMemo(() => {
     let maxRight = 0
     let maxBottom = 0
-    for (const it of items) {
+    for (const it of filteredItems) {
       const p = layout.positions[it.bookmarkId]
       if (!p) continue
       const right = p.x + p.w
@@ -201,7 +201,7 @@ export function BoardRoot() {
         maxBottom + BOARD_TOP_PAD_PX + SCROLL_OVERFLOW_MARGIN,
       ),
     }
-  }, [items, layout.positions, layout.totalWidth, layout.totalHeight])
+  }, [filteredItems, layout.positions, layout.totalWidth, layout.totalHeight])
 
   const handleScroll = useCallback(
     (dx: number, dy: number): void => {
@@ -250,13 +250,25 @@ export function BoardRoot() {
     }
   }, [])
 
-  // TODO: unify theme persistence — currently localStorage drives hydration; IDB themeId is write-only dead state.
-  const handleThemeClick = useCallback((): void => {
-    const ids = listThemeIds()
-    const idx = ids.indexOf(themeId)
-    const next = ids[(idx + 1) % ids.length] ?? DEFAULT_THEME_ID
-    setThemeId(next)
-  }, [themeId])
+  const handleFilterChange = useCallback((f: BoardFilter): void => {
+    setActiveFilter(f)
+    void (async (): Promise<void> => {
+      const db = await initDB()
+      const cfg = await loadBoardConfig(db)
+      await saveBoardConfig(db, { ...cfg, activeFilter: f })
+    })()
+  }, [])
+
+  const handleCreateMood = useCallback((): void => {
+    const name = window.prompt('mood 名を入力')
+    if (!name?.trim()) return
+    const color = DEFAULT_MOOD_COLORS[moods.length % DEFAULT_MOOD_COLORS.length]
+    void createMood({ name: name.trim(), color, order: moods.length })
+  }, [moods.length, createMood])
+
+  const handleTriageStart = useCallback((): void => {
+    router.push('/triage')
+  }, [router])
 
   const handleSidebarToggle = useCallback((): void => {
     setSidebarCollapsed((prev) => !prev)
@@ -315,10 +327,11 @@ export function BoardRoot() {
 
   const sidebarCounts = useMemo(() => {
     const active = items.filter((i) => !i.isDeleted)
+    const deleted = items.filter((i) => i.isDeleted)
     return {
       all: active.length,
-      unread: active.filter((i) => !i.isRead).length,
-      read: active.filter((i) => i.isRead).length,
+      inbox: active.filter((i) => i.tags.length === 0).length,
+      archive: deleted.length,
     }
   }, [items])
 
@@ -350,7 +363,7 @@ export function BoardRoot() {
           }}
         >
           <ThemeLayer
-            themeId={themeId}
+            themeId={DEFAULT_THEME_ID}
             totalWidth={contentWidth}
             totalHeight={contentHeight}
           />
@@ -371,7 +384,7 @@ export function BoardRoot() {
           }}
         >
           <CardsLayer
-            items={items}
+            items={filteredItems}
             viewport={viewport}
             viewportWidth={effectiveLayoutWidth}
             hoveredBookmarkId={hoveredBookmarkId}
@@ -389,8 +402,13 @@ export function BoardRoot() {
         collapsed={sidebarCollapsed}
         onToggle={handleSidebarToggle}
         counts={sidebarCounts}
-        onThemeClick={handleThemeClick}
+        activeFilter={activeFilter}
+        onFilterChange={handleFilterChange}
+        moods={moods}
+        moodCounts={moodCounts}
+        onCreateMood={handleCreateMood}
         onOpenBookmarkletModal={handleOpenBookmarkletModal}
+        onTriageStart={handleTriageStart}
       />
       <BookmarkletInstallModal
         isOpen={bookmarkletModalOpen}
