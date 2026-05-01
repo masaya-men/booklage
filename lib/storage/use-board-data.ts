@@ -30,7 +30,7 @@ export type BoardItem = {
   readonly userOverridePos?: CardPosition  // legacy compat: same data as freePos for grid-side consumers
   readonly isRead: boolean
   readonly isDeleted: boolean
-  readonly tags: string[]
+  readonly tags: readonly string[]
   readonly displayMode: 'visual' | 'editorial' | 'native' | null
 }
 
@@ -108,6 +108,9 @@ export function useBoardData(): {
   persistReadFlag: (bookmarkId: string, isRead: boolean) => Promise<void>
   persistSoftDelete: (bookmarkId: string, isDeleted: boolean) => Promise<void>
   persistMeasuredAspect: (cardId: string, aspectRatio: number) => Promise<void>
+  persistTags: (bookmarkId: string, tags: readonly string[]) => Promise<void>
+  persistDisplayMode: (bookmarkId: string, displayMode: BoardItem['displayMode']) => Promise<void>
+  reload: () => Promise<void>
   /** @deprecated Use persistFreePosition instead. Will be removed after full pivot. */
   persistCardPosition: (cardId: string, pos: CardPosition) => Promise<void>
 } {
@@ -274,6 +277,46 @@ export function useBoardData(): {
     [],
   )
 
+  const persistTags = useCallback(
+    async (bookmarkId: string, tags: readonly string[]): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
+      if (!existing) return
+      await db.put('bookmarks', { ...existing, tags: [...tags] })
+      setItems((prev) => prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, tags: [...tags] } : it)))
+    },
+    [],
+  )
+
+  const persistDisplayMode = useCallback(
+    async (bookmarkId: string, displayMode: BoardItem['displayMode']): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
+      if (!existing) return
+      await db.put('bookmarks', { ...existing, displayMode })
+      setItems((prev) =>
+        prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, displayMode } : it)),
+      )
+    },
+    [],
+  )
+
+  const reload = useCallback(async (): Promise<void> => {
+    const db = dbRef.current
+    if (!db) return
+    const bookmarks = await getAllBookmarks(db as Parameters<typeof getAllBookmarks>[0])
+    const cards = (await db.getAll('cards')) as CardRecord[]
+    const cardByBookmark = new Map<string, CardRecord>()
+    for (const c of cards) cardByBookmark.set(c.bookmarkId, c)
+    const all = bookmarks
+      .filter((b) => !b.isDeleted)
+      .map((b) => toItem(b, cardByBookmark.get(b.id)))
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+    setItems(all)
+  }, [])
+
   // Temporary shim, removed in Task 13 (updates BoardRoot.tsx callsites at lines ~109 and ~142).
   // Maps CardPosition to FreePosition defaults so BoardRoot keeps compiling.
   const persistCardPosition = useCallback(
@@ -304,6 +347,9 @@ export function useBoardData(): {
     persistReadFlag,
     persistSoftDelete,
     persistMeasuredAspect,
+    persistTags,
+    persistDisplayMode,
+    reload,
     persistCardPosition,
   }
 }
