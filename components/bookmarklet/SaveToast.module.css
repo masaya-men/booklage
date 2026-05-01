@@ -1,0 +1,50 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #ffffff;
+  border-radius: 10px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #1a1a1a;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.icon {
+  width: 24px; height: 24px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.spinner {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.1);
+  border-top-color: #1a1a1a;
+  animation: spin 700ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.checkmark {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #1a1a1a;
+  display: flex; align-items: center; justify-content: center;
+  animation: pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.checkmark svg { stroke: #fff; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.errorIcon {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #d04a4a;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+}
+@keyframes pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.brand { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 15px; color: #1a1a1a; }
+.label { font-size: 13px; color: #6a6a6a; }
+.label.saved { color: #1a1a1a; font-weight: 600; animation: fadeIn 280ms ease-out; }
+.label.error { color: #d04a4a; font-weight: 600; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

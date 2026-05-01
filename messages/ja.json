@@ -66,5 +66,12 @@
   },
   "share": {
     "defaultText": "ブックマークでコラージュ作ったら最高になった✨ #Booklage"
+  },
+  "bookmarklet": {
+    "toast": {
+      "saving": "保存中…",
+      "saved": "Inbox に保存しました",
+      "error": "保存に失敗しました"
+    }
   }
 }
