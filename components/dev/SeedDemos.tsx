@@ -4,11 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   initDB,
   addBookmark,
-  addFolder,
-  getAllFolders,
 } from '@/lib/storage/indexeddb'
 import { detectUrlType } from '@/lib/utils/url'
-import { FOLDER_COLORS } from '@/lib/constants'
 
 /** Sample URL curated for B-embeds visual verification. Real, public,
  * long-lived content — picked so the user can see TikTok, YouTube Shorts,
@@ -75,15 +72,6 @@ export function SeedDemos(): React.ReactElement {
 
     try {
       const db = await initDB()
-      // Ensure there's at least one folder to save into
-      const existingFolders = await getAllFolders(db)
-      const folder =
-        existingFolders[0] ??
-        (await addFolder(db, {
-          name: 'My Collage',
-          color: FOLDER_COLORS[5],
-          order: 0,
-        }))
 
       for (let i = 0; i < DEMOS.length; i++) {
         const demo = DEMOS[i]
@@ -99,7 +87,7 @@ export function SeedDemos(): React.ReactElement {
             favicon: '',
             siteName: '',
             type: detectUrlType(demo.url),
-            folderId: folder.id,
+            tags: [],
           })
           setRows((prev) =>
             prev.map((r, idx) => (idx === i ? { ...r, state: 'done' } : r)),

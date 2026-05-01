@@ -52,7 +52,7 @@ export interface BookmarkRecord {
   displayMode?: 'visual' | 'editorial' | 'native' | null
 }
 
-/** Mood record (v9) — replaces FolderRecord. Stored in `moods` store. */
+/** Mood record (v9) — replaces the legacy folder concept. Stored in `moods` store. */
 export interface MoodRecord {
   /** UUID primary key */
   id: string
@@ -68,20 +68,6 @@ export interface MoodRecord {
 
 /** Input for creating a new mood (id and createdAt are auto-generated) */
 export type MoodInput = Omit<MoodRecord, 'id' | 'createdAt'>
-
-/** Folder record stored in IndexedDB */
-export interface FolderRecord {
-  /** UUID primary key */
-  id: string
-  /** Display name */
-  name: string
-  /** Accent color hex string */
-  color: string
-  /** ISO 8601 timestamp */
-  createdAt: string
-  /** Sort order (ascending) */
-  order: number
-}
 
 /** Card record — visual position of a bookmark on the canvas */
 export interface CardRecord {
@@ -149,12 +135,17 @@ export interface SettingsRecord {
 // ---------------------------------------------------------------------------
 
 /** Input for creating a new bookmark (id and savedAt are auto-generated) */
-export type BookmarkInput =
-  Omit<BookmarkRecord, 'id' | 'savedAt' | 'ogpStatus' | 'tags' | 'displayMode'>
-  & { ogpStatus?: OgpStatus; tags?: string[]; displayMode?: BookmarkRecord['displayMode'] }
-
-/** Input for creating a new folder (id and createdAt are auto-generated) */
-export type FolderInput = Omit<FolderRecord, 'id' | 'createdAt'>
+export type BookmarkInput = Omit<
+  BookmarkRecord,
+  'id' | 'savedAt' | 'ogpStatus' | 'tags' | 'displayMode' | 'folderId'
+> & {
+  /** Mood id array. Default [] (Inbox). */
+  tags?: string[]
+  /** null/undefined = follow global displayMode. */
+  displayMode?: BookmarkRecord['displayMode']
+  /** Defaults to 'fetched' when omitted. */
+  ogpStatus?: OgpStatus
+}
 
 // ---------------------------------------------------------------------------
 // Database schema
@@ -440,43 +431,6 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
 }
 
 // ---------------------------------------------------------------------------
-// Folder CRUD
-// ---------------------------------------------------------------------------
-
-/**
- * Create a new folder.
- * @param db - The database instance
- * @param input - Folder data (name, color, order)
- * @returns The created FolderRecord
- */
-export async function addFolder(
-  db: IDBPDatabase<BooklageDB>,
-  input: FolderInput,
-): Promise<FolderRecord> {
-  const folder: FolderRecord = {
-    id: uuid(),
-    name: input.name,
-    color: input.color,
-    createdAt: new Date().toISOString(),
-    order: input.order,
-  }
-  await db.put('folders', folder)
-  return folder
-}
-
-/**
- * Get all folders sorted by their order field.
- * @param db - The database instance
- * @returns Array of FolderRecord sorted by order (ascending)
- */
-export async function getAllFolders(
-  db: IDBPDatabase<BooklageDB>,
-): Promise<FolderRecord[]> {
-  const folders = await db.getAll('folders')
-  return folders.sort((a, b) => a.order - b.order)
-}
-
-// ---------------------------------------------------------------------------
 // Bookmark CRUD
 // ---------------------------------------------------------------------------
 
@@ -490,10 +444,9 @@ export async function addBookmark(
   db: IDBPDatabase<BooklageDB>,
   input: BookmarkInput,
 ): Promise<BookmarkRecord> {
-  const folderId = input.folderId ?? ''
-  // Compute next orderIndex (append to end of current folder's bookmarks)
-  const existing = await getBookmarksByFolder(db, folderId)
-  const nextOrder = existing.length
+  // Append to the end of the current bookmark list (board-wide ordering).
+  const existingCount = await db.count('bookmarks')
+  const nextOrder = existingCount
 
   const bookmark: BookmarkRecord = {
     id: uuid(),
@@ -505,11 +458,10 @@ export async function addBookmark(
     siteName: input.siteName,
     type: input.type,
     savedAt: new Date().toISOString(),
-    folderId,
     ogpStatus: input.ogpStatus ?? 'fetched',
     orderIndex: nextOrder,
     sizePreset: 'S',
-    tags: input.tags ?? (folderId ? [folderId] : []),
+    tags: input.tags ?? [],
     displayMode: input.displayMode ?? null,
   }
 
@@ -517,22 +469,21 @@ export async function addBookmark(
   const tx = db.transaction(['bookmarks', 'cards'], 'readwrite')
   await tx.objectStore('bookmarks').put(bookmark)
 
-  // Count existing cards to determine gridIndex
-  const existingCards = await tx.objectStore('cards').index('by-folder').getAll(folderId)
-  const gridIndex = existingCards.length
+  const existingCards = await tx.objectStore('cards').count()
 
   const pos = randomPosition()
   const dimensions = generateCardDimensions('random', 'random')
   const card: CardRecord = {
     id: uuid(),
     bookmarkId: bookmark.id,
-    folderId,
+    // Legacy column kept for v8 schema compatibility; retired in a later task.
+    folderId: '',
     x: pos.x,
     y: pos.y,
     rotation: randomRotation(),
     scale: 1,
     zIndex: 1,
-    gridIndex,
+    gridIndex: existingCards,
     isManuallyPlaced: false,
     width: dimensions.width,
     height: dimensions.height,
@@ -541,19 +492,6 @@ export async function addBookmark(
   await tx.done
 
   return bookmark
-}
-
-/**
- * Get all bookmarks belonging to a folder.
- * @param db - The database instance
- * @param folderId - The folder ID to filter by
- * @returns Array of BookmarkRecord
- */
-export async function getBookmarksByFolder(
-  db: IDBPDatabase<BooklageDB>,
-  folderId: string,
-): Promise<BookmarkRecord[]> {
-  return db.getAllFromIndex('bookmarks', 'by-folder', folderId)
 }
 
 /**
@@ -570,10 +508,9 @@ export async function deleteBookmark(
   // Delete the bookmark
   await tx.objectStore('bookmarks').delete(bookmarkId)
 
-  // Delete all associated cards
+  // Delete all associated cards (lookup by bookmark id only — folder index is gone).
   const cardStore = tx.objectStore('cards')
-  const cardIndex = cardStore.index('by-bookmark')
-  let cursor = await cardIndex.openCursor(bookmarkId)
+  let cursor = await cardStore.index('by-bookmark').openCursor(bookmarkId)
   while (cursor) {
     await cursor.delete()
     cursor = await cursor.continue()
@@ -585,19 +522,6 @@ export async function deleteBookmark(
 // ---------------------------------------------------------------------------
 // Card CRUD
 // ---------------------------------------------------------------------------
-
-/**
- * Get all cards belonging to a folder.
- * @param db - The database instance
- * @param folderId - The folder ID to filter by
- * @returns Array of CardRecord
- */
-export async function getCardsByFolder(
-  db: IDBPDatabase<BooklageDB>,
-  folderId: string,
-): Promise<CardRecord[]> {
-  return db.getAllFromIndex('cards', 'by-folder', folderId)
-}
 
 /**
  * Update specific fields of a card (e.g. position, rotation, scale).
@@ -743,11 +667,11 @@ export async function updateBookmarkOrderBatch(
 }
 
 // ---------------------------------------------------------------------------
-// Bulk / cross-folder queries
+// Bulk queries
 // ---------------------------------------------------------------------------
 
 /**
- * Get all bookmarks across all folders.
+ * Get every bookmark.
  * @param db - The database instance
  * @returns Array of all BookmarkRecord
  */
@@ -774,20 +698,18 @@ export async function addBookmarkBatch(
 ): Promise<BookmarkRecord[]> {
   const results: BookmarkRecord[] = []
 
+  // Seed the running offsets from the current store sizes once, then advance
+  // them locally — keeps each per-batch transaction independent of the others.
+  let nextOrder = await db.count('bookmarks')
+  let gridIndex = await db.count('cards')
+
   for (let i = 0; i < inputs.length; i += batchSize) {
     const batch = inputs.slice(i, i + batchSize)
     const tx = db.transaction(['bookmarks', 'cards'], 'readwrite')
     const bookmarkStore = tx.objectStore('bookmarks')
     const cardStore = tx.objectStore('cards')
 
-    const batchFolderId = batch[0].folderId ?? ''
-    const existingCards = await cardStore.index('by-folder').getAll(batchFolderId)
-    const existingBookmarks = await bookmarkStore.index('by-folder').getAll(batchFolderId)
-    let gridIndex = existingCards.length
-    let nextOrder = existingBookmarks.length
-
     for (const input of batch) {
-      const inputFolderId = input.folderId ?? ''
       const bookmark: BookmarkRecord = {
         id: uuid(),
         url: input.url,
@@ -798,11 +720,10 @@ export async function addBookmarkBatch(
         siteName: input.siteName,
         type: input.type,
         savedAt: new Date().toISOString(),
-        folderId: inputFolderId,
         ogpStatus: input.ogpStatus ?? 'fetched',
         orderIndex: nextOrder++,
         sizePreset: 'S',
-        tags: input.tags ?? (inputFolderId ? [inputFolderId] : []),
+        tags: input.tags ?? [],
         displayMode: input.displayMode ?? null,
       }
       await bookmarkStore.put(bookmark)
@@ -812,7 +733,8 @@ export async function addBookmarkBatch(
       const card: CardRecord = {
         id: uuid(),
         bookmarkId: bookmark.id,
-        folderId: inputFolderId,
+        // Legacy column kept for v8 schema compatibility; retired in a later task.
+        folderId: '',
         x: pos.x,
         y: pos.y,
         rotation: randomRotation(),
