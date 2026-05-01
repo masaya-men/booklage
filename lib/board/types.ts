@@ -73,9 +73,15 @@ export type FrameRatio =
   | { readonly kind: 'preset'; readonly presetId: string }
   | { readonly kind: 'custom'; readonly width: number; readonly height: number }
 
+export type DisplayMode = 'visual' | 'editorial' | 'native'
+
+export type BoardFilter = 'all' | 'inbox' | 'archive' | `mood:${string}`
+
 export type BoardConfig = {
   readonly frameRatio: FrameRatio
   readonly themeId: ThemeId
+  readonly displayMode: DisplayMode
+  readonly activeFilter: BoardFilter
 }
 
 export type SnapGuideLine =
