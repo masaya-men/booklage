@@ -9,31 +9,46 @@
 
 - **ブランチ**: `destefanis-pivot` (origin/destefanis-pivot に push 済)
 - **master**: 全 push 済（plan doc も含む）
-- **destefanis-pivot の最新 4 commits（Task 11-14 = cluster 1）**:
-  - `40f451d` — Task 14: cards displayMode 分岐 (visual/editorial/native, TweetCard editorial = serif border-left)
-  - `ed806ad` — Task 13: Toolbar replacement = FilterPill + DisplayModeSwitch (top-right)
-  - `7257549` — Task 12: Sidebar redesign (Library All/Inbox/Archive + Moods, MoodRecord駆動)
-  - `30cb113` — Task 11: destefanis CSS vars + masonry tuning (160px/10px)
-  - `6d73b80` — pre-task: E2E v8→v9 spec 修復 (board-b0/board-b0-perf/board-b-embeds)
+- **destefanis-pivot の最新 6 commits（Task 15-18 = cluster 2）**:
+  - `bdaec79` — Task 18: E2E save popup → board cross-tab fade-in
+  - `8a237ad` — Task 17 fix: clear entrance timers + opacity-only keyframe (GSAP transform 衝突回避)
+  - `cf32978` — Task 17: BroadcastChannel listener + entrance animation
+  - `0443add` — Task 16: E2E lightbox open/close flow
+  - `d993793` — Task 15 fix: tween cleanup + dialog role + ESC stopPropagation
+  - `a1fa6dc` — Task 15: Lightbox with GSAP spring (replaces window.open on click)
+  - cluster 1 (Tasks 11-14: `40f451d` `ed806ad` `7257549` `30cb113`) はその下
   - 以前の commits（Task 1-10）は変わらず、TODO_COMPLETED.md 候補
-- **進捗**: 全 25 タスク中 **Task 1-14 完了**（14/25、56%）。データ層 + save flow + visual identity + sidebar + toolbar + card displayMode 完了
-- **セッションメモ**: 2026-05-02、user 指示で cluster 1 (Tasks 11-14) でセッション分割。Tasks 15-18 は次セッション
+- **進捗**: 全 25 タスク中 **Task 1-18 完了**（18/25、72%）。データ層 + save flow + visual identity + sidebar + toolbar + card displayMode + lightbox + cross-tab BroadcastChannel 完了
+- **セッションメモ**: 2026-05-02、user 指示で cluster 2 (Tasks 15-18) 完了。Tasks 19-25 (cluster 3 = Triage UI + verification + deploy) は次セッション
 - **テスト**: vitest 197/197 PASS、tsc clean、pnpm build 成功
-- **E2E**: bookmarklet-save 2/2 + board-b-embeds 1/1 verified PASS（v9 修復後）。残り specs は cluster 3 の Task 25 で全回し
+- **E2E**: 6 specs 存在（board-b0 / board-b0-perf / board-b-embeds / bookmarklet-save / lightbox-flow / destefanis-save-flow）。cluster 2 で追加した 2 specs は単体 PASS。残り specs は cluster 3 の Task 25 で全回し
 
 ---
 
-### 🎯 次セッション最初にやること（cluster 2: Tasks 15-18）
+### 🎯 次セッション最初にやること（cluster 3: Tasks 19-25）
 
 1. **このファイル (docs/TODO.md) を読む** ← 今ここ
-2. **plan を再読**: [docs/superpowers/plans/2026-04-21-destefanis-pivot.md](docs/superpowers/plans/2026-04-21-destefanis-pivot.md) の **Task 15** (line ~2419) から再開
-3. **`subagent-driven-development` スキルを再 invoke** して Task 15-18 を順次実行
-   - **Task 15**: Lightbox component (GSAP spring) — board click が `window.open` ではなく lightbox に
-   - **Task 16**: Lightbox E2E test
-   - **Task 17**: BroadcastChannel listener + entrance animation (バグ fix)
-   - **Task 18**: Save → Board E2E バグ fix test
-   - cluster 3 (Tasks 19-25 = Triage UI + verification + deploy) はその次
+2. **plan を再読**: [docs/superpowers/plans/2026-04-21-destefanis-pivot.md](docs/superpowers/plans/2026-04-21-destefanis-pivot.md) の **Task 19** (line ~2832) から再開
+3. **`subagent-driven-development` スキルを再 invoke** して Task 19-25 を順次実行
+   - **Task 19**: /triage route scaffold + TriagePage container
+   - **Task 20-23**: TriageCard / TagPicker / Triage 動作 / 1-9 keyboard shortcut
+   - **Task 24**: Triage の E2E test
+   - **Task 25**: 全 E2E spec sweep + 必要なら DB v9 migration の追加調整
 4. ワークフロー: implementer dispatch → spec review → code quality review → 次タスク
+
+### 📋 cluster 2 で plan からの逸脱（fix commit に分離済）
+
+- **Task 15 fix `d993793`** — implementer は plan verbatim、code review が 1 Critical (GSAP tween cleanup 抜け) + 3 Important (a11y dialog role / ESC stopPropagation / onClose useCallback) を発見。fix commit で全部解決。plan に書き戻すか launch 後判断
+- **Task 17 fix `8a237ad`** — implementer は plan verbatim、code review が 2 Important を発見:
+  - clearTimeout 抜け（unmount race） → timers 配列で集約 + cleanup で clear
+  - **GSAP vs CSS transform 衝突** — plan の keyframe `transform: translateY(-4px) → 0` は CSS animation が GSAP の inline matrix を 400ms 間 override してしまい、新カードが world (0, 0) に滞在する視覚バグ。fix で **opacity-only keyframe** に変更（translateY 削除）。intent (静かな fade-in) は保たれる。plan 側 markdown は次セッション余裕あれば修正
+
+### 📋 cluster 2 で持ち越した polish（cluster 3 か launch 後）
+
+- **Lightbox: focus return on close** — 開く時 close button に focus は実装済、閉じる時に opener (card) への focus 戻しは未実装。WCAG 2.1 SC 2.4.3 best practice、accessibility pass で対応
+- **Lightbox: focus trap** — Tab で背景の card に escape 可能。本当に必要になったタイミング (Task 25 a11y sweep) で追加
+- **Lightbox z-index 300 inline** — `BOARD_Z_INDEX.LIGHTBOX = 300` を constants に登録するか、CSS にコメント追加。consistency 改善
+- **E2E `clearDb` の重複** — 3 specs に同じ関数（bookmarklet-save は 2 stores、新 2 specs は 3 stores、それぞれ微妙に divergence）。`tests/e2e/helpers/idb.ts` に集約候補。Task 25 sweep で実施
 
 ### 📋 cluster 1 で plan-deviation はゼロ
 
