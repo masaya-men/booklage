@@ -44,6 +44,7 @@ type CardsLayerProps = {
   readonly onDrop: (orderedBookmarkIds: readonly string[]) => void
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly displayMode: DisplayMode
+  readonly newlyAddedIds: ReadonlySet<string>
 }
 
 export function CardsLayer({
@@ -58,6 +59,7 @@ export function CardsLayer({
   onDrop,
   persistMeasuredAspect,
   displayMode,
+  newlyAddedIds,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -358,6 +360,8 @@ export function CardsLayer({
               height: `${p.h}px`,
               pointerEvents: 'auto',
               zIndex: dragState?.bookmarkId === it.bookmarkId ? 1000 : undefined,
+              opacity: newlyAddedIds.has(it.bookmarkId) ? 0 : 1,
+              animation: newlyAddedIds.has(it.bookmarkId) ? 'booklage-entrance-a 400ms ease-out forwards' : undefined,
             }}
           >
             <CardNode

@@ -12,6 +12,7 @@ import { BOARD_INNER, COLUMN_MASONRY, SIZE_PRESET_SPAN } from '@/lib/board/const
 import type { BoardFilter, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
+import { subscribeBookmarkSaved } from '@/lib/board/channel'
 import { useMoods } from '@/lib/storage/use-moods'
 import { initDB } from '@/lib/storage/indexeddb'
 import { loadBoardConfig, saveBoardConfig } from '@/lib/storage/board-config'
@@ -33,7 +34,7 @@ const BOARD_TOP_PAD_PX = 120
 const DEFAULT_MOOD_COLORS = ['#7c5cfc', '#e066d7', '#4ecdc4', '#f5a623', '#ff6b6b'] as const
 
 export function BoardRoot() {
-  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect } = useBoardData()
+  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect, reload } = useBoardData()
   const { moods, create: createMood } = useMoods()
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
@@ -47,6 +48,7 @@ export function BoardRoot() {
   const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState<boolean>(false)
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
   const [lightboxItemId, setLightboxItemId] = useState<string | null>(null)
+  const [newlyAddedIds, setNewlyAddedIds] = useState<ReadonlySet<string>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Window-level Space-key tracking for hold-to-pan. Lifted here from
@@ -310,6 +312,28 @@ export function BoardRoot() {
     }
   }, [])
 
+  // BroadcastChannel: reload board and trigger entrance animation when a new
+  // bookmark is saved via the bookmarklet popup (/save route).
+  useEffect(() => {
+    const unsub = subscribeBookmarkSaved(async ({ bookmarkId }) => {
+      await reload()
+      setNewlyAddedIds((prev) => {
+        const next = new Set(prev)
+        next.add(bookmarkId)
+        return next
+      })
+      // Clear the "new" flag after entrance animation completes
+      setTimeout(() => {
+        setNewlyAddedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(bookmarkId)
+          return next
+        })
+      }, 800)
+    })
+    return (): void => unsub()
+  }, [reload])
+
   // 1/2/3 keys cycle hovered card's size preset (S/M/L)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -403,6 +427,7 @@ export function BoardRoot() {
             onDrop={handleDropOrder}
             persistMeasuredAspect={persistMeasuredAspect}
             displayMode={displayMode}
+            newlyAddedIds={newlyAddedIds}
           />
         </div>
       </InteractionLayer>
