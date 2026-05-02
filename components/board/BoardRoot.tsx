@@ -274,60 +274,49 @@ export function BoardRoot() {
     setBookmarkletModalOpen(false)
   }, [])
 
-  // One-shot tweet thumbnail backfill — for every tweet bookmark, call the
-  // Twitter syndication API to get the real photo / video poster URL and
-  // overwrite whatever the bookmarklet originally captured (which is almost
-  // always X's generic "SEE WHAT'S HAPPENING" placeholder).
+  // Tweet thumbnail backfill via Cloudflare Pages Function proxy (the
+  // syndication CDN itself is CORS-locked to platform.twitter.com, so we
+  // can't call it from the browser directly — see functions/api/tweet-meta.ts).
   //
-  // Why unconditional overwrite: any thumbnail the bookmarklet got from X
-  // is unreliable — X is a SPA and serves a generic OGP image to non-X
-  // user-agents. The syndication API is the only source of truth for
-  // per-tweet photos. So we always force=true and let the syndication
-  // result win.
+  // For every tweet bookmark we hit /api/tweet-meta?id=<id> once, then write
+  // the resulting photoUrl / videoPosterUrl into bookmark.thumbnail with
+  // force=true. The bookmarklet captures X's generic "SEE WHAT'S HAPPENING"
+  // placeholder for every tweet because X is a SPA, so unconditional
+  // overwrite is correct: the syndication response is the only source of
+  // truth for per-tweet media.
   //
-  // photoUrl missing AND videoPosterUrl missing → empty string forced into
-  // thumbnail, which clears any placeholder and flips pickCard to TextCard
-  // for genuine text-only tweets.
+  // processedTweetIdsRef dedupes across re-renders — the effect re-runs
+  // whenever items.length changes (e.g. a new bookmark arrives), and we
+  // don't want to re-fetch tweets we've already filled.
   //
-  // Console logging is intentional and temporary — leave for one debug
-  // cycle so the user can paste DevTools output if backfill still misbehaves.
+  // photoUrl AND videoPosterUrl missing → empty string forced into thumbnail,
+  // which flips pickCard to TextCard for genuine text-only tweets.
+  const processedTweetIdsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (loading || items.length === 0) return
     let cancelled = false
     const sleep = (ms: number): Promise<void> =>
       new Promise((resolve) => setTimeout(resolve, ms))
     void (async (): Promise<void> => {
-      const tweets = items.filter((it) => detectUrlType(it.url) === 'tweet')
-      console.log(`[Booklage backfill] scanning ${tweets.length} tweet(s) of ${items.length} total`)
-      for (const it of tweets) {
+      for (const it of items) {
         if (cancelled) return
+        if (detectUrlType(it.url) !== 'tweet') continue
         const tweetId = extractTweetId(it.url)
-        if (!tweetId) {
-          console.warn(`[Booklage backfill] no tweetId from ${it.url}`)
-          continue
-        }
-        console.log(`[Booklage backfill] fetching tweet ${tweetId} (current thumbnail: ${it.thumbnail ?? '(empty)'})`)
+        if (!tweetId) continue
+        if (processedTweetIdsRef.current.has(tweetId)) continue
+        processedTweetIdsRef.current.add(tweetId)
         try {
           const meta = await fetchTweetMeta(tweetId)
           if (cancelled) return
-          if (!meta) {
-            console.warn(`[Booklage backfill] no meta for ${tweetId} (deleted or API failure)`)
-            continue
-          }
+          if (!meta) continue
           const url = meta.photoUrl ?? meta.videoPosterUrl ?? ''
-          console.log(
-            `[Booklage backfill] tweet ${tweetId}: photoUrl=${meta.photoUrl ?? 'none'}, ` +
-              `videoPoster=${meta.videoPosterUrl ?? 'none'}, hasPhoto=${meta.hasPhoto}, ` +
-              `hasVideo=${meta.hasVideo} → persisting "${url}"`,
-          )
           await persistThumbnail(it.bookmarkId, url, true)
-        } catch (e) {
-          console.error(`[Booklage backfill] tweet ${tweetId} failed:`, e)
+        } catch {
+          /* swallow per-tweet failures so the loop keeps draining the queue */
         }
         if (cancelled) return
         await sleep(200)
       }
-      console.log('[Booklage backfill] done')
     })()
     return (): void => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps

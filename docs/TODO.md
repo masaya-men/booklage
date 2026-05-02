@@ -8,7 +8,15 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `destefanis-pivot`
-- **本番**: `https://booklage.pages.dev` に **v20 反映済** (Task 29: bulk syndication backfill — X default placeholder 一括上書き)
+- **本番**: `https://booklage.pages.dev` に **v23 反映済** (Task 29: Twitter syndication proxy 完成 + dedupe + cleanup)
+- **🎯 v22 で真の解決 (2026-05-02)** — CORS 問題を Cloudflare Pages Function proxy で完全突破:
+  - 真因: `cdn.syndication.twimg.com` は `Access-Control-Allow-Origin: https://platform.twitter.com` 限定 CORS。client-side fetch は **絶対不可能**
+  - 修正: `functions/api/tweet-meta.ts` を新規作成 (server-side で computeToken → syndication CDN へ server-to-server fetch → CORS は適用されない → response に Access-Control-Allow-Origin: * 付けて relay)
+  - `lib/embed/tweet-meta.ts` を proxy endpoint (`/api/tweet-meta?id=...`) に切り替え、computeToken は server side に移動
+  - **memory 追加**: `reference_twitter_syndication_cors.md`
+- **🎯 v23 で本番化 (2026-05-02)**:
+  - BoardRoot に `processedTweetIdsRef` を追加して同 tweet の再 fetch を防止 (effect が items.length 変化で再起動しても dedupe される)
+  - デバッグ用 console.log を全削除 (本番クリーンアップ)
 - **🎯 v20 で入れた追い込み (2026-05-02)** — 全 X bookmarks が「SEE WHAT'S HAPPENING」に化けていた致命問題を解決:
   - 真因: bookmarklet が X 個別 og:image を取れず、X 全体の generic OGP placeholder (`abs.twimg.com/...`) を全 tweet bookmark に一律保存していた
   - 修正: `isXDefaultThumbnail()` helper (`abs.twimg.com` URL 検知) を `lib/utils/url.ts` に追加
