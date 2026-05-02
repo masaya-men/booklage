@@ -20,8 +20,6 @@ export function TriagePage(): ReactElement {
   const current = queue[index] ?? null
   const total = queue.length
 
-  const advance = (): void => setIndex((i) => i + 1)
-
   const handleTag = useCallback(async (moodId: string): Promise<void> => {
     if (!current) return
     setLastAction({ bookmarkId: current.bookmarkId, prev: [...current.tags] })
