@@ -104,7 +104,7 @@ function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
     const tweetId = extractTweetId(item.url)
     if (tweetId) {
       return (
-        <div data-theme="light" className={styles.tweetWrap}>
+        <div data-theme="dark" className={styles.tweetWrap}>
           <Tweet id={tweetId} />
         </div>
       )

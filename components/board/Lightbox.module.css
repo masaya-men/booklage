@@ -56,8 +56,16 @@
   max-width: 550px;
   max-height: 88vh;
   overflow-y: auto;
-  background: white;
+  background: #15202b;
   border-radius: var(--lightbox-media-radius);
+  --tweet-bg-color: #15202b;
+  --tweet-border: 1px solid rgba(255, 255, 255, 0.08);
+  --tweet-container-radius: var(--lightbox-media-radius);
+}
+.tweetWrap :global([data-theme]) {
+  margin: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .iframeWrap16x9 {

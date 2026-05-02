@@ -152,7 +152,7 @@ export function TweetCard({ item, persistMeasuredAspect, reportIntrinsicHeight, 
   }
 
   return (
-    <div ref={hostRef} className={styles.tweetCard} data-theme="light">
+    <div ref={hostRef} className={styles.tweetCard} data-theme="dark">
       <Tweet id={tweetId} />
     </div>
   )

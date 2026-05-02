@@ -9,9 +9,14 @@ export const LAYOUT_CONFIG = {
  * of width `min(viewport.w, MAX_WIDTH_PX) - 2 * SIDE_PADDING_PX` so the
  * background remains visible at the edges (mymind / Pinterest / Are.na pattern).
  */
+/** destefanis is full-viewport edge-to-edge (no max-width cap). MAX_WIDTH_PX
+ *  is intentionally a massive value so `Math.min(availableWidth, MAX)` always
+ *  picks `availableWidth`. SIDE_PADDING_PX = COLUMN_MASONRY.GAP_PX / 2 so the
+ *  outer card edges sit a half-gap from the viewport edge, mirroring the inner
+ *  gap rhythm (destefanis applies `+gap/2` to x positions). */
 export const BOARD_INNER = {
-  MAX_WIDTH_PX: 1400,
-  SIDE_PADDING_PX: 64,
+  MAX_WIDTH_PX: 999_999,
+  SIDE_PADDING_PX: 9,
 } as const
 
 export const RESIZE = {
@@ -96,9 +101,13 @@ export const PERF = {
   MAX_LAYOUT_MS_1000_CARDS: 16,
 } as const
 
+/** destefanis: 5 columns at typical desktop viewports, 18px gaps.
+ *  TARGET_COLUMN_UNIT_PX is the desired column width — masonry picks the column
+ *  count that gets nearest. With 280 target, sidebar 240, viewport 1900 →
+ *  available 1660, picks 5 columns of ~314px each (destefanis-like). */
 export const COLUMN_MASONRY = {
-  TARGET_COLUMN_UNIT_PX: 160,
-  GAP_PX: 6,
+  TARGET_COLUMN_UNIT_PX: 280,
+  GAP_PX: 18,
 } as const
 
 export const SIZE_PRESET_SPAN: Readonly<Record<'S' | 'M' | 'L', number>> = {

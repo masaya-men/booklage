@@ -3,19 +3,20 @@
   height: 100%;
   border-radius: var(--card-radius);
   overflow: hidden;
-  background: white;
+  background: transparent;
 }
 
-/* react-tweet root — strip its default border + shadow + radius */
+/* react-tweet root — match X dark theme + strip default chrome so the tweet
+   blends into the dark canvas (destefanis aesthetic: no card chrome). */
 .tweetCard :global([data-theme]) {
   --tweet-container-margin: 0;
-  --tweet-container-radius: 0;
+  --tweet-container-radius: var(--card-radius);
   --tweet-border: none;
-  --tweet-bg-color: white;
+  --tweet-bg-color: #15202b;
+  --tweet-color-blue-primary: #1d9bf0;
   --tweet-font-family: var(--font-sans);
   margin: 0 !important;
   border: none !important;
-  border-radius: 0 !important;
   box-shadow: none !important;
 }
 

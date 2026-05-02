@@ -14,6 +14,7 @@
 
 html {
   height: 100%;
+  background-color: var(--bg-dark);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -272,7 +273,7 @@ ol {
   --text-meta: #777777;
   --text-muted: #555555;
   --text-signature: #444444;
-  --card-radius: 10px;
+  --card-radius: 24px;
   --lightbox-media-radius: 6px;
   --lightbox-backdrop: rgba(10, 10, 10, 0.95);
 }
