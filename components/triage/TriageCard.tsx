@@ -10,7 +10,7 @@ export function TriageCard({ item }: { item: BoardItem }): ReactElement {
   return (
     <div className={styles.card} data-testid="triage-card">
       {item.thumbnail && (
-        <div className={styles.image} style={{ backgroundImage: `url(${JSON.stringify(item.thumbnail).slice(1, -1)})` }} />
+        <div className={styles.image} style={{ backgroundImage: `url("${item.thumbnail.replace(/"/g, '%22')}")` }} />
       )}
       <div className={styles.body}>
         <div className={styles.title}>{item.title}</div>
