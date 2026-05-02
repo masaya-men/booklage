@@ -7,45 +7,46 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `destefanis-pivot` (ローカルのみ、未 push)
+- **ブランチ**: `destefanis-pivot` (origin/destefanis-pivot に push 済)
 - **master**: 全 push 済（plan doc も含む）
-- **destefanis-pivot の commits（10 個 = Task 1-10 + Playfair font fix）**:
-  - `5c5df1a` — Task 1: IDB v9 migration (folders→moods, folderId→tags[])
-  - `51374b4` — Task 2: MoodRecord CRUD, 旧 folder API 削除
-  - `26f6cd8` — Task 3: BoardConfig に displayMode + activeFilter
-  - `1114d31` — Task 4: applyFilter 純関数
-  - `1c9a86a` — Task 5: useBoardData に tags/displayMode/persistTags/persistDisplayMode/reload
-  - `3fe3db6` — Task 6: BookmarkTagger インターフェース + HeuristicTagger MVP
-  - `699e618` — Task 7: BroadcastChannel helper
-  - `d3b4570` — Task 8: ブックマークレット 320×120 トップセンターポップアップ
-  - `fb7bd06` — Task 9: SavePopup → SaveToast 置換
-  - `b951cdc` — Task 9 polish: Playfair Display フォントを globally load
-  - `634a131` — Task 10: bookmarklet-save E2E を SaveToast flow 用に書き直し
-- **進捗**: 全 25 タスク中 **Task 1-10 完了**（10/25、40%）。データ層 + save flow 完了
-- **セッションメモ**: 2026-05-01、user 判断でデータ層+save flow 完了地点（Task 10）でセッション分割。Task 11 以降は次セッション
+- **destefanis-pivot の最新 4 commits（Task 11-14 = cluster 1）**:
+  - `40f451d` — Task 14: cards displayMode 分岐 (visual/editorial/native, TweetCard editorial = serif border-left)
+  - `ed806ad` — Task 13: Toolbar replacement = FilterPill + DisplayModeSwitch (top-right)
+  - `7257549` — Task 12: Sidebar redesign (Library All/Inbox/Archive + Moods, MoodRecord駆動)
+  - `30cb113` — Task 11: destefanis CSS vars + masonry tuning (160px/10px)
+  - `6d73b80` — pre-task: E2E v8→v9 spec 修復 (board-b0/board-b0-perf/board-b-embeds)
+  - 以前の commits（Task 1-10）は変わらず、TODO_COMPLETED.md 候補
+- **進捗**: 全 25 タスク中 **Task 1-14 完了**（14/25、56%）。データ層 + save flow + visual identity + sidebar + toolbar + card displayMode 完了
+- **セッションメモ**: 2026-05-02、user 指示で cluster 1 (Tasks 11-14) でセッション分割。Tasks 15-18 は次セッション
 - **テスト**: vitest 197/197 PASS、tsc clean、pnpm build 成功
-- **E2E**: bookmarklet-save 2/2 PASS。**他 9 specs 失敗** — `board-b-embeds.spec.ts` / `board-b0-perf.spec.ts` / `board-b0.spec.ts` が DB v8 ハードコードで VersionError。Task 11+ で v9 + folders→moods 対応必要
+- **E2E**: bookmarklet-save 2/2 + board-b-embeds 1/1 verified PASS（v9 修復後）。残り specs は cluster 3 の Task 25 で全回し
 
 ---
 
-### 🎯 次セッション最初にやること (順番に)
+### 🎯 次セッション最初にやること（cluster 2: Tasks 15-18）
 
 1. **このファイル (docs/TODO.md) を読む** ← 今ここ
-2. **branch 確認**: 既に `destefanis-pivot` チェックアウト済（前セッションから継続）
-3. **branch を origin に push**（前セッション中は未 push）: `rtk git push -u origin destefanis-pivot`
-4. **plan を再読**: [docs/superpowers/plans/2026-04-21-destefanis-pivot.md](docs/superpowers/plans/2026-04-21-destefanis-pivot.md) の **Task 11** から再開（line 1634〜）
-5. **`subagent-driven-development` スキルを再 invoke** して Task 11 以降を順次実行
-   - ワークフロー: implementer dispatch → spec review → code quality review → 次タスク
-   - 各タスクは fresh subagent を dispatch（context 汚染防止）
-   - 25 タスク全完了後に `finishing-a-development-branch` で master merge + deploy
+2. **plan を再読**: [docs/superpowers/plans/2026-04-21-destefanis-pivot.md](docs/superpowers/plans/2026-04-21-destefanis-pivot.md) の **Task 15** (line ~2419) から再開
+3. **`subagent-driven-development` スキルを再 invoke** して Task 15-18 を順次実行
+   - **Task 15**: Lightbox component (GSAP spring) — board click が `window.open` ではなく lightbox に
+   - **Task 16**: Lightbox E2E test
+   - **Task 17**: BroadcastChannel listener + entrance animation (バグ fix)
+   - **Task 18**: Save → Board E2E バグ fix test
+   - cluster 3 (Tasks 19-25 = Triage UI + verification + deploy) はその次
+4. ワークフロー: implementer dispatch → spec review → code quality review → 次タスク
 
-### ⚠️ 次セッションで絶対対応すべき副次タスク（Task 11 着手前 or 並行）
+### 📋 cluster 1 で plan-deviation はゼロ
 
-**E2E の v8 ハードコード問題** — 9 specs が破綻している（pre-existing、Task 1 v9 migration の副作用）:
-- `tests/e2e/board-b0.spec.ts`、`tests/e2e/board-b0-perf.spec.ts`、`tests/e2e/board-b-embeds.spec.ts`
-- 全部 `indexedDB.open(dbName, 8)` ハードコード + `folderId: 'default'` で seed
-- Task 11 (visual tuning) や Task 17 (entrance animation) と互換しないので、Task 11 に着手したらすぐに DB_VERSION = 9 + folders 削除に書き換える（plan は明示的に Task 25 verification で「全 E2E 緑」を要求）
-- 余計な機能追加は不要。最小書き換えで OK
+Task 11-14 は plan 通りに verbatim 実装。inline-style 1 箇所（FilterPill の count badge 用 `marginLeft: auto`、TweetCard editorial branch の `borderLeft + paddingLeft + fontFamily`）は plan 内に明記されてた spec のまま。
+
+### 📋 Task 12 code review で発見した latent bug（Task 12 由来ではない、cluster 3 で対応か別 task に切る）
+
+**filter 中の drag-to-reorder で hidden item の orderIndex が壊れる**:
+- `persistOrderBatch(orderedBookmarkIds)` は visible IDs のみ受け取り、それを 0..N-1 で書き直す
+- 残りの hidden bookmarks は元の orderIndex 保持なので、restore したときに gap や collision が発生
+- Task 5 で実装された関数の latent bug。Task 12 が filter UI を出して初めて顕在化
+- 修正方針: `persistOrderBatch` を「全 bookmark を読んで dense reindex する」形に書き換える
+- 緊急ではない（MVP では filter 中 reorder 頻度が低い見込み）。launch 後 polish で対応可能
 
 ### 📋 Task 6 で plan-bug fix を適用済（plan 側を後で更新するか判断）
 
