@@ -59,6 +59,9 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
     catch { return '' }
   })()
 
+  const isTweet = detectUrlType(item.url) === 'tweet'
+  const tweetParsed = isTweet ? parseTweetTitle(item.title) : null
+
   return (
     <div
       ref={backdropRef}
@@ -74,13 +77,24 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
           <LightboxMedia item={item} />
         </div>
         <div className={styles.text}>
-          <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
-          {item.description && (
-            <p className={styles.description}>{item.description}</p>
+          {tweetParsed ? (
+            <>
+              <p className={styles.tweetText}>{tweetParsed.text}</p>
+              <p className={styles.tweetAuthor}>
+                {tweetParsed.author} <span className={styles.tweetMeta}>on X</span>
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
+              {item.description && (
+                <p className={styles.description}>{item.description}</p>
+              )}
+              <div className={styles.meta}>
+                {host && <span>{host}</span>}
+              </div>
+            </>
           )}
-          <div className={styles.meta}>
-            {host && <span>{host}</span>}
-          </div>
           <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
             {t('board.lightbox.openSource')} →
           </a>
@@ -95,6 +109,22 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
       </div>
     </div>
   )
+}
+
+/**
+ * Parse the OGP-style title that X (Twitter) returns to extract the author
+ * and the tweet body. X uses two formats depending on locale:
+ *   "Xユーザーの<author>さん:「<content>」/ X"   (Japanese)
+ *   "<author> on X: <content>"                  (English)
+ * Returns null if the title doesn't match either pattern (e.g. media tweets,
+ * reply threads, or X has changed the format).
+ */
+function parseTweetTitle(title: string): { author: string; text: string } | null {
+  const ja = title.match(/^X(?:ユーザー)?の?(.+?)さん[:：]\s*[「『](.+)[」』]\s*\/\s*X\s*$/u)
+  if (ja && ja[1] && ja[2]) return { author: ja[1].trim(), text: ja[2].trim() }
+  const en = title.match(/^(.+?)\s+on\s+X[:\s]+(.+?)(?:\s*\/\s*X)?$/i)
+  if (en && en[1] && en[2]) return { author: en[1].trim(), text: en[2].trim() }
+  return null
 }
 
 function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {

@@ -8,7 +8,15 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `destefanis-pivot`
-- **本番**: `https://booklage.pages.dev` に **v17 反映済** (Task 28: outer-frame redesign + tweet-as-image)
+- **本番**: `https://booklage.pages.dev` に **v18 反映済** (Task 28 v18: aspect remeasure / tweet lightbox / font / fade)
+- **🎯 v18 で入れた追い込み (2026-05-02)**:
+  - ImageCard / VideoThumbCard に img onload aspect 再計測 (`naturalWidth/naturalHeight`) → persistMeasuredAspect。**旧 TweetCard 由来の縦長 aspect が原因の card 巨大化を自動修正**
+  - Lightbox frame grid `auto minmax(...)` → `1fr 320px` (auto 列 0 圧縮で media 消失していた問題解消)。media `display:flex; justify-content:center`、img `object-fit: contain`
+  - Lightbox に **tweet 専用 layout**: 「Xユーザーの○○さん:「内容」/X」 / 「○○ on X: 内容」を parse して `text + author` に分離して表示。`.tweetText` `.tweetAuthor` `.tweetMeta` CSS 追加
+  - `--font-sans` chain 強化: `Yu Gothic UI / Yu Gothic / Hiragino Sans / Hiragino Kaku Gothic ProN / Meiryo` を追加。Geist が CJK 含まないため日本語が serif fallback (MS Mincho) に落ちていた問題対策
+  - dark canvas 上下に **scroll affordance fade** (linear-gradient 64px、`.fadeTop` `.fadeBottom`)
+  - memory `reference_destefanis_visual_spec.md` 修正: 「フル画面 dark canvas」→「白外周 + 中央 framed dark canvas」が真の destefanis 仕様であることを記録
+- **🎯 Task 28 完了 (2026-05-02 v17)** — destefanis 完全コピーから離脱、ユーザー要望ベースの「白外周 + 中央 dark canvas が浮かぶ枠デザイン」に転換:
 - **🎯 Task 28 完了 (2026-05-02 v17)** — destefanis 完全コピーから離脱、ユーザー要望ベースの「白外周 + 中央 dark canvas が浮かぶ枠デザイン」に転換:
   - **画面構成変更**: body 全体 `--bg-outer: #ebebeb` (白外周)、`--canvas-margin: 24px` 余白で中央に `border-radius: 24px` の dark canvas が浮かぶ。canvas 内に masonry + Toolbar、外側 margin はクリーン
   - **Sidebar 完全削除**: BoardRoot から `<Sidebar>` render とすべての Sidebar 関連 state/handlers を削除 (sidebarCollapsed, handleSidebarToggle, handleCreateMood, handleTriageStart, F キー toggle)。Sidebar.tsx ファイルは将来再利用想定で残置 (orphan)

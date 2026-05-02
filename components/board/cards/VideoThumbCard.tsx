@@ -17,7 +17,9 @@ type Props = {
   readonly cardHeight?: number
 }
 
-export function VideoThumbCard({ item }: Props): ReactNode {
+const ASPECT_EPSILON = 0.005
+
+export function VideoThumbCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const urlType = detectUrlType(item.url)
   const [tikTokThumb, setTikTokThumb] = useState<string | null>(null)
   const [tikTokTitle, setTikTokTitle] = useState<string | null>(null)
@@ -25,6 +27,7 @@ export function VideoThumbCard({ item }: Props): ReactNode {
   const [ytLevel, setYtLevel] = useState<0 | 1 | 2 | 3>(0)
   const tikTokRequested = useRef(false)
   const ytOEmbedRequested = useRef(false)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   // TikTok: always fetch oEmbed — we need it for both thumbnail and title.
   useEffect(() => {
@@ -52,21 +55,46 @@ export function VideoThumbCard({ item }: Props): ReactNode {
   const thumbUrl =
     urlType === 'youtube' ? getYoutubeThumb(item.url, ytLevel) : tikTokThumb
 
+  // Re-measure intrinsic aspect from natural width/height once the thumbnail
+  // loads — corrects stale persisted aspectRatio (e.g. YouTube Shorts saved
+  // as 16:9 by old defaults; the real thumb is 9:16).
+  useEffect(() => {
+    if (!persistMeasuredAspect || !thumbUrl) return
+    const img = imgRef.current
+    if (!img) return
+    const measure = (): void => {
+      const w = img.naturalWidth
+      const h = img.naturalHeight
+      if (w <= 0 || h <= 0) return
+      const aspect = w / h
+      if (Math.abs(aspect - item.aspectRatio) < ASPECT_EPSILON) return
+      void persistMeasuredAspect(item.cardId, aspect)
+    }
+    if (img.complete && img.naturalWidth > 0) {
+      measure()
+      return undefined
+    }
+    img.addEventListener('load', measure)
+    return (): void => img.removeEventListener('load', measure)
+  }, [thumbUrl, item.cardId, item.aspectRatio, persistMeasuredAspect])
+
   const handleImgError = (): void => {
     if (urlType === 'youtube' && ytLevel < 3) {
       setYtLevel((l) => (l + 1) as 0 | 1 | 2 | 3)
     }
   }
 
-  const displayTitle =
-    (urlType === 'youtube' && ytTitle) ||
-    (urlType === 'tiktok' && tikTokTitle) ||
-    item.title
+  // Touch unused state setters so tsc doesn't warn — these will feed the
+  // Lightbox's tweet-style title resolution in a follow-up pass (currently
+  // the bookmarklet-saved title is used directly).
+  void tikTokTitle
+  void ytTitle
 
   return (
     <div className={styles.videoCard}>
       {thumbUrl ? (
         <img
+          ref={imgRef}
           className={styles.thumb}
           src={thumbUrl}
           onError={handleImgError}

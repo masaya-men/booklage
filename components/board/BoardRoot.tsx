@@ -22,6 +22,7 @@ import { Toolbar } from './Toolbar'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
 import { Lightbox } from './Lightbox'
+import styles from './BoardRoot.module.css'
 
 // Visible breathing room above the board's first card, in CSS pixels.
 // Cards' world coords start at y=0 (masonry cursor); this offset is applied
@@ -335,28 +336,10 @@ export function BoardRoot() {
   const contentHeight = Math.max(viewport.h, contentBounds.height)
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--bg-outer)',
-        padding: 'var(--canvas-margin)',
-        overflow: 'hidden',
-      }}
-    >
+    <div className={styles.outerFrame}>
       {/* Inner dark canvas — destefanis-style stage. The whole pan/cards/
           toolbar live inside, so cursor pan never escapes the rounded frame. */}
-      <div
-        ref={canvasRef}
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          borderRadius: 'var(--canvas-radius)',
-          background: 'var(--bg-dark)',
-          overflow: 'hidden',
-        }}
-      >
+      <div ref={canvasRef} className={styles.canvas}>
         <InteractionLayer
           direction={themeMeta.direction}
           onScroll={handleScroll}
@@ -408,6 +391,9 @@ export function BoardRoot() {
             />
           </div>
         </InteractionLayer>
+        {/* Soft fade at canvas top/bottom edges — scroll affordance. */}
+        <div className={styles.fadeTop} aria-hidden="true" />
+        <div className={styles.fadeBottom} aria-hidden="true" />
         <Toolbar
           activeFilter={activeFilter}
           onFilterChange={handleFilterChange}

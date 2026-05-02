@@ -160,8 +160,14 @@ ol {
   --folder-pink: #f06595;
   --folder-gray: #868e96;
 
-  /* ── Font Families ── */
-  --font-sans: var(--font-geist), 'Hiragino Sans', 'Yu Gothic', system-ui, -apple-system, sans-serif;
+  /* ── Font Families ──
+     Geist は CJK 含まない (Latin only)。日本語は順に Yu Gothic UI (Win 8.1+) →
+     Yu Gothic (Win 7+) → Meiryo (古い Win) → Hiragino Sans (Mac) と落としていく。
+     -apple-system / system-ui は Mac で Hiragino を、Win では Segoe UI を選ぶ
+     ので、後ろに置いて Geist (Latin) のフォールバックとして機能させる。 */
+  --font-sans: var(--font-geist), -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Yu Gothic UI', 'Yu Gothic', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+    'Meiryo', system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
   --font-heading: var(--font-sans);
   --font-body: var(--font-sans);

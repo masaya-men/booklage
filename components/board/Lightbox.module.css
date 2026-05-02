@@ -14,10 +14,13 @@
 
 .frame {
   position: relative;
-  max-width: 94vw;
+  width: min(94vw, 1240px);
   max-height: 90vh;
   display: grid;
-  grid-template-columns: auto minmax(280px, 360px);
+  /* Media takes remaining width (1fr); text panel fixed 320px right column.
+     auto column collapsed images down to 0 — explicit 1fr forces media to
+     receive real space. */
+  grid-template-columns: 1fr 320px;
   gap: 32px;
   align-items: center;
 }
@@ -35,7 +38,6 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: var(--lightbox-media-radius);
   min-width: 0;
   min-height: 0;
   max-height: 88vh;
@@ -95,12 +97,16 @@
 }
 
 .title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  line-height: 1.35;
   margin: 0;
   color: var(--text-primary);
   font-family: var(--font-sans);
+  /* Defense against the inherited browser default `serif` for h1 in some
+     UA stylesheets when var(--font-sans) is not yet available. */
+  font-feature-settings: normal;
 }
 
 .description {
@@ -109,6 +115,28 @@
   color: var(--text-body);
   margin: 0;
   font-family: var(--font-sans);
+}
+
+/* Tweet-specific layout in the right text panel: tweet body large, then
+   author with subdued "on X" suffix, then the source link. */
+.tweetText {
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  margin: 0;
+  font-family: var(--font-sans);
+  white-space: pre-wrap;
+}
+.tweetAuthor {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-body);
+  margin: 0;
+  font-family: var(--font-sans);
+}
+.tweetMeta {
+  color: var(--text-meta);
+  font-weight: 400;
 }
 
 .meta {

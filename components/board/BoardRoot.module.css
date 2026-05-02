@@ -1,0 +1,50 @@
+/* Outer-frame layout (v17): white background with a centered dark canvas
+   that holds all bookmarks. The board never escapes the rounded frame. */
+
+.outerFrame {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-outer);
+  padding: var(--canvas-margin);
+  overflow: hidden;
+}
+
+.canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--canvas-radius);
+  background: var(--bg-dark);
+  overflow: hidden;
+}
+
+/* Scroll affordance — a soft top/bottom fade hints that more cards live
+   above/below the visible viewport. Sits above cards (zIndex BOARD_Z_INDEX
+   between CARDS=10 and TOOLBAR=110) but doesn't block pointer events. */
+.fadeTop,
+.fadeBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 64px;
+  pointer-events: none;
+  z-index: 50;
+}
+.fadeTop {
+  top: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--bg-dark) 0%,
+    rgba(10, 10, 10, 0.85) 30%,
+    rgba(10, 10, 10, 0) 100%
+  );
+}
+.fadeBottom {
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    var(--bg-dark) 0%,
+    rgba(10, 10, 10, 0.85) 30%,
+    rgba(10, 10, 10, 0) 100%
+  );
+}
