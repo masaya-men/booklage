@@ -26,7 +26,9 @@ export function TriagePage(): ReactElement {
     if (!current) return
     setLastAction({ bookmarkId: current.bookmarkId, prev: [...current.tags] })
     await persistTags(current.bookmarkId, [moodId])
-    setIndex((i) => i + 1)
+    // Do NOT advance index: tagging removes the current item from the queue
+    // (its tags.length becomes > 0), so queue[index] naturally becomes the
+    // next unprocessed card after the useMemo recomputes.
   }, [current, persistTags])
 
   const handleSkip = useCallback((): void => {
