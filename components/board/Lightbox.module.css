@@ -14,17 +14,17 @@
 
 .frame {
   position: relative;
-  width: min(94vw, 1100px);
+  max-width: 94vw;
   max-height: 90vh;
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 40px;
-  align-items: start;
+  grid-template-columns: auto minmax(280px, 360px);
+  gap: 32px;
+  align-items: center;
 }
 @media (max-width: 900px) {
   .frame {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 20px;
     max-height: 92vh;
     overflow-y: auto;
   }
@@ -36,8 +36,8 @@
   justify-content: center;
   overflow: hidden;
   border-radius: var(--lightbox-media-radius);
-  background: rgba(255, 255, 255, 0.02);
-  min-height: 200px;
+  min-width: 0;
+  min-height: 0;
   max-height: 88vh;
 }
 .media img {
@@ -45,6 +45,7 @@
   max-height: 88vh;
   display: block;
   border-radius: var(--lightbox-media-radius);
+  object-fit: contain;
 }
 
 .placeholder {
@@ -69,10 +70,23 @@
   box-shadow: none !important;
 }
 
+/* Horizontal video (16:9). Width fills available column up to 920px,
+   height capped at 88vh — whichever constraint binds first. */
 .iframeWrap16x9 {
-  width: 100%;
+  width: min(920px, 60vw);
   aspect-ratio: 16 / 9;
   max-height: 88vh;
+  background: black;
+  border-radius: var(--lightbox-media-radius);
+  overflow: hidden;
+}
+/* Vertical video (TikTok / IG Reels / YouTube Shorts). Height-led:
+   take up to 88vh tall, width derived from 9:16 aspect-ratio. Never
+   exceed ~50vw so text panel still fits beside it on wide screens. */
+.iframeWrap9x16 {
+  height: min(88vh, 720px);
+  aspect-ratio: 9 / 16;
+  max-width: 50vw;
   background: black;
   border-radius: var(--lightbox-media-radius);
   overflow: hidden;
@@ -82,22 +96,6 @@
   height: 100%;
   border: 0;
   display: block;
-}
-
-.tikTokBlockquote {
-  max-width: 605px;
-  min-width: 325px;
-  margin: 0 !important;
-  background: white;
-  border-radius: var(--lightbox-media-radius);
-}
-
-.instagramBlockquote {
-  max-width: 540px;
-  min-width: 326px;
-  margin: 0 !important;
-  background: white;
-  border-radius: var(--lightbox-media-radius);
 }
 
 .text {

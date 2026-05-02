@@ -8,17 +8,23 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `destefanis-pivot` (commit 後 push 必要)
-- **本番**: `https://booklage.pages.dev` に **v15 反映済** (Task 27 A〜D 完了)
-- **🎯 Task 27 A〜D 完了 (2026-05-02 後半セッション)** — destefanis 視覚 polish 4 件:
+- **本番**: `https://booklage.pages.dev` に **v16 反映済** (Task 27 A〜D + 27-F〜H)
+- **🎯 Task 27-F (body スクロール抑制)、27-G (TikTok/IG iframe 直接埋め込み)、27-H (Lightbox 縦動画 9:16 対応) 完了 (2026-05-02 v16)**
+  - 27-F: BoardRoot mount 時に `html/body { overflow:hidden }` を局所適用、unmount で復元 → destefanis 流のフル画面 dark canvas (pan のみ) 実現
+  - 27-G: TikTok を `https://www.tiktok.com/embed/v2/<id>` の iframe 直接埋め込みに、Instagram を `https://www.instagram.com/p/<shortcode>/embed` に置換 → embed.js + blockquote 方式 (CSP 失敗しがち) を全廃
+  - 27-H: Lightbox に `.iframeWrap9x16` (height-led, max 50vw, aspect 9:16) を新設、`.iframeWrap16x9` を `width: min(920px, 60vw)` に。frame grid を `auto minmax(280px, 360px)` に、media は object-fit: contain。YouTube Shorts URL `youtube.com/shorts/<id>` 検知 → 縦表示
+  - 新規 helper: `lib/utils/url.ts` に `isYoutubeShorts()` + `extractYoutubeId()` の Shorts URL 対応
+- **🎯 Task 27 A〜D 完了 (2026-05-02 前半セッション)** — destefanis 視覚 polish 4 件:
   - 27-A: `CardNode.inner` の白枠 chrome (background:#fff + 1px border + 4px radius) を完全削除し radius を `var(--card-radius)`(24px) に統一 → **これが最大の視覚改善**。これまでカード外形が 4px ガビガビ + 薄白枠で destefanis から最も乖離していた根本原因
   - 27-B: `--lightbox-backdrop` を `rgba(10,10,10,0.95)`(不透明) → `rgba(0,0,0,0.5) + backdrop-filter: blur(6px)` (背景 blur で透ける destefanis 流)
   - 27-C: Lightbox `.tweetWrap` の `background: #15202b` + border 削除 → 透明にして内側 `--tweet-bg-color` のみで X dark テーマ成立
   - 27-D: Toolbar の FilterPill / DisplayModeSwitch を「ほぼ不透明な黒 pill」→ destefanis 真値「白 glass pill」(`rgba(255,255,255,0.1)` + 12px blur + padding 10/16 + font 14px) に。Toolbar 位置 16→24px
 - **未完了 (Task 27-E: 実機確認後に判断)**:
-  - Tweet 本文切れ問題が v15 で解決しているか (TweetCard の intrinsicHeight feedback 追い込み)
-  - TikTok / Instagram embed 実機動作 (動かなければ thumbnail + 外部リンク fallback)
+  - Tweet 本文切れ問題が v16 で解決しているか (TweetCard の intrinsicHeight feedback 追い込み)
+  - v16 で TikTok / Instagram / YouTube Shorts の Lightbox 実機動作確認
+  - card click → Lightbox open が確実に動くか (前セッションでユーザーが「クリックしても内容の確認ができない」と指摘 — Lightbox visibility / click path の追加診断が必要なら手当て)
 - **テスト**: vitest 204/204 PASS、tsc EXIT=0、pnpm build 成功
-- **SW CACHE_VERSION**: v15-2026-05-02-task27-destefanis-visual-polish
+- **SW CACHE_VERSION**: v16-2026-05-02-task27-bodyscroll-vertical-video
 - **Task 26 で実施した変更**:
   - 26-1 board 背景: ベージュ + ドット → `var(--bg-dark)` 真っ黒
   - 26-2 全カード装飾削除: border / box-shadow / hover lift / ImageCard `.title` overlay / VideoThumbCard `.titleBar` 削除

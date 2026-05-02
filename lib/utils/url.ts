@@ -52,7 +52,14 @@ export function extractYoutubeId(url: string): string | null {
   if (shortMatch) return shortMatch[1]
   const embedMatch = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/)
   if (embedMatch) return embedMatch[1]
+  const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/)
+  if (shortsMatch) return shortsMatch[1]
   return null
+}
+
+/** Returns true if the URL is a YouTube Shorts (vertical 9:16) URL. */
+export function isYoutubeShorts(url: string): boolean {
+  return /youtube\.com\/shorts\//.test(url)
 }
 
 /**

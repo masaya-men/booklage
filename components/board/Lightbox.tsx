@@ -7,9 +7,11 @@ import type { BoardItem } from '@/lib/storage/use-board-data'
 import { t } from '@/lib/i18n/t'
 import {
   detectUrlType,
+  extractInstagramShortcode,
   extractTikTokVideoId,
   extractTweetId,
   extractYoutubeId,
+  isYoutubeShorts,
 } from '@/lib/utils/url'
 import styles from './Lightbox.module.css'
 
@@ -114,16 +116,24 @@ function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
   if (urlType === 'youtube') {
     const videoId = extractYoutubeId(item.url)
     if (videoId) {
-      return <YouTubeEmbed videoId={videoId} title={item.title} />
+      return (
+        <YouTubeEmbed
+          videoId={videoId}
+          title={item.title}
+          vertical={isYoutubeShorts(item.url)}
+        />
+      )
     }
   }
 
   if (urlType === 'tiktok') {
-    return <TikTokEmbed url={item.url} />
+    const videoId = extractTikTokVideoId(item.url)
+    if (videoId) return <TikTokEmbed videoId={videoId} />
   }
 
   if (urlType === 'instagram') {
-    return <InstagramEmbed url={item.url} />
+    const shortcode = extractInstagramShortcode(item.url)
+    if (shortcode) return <InstagramEmbed shortcode={shortcode} />
   }
 
   // image / website / fallbacks
@@ -133,9 +143,17 @@ function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
   return <div className={styles.placeholder}>{item.title}</div>
 }
 
-function YouTubeEmbed({ videoId, title }: { readonly videoId: string; readonly title: string }): ReactNode {
+function YouTubeEmbed({
+  videoId,
+  title,
+  vertical,
+}: {
+  readonly videoId: string
+  readonly title: string
+  readonly vertical: boolean
+}): ReactNode {
   return (
-    <div className={styles.iframeWrap16x9}>
+    <div className={vertical ? styles.iframeWrap9x16 : styles.iframeWrap16x9}>
       <iframe
         src={`https://www.youtube.com/embed/${videoId}`}
         title={title}
@@ -147,51 +165,32 @@ function YouTubeEmbed({ videoId, title }: { readonly videoId: string; readonly t
   )
 }
 
-const TIKTOK_EMBED_SRC = 'https://www.tiktok.com/embed.js'
-const INSTAGRAM_EMBED_SRC = 'https://www.instagram.com/embed.js'
-
-/** Re-execute an external embed script by removing & re-appending the <script> tag.
- *  Both TikTok and Instagram process matching blockquote elements at script-load time. */
-function reloadEmbedScript(src: string): void {
-  const existing = document.querySelector(`script[src="${src}"]`)
-  if (existing) existing.remove()
-  const script = document.createElement('script')
-  script.async = true
-  script.src = src
-  document.body.appendChild(script)
-}
-
-function TikTokEmbed({ url }: { readonly url: string }): ReactNode {
-  useEffect(() => {
-    reloadEmbedScript(TIKTOK_EMBED_SRC)
-  }, [url])
-
-  const videoId = extractTikTokVideoId(url)
+/** TikTok official iframe embed — no script.js needed, works inside any CSP. */
+function TikTokEmbed({ videoId }: { readonly videoId: string }): ReactNode {
   return (
-    <blockquote
-      className={`tiktok-embed ${styles.tikTokBlockquote}`}
-      cite={url}
-      {...(videoId ? { 'data-video-id': videoId } : {})}
-    >
-      <section>
-        <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
-      </section>
-    </blockquote>
+    <div className={styles.iframeWrap9x16}>
+      <iframe
+        src={`https://www.tiktok.com/embed/v2/${videoId}`}
+        title="TikTok video"
+        className={styles.iframe}
+        allow="encrypted-media"
+        allowFullScreen
+      />
+    </div>
   )
 }
 
-function InstagramEmbed({ url }: { readonly url: string }): ReactNode {
-  useEffect(() => {
-    reloadEmbedScript(INSTAGRAM_EMBED_SRC)
-  }, [url])
-
+/** Instagram official `/embed` iframe — public posts work without script.js. */
+function InstagramEmbed({ shortcode }: { readonly shortcode: string }): ReactNode {
   return (
-    <blockquote
-      className={`instagram-media ${styles.instagramBlockquote}`}
-      data-instgrm-permalink={url}
-      data-instgrm-version="14"
-    >
-      <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
-    </blockquote>
+    <div className={styles.iframeWrap9x16}>
+      <iframe
+        src={`https://www.instagram.com/p/${shortcode}/embed`}
+        title="Instagram post"
+        className={styles.iframe}
+        allow="encrypted-media"
+        allowFullScreen
+      />
+    </div>
   )
 }

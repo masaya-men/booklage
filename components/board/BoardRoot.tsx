@@ -51,6 +51,22 @@ export function BoardRoot() {
   const [newlyAddedIds, setNewlyAddedIds] = useState<ReadonlySet<string>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // destefanis 流: ページ自体スクロールしない (overflow:hidden)。
+  // pan は内部 InteractionLayer のみで担う。board ページから抜けたら復元。
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const html = document.documentElement
+    const body = document.body
+    const prevHtmlOverflow = html.style.overflow
+    const prevBodyOverflow = body.style.overflow
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    return (): void => {
+      html.style.overflow = prevHtmlOverflow
+      body.style.overflow = prevBodyOverflow
+    }
+  }, [])
+
   // Window-level Space-key tracking for hold-to-pan. Lifted here from
   // InteractionLayer so both InteractionLayer (engagement) and CardsLayer
   // (early-bail in card pointerdown) can read the same state.
