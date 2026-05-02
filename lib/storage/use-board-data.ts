@@ -110,6 +110,7 @@ export function useBoardData(): {
   persistReadFlag: (bookmarkId: string, isRead: boolean) => Promise<void>
   persistSoftDelete: (bookmarkId: string, isDeleted: boolean) => Promise<void>
   persistMeasuredAspect: (cardId: string, aspectRatio: number) => Promise<void>
+  persistThumbnail: (bookmarkId: string, thumbnail: string) => Promise<void>
   persistTags: (bookmarkId: string, tags: readonly string[]) => Promise<void>
   persistDisplayMode: (bookmarkId: string, displayMode: BoardItem['displayMode']) => Promise<void>
   reload: () => Promise<void>
@@ -257,6 +258,25 @@ export function useBoardData(): {
     [],
   )
 
+  /** Backfill the bookmark's thumbnail when the bookmarklet failed to grab
+   *  og:image at save time (the common case for X / Twitter, which is a SPA
+   *  and renders meta tags client-side). Lightbox calls this after a lazy
+   *  syndication-API fetch so the next reload hits the ImageCard branch in
+   *  pickCard instead of falling back to TextCard. */
+  const persistThumbnail = useCallback(
+    async (bookmarkId: string, thumbnail: string): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId || !thumbnail) return
+      const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
+      if (!existing || existing.thumbnail) return  // skip if already set
+      await db.put('bookmarks', { ...existing, thumbnail })
+      setItems((prev) =>
+        prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, thumbnail } : it)),
+      )
+    },
+    [],
+  )
+
   const persistSoftDelete = useCallback(
     async (bookmarkId: string, isDeleted: boolean): Promise<void> => {
       const db = dbRef.current
@@ -349,6 +369,7 @@ export function useBoardData(): {
     persistReadFlag,
     persistSoftDelete,
     persistMeasuredAspect,
+    persistThumbnail,
     persistTags,
     persistDisplayMode,
     reload,

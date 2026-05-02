@@ -31,7 +31,7 @@ import styles from './BoardRoot.module.css'
 const BOARD_TOP_PAD_PX = 80
 
 export function BoardRoot() {
-  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect, reload } = useBoardData()
+  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect, persistThumbnail, reload } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
   const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
@@ -413,7 +413,11 @@ export function BoardRoot() {
         onClose={handleCloseBookmarkletModal}
         appUrl={typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? 'https://booklage.pages.dev')}
       />
-      <Lightbox item={lightboxItem} onClose={handleLightboxClose} />
+      <Lightbox
+        item={lightboxItem}
+        onClose={handleLightboxClose}
+        persistThumbnail={persistThumbnail}
+      />
     </div>
   )
 }

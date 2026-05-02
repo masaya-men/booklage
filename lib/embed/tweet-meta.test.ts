@@ -25,12 +25,31 @@ describe('parseTweetData', () => {
       id_str: '1',
       text: 'pic',
       user: { name: 'A', screen_name: 'a' },
-      photos: [{ url: 'x', width: 1200, height: 675 }],
+      photos: [{ url: 'https://pbs.twimg.com/media/X.jpg', width: 1200, height: 675 }],
       mediaDetails: [],
     }
     const meta = parseTweetData(raw)
     expect(meta?.hasPhoto).toBe(true)
     expect(meta?.photoAspectRatio).toBeCloseTo(1200 / 675, 2)
+    expect(meta?.photoUrl).toBe('https://pbs.twimg.com/media/X.jpg')
+  })
+
+  it('extracts videoPosterUrl from mediaDetails', () => {
+    const raw = {
+      id_str: '1',
+      text: 'video',
+      user: { name: 'A', screen_name: 'a' },
+      photos: [],
+      mediaDetails: [{
+        type: 'video',
+        media_url_https: 'https://pbs.twimg.com/media/poster.jpg',
+        original_info: { width: 1080, height: 1920 },
+      }],
+    }
+    const meta = parseTweetData(raw)
+    expect(meta?.hasVideo).toBe(true)
+    expect(meta?.videoPosterUrl).toBe('https://pbs.twimg.com/media/poster.jpg')
+    expect(meta?.videoAspectRatio).toBeCloseTo(1080 / 1920, 3)
   })
 
   it('returns null for malformed input', () => {

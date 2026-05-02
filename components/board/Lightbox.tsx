@@ -2,26 +2,36 @@
 
 import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
+import { Tweet } from 'react-tweet'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { t } from '@/lib/i18n/t'
 import {
   detectUrlType,
   extractInstagramShortcode,
   extractTikTokVideoId,
+  extractTweetId,
   extractYoutubeId,
   isYoutubeShorts,
 } from '@/lib/utils/url'
+import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import styles from './Lightbox.module.css'
 
 type Props = {
   readonly item: BoardItem | null
   readonly onClose: () => void
+  /** Optional thumbnail backfill — Lightbox lazy-fetches Twitter syndication
+   *  metadata and writes the photo/video poster URL into the bookmark so the
+   *  next reload picks ImageCard instead of falling back to TextCard. */
+  readonly persistThumbnail?: (bookmarkId: string, thumbnail: string) => Promise<void>
 }
 
-export function Lightbox({ item, onClose }: Props): ReactElement | null {
+export function Lightbox({ item, onClose, persistThumbnail }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  const isTweet = item ? detectUrlType(item.url) === 'tweet' : false
+  const tweetId = isTweet && item ? extractTweetId(item.url) : null
 
   // Escape key closes
   useEffect(() => {
@@ -52,6 +62,20 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
     if (item) closeButtonRef.current?.focus()
   }, [item])
 
+  // Lazy backfill the bookmark's thumbnail from Twitter syndication when a
+  // tweet without thumbnail opens. After this fires, the next render of the
+  // board card switches from TextCard → ImageCard with the actual tweet image.
+  useEffect(() => {
+    if (!item || !tweetId || item.thumbnail || !persistThumbnail) return
+    let cancelled = false
+    void fetchTweetMeta(tweetId).then((meta) => {
+      if (cancelled || !meta) return
+      const url = meta.photoUrl ?? meta.videoPosterUrl
+      if (url) void persistThumbnail(item.bookmarkId, url)
+    })
+    return (): void => { cancelled = true }
+  }, [item, tweetId, persistThumbnail])
+
   if (!item) return null
 
   const host = (() => {
@@ -59,9 +83,44 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
     catch { return '' }
   })()
 
-  const isTweet = detectUrlType(item.url) === 'tweet'
-  const tweetParsed = isTweet ? parseTweetTitle(item.title) : null
+  // Tweet branch: render react-tweet inside a centered scrollable column.
+  // react-tweet handles author + text + media + video playback natively, so
+  // we don't need our own parser or text panel for tweets.
+  if (tweetId) {
+    return (
+      <div
+        ref={backdropRef}
+        className={`${styles.backdrop} ${styles.open}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
+        data-testid="lightbox"
+      >
+        <div ref={frameRef} className={styles.frameTweet}>
+          <div className={styles.tweetWrap} data-theme="dark">
+            <Tweet id={tweetId} />
+          </div>
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.sourceLink}
+          >
+            {t('board.lightbox.openSource')} →
+          </a>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            className={styles.close}
+            aria-label={t('board.lightbox.close')}
+          >✕</button>
+        </div>
+      </div>
+    )
+  }
 
+  // Non-tweet branch: 2-column layout (media | text).
   return (
     <div
       ref={backdropRef}
@@ -77,24 +136,13 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
           <LightboxMedia item={item} />
         </div>
         <div className={styles.text}>
-          {tweetParsed ? (
-            <>
-              <p className={styles.tweetText}>{tweetParsed.text}</p>
-              <p className={styles.tweetAuthor}>
-                {tweetParsed.author} <span className={styles.tweetMeta}>on X</span>
-              </p>
-            </>
-          ) : (
-            <>
-              <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
-              {item.description && (
-                <p className={styles.description}>{item.description}</p>
-              )}
-              <div className={styles.meta}>
-                {host && <span>{host}</span>}
-              </div>
-            </>
+          <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
+          {item.description && (
+            <p className={styles.description}>{item.description}</p>
           )}
+          <div className={styles.meta}>
+            {host && <span>{host}</span>}
+          </div>
           <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
             {t('board.lightbox.openSource')} →
           </a>
@@ -109,22 +157,6 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
       </div>
     </div>
   )
-}
-
-/**
- * Parse the OGP-style title that X (Twitter) returns to extract the author
- * and the tweet body. X uses two formats depending on locale:
- *   "Xユーザーの<author>さん:「<content>」/ X"   (Japanese)
- *   "<author> on X: <content>"                  (English)
- * Returns null if the title doesn't match either pattern (e.g. media tweets,
- * reply threads, or X has changed the format).
- */
-function parseTweetTitle(title: string): { author: string; text: string } | null {
-  const ja = title.match(/^X(?:ユーザー)?の?(.+?)さん[:：]\s*[「『](.+)[」』]\s*\/\s*X\s*$/u)
-  if (ja && ja[1] && ja[2]) return { author: ja[1].trim(), text: ja[2].trim() }
-  const en = title.match(/^(.+?)\s+on\s+X[:\s]+(.+?)(?:\s*\/\s*X)?$/i)
-  if (en && en[1] && en[2]) return { author: en[1].trim(), text: en[2].trim() }
-  return null
 }
 
 function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {

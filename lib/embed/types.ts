@@ -10,6 +10,14 @@ export type TweetMeta = {
   readonly hasQuotedTweet: boolean
   readonly photoAspectRatio?: number  // width / height
   readonly videoAspectRatio?: number
+  /** Direct photo URL (first photo if multiple). Used to populate the
+   *  bookmark thumbnail when the bookmarklet couldn't grab og:image from X
+   *  (which is the common case — X is a SPA and og:image is not in
+   *  the static <head>). */
+  readonly photoUrl?: string
+  /** Video poster image URL (still frame). Same purpose as photoUrl but for
+   *  video tweets. Falls back to a representative frame from mediaDetails. */
+  readonly videoPosterUrl?: string
   readonly authorName: string
   readonly authorHandle: string
 }

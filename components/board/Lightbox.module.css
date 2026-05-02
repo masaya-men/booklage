@@ -117,26 +117,33 @@
   font-family: var(--font-sans);
 }
 
-/* Tweet-specific layout in the right text panel: tweet body large, then
-   author with subdued "on X" suffix, then the source link. */
-.tweetText {
-  font-size: 18px;
-  line-height: 1.55;
-  color: var(--text-primary);
-  margin: 0;
-  font-family: var(--font-sans);
-  white-space: pre-wrap;
+/* === Tweet branch === react-tweet renders author + text + media + video
+   playback natively. We just give it a centered, scrollable column with the
+   X dark theme and a source link below. */
+.frameTweet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(94vw, 600px);
+  max-height: 90vh;
 }
-.tweetAuthor {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-body);
-  margin: 0;
-  font-family: var(--font-sans);
+.tweetWrap {
+  width: 100%;
+  max-width: 550px;
+  max-height: calc(90vh - 80px);
+  overflow-y: auto;
+  background: transparent;
+  --tweet-bg-color: #15202b;
+  --tweet-color-blue-primary: #1d9bf0;
+  --tweet-color-mention: #1d9bf0;
+  --tweet-border: 1px solid rgba(255, 255, 255, 0.08);
+  --tweet-container-radius: var(--lightbox-media-radius);
+  --tweet-font-family: var(--font-sans);
 }
-.tweetMeta {
-  color: var(--text-meta);
-  font-weight: 400;
+.tweetWrap :global([data-theme]) {
+  margin: 0 !important;
 }
 
 .meta {

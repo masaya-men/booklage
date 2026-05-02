@@ -37,7 +37,11 @@ type SyndicationRaw = {
   full_text?: string
   user?: { name?: string; screen_name?: string }
   photos?: Array<{ url: string; width: number; height: number }>
-  mediaDetails?: Array<{ type?: string; original_info?: { width: number; height: number } }>
+  mediaDetails?: Array<{
+    type?: string
+    media_url_https?: string
+    original_info?: { width: number; height: number }
+  }>
   video?: { aspect_ratio?: [number, number] }
   quoted_tweet?: unknown
   card?: { name?: string }
@@ -65,6 +69,8 @@ export function parseTweetData(raw: unknown): TweetMeta | null {
     videoAspectRatio: video?.original_info
       ? video.original_info.width / video.original_info.height
       : undefined,
+    photoUrl: photo?.url,
+    videoPosterUrl: video?.media_url_https,
     authorName: r.user?.name ?? '',
     authorHandle: r.user?.screen_name ?? '',
   }

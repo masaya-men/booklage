@@ -8,7 +8,16 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `destefanis-pivot`
-- **本番**: `https://booklage.pages.dev` に **v18 反映済** (Task 28 v18: aspect remeasure / tweet lightbox / font / fade)
+- **本番**: `https://booklage.pages.dev` に **v19 反映済** (Task 29: Twitter 完全復活 — react-tweet + syndication thumbnail backfill)
+- **🎯 Task 29 完了 (2026-05-02 v19)** — Twitter (X) で動画/画像/本文/著者が全部見える状態に完全修復:
+  - **真因確定**: bookmarklet が X.com から og:image を取れない (X は SPA で og:image を head に置かない)。これにより v17/v18 では `item.thumbnail` が空 → Lightbox が placeholder のみ → 「画像が見えない」「parseTweetTitle がブレる」が複合発生していた
+  - **Phase 1**: Lightbox の tweet 分岐に **react-tweet を復活**。card 上では使わない (v17 で削除した re-render storm 対策はそのまま) が、Lightbox は 1 個だけなので problem-free。動画再生 / 画像 / 本文 / 著者 / actions を react-tweet が直接 render
+  - **Phase 1.5**: Lightbox open 時に **lazy syndication API fetch** (`cdn.syndication.twimg.com`)。response から `photoUrl` / `videoPosterUrl` を抽出 → `persistThumbnail` で IndexedDB の bookmark.thumbnail を上書き保存 → 次回 reload で card 上が **TextCard → ImageCard に振り分け変更** + ImageCard の natural aspect 計測で縦長画像も正しい縦長 thumbnail で表示される
+  - **TweetMeta 拡張**: `photoUrl` (photos[0].url) / `videoPosterUrl` (mediaDetails[video].media_url_https) を返すように parser 拡張、tweet-meta.test.ts に photo/video テスト 2 件追加
+  - **新 hook**: `useBoardData.persistThumbnail(bookmarkId, thumbnail)` — 既に thumbnail がある bookmark には no-op (bookmarklet が拾えた og:image を上書きしない安全装置)
+  - **削除**: `parseTweetTitle` と Lightbox の tweet 専用 layout (.tweetText, .tweetAuthor, .tweetMeta)。react-tweet が author/text を直接出すので不要に
+  - **CSS**: `.frameTweet` (centered column 600px max), `.tweetWrap` 復活 (X dark theme + scrollable + Geist font 適用)
+- **🎯 v18 で入れた追い込み (2026-05-02)**:
 - **🎯 v18 で入れた追い込み (2026-05-02)**:
   - ImageCard / VideoThumbCard に img onload aspect 再計測 (`naturalWidth/naturalHeight`) → persistMeasuredAspect。**旧 TweetCard 由来の縦長 aspect が原因の card 巨大化を自動修正**
   - Lightbox frame grid `auto minmax(...)` → `1fr 320px` (auto 列 0 圧縮で media 消失していた問題解消)。media `display:flex; justify-content:center`、img `object-fit: contain`

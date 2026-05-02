@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v18-2026-05-02-task28-tweet-lightbox-aspect-fade'
+const CACHE_VERSION = 'v19-2026-05-02-task29-tweet-fully-restored'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [
