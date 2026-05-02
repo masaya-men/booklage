@@ -1,28 +1,25 @@
 import type { TweetMeta } from './types'
 
 /**
- * Twitter syndication CDN — same endpoint react-tweet uses internally.
- * No auth required, served via Cloudflare. CORS-permitted from any origin.
+ * Booklage's CORS-friendly proxy for `cdn.syndication.twimg.com`.
+ *
+ * Why we proxy: Twitter's syndication CDN responds with
+ * `Access-Control-Allow-Origin: https://platform.twitter.com`, so any
+ * direct browser fetch from `booklage.pages.dev` is blocked. The Cloudflare
+ * Pages Function at `functions/api/tweet-meta.ts` relays the request
+ * server-to-server (where CORS doesn't apply) and adds a permissive
+ * Access-Control-Allow-Origin on the way back. Token computation lives in
+ * the proxy so it can never leak / get scraped from the static bundle.
  */
-const SYNDICATION_BASE = 'https://cdn.syndication.twimg.com/tweet-result'
+const PROXY_ENDPOINT = '/api/tweet-meta'
 
-/**
- * Token computation matches react-tweet's algorithm
- * (https://github.com/vercel/react-tweet/blob/main/packages/react-tweet/src/api/fetch-tweet.ts).
- */
-function computeToken(id: string): string {
-  return ((Number(id) / 1e15) * Math.PI)
-    .toString(6 ** 2)
-    .replace(/(0+|\.)/g, '')
-}
-
-/** Fetch tweet metadata via syndication API. Returns null on any failure. */
+/** Fetch tweet metadata via the Booklage proxy. Returns null on any failure. */
 export async function fetchTweetMeta(id: string): Promise<TweetMeta | null> {
   if (!/^\d+$/.test(id)) return null
-  const token = computeToken(id)
-  const url = `${SYNDICATION_BASE}?id=${id}&token=${token}&lang=en`
   try {
-    const res = await fetch(url, { method: 'GET' })
+    const res = await fetch(`${PROXY_ENDPOINT}?id=${encodeURIComponent(id)}`, {
+      method: 'GET',
+    })
     if (!res.ok) return null
     const data: unknown = await res.json()
     return parseTweetData(data)
