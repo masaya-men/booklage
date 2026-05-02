@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v20-2026-05-02-task29-bulk-syndication-backfill'
+const CACHE_VERSION = 'v21-2026-05-02-task29-debug-unconditional-backfill'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

@@ -12,7 +12,7 @@ import type { BoardFilter, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
 import { subscribeBookmarkSaved } from '@/lib/board/channel'
-import { detectUrlType, extractTweetId, isXDefaultThumbnail } from '@/lib/utils/url'
+import { detectUrlType, extractTweetId } from '@/lib/utils/url'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import { useMoods } from '@/lib/storage/use-moods'
 import { initDB } from '@/lib/storage/indexeddb'
@@ -274,45 +274,60 @@ export function BoardRoot() {
     setBookmarkletModalOpen(false)
   }, [])
 
-  // One-shot tweet thumbnail backfill — for any tweet bookmark whose
-  // thumbnail is X's generic placeholder (or empty), call the Twitter
-  // syndication API to get the real photo / video poster URL. This is the
-  // primary mechanism that replaces "SEE WHAT'S HAPPENING" placeholder
-  // images with each tweet's actual media so the board doesn't look like
-  // five copies of the same X stock photo.
+  // One-shot tweet thumbnail backfill — for every tweet bookmark, call the
+  // Twitter syndication API to get the real photo / video poster URL and
+  // overwrite whatever the bookmarklet originally captured (which is almost
+  // always X's generic "SEE WHAT'S HAPPENING" placeholder).
   //
-  // - Re-runs only when items.length changes (i.e. a new bookmark arrives),
-  //   so we don't hammer the API on every internal state update.
-  // - 200ms throttle between calls keeps us well under any plausible
-  //   syndication-CDN rate limit even with hundreds of tweets.
-  // - cancelled flag makes the loop bail cleanly on unmount.
-  // - photoUrl missing AND videoPosterUrl missing → empty string forced into
-  //   thumbnail, which clears the X default and flips pickCard to TextCard
-  //   for genuine text-only tweets.
+  // Why unconditional overwrite: any thumbnail the bookmarklet got from X
+  // is unreliable — X is a SPA and serves a generic OGP image to non-X
+  // user-agents. The syndication API is the only source of truth for
+  // per-tweet photos. So we always force=true and let the syndication
+  // result win.
+  //
+  // photoUrl missing AND videoPosterUrl missing → empty string forced into
+  // thumbnail, which clears any placeholder and flips pickCard to TextCard
+  // for genuine text-only tweets.
+  //
+  // Console logging is intentional and temporary — leave for one debug
+  // cycle so the user can paste DevTools output if backfill still misbehaves.
   useEffect(() => {
     if (loading || items.length === 0) return
     let cancelled = false
     const sleep = (ms: number): Promise<void> =>
       new Promise((resolve) => setTimeout(resolve, ms))
     void (async (): Promise<void> => {
-      for (const it of items) {
+      const tweets = items.filter((it) => detectUrlType(it.url) === 'tweet')
+      console.log(`[Booklage backfill] scanning ${tweets.length} tweet(s) of ${items.length} total`)
+      for (const it of tweets) {
         if (cancelled) return
-        if (detectUrlType(it.url) !== 'tweet') continue
-        if (it.thumbnail && !isXDefaultThumbnail(it.thumbnail)) continue
         const tweetId = extractTweetId(it.url)
-        if (!tweetId) continue
+        if (!tweetId) {
+          console.warn(`[Booklage backfill] no tweetId from ${it.url}`)
+          continue
+        }
+        console.log(`[Booklage backfill] fetching tweet ${tweetId} (current thumbnail: ${it.thumbnail ?? '(empty)'})`)
         try {
           const meta = await fetchTweetMeta(tweetId)
           if (cancelled) return
-          if (!meta) continue
+          if (!meta) {
+            console.warn(`[Booklage backfill] no meta for ${tweetId} (deleted or API failure)`)
+            continue
+          }
           const url = meta.photoUrl ?? meta.videoPosterUrl ?? ''
+          console.log(
+            `[Booklage backfill] tweet ${tweetId}: photoUrl=${meta.photoUrl ?? 'none'}, ` +
+              `videoPoster=${meta.videoPosterUrl ?? 'none'}, hasPhoto=${meta.hasPhoto}, ` +
+              `hasVideo=${meta.hasVideo} → persisting "${url}"`,
+          )
           await persistThumbnail(it.bookmarkId, url, true)
-        } catch {
-          /* ignore individual failures, continue with the rest */
+        } catch (e) {
+          console.error(`[Booklage backfill] tweet ${tweetId} failed:`, e)
         }
         if (cancelled) return
         await sleep(200)
       }
+      console.log('[Booklage backfill] done')
     })()
     return (): void => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
