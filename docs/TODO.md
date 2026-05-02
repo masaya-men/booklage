@@ -9,7 +9,9 @@
 
 - **ブランチ**: `destefanis-pivot` (origin/destefanis-pivot に push 済)
 - **master**: 全 push 済（plan doc も含む）
-- **🎉 Task 26 (destefanis Phase A 完全コピー復元) 全 8 サブタスク完了 (2026-05-02)** — `https://booklage.pages.dev` に v13 反映予定
+- **本番**: `https://booklage.pages.dev` に v14 反映済 (commit `965c41d`)
+- **⚠️ Phase A まだ destefanis と差がある (2026-05-02 セッション後半判明)** — v13 で Booklage 独自解釈 (中央寄せ container / white tweet wrapper / 6px gap) を入れて user 指摘を受け、v14 で destefanis 真の仕様 (フル幅 / 18px gap / 24px radius / dark X tweet) に修正。**まだ完全コピーには至らず、視覚 polish が次セッション最優先タスク (Task 27)**
+- **🎉 Task 26 (destefanis Phase A 復元) 機能面 8/8 完了 (2026-05-02)** — 視覚は Task 27 で追い込み
 - **Task 26 で実施した変更**:
   - 26-1 board 背景: ベージュ + ドット → `var(--bg-dark)` 真っ黒
   - 26-2 全カード装飾削除: border / box-shadow / hover lift / ImageCard `.title` overlay / VideoThumbCard `.titleBar` 削除
@@ -38,7 +40,39 @@
 
 ---
 
-### 🎯 次セッション最初にやること（v13 実機 smoke test + visual 確認）
+### 🆕 Task 27: destefanis 視覚完全コピーの追い込み (次セッション最優先)
+
+**経緯 (2026-05-02 後半)**:
+- v13 で Booklage 独自解釈 (中央寄せ / white tweet wrapper / 6px gap / 10px radius) を入れたら user が「全然違う」と指摘
+- v14 で destefanis source 直読み (https://github.com/destefanis/twitter-bookmarks-grid) して大幅修正:
+  - body fullscreen dark, MAX_WIDTH 撤廃, GAP 18px, columns 5, radius 24px
+  - TweetCard transparent + X dark テーマ
+- **しかし user が destefanis スクショと比較して「まだこの見た目にしたい」と希望** → 視覚 polish を Task 27 として切り出し、fresh session で実施
+- **memory 新規**: `reference_destefanis_visual_spec.md` に destefanis 完全仕様 (CSS values 含) を保存。次セッションは TODO plan より先にこのメモリを読む
+
+#### 27-1: 実機 v14 状態の現状確認 (まずここから)
+- `booklage.pages.dev` ハードリロード → スクショ撮って destefanis 公式スクショと並べて diff
+- 違う点を箇条書きで列挙
+
+#### 27-2: 想定される追い込み項目 (実機確認後に再構成)
+- カード bg のバリエーション: destefanis は元画像が白/暗/カラーで自然に変化。Booklage で OGP image を持たない card (TextCard 等) の見た目は別途判断
+- VideoThumbCard の "Watch" pill (現状 react-tweet 内蔵 vs destefanis の小さい dark pill 風)
+- top-right フィルター pill のスタイル (destefanis: rgba(255,255,255,0.1) + 12px blur + 14px font + 100px radius)
+- Lightbox backdrop blur (現状 var(--lightbox-backdrop) vs destefanis: rgba(0,0,0,0.5) + 6px blur)
+- カード hover 効果 (destefanis: `filter: brightness(1.08)` のみ)
+
+#### 27-3: Tweet 本文切れ問題の根本対応 (v14 でも未解決の可能性)
+- intrinsicHeight feedback flow が初回測定までに transient clipping を起こす疑い
+- 対策案: TweetCard 初期 aspectRatio を低めに見積もって (height 高めに) 始め、measurement で縮める方向にする
+- もしくは BoardRoot.tsx の contentBounds 計算にも intrinsicHeights を反映 (現在は CardsLayer 内 state のみ)
+
+#### 27-4: TikTok / Instagram 埋め込み実機検証
+- v14 での `embed.js` 動作未確認 (user の bookmark に TikTok/IG が無かった可能性)
+- 動かなければ thumbnail + 外部リンク fallback に格下げ
+
+---
+
+### 🎯 v14 デプロイ済の確認項目 (Task 27 着手前に user smoke test)
 
 1. **このファイル (docs/TODO.md) を読む** ← 今ここ
 2. **`booklage.pages.dev` をハードリロード**（Ctrl+Shift+R）
