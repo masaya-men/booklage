@@ -24,6 +24,7 @@ export function TriagePage(): ReactElement {
   const [suggestedMoodIds, setSuggestedMoodIds] = useState<ReadonlyArray<string>>([])
   useEffect(() => {
     if (!current) { setSuggestedMoodIds([]); return }
+    let cancelled = false
     const tagger = new HeuristicTagger({ moods })
     void (async (): Promise<void> => {
       const suggestions = await tagger.suggest({
@@ -32,8 +33,9 @@ export function TriagePage(): ReactElement {
         description: '',
         siteName: '',
       })
-      setSuggestedMoodIds(suggestions.map((s) => s.moodId))
+      if (!cancelled) setSuggestedMoodIds(suggestions.map((s) => s.moodId))
     })()
+    return (): void => { cancelled = true }
   }, [current, moods])
 
   const handleTag = useCallback(async (moodId: string): Promise<void> => {
