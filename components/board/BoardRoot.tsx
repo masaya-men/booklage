@@ -315,6 +315,7 @@ export function BoardRoot() {
   // BroadcastChannel: reload board and trigger entrance animation when a new
   // bookmark is saved via the bookmarklet popup (/save route).
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = []
     const unsub = subscribeBookmarkSaved(async ({ bookmarkId }) => {
       await reload()
       setNewlyAddedIds((prev) => {
@@ -323,15 +324,19 @@ export function BoardRoot() {
         return next
       })
       // Clear the "new" flag after entrance animation completes
-      setTimeout(() => {
+      const id = setTimeout(() => {
         setNewlyAddedIds((prev) => {
           const next = new Set(prev)
           next.delete(bookmarkId)
           return next
         })
       }, 800)
+      timers.push(id)
     })
-    return (): void => unsub()
+    return (): void => {
+      unsub()
+      for (const t of timers) clearTimeout(t)
+    }
   }, [reload])
 
   // 1/2/3 keys cycle hovered card's size preset (S/M/L)
