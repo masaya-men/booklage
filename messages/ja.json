@@ -68,6 +68,10 @@
     "video": {
       "play": "再生",
       "thumbnailAlt": "動画サムネイル"
+    },
+    "lightbox": {
+      "close": "閉じる",
+      "openSource": "元ページを開く"
     }
   },
   "share": {

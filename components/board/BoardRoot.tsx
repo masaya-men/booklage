@@ -22,6 +22,7 @@ import { Toolbar } from './Toolbar'
 import { Sidebar } from './Sidebar'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
+import { Lightbox } from './Lightbox'
 
 // Visible breathing room above the board's first card, in CSS pixels.
 // Cards' world coords start at y=0 (masonry cursor); this offset is applied
@@ -45,6 +46,7 @@ export function BoardRoot() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false)
   const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState<boolean>(false)
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
+  const [lightboxItemId, setLightboxItemId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Window-level Space-key tracking for hold-to-pan. Lifted here from
@@ -227,13 +229,13 @@ export function BoardRoot() {
     [persistSizePreset],
   )
 
-  const handleCardClick = useCallback(
-    (bookmarkId: string): void => {
-      const item = items.find((it) => it.bookmarkId === bookmarkId)
-      if (!item?.url) return
-      window.open(item.url, '_blank', 'noopener,noreferrer')
-    },
-    [items],
+  const handleCardClick = useCallback((bookmarkId: string): void => {
+    setLightboxItemId(bookmarkId)
+  }, [])
+
+  const lightboxItem = useMemo(
+    () => items.find((it) => it.bookmarkId === lightboxItemId) ?? null,
+    [items, lightboxItemId],
   )
 
   const handleDropOrder = useCallback(
@@ -428,6 +430,7 @@ export function BoardRoot() {
       {!loading && items.length === 0 && (
         <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
       )}
+      <Lightbox item={lightboxItem} onClose={() => setLightboxItemId(null)} />
     </div>
   )
 }
