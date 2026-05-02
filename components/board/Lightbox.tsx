@@ -14,12 +14,16 @@ type Props = {
 export function Lightbox({ item, onClose }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   // Escape key closes
   useEffect(() => {
     if (!item) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
     }
     window.addEventListener('keydown', onKey)
     return (): void => window.removeEventListener('keydown', onKey)
@@ -28,12 +32,17 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
   // Open animation: spring scale-in from 0.86 + fade
   useEffect(() => {
     if (!item || !frameRef.current) return
-    const el = frameRef.current
-    gsap.fromTo(
-      el,
+    const tween = gsap.fromTo(
+      frameRef.current,
       { scale: 0.86, opacity: 0 },
       { scale: 1, opacity: 1, duration: 0.42, ease: 'back.out(1.3)' },
     )
+    return (): void => { tween.kill() }
+  }, [item])
+
+  // Focus close button when lightbox opens
+  useEffect(() => {
+    if (item) closeButtonRef.current?.focus()
   }, [item])
 
   if (!item) return null
@@ -42,6 +51,9 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
     <div
       ref={backdropRef}
       className={`${styles.backdrop} ${styles.open}`.trim()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lightbox-title"
       onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       data-testid="lightbox"
     >
@@ -52,7 +64,7 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
             : <div style={{ padding: 32, color: 'var(--text-body)' }}>{item.title}</div>}
         </div>
         <div className={styles.text}>
-          <h1 style={{ fontSize: 28, margin: 0, color: 'var(--text-primary)' }}>{item.title}</h1>
+          <h1 id="lightbox-title" style={{ fontSize: 28, margin: 0, color: 'var(--text-primary)' }}>{item.title}</h1>
           <div className={styles.meta}>
             {(() => {
               try {
@@ -66,6 +78,7 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
           </a>
         </div>
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={onClose}
           className={styles.close}

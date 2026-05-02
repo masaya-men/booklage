@@ -233,6 +233,10 @@ export function BoardRoot() {
     setLightboxItemId(bookmarkId)
   }, [])
 
+  const handleLightboxClose = useCallback((): void => {
+    setLightboxItemId(null)
+  }, [])
+
   const lightboxItem = useMemo(
     () => items.find((it) => it.bookmarkId === lightboxItemId) ?? null,
     [items, lightboxItemId],
@@ -430,7 +434,7 @@ export function BoardRoot() {
       {!loading && items.length === 0 && (
         <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
       )}
-      <Lightbox item={lightboxItem} onClose={() => setLightboxItemId(null)} />
+      <Lightbox item={lightboxItem} onClose={handleLightboxClose} />
     </div>
   )
 }
