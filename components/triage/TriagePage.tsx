@@ -31,7 +31,7 @@ export function TriagePage(): ReactElement {
 
   const handleSkip = (): void => {
     if (!current) return
-    // Skip: do not tag; just advance
+    setLastAction(null) // clear undo target so Undo can't restore a prior tag
     advance()
   }
 
