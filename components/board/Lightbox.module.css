@@ -117,41 +117,85 @@
   font-family: var(--font-sans);
 }
 
-/* === Tweet branch === react-tweet renders author + text + media + video
-   playback natively. We just give it a centered, scrollable column with the
-   X dark theme and a source link below. */
-.frameTweet {
-  position: relative;
+/* === Tweet branch ===
+   Tweets share the unified 2-column .frame layout. Left cell (.media) holds
+   the tweet's video / photo / text-only display; right cell (.text) holds
+   author + handle + body text. Below are the inline-video and right-column
+   typography styles. */
+
+/* Inline mp4 video player. Identical sizing constraints to .iframe so
+   horizontal/vertical aspect-ratio wrappers from above apply unchanged. */
+.tweetVideo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: black;
+  object-fit: contain;
+}
+
+/* Centerpiece for text-only tweets (no photo, no video). Body text becomes
+   the visual focus in the otherwise-empty media slot. */
+.tweetTextOnly {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  margin: 0;
+  padding: 24px;
+  max-width: 720px;
+  letter-spacing: -0.005em;
+}
+
+/* Author header in the right column. Avatar circle + name/handle stack. */
+.tweetAuthor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.tweetAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+.tweetAuthorMeta {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  width: min(94vw, 600px);
-  max-height: 90vh;
+  gap: 2px;
+  min-width: 0;
 }
-.tweetWrap {
-  width: 100%;
-  max-width: 550px;
-  max-height: calc(90vh - 80px);
-  overflow-y: auto;
-  /* Solid X dark-theme background — transparent caused the board to bleed
-     through the tweet text (--tweet-bg-color alone wasn't applied to the
-     wrapper itself in react-tweet 3.x). Borders/shadows are intentionally
-     subtle so the tweet still reads as a single floating panel. */
-  background: #15202b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--lightbox-media-radius);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
-  --tweet-bg-color: #15202b;
-  --tweet-color-blue-primary: #1d9bf0;
-  --tweet-color-mention: #1d9bf0;
-  --tweet-border: none;
-  --tweet-container-radius: var(--lightbox-media-radius);
-  --tweet-font-family: var(--font-sans);
+.tweetAuthorName {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.tweetWrap :global([data-theme]) {
-  margin: 0 !important;
-  background: #15202b !important;
+.tweetAuthorHandle {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-meta);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tweet body text. Larger line-height than .description because tweets often
+   contain hand-broken paragraphs that look cramped at the default 1.6. */
+.tweetBody {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  margin: 0;
+  letter-spacing: -0.003em;
 }
 
 .meta {

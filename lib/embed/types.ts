@@ -18,8 +18,15 @@ export type TweetMeta = {
   /** Video poster image URL (still frame). Same purpose as photoUrl but for
    *  video tweets. Falls back to a representative frame from mediaDetails. */
   readonly videoPosterUrl?: string
+  /** Highest-bitrate mp4 variant from the syndication response, ready to feed
+   *  into a `<video src>`. Undefined for photo-only / text-only tweets. */
+  readonly videoUrl?: string
+  /** Author profile image (small avatar). Used for the right-column header. */
+  readonly authorAvatar?: string
   readonly authorName: string
   readonly authorHandle: string
+  /** Tweet creation timestamp in ISO 8601 (e.g. "2026-05-02T22:07:00Z"). */
+  readonly createdAt?: string
 }
 
 /** Result of TikTok oEmbed lookup (subset). */

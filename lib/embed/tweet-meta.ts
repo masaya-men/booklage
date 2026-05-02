@@ -28,20 +28,44 @@ export async function fetchTweetMeta(id: string): Promise<TweetMeta | null> {
   }
 }
 
+type VideoVariant = {
+  bitrate?: number
+  content_type?: string
+  url?: string
+}
+
 type SyndicationRaw = {
   id_str?: string
   text?: string
   full_text?: string
-  user?: { name?: string; screen_name?: string }
+  created_at?: string
+  user?: {
+    name?: string
+    screen_name?: string
+    profile_image_url_https?: string
+  }
   photos?: Array<{ url: string; width: number; height: number }>
   mediaDetails?: Array<{
     type?: string
     media_url_https?: string
     original_info?: { width: number; height: number }
+    video_info?: {
+      aspect_ratio?: [number, number]
+      variants?: VideoVariant[]
+    }
   }>
   video?: { aspect_ratio?: [number, number] }
   quoted_tweet?: unknown
   card?: { name?: string }
+}
+
+/** Pick the highest-bitrate mp4 variant from the syndication response. */
+function pickBestMp4(variants: VideoVariant[] | undefined): string | undefined {
+  if (!variants) return undefined
+  const mp4s = variants.filter((v) => v.content_type === 'video/mp4' && v.url)
+  if (mp4s.length === 0) return undefined
+  mp4s.sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0))
+  return mp4s[0]?.url
 }
 
 /** Parse raw syndication response. Exposed for testing. */
@@ -54,6 +78,7 @@ export function parseTweetData(raw: unknown): TweetMeta | null {
   const photo = r.photos?.[0]
   const video = r.mediaDetails?.find((m) => m.type === 'video')
   const isPoll = r.card?.name?.includes('poll') ?? false
+  const videoUrl = pickBestMp4(video?.video_info?.variants)
 
   return {
     id: r.id_str,
@@ -68,7 +93,10 @@ export function parseTweetData(raw: unknown): TweetMeta | null {
       : undefined,
     photoUrl: photo?.url,
     videoPosterUrl: video?.media_url_https,
+    videoUrl,
     authorName: r.user?.name ?? '',
     authorHandle: r.user?.screen_name ?? '',
+    authorAvatar: r.user?.profile_image_url_https,
+    createdAt: r.created_at,
   }
 }

@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
-import { Tweet } from 'react-tweet'
 import type { BoardItem } from '@/lib/storage/use-board-data'
+import type { TweetMeta } from '@/lib/embed/types'
+import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import { t } from '@/lib/i18n/t'
 import {
   detectUrlType,
@@ -31,6 +32,23 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
   // the open animation to restart whenever an unrelated state update gives
   // BoardRoot's items a new array reference (e.g. thumbnail backfill).
   const bookmarkId = item?.bookmarkId
+
+  // Lazy-load tweet metadata when a tweet lightbox opens. Same /api/tweet-meta
+  // endpoint that BoardRoot's bulk backfill hits, so the response is typically
+  // already in the browser HTTP cache (s-maxage=3600 at the edge) and resolves
+  // in milliseconds. We render an item-level placeholder until it lands.
+  const [tweetMeta, setTweetMeta] = useState<TweetMeta | null>(null)
+  useEffect(() => {
+    if (!tweetId) {
+      setTweetMeta(null)
+      return
+    }
+    let cancelled = false
+    void fetchTweetMeta(tweetId).then((meta) => {
+      if (!cancelled) setTweetMeta(meta)
+    })
+    return (): void => { cancelled = true }
+  }, [tweetId])
 
   // Escape key closes
   useEffect(() => {
@@ -68,44 +86,10 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
     catch { return '' }
   })()
 
-  // Tweet branch: render react-tweet inside a centered scrollable column.
-  // react-tweet handles author + text + media + video playback natively, so
-  // we don't need our own parser or text panel for tweets.
-  if (tweetId) {
-    return (
-      <div
-        ref={backdropRef}
-        className={`${styles.backdrop} ${styles.open}`.trim()}
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
-        data-testid="lightbox"
-      >
-        <div ref={frameRef} className={styles.frameTweet}>
-          <div className={styles.tweetWrap} data-theme="dark">
-            <Tweet id={tweetId} />
-          </div>
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.sourceLink}
-          >
-            {t('board.lightbox.openSource')} →
-          </a>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={onClose}
-            className={styles.close}
-            aria-label={t('board.lightbox.close')}
-          >✕</button>
-        </div>
-      </div>
-    )
-  }
-
-  // Non-tweet branch: 2-column layout (media | text).
+  // Unified 2-column layout for every item type (tweet, video, image, site).
+  // Tweets diverge only in what fills the .media (left) and .text (right)
+  // cells — see TweetMedia and TweetText. This replaces the prior react-tweet
+  // single-column branch, which couldn't play tweet videos inline.
   return (
     <div
       ref={backdropRef}
@@ -118,17 +102,20 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
     >
       <div ref={frameRef} className={styles.frame}>
         <div className={styles.media}>
-          <LightboxMedia item={item} />
+          {tweetId
+            ? <TweetMedia item={item} meta={tweetMeta} />
+            : <LightboxMedia item={item} />}
         </div>
         <div className={styles.text}>
-          <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
-          {item.description && (
-            <p className={styles.description}>{item.description}</p>
-          )}
-          <div className={styles.meta}>
-            {host && <span>{host}</span>}
-          </div>
-          <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
+          {tweetId
+            ? <TweetText item={item} meta={tweetMeta} />
+            : <DefaultText item={item} host={host} />}
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.sourceLink}
+          >
             {t('board.lightbox.openSource')} →
           </a>
         </div>
@@ -141,6 +128,93 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
         >✕</button>
       </div>
     </div>
+  )
+}
+
+function DefaultText({
+  item,
+  host,
+}: {
+  readonly item: BoardItem
+  readonly host: string
+}): ReactElement {
+  return (
+    <>
+      <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
+      {item.description && <p className={styles.description}>{item.description}</p>}
+      <div className={styles.meta}>{host && <span>{host}</span>}</div>
+    </>
+  )
+}
+
+/** Left-column media for a tweet: inline mp4 video, photo, or large body
+ *  text (text-only tweets). Falls back to the bookmark thumbnail before
+ *  metadata loads so the slot never appears empty. */
+function TweetMedia({
+  item,
+  meta,
+}: {
+  readonly item: BoardItem
+  readonly meta: TweetMeta | null
+}): ReactNode {
+  if (meta?.videoUrl) {
+    const aspect = meta.videoAspectRatio ?? 16 / 9
+    const wrapperClass = aspect < 1 ? styles.iframeWrap9x16 : styles.iframeWrap16x9
+    return (
+      <div className={wrapperClass}>
+        <video
+          className={styles.tweetVideo}
+          src={meta.videoUrl}
+          poster={meta.videoPosterUrl ?? item.thumbnail}
+          controls
+          playsInline
+          preload="metadata"
+        />
+      </div>
+    )
+  }
+  const photoUrl = meta?.photoUrl ?? item.thumbnail
+  if (photoUrl) {
+    return <img src={photoUrl} alt={item.title} />
+  }
+  if (meta?.text) {
+    return <p className={styles.tweetTextOnly}>{meta.text}</p>
+  }
+  return <div className={styles.placeholder}>{item.title}</div>
+}
+
+/** Right-column text panel for a tweet: avatar + author name + handle, then
+ *  the full tweet body. Renders item-level fallbacks (title) until syndication
+ *  metadata arrives, so the panel never flashes empty. */
+function TweetText({
+  item,
+  meta,
+}: {
+  readonly item: BoardItem
+  readonly meta: TweetMeta | null
+}): ReactNode {
+  const authorName = meta?.authorName ?? ''
+  const authorHandle = meta?.authorHandle ?? ''
+  const text = meta?.text ?? item.title
+  return (
+    <>
+      {(authorName || authorHandle || meta?.authorAvatar) && (
+        <div className={styles.tweetAuthor}>
+          {meta?.authorAvatar && (
+            <img
+              src={meta.authorAvatar}
+              alt={authorName || authorHandle}
+              className={styles.tweetAvatar}
+            />
+          )}
+          <div className={styles.tweetAuthorMeta}>
+            {authorName && <div className={styles.tweetAuthorName}>{authorName}</div>}
+            {authorHandle && <div className={styles.tweetAuthorHandle}>@{authorHandle}</div>}
+          </div>
+        </div>
+      )}
+      <p className={styles.tweetBody}>{text}</p>
+    </>
   )
 }
 
