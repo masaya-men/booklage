@@ -22,7 +22,7 @@ type Props = {
   /** Optional thumbnail backfill — Lightbox lazy-fetches Twitter syndication
    *  metadata and writes the photo/video poster URL into the bookmark so the
    *  next reload picks ImageCard instead of falling back to TextCard. */
-  readonly persistThumbnail?: (bookmarkId: string, thumbnail: string) => Promise<void>
+  readonly persistThumbnail?: (bookmarkId: string, thumbnail: string, force?: boolean) => Promise<void>
 }
 
 export function Lightbox({ item, onClose, persistThumbnail }: Props): ReactElement | null {
@@ -63,15 +63,17 @@ export function Lightbox({ item, onClose, persistThumbnail }: Props): ReactEleme
   }, [item])
 
   // Lazy backfill the bookmark's thumbnail from Twitter syndication when a
-  // tweet without thumbnail opens. After this fires, the next render of the
-  // board card switches from TextCard → ImageCard with the actual tweet image.
+  // tweet opens. Runs even when an existing thumbnail is present because the
+  // bookmarklet typically captures X's generic placeholder ("SEE WHAT'S
+  // HAPPENING") rather than the per-tweet image. force=true allows overwrite;
+  // empty string clears for text-only tweets so they fall through to TextCard.
   useEffect(() => {
-    if (!item || !tweetId || item.thumbnail || !persistThumbnail) return
+    if (!item || !tweetId || !persistThumbnail) return
     let cancelled = false
     void fetchTweetMeta(tweetId).then((meta) => {
       if (cancelled || !meta) return
-      const url = meta.photoUrl ?? meta.videoPosterUrl
-      if (url) void persistThumbnail(item.bookmarkId, url)
+      const url = meta.photoUrl ?? meta.videoPosterUrl ?? ''
+      void persistThumbnail(item.bookmarkId, url, true)
     })
     return (): void => { cancelled = true }
   }, [item, tweetId, persistThumbnail])

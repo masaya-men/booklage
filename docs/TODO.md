@@ -8,7 +8,15 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `destefanis-pivot`
-- **本番**: `https://booklage.pages.dev` に **v19 反映済** (Task 29: Twitter 完全復活 — react-tweet + syndication thumbnail backfill)
+- **本番**: `https://booklage.pages.dev` に **v20 反映済** (Task 29: bulk syndication backfill — X default placeholder 一括上書き)
+- **🎯 v20 で入れた追い込み (2026-05-02)** — 全 X bookmarks が「SEE WHAT'S HAPPENING」に化けていた致命問題を解決:
+  - 真因: bookmarklet が X 個別 og:image を取れず、X 全体の generic OGP placeholder (`abs.twimg.com/...`) を全 tweet bookmark に一律保存していた
+  - 修正: `isXDefaultThumbnail()` helper (`abs.twimg.com` URL 検知) を `lib/utils/url.ts` に追加
+  - `persistThumbnail` に **force option** 追加 (既存上書き許可)。default は no-op (good og:image を破壊しない安全装置)、force=true で X default や empty 上書き OK
+  - **BoardRoot mount 時に bulk backfill effect**: items load 後、tweet で thumbnail が X default のものを順次 fetchTweetMeta → photoUrl/videoPosterUrl で persistThumbnail(force=true)。200ms throttle、cancelled flag で unmount 安全
+  - **photoUrl も videoPosterUrl もない (text-only tweet)** は thumbnail を `''` で上書き → pickCard で TextCard 振り分けに切り替わる
+  - Lightbox の lazy backfill も force=true に変更 (Lightbox 内 view で同じく X default 上書き)
+- **🎯 Task 29 完了 (2026-05-02 v19)** — Twitter (X) で動画/画像/本文/著者が全部見える状態に完全修復:
 - **🎯 Task 29 完了 (2026-05-02 v19)** — Twitter (X) で動画/画像/本文/著者が全部見える状態に完全修復:
   - **真因確定**: bookmarklet が X.com から og:image を取れない (X は SPA で og:image を head に置かない)。これにより v17/v18 では `item.thumbnail` が空 → Lightbox が placeholder のみ → 「画像が見えない」「parseTweetTitle がブレる」が複合発生していた
   - **Phase 1**: Lightbox の tweet 分岐に **react-tweet を復活**。card 上では使わない (v17 で削除した re-render storm 対策はそのまま) が、Lightbox は 1 個だけなので problem-free。動画再生 / 画像 / 本文 / 著者 / actions を react-tweet が直接 render

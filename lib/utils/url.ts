@@ -94,3 +94,21 @@ export function extractUrlFromText(text: string): string | null {
   const match = text.match(/https?:\/\/[^\s]+/)
   return match ? match[0] : null
 }
+
+/**
+ * Returns true when the given thumbnail URL looks like X (Twitter)'s default
+ * OGP placeholder ("SEE WHAT'S HAPPENING" image and friends served from
+ * abs.twimg.com), or is empty.
+ *
+ * Why this matters: X is a SPA and does not put per-tweet og:image into the
+ * static <head>, so the bookmarklet's document scrape ends up grabbing X's
+ * generic OGP fallback (or nothing). All tweet bookmarks therefore look
+ * identical until we backfill the real photo URL via the syndication API.
+ *
+ * @param thumbnail - The thumbnail URL to inspect (may be undefined/empty)
+ * @returns true when treatment as "no real image yet, please backfill"
+ */
+export function isXDefaultThumbnail(thumbnail: string | undefined | null): boolean {
+  if (!thumbnail) return true
+  return /(^|\/\/|\.)abs\.twimg\.com\//.test(thumbnail)
+}

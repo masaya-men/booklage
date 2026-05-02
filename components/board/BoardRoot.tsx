@@ -12,6 +12,8 @@ import type { BoardFilter, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
 import { subscribeBookmarkSaved } from '@/lib/board/channel'
+import { detectUrlType, extractTweetId, isXDefaultThumbnail } from '@/lib/utils/url'
+import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import { useMoods } from '@/lib/storage/use-moods'
 import { initDB } from '@/lib/storage/indexeddb'
 import { loadBoardConfig, saveBoardConfig } from '@/lib/storage/board-config'
@@ -271,6 +273,50 @@ export function BoardRoot() {
   const handleCloseBookmarkletModal = useCallback((): void => {
     setBookmarkletModalOpen(false)
   }, [])
+
+  // One-shot tweet thumbnail backfill — for any tweet bookmark whose
+  // thumbnail is X's generic placeholder (or empty), call the Twitter
+  // syndication API to get the real photo / video poster URL. This is the
+  // primary mechanism that replaces "SEE WHAT'S HAPPENING" placeholder
+  // images with each tweet's actual media so the board doesn't look like
+  // five copies of the same X stock photo.
+  //
+  // - Re-runs only when items.length changes (i.e. a new bookmark arrives),
+  //   so we don't hammer the API on every internal state update.
+  // - 200ms throttle between calls keeps us well under any plausible
+  //   syndication-CDN rate limit even with hundreds of tweets.
+  // - cancelled flag makes the loop bail cleanly on unmount.
+  // - photoUrl missing AND videoPosterUrl missing → empty string forced into
+  //   thumbnail, which clears the X default and flips pickCard to TextCard
+  //   for genuine text-only tweets.
+  useEffect(() => {
+    if (loading || items.length === 0) return
+    let cancelled = false
+    const sleep = (ms: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, ms))
+    void (async (): Promise<void> => {
+      for (const it of items) {
+        if (cancelled) return
+        if (detectUrlType(it.url) !== 'tweet') continue
+        if (it.thumbnail && !isXDefaultThumbnail(it.thumbnail)) continue
+        const tweetId = extractTweetId(it.url)
+        if (!tweetId) continue
+        try {
+          const meta = await fetchTweetMeta(tweetId)
+          if (cancelled) return
+          if (!meta) continue
+          const url = meta.photoUrl ?? meta.videoPosterUrl ?? ''
+          await persistThumbnail(it.bookmarkId, url, true)
+        } catch {
+          /* ignore individual failures, continue with the rest */
+        }
+        if (cancelled) return
+        await sleep(200)
+      }
+    })()
+    return (): void => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, items.length, persistThumbnail])
 
   // BroadcastChannel: reload board and trigger entrance animation when a new
   // bookmark is saved via the bookmarklet popup (/save route).

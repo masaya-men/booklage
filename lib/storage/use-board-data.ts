@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { IDBPDatabase } from 'idb'
 import type { FreePosition, CardPosition } from '@/lib/board/types'
-import { extractYoutubeId, detectUrlType } from '@/lib/utils/url'
+import { extractYoutubeId, detectUrlType, isXDefaultThumbnail } from '@/lib/utils/url'
 import { detectAspectRatioSource, estimateAspectRatio } from '@/lib/board/aspect-ratio'
 import {
   initDB,
@@ -110,7 +110,14 @@ export function useBoardData(): {
   persistReadFlag: (bookmarkId: string, isRead: boolean) => Promise<void>
   persistSoftDelete: (bookmarkId: string, isDeleted: boolean) => Promise<void>
   persistMeasuredAspect: (cardId: string, aspectRatio: number) => Promise<void>
-  persistThumbnail: (bookmarkId: string, thumbnail: string) => Promise<void>
+  /** Backfill bookmark.thumbnail. By default no-op when a "real" thumbnail is
+   *  already present (so we never destroy a good og:image the bookmarklet
+   *  picked up). Pass force=true to overwrite — used by the tweet syndication
+   *  pipeline because the existing value is usually X's generic placeholder
+   *  ("SEE WHAT'S HAPPENING") and needs to be replaced with the per-tweet
+   *  photo URL. force=true with empty thumbnail clears the field, which flips
+   *  the card from ImageCard back to TextCard (text-only tweets). */
+  persistThumbnail: (bookmarkId: string, thumbnail: string, force?: boolean) => Promise<void>
   persistTags: (bookmarkId: string, tags: readonly string[]) => Promise<void>
   persistDisplayMode: (bookmarkId: string, displayMode: BoardItem['displayMode']) => Promise<void>
   reload: () => Promise<void>
@@ -258,20 +265,25 @@ export function useBoardData(): {
     [],
   )
 
-  /** Backfill the bookmark's thumbnail when the bookmarklet failed to grab
-   *  og:image at save time (the common case for X / Twitter, which is a SPA
-   *  and renders meta tags client-side). Lightbox calls this after a lazy
-   *  syndication-API fetch so the next reload hits the ImageCard branch in
-   *  pickCard instead of falling back to TextCard. */
+  /** Backfill the bookmark's thumbnail. See type docs for force semantics. */
   const persistThumbnail = useCallback(
-    async (bookmarkId: string, thumbnail: string): Promise<void> => {
+    async (bookmarkId: string, thumbnail: string, force = false): Promise<void> => {
       const db = dbRef.current
-      if (!db || !bookmarkId || !thumbnail) return
+      if (!db || !bookmarkId) return
+      // Without force, only a missing-or-X-default thumbnail can be filled —
+      // never overwrite a good og:image. The empty-thumbnail clear path is
+      // gated behind force=true so the default no-op contract is preserved.
+      if (!force && !thumbnail) return
       const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
-      if (!existing || existing.thumbnail) return  // skip if already set
+      if (!existing) return
+      if (!force && existing.thumbnail && !isXDefaultThumbnail(existing.thumbnail)) return
       await db.put('bookmarks', { ...existing, thumbnail })
       setItems((prev) =>
-        prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, thumbnail } : it)),
+        prev.map((it) =>
+          it.bookmarkId === bookmarkId
+            ? { ...it, thumbnail: thumbnail || undefined }
+            : it,
+        ),
       )
     },
     [],
