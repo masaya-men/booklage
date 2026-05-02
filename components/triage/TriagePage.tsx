@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useMemo, useState, type ReactElement } from 'react'
 import { useRouter } from 'next/navigation'
 import { useBoardData } from '@/lib/storage/use-board-data'
 import { useMoods } from '@/lib/storage/use-moods'
@@ -22,18 +22,18 @@ export function TriagePage(): ReactElement {
 
   const advance = (): void => setIndex((i) => i + 1)
 
-  const handleTag = async (moodId: string): Promise<void> => {
+  const handleTag = useCallback(async (moodId: string): Promise<void> => {
     if (!current) return
     setLastAction({ bookmarkId: current.bookmarkId, prev: [...current.tags] })
     await persistTags(current.bookmarkId, [moodId])
-    advance()
-  }
+    setIndex((i) => i + 1)
+  }, [current, persistTags])
 
-  const handleSkip = (): void => {
+  const handleSkip = useCallback((): void => {
     if (!current) return
     setLastAction(null) // clear undo target so Undo can't restore a prior tag
-    advance()
-  }
+    setIndex((i) => i + 1)
+  }, [current])
 
   const handleUndo = async (): Promise<void> => {
     if (!lastAction) return
