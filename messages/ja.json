@@ -83,5 +83,17 @@
       "saved": "Inbox に保存しました",
       "error": "保存に失敗しました"
     }
+  },
+  "triage": {
+    "progress": "{current} / {total}",
+    "empty": "仕分ける bookmark がありません",
+    "empty_cta": "/board に戻る",
+    "hint": "1-9 付与 · S スキップ · Z 取り消し",
+    "newMood": "+ 新しい mood",
+    "moodNamePlaceholder": "mood 名",
+    "skip": "Skip",
+    "undo": "Undo",
+    "done_title": "仕分け完了",
+    "done_back": "ボードへ戻る"
   }
 }
