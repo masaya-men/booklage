@@ -7,27 +7,21 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master` 単一運用 (destefanis-pivot は v24 で master に統合 + 削除済)
-- **本番**: `https://booklage.pages.dev` に **v24 反映済** (Task 29: Twitter syndication 完成 + Lightbox 不透明度修正)
+- **ブランチ**: `master` 単一運用
+- **本番**: `https://booklage.pages.dev` に **v25 反映済** (Task 30 修正完了 — Lightbox tweet 無限再レンダリングループ解消)
 
-### 🔥 次セッション最優先タスク (Task 30: Lightbox z-index 問題調査)
+### 🎯 Task 30 完了 (2026-05-02 v25)
 
-**症状** (2026-05-02 v24 ハードリロード後にユーザーから報告):
-- Twitter card クリック → Lightbox 開くが、tweet の上に **何かの要素が薄く重なって見える** (ユーザー曰く「何かの要素の下に入ってる感じ」)
-- v24 で backdrop opacity 0.5 → 0.78、blur 6px → 12px、tweetWrap を solid #15202b に変更したが、症状は変わらず
-- スクショで確認: dark backdrop 越しに board cards (動物の毛皮 image など) が tweet text と重なって見える
-- YouTube は正常 (16:9 iframe で再生 OK)
+**真因**: Lightbox の tweet 専用 lazy backfill effect ([components/board/Lightbox.tsx](components/board/Lightbox.tsx)) が `persistThumbnail` を呼ぶ → `setItems` で items 配列 reference が新規化 → BoardRoot の `lightboxItem` (useMemo) が新 reference → Lightbox の `item` prop 変動 → effect 再発火、**無限ループ**。GSAP open animation も同 dep で巻き込まれ、opacity 0→1 が周期的に繰り返されることで「tweet が薄く透ける / 点滅する」とユーザーには見えていた。YouTube は `tweetId` ガードで早期 return し無傷。
 
-**原因仮説** (次セッション着手時の調査ポイント):
-1. **z-index 重なり**: `.backdrop { z-index: 300 }` だが、何かの要素 (CardsLayer / ThemeLayer / Toolbar / scroll fade) が backdrop より上か同レベルに描画されている可能性
-2. **Lightbox の DOM 配置**: BoardRoot の root div の child として render されているが、root div が `overflow: hidden` で position fixed のため、Lightbox の `position: fixed` が期待通り viewport 全体を覆っていない可能性 (stacking context の問題)
-3. **react-tweet の internal opacity**: tweet の root が semi-transparent で、tweetWrap solid #15202b でも tweet text 自体が透けて board が見える可能性
-4. **canvas fade overlay (`.fadeTop` / `.fadeBottom`) が z-index 50 で Lightbox より下のはずだが**、stacking context 的に backdrop の上に来てる可能性
+**修正 (commit `5a7c98e`)**:
+1. `Lightbox.tsx`: lazy backfill effect 削除、persistThumbnail prop 除去、effect deps を `item` (object) → `bookmarkId` (string) に変更
+2. `BoardRoot.tsx`: <Lightbox> への persistThumbnail 渡し削除 (BoardRoot の bulk backfill effect が引き続き全 tweet 処理)
+3. `use-board-data.ts/persistThumbnail`: 「同値なら no-op」ガード追加 (defense in depth)
+4. SW CACHE_VERSION → `v25-2026-05-02-task30-lightbox-rerender-loop-fix`
 
-**着手手順**:
-1. ユーザーに DevTools で Lightbox open 状態の Elements panel を開いてもらい、 backdrop / frameTweet / tweetWrap の computed style + z-index を確認
-2. Lightbox を **`document.body` 直下に portal で render** することで stacking context 問題を切り離す案を試す
-3. `.backdrop` の z-index を 9999 まで上げて症状が消えるかで切り分け
+**検証**: vitest 206/206 PASS、tsc EXIT=0、pnpm build OK、本番デプロイ済 (`booklage.pages.dev`)。
+**ユーザー側の確認待ち**: ハードリロード後に tweet card クリック → Lightbox が点滅せず安定表示されること。
 
 ---
 
