@@ -68,10 +68,14 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
   }, [bookmarkId, onClose])
 
   // Open animation: FLIP from the clicked card's screen position when an
-  // originRect is supplied, otherwise a scale-in fallback. Uses an
-  // iOS-grade ease ('expo.out' approximates Apple's deceleration curve)
-  // and ~0.55s duration. useLayoutEffect avoids a one-frame flash where
-  // the frame appears centered before the inverted transform applies.
+  // originRect is supplied, otherwise a scale-in fallback. Uses two
+  // parallel tweens so the opacity reveal lands quickly (~0.22s) while
+  // the transform (scale + position) keeps unfurling for the full
+  // duration on a smoother power3.out curve. Running both at offset 0
+  // of a timeline guarantees they share the exact same start frame, so
+  // there is no perceptible flicker from one beating the other to the
+  // first paint. .frame's CSS opacity:0 + will-change keeps the GPU
+  // layer warm before the tween fires.
   useLayoutEffect(() => {
     if (!bookmarkId || !frameRef.current) return
     const el = frameRef.current
@@ -92,25 +96,30 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       const sy = originRect.height / targetRect.height
       const startScale = Math.max(0.05, Math.min(sx, sy))
 
-      gsap.set(el, { x: dx, y: dy, scale: startScale, opacity: 0, transformOrigin: '50% 50%' })
-      const tween = gsap.to(el, {
+      const tl = gsap.timeline()
+      tl.set(el, { x: dx, y: dy, scale: startScale, opacity: 0, transformOrigin: '50% 50%' })
+      tl.to(el, {
+        opacity: 1,
+        duration: 0.22,
+        ease: 'power2.out',
+      }, 0)
+      tl.to(el, {
         x: 0,
         y: 0,
         scale: 1,
-        opacity: 1,
         duration: 0.55,
-        ease: 'expo.out',
-      })
+        ease: 'power3.out',
+      }, 0)
       let backdropTween: gsap.core.Tween | null = null
       if (backdrop) {
         backdropTween = gsap.fromTo(
           backdrop,
           { opacity: 0 },
-          { opacity: 1, duration: 0.32, ease: 'power2.out' },
+          { opacity: 1, duration: 0.22, ease: 'power2.out' },
         )
       }
       return (): void => {
-        tween.kill()
+        tl.kill()
         backdropTween?.kill()
       }
     }
@@ -118,7 +127,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
     const tween = gsap.fromTo(
       el,
       { scale: 0.86, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 0.42, ease: 'expo.out' },
+      { scale: 1, opacity: 1, duration: 0.42, ease: 'power3.out' },
     )
     return (): void => { tween.kill() }
     // originRect is intentionally read once at mount via the bookmarkId dep —
@@ -221,17 +230,16 @@ function TweetMedia({
   if (meta?.videoUrl && !videoFailed) {
     const aspect = meta.videoAspectRatio ?? 16 / 9
     const wrapperClass = aspect < 1 ? styles.iframeWrap9x16 : styles.iframeWrap16x9
-    // referrerpolicy is valid HTML on <video> per the Media spec, but React's
-    // VideoHTMLAttributes typing predates that addition. Spread it via an
-    // untyped record so TypeScript accepts it; React forwards unknown
-    // string-valued attrs straight to the DOM.
-    const extraAttrs: Record<string, string> = { referrerpolicy: 'no-referrer' }
+    // Route through our /api/tweet-video Pages Function. video.twimg.com
+    // rejects browser-direct fetches from non-Twitter Referer/Origin, so
+    // the proxy fetches server-to-server (no browser headers) and relays
+    // the bytes with permissive CORS + Range support.
+    const proxiedSrc = `/api/tweet-video?url=${encodeURIComponent(meta.videoUrl)}`
     return (
       <div className={wrapperClass}>
         <video
-          {...extraAttrs}
           className={styles.tweetVideo}
-          src={meta.videoUrl}
+          src={proxiedSrc}
           poster={meta.videoPosterUrl ?? item.thumbnail}
           controls
           playsInline

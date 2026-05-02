@@ -10,6 +10,18 @@
 - **ブランチ**: `master` 単一運用
 - **本番**: `https://booklage.pages.dev` に **v25 反映済** (Task 30 修正完了 — Lightbox tweet 無限再レンダリングループ解消)
 
+### 💡 アイデア memo: HTML in Canvas (3D / WebGL 演出フック)
+
+「HTML in Canvas」(react-three-fiber `<Html>` / Three.js `CSS3DObject` 等) を使うと、HTML 要素を 3D シーン内に配置して視差・屈折・depth・流体歪みなどを掛けられる。Lightbox など single-element の polish には過剰だが、以下の領域では効果的:
+
+- **テーマ別ボード演出**: テーマごとに 3D 背景 (シェーダ) + HTML カードがその上に浮かぶ。スクロールで世界観切替
+- **ブクマ整理 (マッチングアプリ風 swipe UI、要件再確認待ち)**: カードを 3D で奥行き手前に出し、swipe でフェード+回転して視覚的に "去っていく" 体験
+- **スクロールで unique に消える表現**: HTML カードを WebGL で歪ませながらフェードアウト、紙が燃える / 水で滲む / 粒子化など
+
+実装着手前に: (a) どこで使うかをロードマップ化、(b) 初手は小さく (1 画面・1 演出) で実験、(c) パフォーマンス予算を測ってから本採用、の順で。
+
+---
+
 ### 🎯 Task 30 完了 (2026-05-02 v25)
 
 **真因**: Lightbox の tweet 専用 lazy backfill effect ([components/board/Lightbox.tsx](components/board/Lightbox.tsx)) が `persistThumbnail` を呼ぶ → `setItems` で items 配列 reference が新規化 → BoardRoot の `lightboxItem` (useMemo) が新 reference → Lightbox の `item` prop 変動 → effect 再発火、**無限ループ**。GSAP open animation も同 dep で巻き込まれ、opacity 0→1 が周期的に繰り返されることで「tweet が薄く透ける / 点滅する」とユーザーには見えていた。YouTube は `tweetId` ガードで早期 return し無傷。

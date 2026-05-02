@@ -26,6 +26,14 @@
   gap: 32px;
   max-width: min(94vw, 1240px);
   max-height: 90vh;
+  /* Initial state hidden so the FLIP open animation never flashes a
+     mid-reflow frame at viewport center before useLayoutEffect runs.
+     gsap.set in the open animation overrides opacity to start the
+     reveal cleanly from the card's origin position. will-change hints
+     the compositor to allocate a GPU layer up front, eliminating the
+     micro-blink that comes from layer creation mid-tween. */
+  opacity: 0;
+  will-change: transform, opacity;
 }
 @media (max-width: 900px) {
   .frame {
