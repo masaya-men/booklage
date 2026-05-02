@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v26-2026-05-02-tweet-lightbox-2col-inline-video'
+const CACHE_VERSION = 'v27-2026-05-03-flip-transition-flex-layout-video-referrer'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

@@ -40,7 +40,7 @@ type CardsLayerProps = {
   readonly spaceHeld: boolean
   readonly onHoverChange: (id: string | null) => void
   readonly onCyclePreset: (bookmarkId: string, next: 'S' | 'M' | 'L') => void
-  readonly onClick: (bookmarkId: string) => void
+  readonly onClick: (bookmarkId: string, originRect: DOMRect) => void
   readonly onDrop: (orderedBookmarkIds: readonly string[]) => void
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly displayMode: DisplayMode

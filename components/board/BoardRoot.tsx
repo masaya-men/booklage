@@ -45,6 +45,11 @@ export function BoardRoot() {
   const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState<boolean>(false)
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
   const [lightboxItemId, setLightboxItemId] = useState<string | null>(null)
+  // Captured at click time so Lightbox can grow from the card's exact screen
+  // position (FLIP). Cleared on close. Plain DOMRect — never reactive past
+  // open, so a stale rect after pan/scroll is fine: it only seeds the open
+  // animation, the close animation does not use it.
+  const [lightboxOriginRect, setLightboxOriginRect] = useState<DOMRect | null>(null)
   const [newlyAddedIds, setNewlyAddedIds] = useState<ReadonlySet<string>>(new Set())
   // Ref points at the inner dark canvas — viewport.w/h reflect the canvas's
   // inner dimensions (window minus the outer-frame margin), so masonry layout
@@ -229,12 +234,14 @@ export function BoardRoot() {
     [persistSizePreset],
   )
 
-  const handleCardClick = useCallback((bookmarkId: string): void => {
+  const handleCardClick = useCallback((bookmarkId: string, originRect: DOMRect): void => {
+    setLightboxOriginRect(originRect)
     setLightboxItemId(bookmarkId)
   }, [])
 
   const handleLightboxClose = useCallback((): void => {
     setLightboxItemId(null)
+    setLightboxOriginRect(null)
   }, [])
 
   const lightboxItem = useMemo(
@@ -465,6 +472,7 @@ export function BoardRoot() {
       />
       <Lightbox
         item={lightboxItem}
+        originRect={lightboxOriginRect}
         onClose={handleLightboxClose}
       />
     </div>

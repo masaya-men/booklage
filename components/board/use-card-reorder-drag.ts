@@ -19,7 +19,10 @@ export type UseReorderDragParams = {
   readonly items: ReadonlyArray<BoardItem>
   readonly positions: Readonly<Record<string, CardPosition>>
   readonly spaceHeld: boolean
-  readonly onClick: (bookmarkId: string) => void
+  /** Called on a tap (no drag). originRect is the clicked card's
+   *  getBoundingClientRect() at the moment of pointer-up — used by the
+   *  Lightbox to grow from the card's position (FLIP). */
+  readonly onClick: (bookmarkId: string, originRect: DOMRect) => void
   readonly onDragMove: (
     bookmarkId: string,
     cardWorldX: number,
@@ -107,7 +110,12 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
 
         if (!dragStarted || distance < CLICK_THRESHOLD_PX) {
           setDragState(null)
-          stateRef.current.onClick(bookmarkId)
+          // Capture the card's screen rect right now so Lightbox can
+          // grow visually from this position (FLIP). Re-querying here
+          // (vs. using the saved startPos) is correct: pan/scroll may
+          // have shifted the card between pointerdown and pointerup.
+          const originRect = el.getBoundingClientRect()
+          stateRef.current.onClick(bookmarkId, originRect)
           return
         }
 

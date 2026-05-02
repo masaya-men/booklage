@@ -12,21 +12,25 @@
 }
 .backdrop.open { opacity: 1; pointer-events: auto; transition: opacity 200ms ease-out; }
 
+/* Flex (not grid): media uses its NATURAL width (whatever the
+   aspect-ratio wrapper resolves to — 60vw for 16:9, ~50vw for 9:16
+   verticals, or the photo's intrinsic width capped to viewport). The
+   text panel sits at a fixed 320px immediately to the right of the
+   media's actual edge — never floating off in empty space when the
+   media happens to be narrow. The whole pair is centered as a unit. */
 .frame {
   position: relative;
-  width: min(94vw, 1240px);
-  max-height: 90vh;
-  display: grid;
-  /* Media takes remaining width (1fr); text panel fixed 320px right column.
-     auto column collapsed images down to 0 — explicit 1fr forces media to
-     receive real space. */
-  grid-template-columns: 1fr 320px;
-  gap: 32px;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 32px;
+  max-width: min(94vw, 1240px);
+  max-height: 90vh;
 }
 @media (max-width: 900px) {
   .frame {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
     gap: 20px;
     max-height: 92vh;
     overflow-y: auto;
@@ -34,6 +38,7 @@
 }
 
 .media {
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,6 +90,7 @@
 }
 
 .text {
+  flex: 0 0 320px;
   color: #e8e8e8;
   font-family: var(--font-sans);
   font-size: 16px;
@@ -94,6 +100,9 @@
   gap: 14px;
   max-height: 88vh;
   overflow-y: auto;
+}
+@media (max-width: 900px) {
+  .text { flex: 0 0 auto; }
 }
 
 .title {
@@ -131,6 +140,42 @@
   display: block;
   background: black;
   object-fit: contain;
+}
+
+/* Fallback shown when inline video playback fails (CDN reject, takedown,
+   etc.). Renders the poster image with a "Watch on X" badge overlay so
+   the click escapes to twitter.com instead of leaving a dead element. */
+.tweetWatchOnX {
+  position: relative;
+  display: block;
+  max-width: min(920px, 60vw);
+  max-height: 88vh;
+  border-radius: var(--lightbox-media-radius);
+  overflow: hidden;
+  background: black;
+  text-decoration: none;
+}
+.tweetWatchOnX img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 88vh;
+  object-fit: contain;
+}
+.tweetWatchOnXBadge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 999px;
+  letter-spacing: 0.01em;
 }
 
 /* Centerpiece for text-only tweets (no photo, no video). Body text becomes

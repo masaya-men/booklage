@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { TweetMeta } from '@/lib/embed/types'
@@ -18,10 +18,14 @@ import styles from './Lightbox.module.css'
 
 type Props = {
   readonly item: BoardItem | null
+  /** Clicked card's screen rect at the moment of pointer-up. Used to seed
+   *  the FLIP (First-Last-Invert-Play) open animation so the lightbox grows
+   *  from where the card actually was, instead of the viewport center. */
+  readonly originRect: DOMRect | null
   readonly onClose: () => void
 }
 
-export function Lightbox({ item, onClose }: Props): ReactElement | null {
+export function Lightbox({ item, originRect, onClose }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -63,15 +67,63 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
     return (): void => window.removeEventListener('keydown', onKey)
   }, [bookmarkId, onClose])
 
-  // Open animation: spring scale-in from 0.86 + fade.
-  useEffect(() => {
+  // Open animation: FLIP from the clicked card's screen position when an
+  // originRect is supplied, otherwise a scale-in fallback. Uses an
+  // iOS-grade ease ('expo.out' approximates Apple's deceleration curve)
+  // and ~0.55s duration. useLayoutEffect avoids a one-frame flash where
+  // the frame appears centered before the inverted transform applies.
+  useLayoutEffect(() => {
     if (!bookmarkId || !frameRef.current) return
+    const el = frameRef.current
+    const backdrop = backdropRef.current
+
+    if (originRect) {
+      const targetRect = el.getBoundingClientRect()
+      const targetCenterX = targetRect.left + targetRect.width / 2
+      const targetCenterY = targetRect.top + targetRect.height / 2
+      const originCenterX = originRect.left + originRect.width / 2
+      const originCenterY = originRect.top + originRect.height / 2
+      const dx = originCenterX - targetCenterX
+      const dy = originCenterY - targetCenterY
+      // Uniform scale = card / target along smaller axis, so the card never
+      // visually overflows its source bounds at frame 0. Aspect mismatch is
+      // absorbed by the surrounding fade rather than a stretch.
+      const sx = originRect.width / targetRect.width
+      const sy = originRect.height / targetRect.height
+      const startScale = Math.max(0.05, Math.min(sx, sy))
+
+      gsap.set(el, { x: dx, y: dy, scale: startScale, opacity: 0, transformOrigin: '50% 50%' })
+      const tween = gsap.to(el, {
+        x: 0,
+        y: 0,
+        scale: 1,
+        opacity: 1,
+        duration: 0.55,
+        ease: 'expo.out',
+      })
+      let backdropTween: gsap.core.Tween | null = null
+      if (backdrop) {
+        backdropTween = gsap.fromTo(
+          backdrop,
+          { opacity: 0 },
+          { opacity: 1, duration: 0.32, ease: 'power2.out' },
+        )
+      }
+      return (): void => {
+        tween.kill()
+        backdropTween?.kill()
+      }
+    }
+
     const tween = gsap.fromTo(
-      frameRef.current,
+      el,
       { scale: 0.86, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 0.42, ease: 'back.out(1.3)' },
+      { scale: 1, opacity: 1, duration: 0.42, ease: 'expo.out' },
     )
     return (): void => { tween.kill() }
+    // originRect is intentionally read once at mount via the bookmarkId dep —
+    // a later rect change should not retrigger the open animation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookmarkId])
 
   // Focus close button when lightbox opens
@@ -149,7 +201,15 @@ function DefaultText({
 
 /** Left-column media for a tweet: inline mp4 video, photo, or large body
  *  text (text-only tweets). Falls back to the bookmark thumbnail before
- *  metadata loads so the slot never appears empty. */
+ *  metadata loads so the slot never appears empty.
+ *
+ *  Why `referrerPolicy=no-referrer`: Twitter's video CDN
+ *  (`video.twimg.com`) refuses cross-origin requests that carry a Referer
+ *  header pointing at non-Twitter domains. Stripping the Referer is
+ *  enough to make the request look like a direct hit and play through.
+ *  When that still fails for a given clip (geo-block, takedown, etc.),
+ *  `onError` swaps the player out for a `Watch on X` poster link so the
+ *  user is never stuck staring at a dead element. */
 function TweetMedia({
   item,
   meta,
@@ -157,20 +217,44 @@ function TweetMedia({
   readonly item: BoardItem
   readonly meta: TweetMeta | null
 }): ReactNode {
-  if (meta?.videoUrl) {
+  const [videoFailed, setVideoFailed] = useState<boolean>(false)
+  if (meta?.videoUrl && !videoFailed) {
     const aspect = meta.videoAspectRatio ?? 16 / 9
     const wrapperClass = aspect < 1 ? styles.iframeWrap9x16 : styles.iframeWrap16x9
+    // referrerpolicy is valid HTML on <video> per the Media spec, but React's
+    // VideoHTMLAttributes typing predates that addition. Spread it via an
+    // untyped record so TypeScript accepts it; React forwards unknown
+    // string-valued attrs straight to the DOM.
+    const extraAttrs: Record<string, string> = { referrerpolicy: 'no-referrer' }
     return (
       <div className={wrapperClass}>
         <video
+          {...extraAttrs}
           className={styles.tweetVideo}
           src={meta.videoUrl}
           poster={meta.videoPosterUrl ?? item.thumbnail}
           controls
           playsInline
           preload="metadata"
+          onError={(): void => setVideoFailed(true)}
         />
       </div>
+    )
+  }
+  if (videoFailed && (meta?.videoPosterUrl || item.thumbnail)) {
+    // Inline playback rejected by the CDN. Render the poster + a click-to-X
+    // link so the user can still watch the clip. Mirrors react-tweet's
+    // historical fallback behaviour.
+    return (
+      <a
+        className={styles.tweetWatchOnX}
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <img src={meta?.videoPosterUrl ?? item.thumbnail} alt={item.title} />
+        <span className={styles.tweetWatchOnXBadge}>Watch on X →</span>
+      </a>
     )
   }
   const photoUrl = meta?.photoUrl ?? item.thumbnail
