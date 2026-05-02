@@ -14,9 +14,17 @@
       "dottedNotebook": "点線ノート",
       "gridPaper": "方眼紙"
     },
-    "toolbar": {
-      "align": "整列",
-      "share": "シェア"
+    "filter": {
+      "label": "すべて",
+      "all": "すべて",
+      "inbox": "Inbox",
+      "archive": "Archive"
+    },
+    "display": {
+      "label": "表示",
+      "visual": "Visual",
+      "editorial": "Editorial",
+      "native": "Native"
     },
     "sidebar": {
       "searchPlaceholder": "検索...",

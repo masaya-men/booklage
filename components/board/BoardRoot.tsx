@@ -9,7 +9,7 @@ import {
   getThemeMeta,
 } from '@/lib/board/theme-registry'
 import { BOARD_INNER, COLUMN_MASONRY, SIZE_PRESET_SPAN } from '@/lib/board/constants'
-import type { BoardFilter } from '@/lib/board/types'
+import type { BoardFilter, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
 import { useMoods } from '@/lib/storage/use-moods'
@@ -36,6 +36,7 @@ export function BoardRoot() {
   const { moods, create: createMood } = useMoods()
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   // Lifted from InteractionLayer so CardsLayer can also observe Space-held
   // state and bail its pointerdown handler — letting the event bubble up to
@@ -101,7 +102,7 @@ export function BoardRoot() {
     }
   }, [spaceHeld])
 
-  // Hydrate activeFilter from persisted BoardConfig.
+  // Hydrate activeFilter and displayMode from persisted BoardConfig.
   useEffect(() => {
     let cancelled = false
     void (async (): Promise<void> => {
@@ -110,6 +111,7 @@ export function BoardRoot() {
       const cfg = await loadBoardConfig(db)
       if (cancelled) return
       setActiveFilter(cfg.activeFilter)
+      setDisplayMode(cfg.displayMode)
     })()
     return (): void => { cancelled = true }
   }, [])
@@ -241,13 +243,13 @@ export function BoardRoot() {
     [persistOrderBatch],
   )
 
-  const handleShare = useCallback((): void => {
-    // Plan B (ShareModal) ships the full flow — frame preset picker, PNG
-    // export, SNS Web Intents. For Plan A the button is present so the final
-    // toolbar shape is observable end-to-end; clicking is a no-op in dev.
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[Booklage] Share modal coming in Plan B')
-    }
+  const handleDisplayModeChange = useCallback((m: DisplayMode): void => {
+    setDisplayMode(m)
+    void (async (): Promise<void> => {
+      const db = await initDB()
+      const cfg = await loadBoardConfig(db)
+      await saveBoardConfig(db, { ...cfg, displayMode: m })
+    })()
   }, [])
 
   const handleFilterChange = useCallback((f: BoardFilter): void => {
@@ -397,7 +399,14 @@ export function BoardRoot() {
           />
         </div>
       </InteractionLayer>
-      <Toolbar onShare={handleShare} />
+      <Toolbar
+        activeFilter={activeFilter}
+        onFilterChange={handleFilterChange}
+        displayMode={displayMode}
+        onDisplayModeChange={handleDisplayModeChange}
+        moods={moods}
+        counts={sidebarCounts}
+      />
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={handleSidebarToggle}

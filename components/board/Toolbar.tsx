@@ -1,28 +1,28 @@
 'use client'
 
 import type { ReactElement } from 'react'
-import { t } from '@/lib/i18n/t'
+import type { BoardFilter, DisplayMode } from '@/lib/board/types'
+import type { MoodRecord } from '@/lib/storage/indexeddb'
+import { FilterPill } from './FilterPill'
+import { DisplayModeSwitch } from './DisplayModeSwitch'
 import styles from './Toolbar.module.css'
 
 type Props = {
-  readonly onShare: () => void
+  readonly activeFilter: BoardFilter
+  readonly onFilterChange: (f: BoardFilter) => void
+  readonly displayMode: DisplayMode
+  readonly onDisplayModeChange: (m: DisplayMode) => void
+  readonly moods: ReadonlyArray<MoodRecord>
+  readonly counts: { readonly all: number; readonly inbox: number; readonly archive: number }
 }
 
-/**
- * Top-center floating pill: a single Share action. Align was removed when the
- * Board switched to always-masonry (no mode to return to).
- */
-export function Toolbar({ onShare }: Props): ReactElement {
+export function Toolbar({
+  activeFilter, onFilterChange, displayMode, onDisplayModeChange, moods, counts,
+}: Props): ReactElement {
   return (
     <div className={styles.container} data-testid="board-toolbar">
-      <button
-        type="button"
-        className={`${styles.button} ${styles.primary}`.trim()}
-        onClick={onShare}
-        data-toolbar-button="share"
-      >
-        📤 {t('board.toolbar.share')}
-      </button>
+      <FilterPill value={activeFilter} onChange={onFilterChange} moods={moods} counts={counts} />
+      <DisplayModeSwitch value={displayMode} onChange={onDisplayModeChange} />
     </div>
   )
 }

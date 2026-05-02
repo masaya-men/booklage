@@ -1,0 +1,38 @@
+.pill {
+  background: rgba(20, 20, 20, 0.92);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+  padding: 8px 14px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  font-family: inherit;
+}
+.pill:hover { background: rgba(30, 30, 30, 0.96); }
+.wrap { position: relative; }
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: rgba(20, 20, 20, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 160px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.item {
+  display: flex; align-items: center;
+  padding: 8px 10px; border-radius: 6px;
+  cursor: pointer; color: var(--text-body);
+  border: 0; background: transparent; width: 100%; text-align: left;
+  font-size: 13px;
+  font-family: inherit;
+}
+.item:hover { background: rgba(255, 255, 255, 0.05); }
+.item.active { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
