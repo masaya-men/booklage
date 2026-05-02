@@ -2,10 +2,15 @@
 
 import type { ReactNode } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
+import type { DisplayMode } from '@/lib/board/types'
 import styles from './ImageCard.module.css'
 
 type Props = {
   readonly item: BoardItem
+  readonly displayMode: DisplayMode
+  readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
+  readonly cardWidth?: number
+  readonly cardHeight?: number
 }
 
 export function ImageCard({ item }: Props): ReactNode {

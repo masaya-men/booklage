@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { gsap } from 'gsap'
 import { computeColumnMasonry, type MasonryCard } from '@/lib/board/column-masonry'
-import type { CardPosition } from '@/lib/board/types'
+import type { CardPosition, DisplayMode } from '@/lib/board/types'
 import {
   BOARD_Z_INDEX,
   COLUMN_MASONRY,
@@ -43,6 +43,7 @@ type CardsLayerProps = {
   readonly onClick: (bookmarkId: string) => void
   readonly onDrop: (orderedBookmarkIds: readonly string[]) => void
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
+  readonly displayMode: DisplayMode
 }
 
 export function CardsLayer({
@@ -56,6 +57,7 @@ export function CardsLayer({
   onClick,
   onDrop,
   persistMeasuredAspect,
+  displayMode,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -371,6 +373,7 @@ export function CardsLayer({
                     persistMeasuredAspect={persistMeasuredAspect}
                     cardWidth={p.w}
                     cardHeight={p.h}
+                    displayMode={it.displayMode ?? displayMode}
                   />
                 )
               })()}

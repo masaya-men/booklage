@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
+import type { DisplayMode } from '@/lib/board/types'
 import { getFaviconUrl, hostnameFromUrl } from '@/lib/embed/favicon'
 import { pickTitleTypography } from '@/lib/embed/title-typography'
 import { measureTextCardAspectRatio } from '@/lib/embed/text-card-measure'
@@ -12,6 +13,7 @@ type Props = {
   readonly cardWidth?: number
   readonly cardHeight?: number
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
+  readonly displayMode: DisplayMode
 }
 
 /** Strip `http(s)://` from titles that are raw URLs to prevent the protocol

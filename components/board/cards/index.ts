@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
+import type { DisplayMode } from '@/lib/board/types'
 import { detectUrlType } from '@/lib/utils/url'
 import { TweetCard } from './TweetCard'
 import { VideoThumbCard } from './VideoThumbCard'
@@ -13,6 +14,7 @@ export type CardComponentProps = {
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly cardWidth?: number
   readonly cardHeight?: number
+  readonly displayMode: DisplayMode
 }
 
 export type CardComponent = ComponentType<CardComponentProps>

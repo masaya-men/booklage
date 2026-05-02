@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
+import type { DisplayMode } from '@/lib/board/types'
 import { detectUrlType } from '@/lib/utils/url'
 import { getYoutubeThumb } from '@/lib/embed/youtube-thumb'
 import { fetchTikTokMeta } from '@/lib/embed/tiktok-meta'
@@ -10,6 +11,10 @@ import styles from './VideoThumbCard.module.css'
 
 type Props = {
   readonly item: BoardItem
+  readonly displayMode: DisplayMode
+  readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
+  readonly cardWidth?: number
+  readonly cardHeight?: number
 }
 
 export function VideoThumbCard({ item }: Props): ReactNode {

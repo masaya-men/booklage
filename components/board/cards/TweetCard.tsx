@@ -3,6 +3,7 @@
 import { Tweet } from 'react-tweet'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
+import type { DisplayMode } from '@/lib/board/types'
 import { extractTweetId } from '@/lib/utils/url'
 import { TextCard } from './TextCard'
 import styles from './TweetCard.module.css'
@@ -11,6 +12,8 @@ type Props = {
   readonly item: BoardItem
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly cardWidth?: number
+  readonly cardHeight?: number
+  readonly displayMode: DisplayMode
 }
 
 // Persist when measured article height differs from the height implied by
@@ -19,7 +22,7 @@ type Props = {
 // (image/video loading, quoted tweet expansion).
 const MEASUREMENT_EPSILON_PX = 4
 
-export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280 }: Props): ReactNode {
+export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280, displayMode }: Props): ReactNode {
   const tweetId = extractTweetId(item.url)
   const hostRef = useRef<HTMLDivElement>(null)
   const [errored] = useState(false)
@@ -139,13 +142,27 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280 }: Prop
         item={{ ...item, title: item.title || 'このツイートは表示できません' }}
         cardWidth={cardWidth}
         persistMeasuredAspect={persistMeasuredAspect}
+        displayMode={displayMode}
       />
     )
   }
 
-  return (
+  const inner = (
     <div ref={hostRef} className={styles.tweetCard} data-theme="light">
       <Tweet id={tweetId} />
     </div>
   )
+
+  if (displayMode === 'editorial') {
+    return (
+      <div style={{
+        borderLeft: '3px solid var(--text-meta)',
+        paddingLeft: 12,
+        fontFamily: "'Noto Serif JP', Georgia, serif",
+      }}>
+        {inner}
+      </div>
+    )
+  }
+  return inner
 }

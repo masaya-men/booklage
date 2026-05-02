@@ -396,6 +396,7 @@ export function BoardRoot() {
             onClick={handleCardClick}
             onDrop={handleDropOrder}
             persistMeasuredAspect={persistMeasuredAspect}
+            displayMode={displayMode}
           />
         </div>
       </InteractionLayer>
