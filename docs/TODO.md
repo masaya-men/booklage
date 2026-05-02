@@ -10,6 +10,7 @@
 - **ブランチ**: `destefanis-pivot` (origin/destefanis-pivot に push 済)
 - **master**: 全 push 済（plan doc も含む）
 - **🎉 destefanis pivot MVP 25 タスク全完了 + 本番デプロイ済 (2026-05-02)** — `https://booklage.pages.dev` に v12 反映
+- **⚠️ Phase A 完全コピー逸脱が発覚 (2026-05-02 セッション中)** — 当初 lock 済の「destefanis を wholesale copy → Launch → Phase C 個性化」方針のうち **Phase A をスキップして Booklage 個性を最初から足していた**（ベージュ+ドット背景・italic serif・border+shadow・title overlay 等）。**Task 26 で Phase A まで戻す**（次セッション着手 / ユーザー承認済）
 - **destefanis-pivot の最新 cluster 3 commits（Task 19-25）**:
   - `794f4a8` — chore(sw): bump CACHE_VERSION to v12 (cluster 3)
   - `2076e7b` — fix(triage): cancel in-flight HeuristicTagger.suggest on current change
@@ -44,7 +45,116 @@
    - 2 枚目: 「1」キー押下 → design タグ → 自動 advance
    - 3 枚目: 「s」キー押下 → スキップ → done
    - 「ボードへ戻る」→ /board → サイドバー design mood click → 2 枚 filter
-4. 問題あれば次セッションで修正タスク化
+4. 問題あれば次セッションで修正タスク化（**Task 26 と独立**。smoke test は機能確認、Task 26 は visual 復元）
+
+---
+
+### 🆕 Task 26: destefanis Phase A 完全コピー復元 + Lightbox media + フォント modernize
+
+**経緯 (2026-05-02 セッション)**: brainstorm 14 項目 (TODO L120-141) で lock 済の方針「wholesale copy → Launch → 個性化」のうち **Phase A（完全コピー）をスキップして Booklage 個性を最初から足してしまった**。Launch 前に Phase A まで戻す。サイドバーは hybrid 方針通り Booklage identity 維持（destefanis 参考にはサイドバー無し）。
+
+**ユーザー承認済 (2026-05-02)**:
+- (a) Phase A 完全コピー → Launch → Phase C 個性化 で進める
+- (b) Lightbox は **tweet 全文 + YouTube 埋め込み + TikTok 埋め込み + 画像/website 詳細表示** の全種別対応。動画再生しながら右側でテキスト読めるレイアウト維持
+- (c) フォントは **Geist** に統一（イタリック / Noto Serif JP / Playfair Display 撤去）。Phase C で再個性化検討
+- 動画同時視聴 (multi-playback) は **launch 後** の核機能。今回スコープ外（IDEAS.md 既収載）
+
+#### 26-1: Board 背景を真っ黒に
+
+- [components/board/themes.module.css](components/board/themes.module.css) `.dottedNotebook` を destefanis 同等のフラット dark に置換
+- 案: `background-color: #0a0a0a;` のみ、dots / grid なし（純黒 `#000` か近黒 `#0a0a0a` は destefanis 拡大画像で実測）
+- [lib/board/theme-registry.ts](lib/board/theme-registry.ts) DEFAULT_THEME_ID 据え置き、定義中身を destefanis dark に書き換え
+- gridPaper / 旧 dottedNotebook の定義は **legacy として残置** or 削除（Phase C で用途検討）
+
+#### 26-2: カード装飾削除（destefanis 同等）
+
+- [TweetCard.module.css:7-15](components/board/cards/TweetCard.module.css#L7-L15): `border` / `box-shadow` / hover lift 削除
+- [ImageCard.module.css:10-18](components/board/cards/ImageCard.module.css#L10-L18): `border` / `box-shadow` / hover lift / **title overlay (.title 全体) 削除**。`.thumb` のみ残す
+- [VideoThumbCard.module.css:8-19](components/board/cards/VideoThumbCard.module.css#L8-L19): `box-shadow` / hover / `titleBar` 削除、playOverlay は維持（destefanis にも play button あり）
+- [TextCard.module.css:10-19](components/board/cards/TextCard.module.css#L10-L19): `border` / `box-shadow` / hover lift 削除、background gradient は flat dark grey へ
+- [TweetCard.tsx:156-166](components/board/cards/TweetCard.tsx#L156-L166) editorial branch の inline `borderLeft + paddingLeft + fontFamily Noto Serif JP` 削除（Geist 統一と整合）
+
+#### 26-3: Tweet/Text card を intrinsic-sized に（高さ自動 + 本文切れ解消）
+
+- 現状: aspectRatio で高さ固定 → `overflow: hidden` で本文切れる（ユーザー指摘 #1）
+- destefanis: tweet / text は中身の自然な高さで masonry が積む
+- 設計案 A: `column-masonry.ts` の input に `intrinsicHeight?: number` を追加。tweet/text は ResizeObserver で測定した実 height を使い、aspectRatio を skip
+- 設計案 B: 既存の `persistMeasuredAspect` 経路を活かし、実 height をそのまま column-masonry へ渡す override を CardsLayer 側で組む（侵襲少ない、推奨）
+- どちらを採用するかは実装直前に判定
+- [TweetCard.module.css:5](components/board/cards/TweetCard.module.css#L5) `overflow: hidden` 撤去または `overflow: visible`
+- 影響範囲: `computeColumnMasonry` のテスト、`use-card-reorder-drag` の position 計算
+
+#### 26-4: Lightbox を URL 種別ごとに分岐（media 全種対応 — ユーザー要望 #2）
+
+[Lightbox.tsx:62-65](components/board/Lightbox.tsx#L62-L65) を URL 種別 switch:
+
+| 種別 | 左 media 部 | 右 text 部 |
+|---|---|---|
+| **tweet** | `<Tweet id={tweetId} />` を 大サイズ width で再 mount。scroll 可 | OGP description + URL host + tags |
+| **YouTube** | `<iframe src="https://www.youtube.com/embed/{videoId}" allowfullscreen>` 埋め込み | title + description + URL + tags |
+| **TikTok** | TikTok oEmbed iframe（公式 oEmbed endpoint からの response を `dangerouslySetInnerHTML`、TikTok 公式由来なので XSS 観点 OK） | title + description + URL + tags |
+| **image / website** | 大 thumbnail (max-height 88vh) | title + description + URL + tags |
+| **text** | placeholder（content excerpt 装飾表示） | 全文 |
+
+- `lib/utils/url.ts` の `detectUrlType` を Lightbox でも使用
+- YouTube `videoId` extract helper 新設: `extractYouTubeId(url)`
+- TikTok 埋め込み fetch は `app/api/oembed/route.ts` (任意) 経由 or client-side で TikTok oEmbed endpoint へ直接（CORS 確認）
+- レイアウト: 現状 `grid-template-columns: 1.3fr 1fr` 維持（左 media + 右 text）→ desktop で動画見ながらテキスト読める
+- mobile (< 900px): 縦積み（既存 media query OK）
+
+#### 26-5: フォントを Geist に統一（Phase A 確定）
+
+- [app/layout.tsx](app/layout.tsx) に `next/font/google` で `Geist` + `Geist_Mono` を loader 追加
+- 現状 `Playfair_Display` の loader 削除
+- [globals.css](app/globals.css) `:root` に `--font-sans: 'Geist', system-ui, sans-serif;` `--font-mono: 'Geist Mono', ui-monospace, monospace;` を確立
+- `--font-playfair` 削除
+- 全 module CSS で置換:
+  - `'Noto Serif JP', Georgia, serif` → `var(--font-sans)`
+  - `'Fraunces', 'Playfair Display', Georgia, serif` → `var(--font-sans)`
+  - `'JetBrains Mono', ui-monospace, monospace` → `var(--font-mono)`
+  - `'Inter', system-ui, sans-serif` → `var(--font-sans)`
+- [TextCard.module.css:65](components/board/cards/TextCard.module.css#L65) `.headline .title` の `font-style: italic` 撤去
+- TextCard 3 modes は **Phase A では Geist の weight + size 違いで表現**:
+  - headline: Geist 700 large
+  - editorial: Geist 500 regular
+  - index: Geist Mono 400 small
+- [SaveToast.module.css](components/save/SaveToast.module.css) `.brand` / [Sidebar.module.css](components/board/Sidebar.module.css) `.brandName` の Playfair 参照も Geist へ
+- Lightbox `.text` (Lightbox.module.css:34) も Geist へ
+
+#### 26-6: GAP / padding / max-width / column 幅 を destefanis に合わせる
+
+- [lib/board/constants.ts](lib/board/constants.ts):
+  - `COLUMN_MASONRY.GAP_PX: 10 → 6`（destefanis 実測ベース、要拡大画像確認）
+  - `BOARD_INNER.MAX_WIDTH_PX: 1400 → 1800` or 撤廃で full viewport
+  - `BOARD_INNER.SIDE_PADDING_PX: 64 → 16`
+  - `COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX: 160 → 200`（destefanis のカード幅実測、tweet 横幅余裕も生まれる）
+- 影響: BoardRoot の `effectiveLayoutWidth` 計算で reflow 発生。masonry テスト全部見直し
+
+#### 26-7: corner-radius 調整
+
+- [globals.css:257](app/globals.css#L257) `--corner-radius-inner: 6px` → destefanis 実測値（おそらく 12-16px、拡大画像で計測）
+
+#### 26-8: smoke test 再実行 + v13 deploy
+
+- Task 26 完了後 deploy → booklage.pages.dev で **destefanis 拡大画像と並べて見比べ**
+- 差分が「色味の微調整」レベル以下になっていれば Phase A 達成
+- 上記 smoke test シナリオ（save → fade-in / Lightbox / Triage / filter）も再確認
+
+#### スコープ外（Phase B/C 以降）
+
+- 動画同時視聴 multi-playback（launch 後核機能、IDEAS.md 既収載）
+- Phase C の Booklage 独自個性化（色、フォント独自カラー、装飾、グロー、シグネチャモーション）
+- gridPaper / dottedNotebook テーマの Phase C 再活用判断
+
+#### 完了基準
+
+- [ ] booklage.pages.dev で destefanis 拡大画像と並べて見比べ、board 部分の差分が「色味の微調整」レベル以下
+- [ ] Lightbox で tweet / YouTube / TikTok / image / website / text 全種が media + text 並列表示できる
+- [ ] フォントが全画面で Geist 統一、italic serif が消える
+- [ ] tsc clean / vitest 全 PASS / E2E 全 PASS
+- [ ] 本番 v13 deploy 済
+
+---
 
 ### 📋 cluster 3 で plan からの逸脱（fix commit に分離済）
 
