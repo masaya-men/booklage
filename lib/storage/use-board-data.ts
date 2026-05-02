@@ -277,11 +277,18 @@ export function useBoardData(): {
       const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
       if (!existing) return
       if (!force && existing.thumbnail && !isXDefaultThumbnail(existing.thumbnail)) return
+      // No-op when the value is already what we'd write. Without this guard,
+      // force=true callers can spin React: setItems creates a fresh array
+      // even when the underlying data is unchanged, which invalidates any
+      // useMemo([items, ...]) downstream and can re-trigger effects that
+      // call back into persistThumbnail. Cheap O(1) check, defense in depth.
+      const normalized = thumbnail || undefined
+      if ((existing.thumbnail ?? undefined) === normalized) return
       await db.put('bookmarks', { ...existing, thumbnail })
       setItems((prev) =>
         prev.map((it) =>
           it.bookmarkId === bookmarkId
-            ? { ...it, thumbnail: thumbnail || undefined }
+            ? { ...it, thumbnail: normalized }
             : it,
         ),
       )

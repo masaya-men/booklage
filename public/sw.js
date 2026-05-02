@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v24-2026-05-02-task29-lightbox-opacity'
+const CACHE_VERSION = 'v25-2026-05-02-task30-lightbox-rerender-loop-fix'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

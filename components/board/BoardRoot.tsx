@@ -466,7 +466,6 @@ export function BoardRoot() {
       <Lightbox
         item={lightboxItem}
         onClose={handleLightboxClose}
-        persistThumbnail={persistThumbnail}
       />
     </div>
   )

@@ -13,29 +13,28 @@ import {
   extractYoutubeId,
   isYoutubeShorts,
 } from '@/lib/utils/url'
-import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import styles from './Lightbox.module.css'
 
 type Props = {
   readonly item: BoardItem | null
   readonly onClose: () => void
-  /** Optional thumbnail backfill — Lightbox lazy-fetches Twitter syndication
-   *  metadata and writes the photo/video poster URL into the bookmark so the
-   *  next reload picks ImageCard instead of falling back to TextCard. */
-  readonly persistThumbnail?: (bookmarkId: string, thumbnail: string, force?: boolean) => Promise<void>
 }
 
-export function Lightbox({ item, onClose, persistThumbnail }: Props): ReactElement | null {
+export function Lightbox({ item, onClose }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   const isTweet = item ? detectUrlType(item.url) === 'tweet' : false
   const tweetId = isTweet && item ? extractTweetId(item.url) : null
+  // Stable string ref for effect deps — using item (object) directly causes
+  // the open animation to restart whenever an unrelated state update gives
+  // BoardRoot's items a new array reference (e.g. thumbnail backfill).
+  const bookmarkId = item?.bookmarkId
 
   // Escape key closes
   useEffect(() => {
-    if (!item) return
+    if (!bookmarkId) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.stopPropagation()
@@ -44,39 +43,23 @@ export function Lightbox({ item, onClose, persistThumbnail }: Props): ReactEleme
     }
     window.addEventListener('keydown', onKey)
     return (): void => window.removeEventListener('keydown', onKey)
-  }, [item, onClose])
+  }, [bookmarkId, onClose])
 
-  // Open animation: spring scale-in from 0.86 + fade
+  // Open animation: spring scale-in from 0.86 + fade.
   useEffect(() => {
-    if (!item || !frameRef.current) return
+    if (!bookmarkId || !frameRef.current) return
     const tween = gsap.fromTo(
       frameRef.current,
       { scale: 0.86, opacity: 0 },
       { scale: 1, opacity: 1, duration: 0.42, ease: 'back.out(1.3)' },
     )
     return (): void => { tween.kill() }
-  }, [item])
+  }, [bookmarkId])
 
   // Focus close button when lightbox opens
   useEffect(() => {
-    if (item) closeButtonRef.current?.focus()
-  }, [item])
-
-  // Lazy backfill the bookmark's thumbnail from Twitter syndication when a
-  // tweet opens. Runs even when an existing thumbnail is present because the
-  // bookmarklet typically captures X's generic placeholder ("SEE WHAT'S
-  // HAPPENING") rather than the per-tweet image. force=true allows overwrite;
-  // empty string clears for text-only tweets so they fall through to TextCard.
-  useEffect(() => {
-    if (!item || !tweetId || !persistThumbnail) return
-    let cancelled = false
-    void fetchTweetMeta(tweetId).then((meta) => {
-      if (cancelled || !meta) return
-      const url = meta.photoUrl ?? meta.videoPosterUrl ?? ''
-      void persistThumbnail(item.bookmarkId, url, true)
-    })
-    return (): void => { cancelled = true }
-  }, [item, tweetId, persistThumbnail])
+    if (bookmarkId) closeButtonRef.current?.focus()
+  }, [bookmarkId])
 
   if (!item) return null
 
