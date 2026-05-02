@@ -4,18 +4,10 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  border-radius: var(--corner-radius-inner);
+  border-radius: var(--card-radius);
   overflow: hidden;
-  background: linear-gradient(135deg, #fafafa, #f0f0f0);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  background: var(--card-white);
   padding: 20px 22px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.textCard:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .metaTop,
@@ -59,10 +51,9 @@
   word-break: break-word;
 }
 
-/* Headline: large display serif, takes most of the card */
+/* Headline: large display, takes most of the card */
 .headline .title {
-  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
-  font-style: italic;
+  font-family: var(--font-sans);
   font-weight: 700;
   letter-spacing: -0.02em;
   flex: 1;
@@ -70,17 +61,17 @@
   align-items: center;
 }
 
-/* Editorial: sans, multi-line */
+/* Editorial: regular sans, multi-line */
 .editorial .title {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: #1a1a1a;
 }
 
-/* Index: small mono, many lines */
+/* Index: monospace small, many lines */
 .index .title {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-weight: 400;
   color: #2a2a2a;
 }

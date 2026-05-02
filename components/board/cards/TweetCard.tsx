@@ -11,6 +11,7 @@ import styles from './TweetCard.module.css'
 type Props = {
   readonly item: BoardItem
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
+  readonly reportIntrinsicHeight?: (cardId: string, heightPx: number) => void
   readonly cardWidth?: number
   readonly cardHeight?: number
   readonly displayMode: DisplayMode
@@ -22,7 +23,7 @@ type Props = {
 // (image/video loading, quoted tweet expansion).
 const MEASUREMENT_EPSILON_PX = 4
 
-export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280, displayMode }: Props): ReactNode {
+export function TweetCard({ item, persistMeasuredAspect, reportIntrinsicHeight, cardWidth = 280, displayMode }: Props): ReactNode {
   const tweetId = extractTweetId(item.url)
   const hostRef = useRef<HTMLDivElement>(null)
   const [errored] = useState(false)
@@ -39,7 +40,8 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280, displa
   // handful of timer-based safety retries to catch anything that still slipped.
   useEffect(() => {
     const host = hostRef.current
-    if (!host || !tweetId || !persistMeasuredAspect) return
+    if (!host || !tweetId) return
+    if (!persistMeasuredAspect && !reportIntrinsicHeight) return
 
     let lastReportedH = 0
     const observedNodes = new Set<Element>()
@@ -59,7 +61,8 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280, displa
       if (maxBottom < 60) return // still loading skeleton
       if (Math.abs(maxBottom - lastReportedH) < MEASUREMENT_EPSILON_PX) return
       lastReportedH = maxBottom
-      void persistMeasuredAspect(item.cardId, cardWidth / maxBottom)
+      reportIntrinsicHeight?.(item.bookmarkId, maxBottom)
+      void persistMeasuredAspect?.(item.cardId, cardWidth / maxBottom)
     }
 
     const attachMediaListener = (el: Element): void => {
@@ -134,7 +137,7 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280, displa
       for (const t of timers) clearTimeout(t)
       observedNodes.clear()
     }
-  }, [tweetId, item.cardId, persistMeasuredAspect, cardWidth])
+  }, [tweetId, item.cardId, item.bookmarkId, persistMeasuredAspect, reportIntrinsicHeight, cardWidth])
 
   if (!tweetId || errored) {
     return (
@@ -142,27 +145,15 @@ export function TweetCard({ item, persistMeasuredAspect, cardWidth = 280, displa
         item={{ ...item, title: item.title || 'このツイートは表示できません' }}
         cardWidth={cardWidth}
         persistMeasuredAspect={persistMeasuredAspect}
+        reportIntrinsicHeight={reportIntrinsicHeight}
         displayMode={displayMode}
       />
     )
   }
 
-  const inner = (
+  return (
     <div ref={hostRef} className={styles.tweetCard} data-theme="light">
       <Tweet id={tweetId} />
     </div>
   )
-
-  if (displayMode === 'editorial') {
-    return (
-      <div style={{
-        borderLeft: '3px solid var(--text-meta)',
-        paddingLeft: 12,
-        fontFamily: "'Noto Serif JP', Georgia, serif",
-      }}>
-        {inner}
-      </div>
-    )
-  }
-  return inner
 }

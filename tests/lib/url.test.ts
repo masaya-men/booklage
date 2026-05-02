@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { detectUrlType, extractTweetId, extractUrlFromText, isValidUrl } from '@/lib/utils/url'
+import {
+  detectUrlType,
+  extractInstagramShortcode,
+  extractTikTokVideoId,
+  extractTweetId,
+  extractUrlFromText,
+  isValidUrl,
+} from '@/lib/utils/url'
 
 describe('isValidUrl', () => {
   it('accepts valid HTTP URLs', () => {
@@ -42,6 +49,30 @@ describe('extractTweetId', () => {
   })
   it('returns null for non-tweet URLs', () => {
     expect(extractTweetId('https://example.com')).toBeNull()
+  })
+})
+
+describe('extractTikTokVideoId', () => {
+  it('extracts video ID from canonical TikTok URL', () => {
+    expect(extractTikTokVideoId('https://www.tiktok.com/@user/video/7212345678901234567'))
+      .toBe('7212345678901234567')
+  })
+  it('returns null for non-video URLs', () => {
+    expect(extractTikTokVideoId('https://www.tiktok.com/@user')).toBeNull()
+    expect(extractTikTokVideoId('https://example.com')).toBeNull()
+  })
+})
+
+describe('extractInstagramShortcode', () => {
+  it('extracts shortcode from /p/ URL', () => {
+    expect(extractInstagramShortcode('https://www.instagram.com/p/C2X3y_aBcDe/')).toBe('C2X3y_aBcDe')
+  })
+  it('extracts shortcode from /reel/ URL', () => {
+    expect(extractInstagramShortcode('https://www.instagram.com/reel/AbCdEf-12_/')).toBe('AbCdEf-12_')
+  })
+  it('returns null for non-post URLs', () => {
+    expect(extractInstagramShortcode('https://www.instagram.com/user/')).toBeNull()
+    expect(extractInstagramShortcode('https://example.com')).toBeNull()
   })
 })
 

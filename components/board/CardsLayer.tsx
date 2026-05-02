@@ -69,14 +69,27 @@ export function CardsLayer({
   // null = no drag in progress (use real masonry order).
   const [virtualOrderedIds, setVirtualOrderedIds] = useState<readonly string[] | null>(null)
 
+  // Per-card intrinsic heights reported by text-heavy cards (Tweet/Text).
+  // When set, masonry uses this as absolute height instead of width / aspectRatio.
+  // Keyed by bookmarkId. Image / video cards do not report — masonry falls back to aspectRatio.
+  const [intrinsicHeights, setIntrinsicHeights] = useState<Readonly<Record<string, number>>>({})
+  const reportIntrinsicHeight = useCallback((bookmarkId: string, h: number): void => {
+    setIntrinsicHeights((prev) => {
+      const existing = prev[bookmarkId]
+      if (existing != null && Math.abs(existing - h) < 4) return prev
+      return { ...prev, [bookmarkId]: h }
+    })
+  }, [])
+
   const masonryCards = useMemo<MasonryCard[]>(
     () =>
       items.map((it) => ({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
         columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+        intrinsicHeight: intrinsicHeights[it.bookmarkId],
       })),
-    [items],
+    [items, intrinsicHeights],
   )
 
   const masonryLayout = useMemo(
@@ -102,6 +115,7 @@ export function CardsLayer({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
         columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+        intrinsicHeight: intrinsicHeights[it.bookmarkId],
       })
     }
     return computeColumnMasonry({
@@ -110,7 +124,7 @@ export function CardsLayer({
       gap: COLUMN_MASONRY.GAP_PX,
       targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
     })
-  }, [virtualOrderedIds, items, viewportWidth])
+  }, [virtualOrderedIds, items, viewportWidth, intrinsicHeights])
 
   // During drag, use preview positions for non-dragged cards.
   // During drop/idle, use real masonry positions.
@@ -256,6 +270,7 @@ export function CardsLayer({
             id: it.bookmarkId,
             aspectRatio: it.aspectRatio,
             columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+            intrinsicHeight: intrinsicHeights[it.bookmarkId],
           })
         }
         const finalMasonry = computeColumnMasonry({
@@ -302,7 +317,7 @@ export function CardsLayer({
         onDrop(finalOrder)
         setVirtualOrderedIds(null)
       },
-      [onDrop, virtualOrderedIds, items, viewportWidth],
+      [onDrop, virtualOrderedIds, items, viewportWidth, intrinsicHeights],
     ),
   })
 
@@ -375,6 +390,7 @@ export function CardsLayer({
                   <Card
                     item={it}
                     persistMeasuredAspect={persistMeasuredAspect}
+                    reportIntrinsicHeight={reportIntrinsicHeight}
                     cardWidth={p.w}
                     cardHeight={p.h}
                     displayMode={it.displayMode ?? displayMode}

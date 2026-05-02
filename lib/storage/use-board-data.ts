@@ -20,6 +20,7 @@ export type BoardItem = {
   readonly bookmarkId: string
   readonly cardId: string
   readonly title: string
+  readonly description?: string
   readonly thumbnail?: string
   readonly url: string
   readonly aspectRatio: number
@@ -82,6 +83,7 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     bookmarkId: b.id,
     cardId: c?.id ?? '',
     title: b.title || b.url,
+    description: b.description || undefined,
     thumbnail: deriveThumbnail(b),
     url: b.url,
     aspectRatio,

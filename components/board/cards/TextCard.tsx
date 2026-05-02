@@ -13,6 +13,7 @@ type Props = {
   readonly cardWidth?: number
   readonly cardHeight?: number
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
+  readonly reportIntrinsicHeight?: (cardId: string, heightPx: number) => void
   readonly displayMode: DisplayMode
 }
 
@@ -35,6 +36,7 @@ export function TextCard({
   cardWidth = 280,
   cardHeight = 360,
   persistMeasuredAspect,
+  reportIntrinsicHeight,
 }: Props): ReactNode {
   const hostname = hostnameFromUrl(item.url)
   const faviconUrl = hostname ? getFaviconUrl(hostname) : null
@@ -48,15 +50,16 @@ export function TextCard({
   // idle-callback deferral. ref-key prevents re-measurement on unrelated renders.
   const lastMeasuredKeyRef = useRef<string>('')
   useEffect(() => {
-    if (!persistMeasuredAspect) return
+    if (!persistMeasuredAspect && !reportIntrinsicHeight) return
     const key = `${cardWidth}:${typography.mode}:${typography.fontSize}:${title}`
     if (lastMeasuredKeyRef.current === key) return
     const aspect = measureTextCardAspectRatio({ title, cardWidth, typography })
     lastMeasuredKeyRef.current = key
     if (aspect == null || aspect <= 0) return
+    reportIntrinsicHeight?.(item.bookmarkId, cardWidth / aspect)
     if (Math.abs(aspect - item.aspectRatio) < ASPECT_EPSILON) return
-    void persistMeasuredAspect(item.cardId, aspect)
-  }, [item.cardId, item.aspectRatio, title, cardWidth, typography, persistMeasuredAspect])
+    void persistMeasuredAspect?.(item.cardId, aspect)
+  }, [item.cardId, item.bookmarkId, item.aspectRatio, title, cardWidth, typography, persistMeasuredAspect, reportIntrinsicHeight])
 
   const titleStyle = {
     fontSize: `${typography.fontSize}px`,

@@ -25,7 +25,6 @@ export function ImageCard({ item }: Props): ReactNode {
           loading="lazy"
         />
       )}
-      <div className={styles.title}>{item.title}</div>
     </div>
   )
 }

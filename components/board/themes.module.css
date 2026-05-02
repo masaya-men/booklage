@@ -1,8 +1,5 @@
 .dottedNotebook {
-  background-color: #f8f8f6;
-  background-image: radial-gradient(circle, #c8c8c8 1px, transparent 1px);
-  background-size: 24px 24px;
-  background-position: 0 0;
+  background-color: var(--bg-dark);
 }
 
 .gridPaper {

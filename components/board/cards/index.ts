@@ -12,6 +12,9 @@ export { TweetCard, VideoThumbCard, ImageCard, TextCard }
 export type CardComponentProps = {
   readonly item: BoardItem
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
+  /** Reports the card's actual rendered height in px to the parent layout.
+   * Used by text-heavy cards (Tweet, Text) where height does not scale with width. */
+  readonly reportIntrinsicHeight?: (cardId: string, heightPx: number) => void
   readonly cardWidth?: number
   readonly cardHeight?: number
   readonly displayMode: DisplayMode

@@ -78,7 +78,7 @@ export function TriagePage(): ReactElement {
       <div className={styles.root}>
         <div className={styles.main}>
           <div className={styles.empty}>
-            <div style={{ fontSize: 20, fontFamily: "'Noto Serif JP', serif" }}>
+            <div style={{ fontSize: 20, fontFamily: 'var(--font-sans)' }}>
               {total === 0 ? t('triage.empty') : t('triage.done_title')}
             </div>
             <button type="button" className={styles.backBtn} onClick={exit}>

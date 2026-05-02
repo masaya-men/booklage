@@ -17,14 +17,18 @@ const META_ROW_GAP_PX = 14 // .metaTop margin-bottom / .metaBottom padding-top
 
 function fontForMode(typography: TitleTypographyResult): string {
   const size = `${typography.fontSize}px`
+  // Matches the Geist family unified across TextCard (headline / editorial / index).
+  // Canvas font spec needs literal family names — Geist is loaded via next/font, with
+  // CJK + system fallback so canvas measurement degrades gracefully in test envs.
+  const sansFallback = 'Geist, "Hiragino Sans", "Yu Gothic", system-ui, sans-serif'
+  const monoFallback = '"Geist Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace'
   switch (typography.mode) {
     case 'headline':
-      // Matches `.headline .title` in TextCard.module.css — italic 700 serif.
-      return `italic 700 ${size} Fraunces, "Playfair Display", Georgia, serif`
+      return `700 ${size} ${sansFallback}`
     case 'editorial':
-      return `600 ${size} Inter, system-ui, sans-serif`
+      return `500 ${size} ${sansFallback}`
     case 'index':
-      return `400 ${size} "JetBrains Mono", ui-monospace, monospace`
+      return `400 ${size} ${monoFallback}`
   }
 }
 

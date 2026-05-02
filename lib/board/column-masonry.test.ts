@@ -125,6 +125,33 @@ describe('computeColumnMasonry', () => {
     expect(result.positions.b.y).toBeGreaterThan(result.positions.a.y)
   })
 
+  it('uses intrinsicHeight when provided, ignoring aspectRatio', () => {
+    // aspectRatio 1 + width 240 would yield h = 240, but intrinsicHeight = 400 wins
+    const result = computeColumnMasonry({
+      cards: [
+        { id: 'tweet', aspectRatio: 1, columnSpan: 1, intrinsicHeight: 400 },
+      ],
+      containerWidth: 800,
+      gap: 8,
+      targetColumnUnit: 240,
+    })
+    expect(result.positions.tweet.h).toBe(400)
+  })
+
+  it('intrinsicHeight applies per-card without affecting aspectRatio cards in the same layout', () => {
+    const result = computeColumnMasonry({
+      cards: [
+        { id: 'img', aspectRatio: 1, columnSpan: 1 },
+        { id: 'tweet', aspectRatio: 1, columnSpan: 1, intrinsicHeight: 350 },
+      ],
+      containerWidth: 520,
+      gap: 8,
+      targetColumnUnit: 240,
+    })
+    expect(result.positions.img.h).toBeCloseTo(result.columnUnit)
+    expect(result.positions.tweet.h).toBe(350)
+  })
+
   it('reports totalHeight based on tallest column', () => {
     const result = computeColumnMasonry({
       cards: [

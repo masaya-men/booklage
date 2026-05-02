@@ -56,6 +56,28 @@ export function extractYoutubeId(url: string): string | null {
 }
 
 /**
+ * Extracts the numeric video ID from a TikTok URL.
+ * Supports tiktok.com/@username/video/{id} format.
+ * @param url - The TikTok URL
+ * @returns The numeric video ID string, or null if not found
+ */
+export function extractTikTokVideoId(url: string): string | null {
+  const match = url.match(/\/video\/(\d+)/)
+  return match?.[1] ?? null
+}
+
+/**
+ * Extracts the shortcode from an Instagram URL.
+ * Supports /p/{shortcode}/, /reel/{shortcode}/, /tv/{shortcode}/.
+ * @param url - The Instagram URL
+ * @returns The alphanumeric shortcode, or null if not found
+ */
+export function extractInstagramShortcode(url: string): string | null {
+  const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/)
+  return match?.[1] ?? null
+}
+
+/**
  * Extracts the first HTTP/HTTPS URL from a text string.
  * Used by Web Share Target to extract URLs from shared text.
  * @param text - The text to search for URLs

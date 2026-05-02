@@ -82,7 +82,6 @@ export function VideoThumbCard({ item }: Props): ReactNode {
           <path d="M8 5v14l11-7z" fill="currentColor" />
         </svg>
       </div>
-      <div className={styles.titleBar}>{displayTitle}</div>
     </div>
   )
 }

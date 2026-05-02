@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v12-2026-05-02-destefanis-cluster-3-triage'
+const CACHE_VERSION = 'v13-2026-05-02-task26-phaseA-restore'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

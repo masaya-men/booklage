@@ -2,20 +2,9 @@
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: var(--corner-radius-inner);
+  border-radius: var(--card-radius);
   overflow: hidden;
-  background: #0a0a0a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  transition: transform 0.18s ease;
-}
-
-.videoCard:hover {
-  transform: translateY(-1px);
-}
-
-.videoCard:hover .playOverlay {
-  transform: translate(-50%, -50%) scale(1.08);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--card-dark-alt);
 }
 
 .thumb,
@@ -29,7 +18,7 @@
 }
 
 .placeholder {
-  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+  background: #1a1a1a;
 }
 
 .playOverlay {
@@ -40,13 +29,12 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  transition: transform 0.18s ease, background 0.18s ease;
   pointer-events: none;
 }
 
@@ -54,21 +42,4 @@
   width: 26px;
   height: 26px;
   margin-left: 3px; /* optical centering for triangle */
-}
-
-.titleBar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 12px 16px 14px;
-  font-size: 14px;
-  line-height: 1.35;
-  color: white;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0));
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  letter-spacing: -0.005em;
 }

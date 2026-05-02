@@ -1,9 +1,16 @@
 'use client'
 
-import { useEffect, useRef, type ReactElement } from 'react'
+import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
+import { Tweet } from 'react-tweet'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { t } from '@/lib/i18n/t'
+import {
+  detectUrlType,
+  extractTikTokVideoId,
+  extractTweetId,
+  extractYoutubeId,
+} from '@/lib/utils/url'
 import styles from './Lightbox.module.css'
 
 type Props = {
@@ -47,6 +54,11 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
 
   if (!item) return null
 
+  const host = (() => {
+    try { return new URL(item.url).hostname.replace(/^www\./, '') }
+    catch { return '' }
+  })()
+
   return (
     <div
       ref={backdropRef}
@@ -59,19 +71,15 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
     >
       <div ref={frameRef} className={styles.frame}>
         <div className={styles.media}>
-          {item.thumbnail
-            ? <img src={item.thumbnail} alt={item.title} />
-            : <div style={{ padding: 32, color: 'var(--text-body)' }}>{item.title}</div>}
+          <LightboxMedia item={item} />
         </div>
         <div className={styles.text}>
-          <h1 id="lightbox-title" style={{ fontSize: 28, margin: 0, color: 'var(--text-primary)' }}>{item.title}</h1>
+          <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
+          {item.description && (
+            <p className={styles.description}>{item.description}</p>
+          )}
           <div className={styles.meta}>
-            {(() => {
-              try {
-                const host = new URL(item.url).hostname.replace(/^www\./, '')
-                return <span>{host}</span>
-              } catch { return <span /> }
-            })()}
+            {host && <span>{host}</span>}
           </div>
           <a href={item.url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
             {t('board.lightbox.openSource')} →
@@ -86,5 +94,104 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
         >✕</button>
       </div>
     </div>
+  )
+}
+
+function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
+  const urlType = detectUrlType(item.url)
+
+  if (urlType === 'tweet') {
+    const tweetId = extractTweetId(item.url)
+    if (tweetId) {
+      return (
+        <div data-theme="light" className={styles.tweetWrap}>
+          <Tweet id={tweetId} />
+        </div>
+      )
+    }
+  }
+
+  if (urlType === 'youtube') {
+    const videoId = extractYoutubeId(item.url)
+    if (videoId) {
+      return <YouTubeEmbed videoId={videoId} title={item.title} />
+    }
+  }
+
+  if (urlType === 'tiktok') {
+    return <TikTokEmbed url={item.url} />
+  }
+
+  if (urlType === 'instagram') {
+    return <InstagramEmbed url={item.url} />
+  }
+
+  // image / website / fallbacks
+  if (item.thumbnail) {
+    return <img src={item.thumbnail} alt={item.title} />
+  }
+  return <div className={styles.placeholder}>{item.title}</div>
+}
+
+function YouTubeEmbed({ videoId, title }: { readonly videoId: string; readonly title: string }): ReactNode {
+  return (
+    <div className={styles.iframeWrap16x9}>
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title={title}
+        className={styles.iframe}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+    </div>
+  )
+}
+
+const TIKTOK_EMBED_SRC = 'https://www.tiktok.com/embed.js'
+const INSTAGRAM_EMBED_SRC = 'https://www.instagram.com/embed.js'
+
+/** Re-execute an external embed script by removing & re-appending the <script> tag.
+ *  Both TikTok and Instagram process matching blockquote elements at script-load time. */
+function reloadEmbedScript(src: string): void {
+  const existing = document.querySelector(`script[src="${src}"]`)
+  if (existing) existing.remove()
+  const script = document.createElement('script')
+  script.async = true
+  script.src = src
+  document.body.appendChild(script)
+}
+
+function TikTokEmbed({ url }: { readonly url: string }): ReactNode {
+  useEffect(() => {
+    reloadEmbedScript(TIKTOK_EMBED_SRC)
+  }, [url])
+
+  const videoId = extractTikTokVideoId(url)
+  return (
+    <blockquote
+      className={`tiktok-embed ${styles.tikTokBlockquote}`}
+      cite={url}
+      {...(videoId ? { 'data-video-id': videoId } : {})}
+    >
+      <section>
+        <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
+      </section>
+    </blockquote>
+  )
+}
+
+function InstagramEmbed({ url }: { readonly url: string }): ReactNode {
+  useEffect(() => {
+    reloadEmbedScript(INSTAGRAM_EMBED_SRC)
+  }, [url])
+
+  return (
+    <blockquote
+      className={`instagram-media ${styles.instagramBlockquote}`}
+      data-instgrm-permalink={url}
+      data-instgrm-version="14"
+    >
+      <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
+    </blockquote>
   )
 }

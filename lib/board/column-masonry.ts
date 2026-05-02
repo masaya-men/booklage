@@ -5,6 +5,13 @@ export type MasonryCard = {
   readonly aspectRatio: number
   /** 1 = S, 2 = M, 3 = L. Will be clamped to `columnCount` at layout time. */
   readonly columnSpan: number
+  /**
+   * Absolute rendered height in pixels. When present, overrides the aspectRatio
+   * formula. Intended for text-heavy cards (Tweet, Text) where height does not
+   * scale proportionally with width — text reflows by line, so width / aspectRatio
+   * is wrong after a width change. Image / video cards leave this undefined.
+   */
+  readonly intrinsicHeight?: number
 }
 
 export type MasonryInput = {
@@ -61,7 +68,9 @@ export function computeColumnMasonry(input: MasonryInput): MasonryResult {
     }
 
     const width = span * columnUnit + (span - 1) * gap
-    const height = card.aspectRatio > 0 ? width / card.aspectRatio : width
+    const height = card.intrinsicHeight && card.intrinsicHeight > 0
+      ? card.intrinsicHeight
+      : card.aspectRatio > 0 ? width / card.aspectRatio : width
     const x = bestStartCol * (columnUnit + gap)
     const y = bestTop
 

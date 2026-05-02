@@ -9,8 +9,15 @@
 
 - **ブランチ**: `destefanis-pivot` (origin/destefanis-pivot に push 済)
 - **master**: 全 push 済（plan doc も含む）
-- **🎉 destefanis pivot MVP 25 タスク全完了 + 本番デプロイ済 (2026-05-02)** — `https://booklage.pages.dev` に v12 反映
-- **⚠️ Phase A 完全コピー逸脱が発覚 (2026-05-02 セッション中)** — 当初 lock 済の「destefanis を wholesale copy → Launch → Phase C 個性化」方針のうち **Phase A をスキップして Booklage 個性を最初から足していた**（ベージュ+ドット背景・italic serif・border+shadow・title overlay 等）。**Task 26 で Phase A まで戻す**（次セッション着手 / ユーザー承認済）
+- **🎉 Task 26 (destefanis Phase A 完全コピー復元) 全 8 サブタスク完了 (2026-05-02)** — `https://booklage.pages.dev` に v13 反映予定
+- **Task 26 で実施した変更**:
+  - 26-1 board 背景: ベージュ + ドット → `var(--bg-dark)` 真っ黒
+  - 26-2 全カード装飾削除: border / box-shadow / hover lift / ImageCard `.title` overlay / VideoThumbCard `.titleBar` 削除
+  - 26-3 intrinsic-sized: `MasonryCard.intrinsicHeight` フィールド追加 + CardsLayer の `intrinsicHeights` state + `reportIntrinsicHeight` callback。Tweet/Text card は実 height を masonry に直接 feed（aspectRatio の line-wrap proportional 仮定の破綻を解消）
+  - 26-4 Lightbox media 全種別: tweet (react-tweet) / YouTube (iframe) / TikTok (公式 embed.js + blockquote) / Instagram (同) / image/website (大 img) / fallback (placeholder)。description フィールドを BoardItem に追加
+  - 26-5 フォント Geist 統一: `next/font/google` の `Geist` + `Geist_Mono` 追加、`Playfair_Display` loader 削除。`--font-sans` / `--font-mono` token 確立、全 module CSS / canvas font spec を `var(--font-sans)` 等に置換。italic / Noto Serif JP / Fraunces / Inter / JetBrains Mono の参照ゼロ
+  - 26-6 GAP_PX 10 → 6 (中央寄せ + 左右余白の destefanis layout は維持、隙間のみ詰め)
+  - 26-7 corner-radius: card 系は `var(--card-radius)` (10px) 統一、Sidebar の asymmetric `--corner-radius-inner` (6px) は据え置き
 - **destefanis-pivot の最新 cluster 3 commits（Task 19-25）**:
   - `794f4a8` — chore(sw): bump CACHE_VERSION to v12 (cluster 3)
   - `2076e7b` — fix(triage): cancel in-flight HeuristicTagger.suggest on current change
@@ -25,27 +32,33 @@
   - `38388ee` — Task 20: TriageCard destefanis minimal 4:5 aspect
   - `ea61bda` — fix: clear lastAction on skip
   - `ed02c00` — Task 19: /triage route scaffold + TriagePage
-- **進捗**: 全 **25/25 完了（100%）**。データ層 + save flow + visual identity + sidebar + toolbar + displayMode + lightbox + BroadcastChannel + Triage UI + 1-9 keyboard + Heuristic suggestion 完了
-- **テスト**: vitest 197/197 PASS、tsc clean、pnpm build 成功
-- **E2E**: 8 spec files / 15 tests 全 PASS（37s）。cluster 3 で追加した 2 specs（triage-flow、display-mode）含む
+- **進捗**: 全 **25/25 完了（100%）** + Task 26（Phase A 復元）8/8 完了
+- **テスト**: vitest 204/204 PASS（+7 from Task 26: intrinsicHeight 2 + TikTok/Instagram URL parser 5）、tsc clean、pnpm build 成功
+- **E2E**: Task 26 後の再実行は次セッション (visual のみ変更、E2E logic 影響軽微の見込み)
 
 ---
 
-### 🎯 次セッション最初にやること（実機 smoke test）
+### 🎯 次セッション最初にやること（v13 実機 smoke test + visual 確認）
 
 1. **このファイル (docs/TODO.md) を読む** ← 今ここ
 2. **`booklage.pages.dev` をハードリロード**（Ctrl+Shift+R）
-3. **smoke test シナリオ**:
-   - bookmarklet click（既設置済の前提）→ /save popup → ✓ → 自動 close
-   - Board に新規カードがふわっと fade-in
-   - カード click → Lightbox spring 拡大 → Esc / × で close
-   - サイドバーの「📌 仕分けを始める」（or「Triage」CTA）click → /triage 遷移
-   - 中央カード表示、下部 chip row（モブ無し→「+ 新しい mood」のみ）
-   - 「+ 新しい mood」click → input → "design" Enter → 1 枚目自動タグ
-   - 2 枚目: 「1」キー押下 → design タグ → 自動 advance
-   - 3 枚目: 「s」キー押下 → スキップ → done
-   - 「ボードへ戻る」→ /board → サイドバー design mood click → 2 枚 filter
-4. 問題あれば次セッションで修正タスク化（**Task 26 と独立**。smoke test は機能確認、Task 26 は visual 復元）
+3. **visual 確認 (Task 26)**:
+   - 背景が真っ黒 (#0a0a0a) になっている
+   - カード border / shadow / hover lift / 画像下グラデ overlay が消えている
+   - tweet / text card が高さ自然に伸びて切れていない
+   - 全画面のフォントが Geist (italic 撤去、シンプルな sans)
+   - カード隙間が以前より詰まっている (10→6px)
+4. **Lightbox 動作確認 (新規)**: 各カードを click
+   - tweet → react-tweet 表示 + 右側 description
+   - YouTube → iframe 動画再生 + 右側 description
+   - **TikTok → 公式 embed iframe で再生 (要動作確認、ダメなら次セッションで fallback 化)**
+   - Instagram → 公式 embed iframe で表示
+   - image/website → 大 thumbnail
+5. **既存 smoke test (機能)**:
+   - bookmarklet click → /save popup → ✓ → 自動 close、Board 新カードが fade-in
+   - サイドバー「📌 仕分けを始める」→ /triage、+ 新 mood → 1 枚目タグ → 2 枚目「1」キー → 3 枚目「s」スキップ → done
+   - mood filter: design click → 2 枚絞り込み
+6. 問題あれば次セッションで修正タスク化
 
 ---
 

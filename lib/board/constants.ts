@@ -98,7 +98,7 @@ export const PERF = {
 
 export const COLUMN_MASONRY = {
   TARGET_COLUMN_UNIT_PX: 160,
-  GAP_PX: 10,
+  GAP_PX: 6,
 } as const
 
 export const SIZE_PRESET_SPAN: Readonly<Record<'S' | 'M' | 'L', number>> = {
