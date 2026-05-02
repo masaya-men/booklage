@@ -7,8 +7,35 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `destefanis-pivot`
-- **本番**: `https://booklage.pages.dev` に **v23 反映済** (Task 29: Twitter syndication proxy 完成 + dedupe + cleanup)
+- **ブランチ**: `master` 単一運用 (destefanis-pivot は v24 で master に統合 + 削除済)
+- **本番**: `https://booklage.pages.dev` に **v24 反映済** (Task 29: Twitter syndication 完成 + Lightbox 不透明度修正)
+
+### 🔥 次セッション最優先タスク (Task 30: Lightbox z-index 問題調査)
+
+**症状** (2026-05-02 v24 ハードリロード後にユーザーから報告):
+- Twitter card クリック → Lightbox 開くが、tweet の上に **何かの要素が薄く重なって見える** (ユーザー曰く「何かの要素の下に入ってる感じ」)
+- v24 で backdrop opacity 0.5 → 0.78、blur 6px → 12px、tweetWrap を solid #15202b に変更したが、症状は変わらず
+- スクショで確認: dark backdrop 越しに board cards (動物の毛皮 image など) が tweet text と重なって見える
+- YouTube は正常 (16:9 iframe で再生 OK)
+
+**原因仮説** (次セッション着手時の調査ポイント):
+1. **z-index 重なり**: `.backdrop { z-index: 300 }` だが、何かの要素 (CardsLayer / ThemeLayer / Toolbar / scroll fade) が backdrop より上か同レベルに描画されている可能性
+2. **Lightbox の DOM 配置**: BoardRoot の root div の child として render されているが、root div が `overflow: hidden` で position fixed のため、Lightbox の `position: fixed` が期待通り viewport 全体を覆っていない可能性 (stacking context の問題)
+3. **react-tweet の internal opacity**: tweet の root が semi-transparent で、tweetWrap solid #15202b でも tweet text 自体が透けて board が見える可能性
+4. **canvas fade overlay (`.fadeTop` / `.fadeBottom`) が z-index 50 で Lightbox より下のはずだが**、stacking context 的に backdrop の上に来てる可能性
+
+**着手手順**:
+1. ユーザーに DevTools で Lightbox open 状態の Elements panel を開いてもらい、 backdrop / frameTweet / tweetWrap の computed style + z-index を確認
+2. Lightbox を **`document.body` 直下に portal で render** することで stacking context 問題を切り離す案を試す
+3. `.backdrop` の z-index を 9999 まで上げて症状が消えるかで切り分け
+
+---
+
+- **🎯 v24 (2026-05-02) — Lightbox UX 修正**:
+  - backdrop opacity 0.5 → 0.78、blur 6 → 12px
+  - tweetWrap を transparent → solid #15202b + 1px subtle border + lift shadow
+  - react-tweet root にも background: #15202b !important で念押し override
+- **🎯 v22-v23 (2026-05-02) — Twitter syndication 完全動作 (Task 29)**:
 - **🎯 v22 で真の解決 (2026-05-02)** — CORS 問題を Cloudflare Pages Function proxy で完全突破:
   - 真因: `cdn.syndication.twimg.com` は `Access-Control-Allow-Origin: https://platform.twitter.com` 限定 CORS。client-side fetch は **絶対不可能**
   - 修正: `functions/api/tweet-meta.ts` を新規作成 (server-side で computeToken → syndication CDN へ server-to-server fetch → CORS は適用されない → response に Access-Control-Allow-Origin: * 付けて relay)
