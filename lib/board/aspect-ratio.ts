@@ -1,8 +1,6 @@
 /**
  * NOTE (B-embeds, 2026-04-20): This module provides PLACEHOLDER aspect ratios
  * for cards before measurement completes (and as fallback if measurement fails).
- * For tweets, the authoritative aspect comes from `lib/embed/predict-tweet-height.ts`
- * called via `TweetCard`'s scheduleMeasurement effect.
  */
 import type { UrlType } from '@/lib/utils/url'
 

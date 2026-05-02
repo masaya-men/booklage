@@ -7,8 +7,20 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `destefanis-pivot` (commit 後 push 必要)
-- **本番**: `https://booklage.pages.dev` に **v16 反映済** (Task 27 A〜D + 27-F〜H)
+- **ブランチ**: `destefanis-pivot`
+- **本番**: `https://booklage.pages.dev` に **v17 反映済** (Task 28: outer-frame redesign + tweet-as-image)
+- **🎯 Task 28 完了 (2026-05-02 v17)** — destefanis 完全コピーから離脱、ユーザー要望ベースの「白外周 + 中央 dark canvas が浮かぶ枠デザイン」に転換:
+  - **画面構成変更**: body 全体 `--bg-outer: #ebebeb` (白外周)、`--canvas-margin: 24px` 余白で中央に `border-radius: 24px` の dark canvas が浮かぶ。canvas 内に masonry + Toolbar、外側 margin はクリーン
+  - **Sidebar 完全削除**: BoardRoot から `<Sidebar>` render とすべての Sidebar 関連 state/handlers を削除 (sidebarCollapsed, handleSidebarToggle, handleCreateMood, handleTriageStart, F キー toggle)。Sidebar.tsx ファイルは将来再利用想定で残置 (orphan)
+  - **Toolbar position fixed → absolute**: canvas 内右上 (24/24) に固定、canvas からはみ出ない
+  - **pickCard 振り分け変更**: tweet URL も image があれば `ImageCard` / なければ `TextCard`。TweetCard component (react-tweet 描画) は使われなくなり削除。pickCard test に tweet 振り分け 2 件追加
+  - **Lightbox tweet 分岐削除**: react-tweet import 廃止、tweet も image/website と同じ thumbnail-or-placeholder で表示。tweetWrap CSS 削除
+  - **TweetCard.tsx + .module.css 削除**: react-tweet の重い intrinsicHeight 計測ロジック (4 タイマー safety net 含む) 完全廃止 → 全 card 内 tweet による re-render storm リスクが消滅
+- **⚠️ UX 退行 (要対応)**:
+  - 既存ユーザーが bookmarklet install modal を再度開く UI が無くなった (今は EmptyStateWelcome 経由のみ → 既にカードがあるユーザーは開けない)
+  - triage 画面に飛ぶ UI が無くなった (URL `/triage` 直打ちでのみアクセス可)
+  - mood 作成は triage 内 NewMoodInput で可能、board からは不可
+  - **対応策**: Toolbar に「+」 menu (bookmarklet install / triage / settings) を追加 (Phase 2-1 として次セッション)
 - **🎯 Task 27-F (body スクロール抑制)、27-G (TikTok/IG iframe 直接埋め込み)、27-H (Lightbox 縦動画 9:16 対応) 完了 (2026-05-02 v16)**
   - 27-F: BoardRoot mount 時に `html/body { overflow:hidden }` を局所適用、unmount で復元 → destefanis 流のフル画面 dark canvas (pan のみ) 実現
   - 27-G: TikTok を `https://www.tiktok.com/embed/v2/<id>` の iframe 直接埋め込みに、Instagram を `https://www.instagram.com/p/<shortcode>/embed` に置換 → embed.js + blockquote 方式 (CSP 失敗しがち) を全廃

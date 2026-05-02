@@ -2,14 +2,12 @@
 
 import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
-import { Tweet } from 'react-tweet'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { t } from '@/lib/i18n/t'
 import {
   detectUrlType,
   extractInstagramShortcode,
   extractTikTokVideoId,
-  extractTweetId,
   extractYoutubeId,
   isYoutubeShorts,
 } from '@/lib/utils/url'
@@ -101,17 +99,6 @@ export function Lightbox({ item, onClose }: Props): ReactElement | null {
 
 function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
   const urlType = detectUrlType(item.url)
-
-  if (urlType === 'tweet') {
-    const tweetId = extractTweetId(item.url)
-    if (tweetId) {
-      return (
-        <div data-theme="dark" className={styles.tweetWrap}>
-          <Tweet id={tweetId} />
-        </div>
-      )
-    }
-  }
 
   if (urlType === 'youtube') {
     const videoId = extractYoutubeId(item.url)

@@ -54,22 +54,6 @@
   font-family: var(--font-sans);
 }
 
-.tweetWrap {
-  width: 100%;
-  max-width: 550px;
-  max-height: 88vh;
-  overflow-y: auto;
-  background: transparent;
-  --tweet-bg-color: #15202b;
-  --tweet-border: none;
-  --tweet-container-radius: var(--lightbox-media-radius);
-}
-.tweetWrap :global([data-theme]) {
-  margin: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
 /* Horizontal video (16:9). Width fills available column up to 920px,
    height capped at 88vh — whichever constraint binds first. */
 .iframeWrap16x9 {
