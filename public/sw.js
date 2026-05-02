@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v14-2026-05-02-task26-fullscreen-darkcanvas'
+const CACHE_VERSION = 'v15-2026-05-02-task27-destefanis-visual-polish'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

@@ -3,6 +3,8 @@
   inset: 0;
   z-index: 300;
   background: var(--lightbox-backdrop);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   opacity: 0;
   pointer-events: none;
   display: grid;
@@ -56,10 +58,9 @@
   max-width: 550px;
   max-height: 88vh;
   overflow-y: auto;
-  background: #15202b;
-  border-radius: var(--lightbox-media-radius);
+  background: transparent;
   --tweet-bg-color: #15202b;
-  --tweet-border: 1px solid rgba(255, 255, 255, 0.08);
+  --tweet-border: none;
   --tweet-container-radius: var(--lightbox-media-radius);
 }
 .tweetWrap :global([data-theme]) {

@@ -7,11 +7,18 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `destefanis-pivot` (origin/destefanis-pivot に push 済)
-- **master**: 全 push 済（plan doc も含む）
-- **本番**: `https://booklage.pages.dev` に v14 反映済 (commit `965c41d`)
-- **⚠️ Phase A まだ destefanis と差がある (2026-05-02 セッション後半判明)** — v13 で Booklage 独自解釈 (中央寄せ container / white tweet wrapper / 6px gap) を入れて user 指摘を受け、v14 で destefanis 真の仕様 (フル幅 / 18px gap / 24px radius / dark X tweet) に修正。**まだ完全コピーには至らず、視覚 polish が次セッション最優先タスク (Task 27)**
-- **🎉 Task 26 (destefanis Phase A 復元) 機能面 8/8 完了 (2026-05-02)** — 視覚は Task 27 で追い込み
+- **ブランチ**: `destefanis-pivot` (commit 後 push 必要)
+- **本番**: `https://booklage.pages.dev` に **v15 反映済** (Task 27 A〜D 完了)
+- **🎯 Task 27 A〜D 完了 (2026-05-02 後半セッション)** — destefanis 視覚 polish 4 件:
+  - 27-A: `CardNode.inner` の白枠 chrome (background:#fff + 1px border + 4px radius) を完全削除し radius を `var(--card-radius)`(24px) に統一 → **これが最大の視覚改善**。これまでカード外形が 4px ガビガビ + 薄白枠で destefanis から最も乖離していた根本原因
+  - 27-B: `--lightbox-backdrop` を `rgba(10,10,10,0.95)`(不透明) → `rgba(0,0,0,0.5) + backdrop-filter: blur(6px)` (背景 blur で透ける destefanis 流)
+  - 27-C: Lightbox `.tweetWrap` の `background: #15202b` + border 削除 → 透明にして内側 `--tweet-bg-color` のみで X dark テーマ成立
+  - 27-D: Toolbar の FilterPill / DisplayModeSwitch を「ほぼ不透明な黒 pill」→ destefanis 真値「白 glass pill」(`rgba(255,255,255,0.1)` + 12px blur + padding 10/16 + font 14px) に。Toolbar 位置 16→24px
+- **未完了 (Task 27-E: 実機確認後に判断)**:
+  - Tweet 本文切れ問題が v15 で解決しているか (TweetCard の intrinsicHeight feedback 追い込み)
+  - TikTok / Instagram embed 実機動作 (動かなければ thumbnail + 外部リンク fallback)
+- **テスト**: vitest 204/204 PASS、tsc EXIT=0、pnpm build 成功
+- **SW CACHE_VERSION**: v15-2026-05-02-task27-destefanis-visual-polish
 - **Task 26 で実施した変更**:
   - 26-1 board 背景: ベージュ + ドット → `var(--bg-dark)` 真っ黒
   - 26-2 全カード装飾削除: border / box-shadow / hover lift / ImageCard `.title` overlay / VideoThumbCard `.titleBar` 削除
@@ -40,35 +47,49 @@
 
 ---
 
-### 🆕 Task 27: destefanis 視覚完全コピーの追い込み (次セッション最優先)
+### Task 27: destefanis 視覚完全コピーの追い込み (A〜D 完了 / E 残)
 
-**経緯 (2026-05-02 後半)**:
-- v13 で Booklage 独自解釈 (中央寄せ / white tweet wrapper / 6px gap / 10px radius) を入れたら user が「全然違う」と指摘
-- v14 で destefanis source 直読み (https://github.com/destefanis/twitter-bookmarks-grid) して大幅修正:
-  - body fullscreen dark, MAX_WIDTH 撤廃, GAP 18px, columns 5, radius 24px
-  - TweetCard transparent + X dark テーマ
-- **しかし user が destefanis スクショと比較して「まだこの見た目にしたい」と希望** → 視覚 polish を Task 27 として切り出し、fresh session で実施
-- **memory 新規**: `reference_destefanis_visual_spec.md` に destefanis 完全仕様 (CSS values 含) を保存。次セッションは TODO plan より先にこのメモリを読む
+**経緯 (2026-05-02)**:
+- v14 まででも user スクショ比較で「まだ違う」と指摘 → 後半セッションで原因特定 + 修正
+- 最大の犯人: `CardNode.inner` の白枠 chrome (Task 26 で見落としていた外殻装飾)
+- memory: `reference_destefanis_visual_spec.md` に destefanis 完全仕様 (CSS values 含) を保存
 
-#### 27-1: 実機 v14 状態の現状確認 (まずここから)
-- `booklage.pages.dev` ハードリロード → スクショ撮って destefanis 公式スクショと並べて diff
-- 違う点を箇条書きで列挙
+#### ✅ 27-A: CardNode.inner chrome 削除 (DONE)
+- `background: #fff` / `border: 1px solid rgba(0,0,0,0.08)` / `border-radius: 4px` 全削除
+- `border-radius: var(--card-radius)`(24px) に統一 → 内側 ImageCard 等の radius と二重にならない
+- 効果: カード外形が 4px ガビガビ + 薄白枠から、24px の clean な destefanis 角丸に
+- 修正ファイル: [components/board/CardNode.module.css:15-23](components/board/CardNode.module.css#L15-L23)
 
-#### 27-2: 想定される追い込み項目 (実機確認後に再構成)
-- カード bg のバリエーション: destefanis は元画像が白/暗/カラーで自然に変化。Booklage で OGP image を持たない card (TextCard 等) の見た目は別途判断
-- VideoThumbCard の "Watch" pill (現状 react-tweet 内蔵 vs destefanis の小さい dark pill 風)
-- top-right フィルター pill のスタイル (destefanis: rgba(255,255,255,0.1) + 12px blur + 14px font + 100px radius)
-- Lightbox backdrop blur (現状 var(--lightbox-backdrop) vs destefanis: rgba(0,0,0,0.5) + 6px blur)
-- カード hover 効果 (destefanis: `filter: brightness(1.08)` のみ)
+#### ✅ 27-B: Lightbox backdrop transparent + blur (DONE)
+- `--lightbox-backdrop: rgba(10,10,10,0.95)` → `rgba(0,0,0,0.5)`
+- `.backdrop` に `backdrop-filter: blur(6px)` 追加 (Webkit 対応含む)
+- 修正ファイル: [app/globals.css:278](app/globals.css#L278), [components/board/Lightbox.module.css:1-13](components/board/Lightbox.module.css#L1-L13)
 
-#### 27-3: Tweet 本文切れ問題の根本対応 (v14 でも未解決の可能性)
-- intrinsicHeight feedback flow が初回測定までに transient clipping を起こす疑い
-- 対策案: TweetCard 初期 aspectRatio を低めに見積もって (height 高めに) 始め、measurement で縮める方向にする
-- もしくは BoardRoot.tsx の contentBounds 計算にも intrinsicHeights を反映 (現在は CardsLayer 内 state のみ)
+#### ✅ 27-C: Lightbox tweetWrap chrome 削除 (DONE)
+- `.tweetWrap` から `background: #15202b` + `border-radius` (二重に効いていた) を削除
+- 透明化して内側 `--tweet-bg-color: #15202b` のみで X dark テーマ表現
+- 修正ファイル: [components/board/Lightbox.module.css:54-64](components/board/Lightbox.module.css#L54-L64)
 
-#### 27-4: TikTok / Instagram 埋め込み実機検証
-- v14 での `embed.js` 動作未確認 (user の bookmark に TikTok/IG が無かった可能性)
-- 動かなければ thumbnail + 外部リンク fallback に格下げ
+#### ✅ 27-D: Toolbar pill destefanis 真値化 (DONE)
+- FilterPill + DisplayModeSwitch の pill を「黒 pill」→ destefanis 「白 glass pill」へ:
+  - background: `rgba(20,20,20,0.92)` → `rgba(255,255,255,0.1)`
+  - border: `rgba(255,255,255,0.08)` → `rgba(255,255,255,0.15)`
+  - padding: `8px 14px` → `10px 16px` (destefanis 真値)
+  - font-size: 13 → 14px
+  - blur: 10 → 12px
+- ドロップダウン menu: `rgba(20,20,20,0.96)` → `rgba(30,30,30,0.95)`, radius 10 → 24, blur 12 → 16
+- Toolbar 位置: top/right 16px → 24px (destefanis 真値)
+- 修正ファイル: [components/board/Toolbar.module.css](components/board/Toolbar.module.css), [components/board/FilterPill.module.css](components/board/FilterPill.module.css), [components/board/DisplayModeSwitch.module.css](components/board/DisplayModeSwitch.module.css)
+
+#### 🔜 27-E: 実機確認後の追い込み (次セッション)
+1. **booklage.pages.dev v15 ハードリロード** → user スクショ撮影 → destefanis 公式と diff
+2. **Tweet 本文切れ**が v15 で改善しているか確認:
+   - もしまだ初回 transient clipping があれば、TweetCard 初期 aspectRatio を低めに (height 高めに) 設定して measurement で縮める方向に
+   - または BoardRoot の contentBounds 計算にも intrinsicHeights を反映
+3. **TikTok / Instagram embed 実機動作**:
+   - lightbox 開いて embed.js が動いているか確認
+   - 動かなければ thumbnail + 外部リンク fallback に格下げ
+4. その他、A〜D デプロイ後の実機目視で気になった点を列挙
 
 ---
 

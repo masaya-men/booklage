@@ -15,9 +15,7 @@
 .inner {
   position: absolute;
   inset: 0;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
   overflow: hidden;
   display: flex;
   flex-direction: column;

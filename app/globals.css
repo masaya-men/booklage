@@ -275,7 +275,7 @@ ol {
   --text-signature: #444444;
   --card-radius: 24px;
   --lightbox-media-radius: 6px;
-  --lightbox-backdrop: rgba(10, 10, 10, 0.95);
+  --lightbox-backdrop: rgba(0, 0, 0, 0.5);
 }
 
 /* ── Light Mode Overrides ──────────────────────────────────── */
