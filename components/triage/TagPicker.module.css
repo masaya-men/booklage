@@ -1,0 +1,20 @@
+.row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  justify-content: center; align-items: center;
+  margin-top: 24px;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 100px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip:hover { background: rgba(255,255,255,0.1); }
+.num { color: var(--text-meta); font-size: 11px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.util { background: transparent; border: 0; color: var(--text-meta); cursor: pointer; font-size: 13px; padding: 8px 12px; }
+.util:hover { color: var(--text-primary); }
