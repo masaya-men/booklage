@@ -10,10 +10,11 @@ async function clearDb(page: Page): Promise<void> {
         const req = indexedDB.open(dbName, dbVersion)
         req.onsuccess = () => {
           const db = req.result
-          const tx = db.transaction(['bookmarks', 'cards', 'moods'], 'readwrite')
+          const tx = db.transaction(['bookmarks', 'cards', 'moods', 'settings'], 'readwrite')
           tx.objectStore('bookmarks').clear()
           tx.objectStore('cards').clear()
           tx.objectStore('moods').clear()
+          tx.objectStore('settings').clear()
           tx.oncomplete = () => { db.close(); resolve() }
           tx.onerror = () => reject(new Error('clear tx error'))
         }
