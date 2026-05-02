@@ -18,3 +18,4 @@
 .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .util { background: transparent; border: 0; color: var(--text-meta); cursor: pointer; font-size: 13px; padding: 8px 12px; }
 .util:hover { color: var(--text-primary); }
+.chip.suggested { outline: 1px solid rgba(255,255,255,0.3); }

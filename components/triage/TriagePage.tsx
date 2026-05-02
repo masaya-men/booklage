@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useRouter } from 'next/navigation'
 import { useBoardData } from '@/lib/storage/use-board-data'
 import { useMoods } from '@/lib/storage/use-moods'
 import { t } from '@/lib/i18n/t'
+import { HeuristicTagger } from '@/lib/tagger/heuristic'
 import { TriageCard } from './TriageCard'
 import { TagPicker } from './TagPicker'
 import styles from './TriagePage.module.css'
@@ -19,6 +20,21 @@ export function TriagePage(): ReactElement {
 
   const current = queue[index] ?? null
   const total = queue.length
+
+  const [suggestedMoodIds, setSuggestedMoodIds] = useState<ReadonlyArray<string>>([])
+  useEffect(() => {
+    if (!current) { setSuggestedMoodIds([]); return }
+    const tagger = new HeuristicTagger({ moods })
+    void (async (): Promise<void> => {
+      const suggestions = await tagger.suggest({
+        url: current.url,
+        title: current.title,
+        description: '',
+        siteName: '',
+      })
+      setSuggestedMoodIds(suggestions.map((s) => s.moodId))
+    })()
+  }, [current, moods])
 
   const handleTag = useCallback(async (moodId: string): Promise<void> => {
     if (!current) return
@@ -87,6 +103,7 @@ export function TriagePage(): ReactElement {
         onSkip={handleSkip}
         onUndo={lastAction ? handleUndo : null}
         onCreateMood={handleNewMood}
+        suggestedMoodIds={suggestedMoodIds}
       />
       <div className={styles.footer}>{t('triage.hint')}</div>
     </div>

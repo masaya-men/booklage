@@ -12,9 +12,10 @@ type Props = {
   readonly onSkip: () => void
   readonly onUndo: (() => void) | null
   readonly onCreateMood: (name: string) => void
+  readonly suggestedMoodIds?: ReadonlyArray<string>
 }
 
-export function TagPicker({ moods, onTag, onSkip, onUndo, onCreateMood }: Props): ReactElement {
+export function TagPicker({ moods, onTag, onSkip, onUndo, onCreateMood, suggestedMoodIds }: Props): ReactElement {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const tag = (e.target as HTMLElement).tagName
@@ -36,7 +37,8 @@ export function TagPicker({ moods, onTag, onSkip, onUndo, onCreateMood }: Props)
   return (
     <div className={styles.row} data-testid="tag-picker">
       {moods.slice(0, 9).map((m, i) => (
-        <button key={m.id} type="button" className={styles.chip}
+        <button key={m.id} type="button"
+          className={`${styles.chip} ${(suggestedMoodIds ?? []).includes(m.id) ? styles.suggested : ''}`.trim()}
           onClick={() => onTag(m.id)}
           data-testid={`mood-chip-${m.id}`}>
           <span className={styles.num}>{i + 1}</span>
