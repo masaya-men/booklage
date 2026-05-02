@@ -281,7 +281,7 @@ ol {
   --text-signature: #444444;
   --card-radius: 24px;
   --lightbox-media-radius: 6px;
-  --lightbox-backdrop: rgba(0, 0, 0, 0.5);
+  --lightbox-backdrop: rgba(0, 0, 0, 0.78);
 
   /* === Outer-frame design (v17) ===
      白い外周に dark canvas が浮かぶ枠付きデザイン。

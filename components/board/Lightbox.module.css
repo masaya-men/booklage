@@ -3,8 +3,8 @@
   inset: 0;
   z-index: 300;
   background: var(--lightbox-backdrop);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   opacity: 0;
   pointer-events: none;
   display: grid;
@@ -134,16 +134,24 @@
   max-width: 550px;
   max-height: calc(90vh - 80px);
   overflow-y: auto;
-  background: transparent;
+  /* Solid X dark-theme background — transparent caused the board to bleed
+     through the tweet text (--tweet-bg-color alone wasn't applied to the
+     wrapper itself in react-tweet 3.x). Borders/shadows are intentionally
+     subtle so the tweet still reads as a single floating panel. */
+  background: #15202b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--lightbox-media-radius);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
   --tweet-bg-color: #15202b;
   --tweet-color-blue-primary: #1d9bf0;
   --tweet-color-mention: #1d9bf0;
-  --tweet-border: 1px solid rgba(255, 255, 255, 0.08);
+  --tweet-border: none;
   --tweet-container-radius: var(--lightbox-media-radius);
   --tweet-font-family: var(--font-sans);
 }
 .tweetWrap :global([data-theme]) {
   margin: 0 !important;
+  background: #15202b !important;
 }
 
 .meta {
