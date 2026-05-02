@@ -9,32 +9,64 @@
 
 - **ブランチ**: `destefanis-pivot` (origin/destefanis-pivot に push 済)
 - **master**: 全 push 済（plan doc も含む）
-- **destefanis-pivot の最新 6 commits（Task 15-18 = cluster 2）**:
-  - `bdaec79` — Task 18: E2E save popup → board cross-tab fade-in
-  - `8a237ad` — Task 17 fix: clear entrance timers + opacity-only keyframe (GSAP transform 衝突回避)
-  - `cf32978` — Task 17: BroadcastChannel listener + entrance animation
-  - `0443add` — Task 16: E2E lightbox open/close flow
-  - `d993793` — Task 15 fix: tween cleanup + dialog role + ESC stopPropagation
-  - `a1fa6dc` — Task 15: Lightbox with GSAP spring (replaces window.open on click)
-  - cluster 1 (Tasks 11-14: `40f451d` `ed806ad` `7257549` `30cb113`) はその下
-  - 以前の commits（Task 1-10）は変わらず、TODO_COMPLETED.md 候補
-- **進捗**: 全 25 タスク中 **Task 1-18 完了**（18/25、72%）。データ層 + save flow + visual identity + sidebar + toolbar + card displayMode + lightbox + cross-tab BroadcastChannel 完了
-- **セッションメモ**: 2026-05-02、user 指示で cluster 2 (Tasks 15-18) 完了。Tasks 19-25 (cluster 3 = Triage UI + verification + deploy) は次セッション
+- **🎉 destefanis pivot MVP 25 タスク全完了 + 本番デプロイ済 (2026-05-02)** — `https://booklage.pages.dev` に v12 反映
+- **destefanis-pivot の最新 cluster 3 commits（Task 19-25）**:
+  - `794f4a8` — chore(sw): bump CACHE_VERSION to v12 (cluster 3)
+  - `2076e7b` — fix(triage): cancel in-flight HeuristicTagger.suggest on current change
+  - `b6948ec` — Task 24: HeuristicTagger suggestion highlights in TagPicker
+  - `c9c3ba9` — fix(e2e): clear settings store in display-mode spec to allow re-runs
+  - `270b72b` — Task 23: E2E displayMode switch + persistence
+  - `660d812` — refactor: remove dead advance() helper
+  - `ef565c0` — Task 22: E2E triage 3-card classify flow + handleTag double-advance fix
+  - `1da4c02` — fix: memoize handleTag/handleSkip to stop keydown listener churn
+  - `8a35d9f` — Task 21: TagPicker 1-9/S/Z keys + NewMoodInput
+  - `ca206fc` — fix: quote TriageCard background-image URL to handle ) in paths
+  - `38388ee` — Task 20: TriageCard destefanis minimal 4:5 aspect
+  - `ea61bda` — fix: clear lastAction on skip
+  - `ed02c00` — Task 19: /triage route scaffold + TriagePage
+- **進捗**: 全 **25/25 完了（100%）**。データ層 + save flow + visual identity + sidebar + toolbar + displayMode + lightbox + BroadcastChannel + Triage UI + 1-9 keyboard + Heuristic suggestion 完了
 - **テスト**: vitest 197/197 PASS、tsc clean、pnpm build 成功
-- **E2E**: 6 specs 存在（board-b0 / board-b0-perf / board-b-embeds / bookmarklet-save / lightbox-flow / destefanis-save-flow）。cluster 2 で追加した 2 specs は単体 PASS。残り specs は cluster 3 の Task 25 で全回し
+- **E2E**: 8 spec files / 15 tests 全 PASS（37s）。cluster 3 で追加した 2 specs（triage-flow、display-mode）含む
 
 ---
 
-### 🎯 次セッション最初にやること（cluster 3: Tasks 19-25）
+### 🎯 次セッション最初にやること（実機 smoke test）
 
 1. **このファイル (docs/TODO.md) を読む** ← 今ここ
-2. **plan を再読**: [docs/superpowers/plans/2026-04-21-destefanis-pivot.md](docs/superpowers/plans/2026-04-21-destefanis-pivot.md) の **Task 19** (line ~2832) から再開
-3. **`subagent-driven-development` スキルを再 invoke** して Task 19-25 を順次実行
-   - **Task 19**: /triage route scaffold + TriagePage container
-   - **Task 20-23**: TriageCard / TagPicker / Triage 動作 / 1-9 keyboard shortcut
-   - **Task 24**: Triage の E2E test
-   - **Task 25**: 全 E2E spec sweep + 必要なら DB v9 migration の追加調整
-4. ワークフロー: implementer dispatch → spec review → code quality review → 次タスク
+2. **`booklage.pages.dev` をハードリロード**（Ctrl+Shift+R）
+3. **smoke test シナリオ**:
+   - bookmarklet click（既設置済の前提）→ /save popup → ✓ → 自動 close
+   - Board に新規カードがふわっと fade-in
+   - カード click → Lightbox spring 拡大 → Esc / × で close
+   - サイドバーの「📌 仕分けを始める」（or「Triage」CTA）click → /triage 遷移
+   - 中央カード表示、下部 chip row（モブ無し→「+ 新しい mood」のみ）
+   - 「+ 新しい mood」click → input → "design" Enter → 1 枚目自動タグ
+   - 2 枚目: 「1」キー押下 → design タグ → 自動 advance
+   - 3 枚目: 「s」キー押下 → スキップ → done
+   - 「ボードへ戻る」→ /board → サイドバー design mood click → 2 枚 filter
+4. 問題あれば次セッションで修正タスク化
+
+### 📋 cluster 3 で plan からの逸脱（fix commit に分離済）
+
+- **Task 19 fix `ea61bda`** — code review が Important 1 件: handleSkip が `setLastAction(null)` を呼ばないため、Skip 後に Undo すると無関係な前のタグを巻き戻す silent bug。1 行追加で解決
+- **Task 20 fix `ca206fc`** — code review が Critical 1 件: `JSON.stringify(thumbnail).slice(1, -1)` は `)` を escape しないため、CDN paths に `)` が含まれると CSS `url()` が壊れる。`url("${thumbnail.replace(/"/g, '%22')}")` 形式に変更
+- **Task 21 fix `1da4c02`** — code review が Important 1 件: TagPicker の `useEffect` deps `[onTag, onSkip]` が re-render ごとに新 identity → keydown listener が毎レンダーで再登録 thrash。handleTag / handleSkip を `useCallback` でメモ化（advance() inline 化）
+- **Task 22 in `ef565c0` (E2E と同コミット)** — E2E 実装中に **plan の bug 発見**: `handleTag` 内の `setIndex(i+1)` が queue.filter の自然な縮みと double-advance して 2 枚目 (B) を skip して 3 枚目 (C) にタグしてしまう。`advance()` 呼び出しを削除し、tagging 自体が queue を縮めることに任せる。Skip は依然 `setIndex(i+1)` 必要（skip 済みアイテムは queue に残るので index 動かさないと無限ループ）。`660d812` で死んだ `advance` helper を後始末
+- **Task 23 fix `c9c3ba9`** — code review が Critical 1 件: 既存 4 spec が clear しなかった `settings` store にこのテストは write する → 再実行時に prior run の `displayMode='native'` が残って初期 'Visual' assertion が失敗。clearDb の transaction に `'settings'` 追加で 4 store clear に拡張
+- **Task 24 fix `2076e7b`** — code review が Critical 1 件: HeuristicTagger.suggest の async useEffect に cancellation guard 抜け。プロジェクト全体の `cancelled` flag pattern (use-board-data.ts / use-moods.ts / BoardRoot.tsx と同じ形) に揃えた
+
+### 📋 cluster 3 で持ち越した polish（launch 後）
+
+- **TriagePage で `useMoods` の loading flag 未参照** — moods が遅れて到着した瞬間に空 chip row が一瞬見える可能性。Triage 開く際に `if (loading || moodsLoading)` 化候補
+- **NewMoodInput の `outline: 'none'` で focus 視覚なし** — WCAG 2.4.7 違反。CSS module 化して `:focus-visible` で box-shadow 焦点リング追加するか、inline outline をデザイン適合のものに置換（user 確認必要）
+- **TagPicker chip に hover transition なし** — 他 component との一貫性で `transition: background 150ms ease`
+- **TagPicker chip に `aria-keyshortcuts` なし** — screen reader 配慮の MVP 後対応
+- **handleUndo の index 整合性 edge case** — Skip→Tag→Undo の順で復元位置がズレる（Task 19 review Important #3）。MVP 受容済
+- **`moods.length > 9` 時の overflow indicator** — 10 個以上 mood 作っても triage で見えない。"+N more" 案
+- **TagPicker の suggestion top-1 highlight 化検討** — 現状は全 match を outline で highlight、UI ノイズ低減の選択肢
+- **Triage 「全部 Skip 完了 = 仕分け完了」表記** — 全 skip でも `done_title` 表示は誤りに近い (実際は何もタグしてない)。distinguish しても良い
+- **`lib/utils/url.ts` に `getDisplayHost(url)` 抽出** — TriageCard inline parse の DRY 化（Task 25 sweep でやらず）
+- **DisplayModeSwitch / triage chips に `data-testid` 拡充** — locale-coupled selector を回避
 
 ### 📋 cluster 2 で plan からの逸脱（fix commit に分離済）
 
