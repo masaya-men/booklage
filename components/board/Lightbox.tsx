@@ -259,12 +259,15 @@ function TweetVideoPlayer({
   readonly meta: TweetMeta
 }): ReactNode {
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
-  // `isReady` flips true on the first `canplay` event — at that point the
-  // browser has buffered enough to play immediately. We hide the play button
-  // until then so the native loading spinner (which the browser draws in the
-  // dead centre of the video) isn't covered by our overlay. Once true it
-  // stays true even after pause/seek, so re-pauses get the play button
-  // back instantly without re-waiting for `canplay`.
+  // `isReady` tracks "is the browser's native loading spinner gone?" — flips
+  // true on signals that imply the spinner has cleared, false on signals
+  // that imply it's drawing again (waiting / stalled / seeking). Plain
+  // `canplay` alone fires too early: Twitter's video CDN through our
+  // proxy can keep the centre spinner visible for ~half a second past
+  // canplay, sandwiching it under our overlay. So we lean on `suspend`
+  // (browser deliberately stopped fetching → has what it needs), on
+  // `canplaythrough` (most conservative ready signal), and on `playing`
+  // (definitive — playback actually started).
   const [isReady, setIsReady] = useState<boolean>(false)
   const [videoFailed, setVideoFailed] = useState<boolean>(false)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -310,10 +313,28 @@ function TweetVideoPlayer({
         controls
         playsInline
         preload="metadata"
-        onCanPlay={(): void => setIsReady(true)}
+        // ── Spinner-gone signals → reveal the play overlay ─────────
+        onSuspend={(): void => setIsReady(true)}
+        onCanPlayThrough={(): void => setIsReady(true)}
+        onPlaying={(): void => { setIsPlaying(true); setIsReady(true) }}
         onPlay={(): void => setIsPlaying(true)}
         onPause={(): void => setIsPlaying(false)}
         onEnded={(): void => setIsPlaying(false)}
+        onSeeked={(): void => {
+          if ((videoRef.current?.readyState ?? 0) >= 3) setIsReady(true)
+        }}
+        // canplay can fire while the spinner is still being drawn for
+        // another frame or two; defer ~500 ms then re-check readyState
+        // so we only reveal once the browser is genuinely past loading.
+        onCanPlay={(): void => {
+          window.setTimeout(() => {
+            if ((videoRef.current?.readyState ?? 0) >= 3) setIsReady(true)
+          }, 500)
+        }}
+        // ── Spinner-drawing signals → hide the play overlay ───────
+        onWaiting={(): void => setIsReady(false)}
+        onStalled={(): void => setIsReady(false)}
+        onSeeking={(): void => setIsReady(false)}
         onError={(): void => setVideoFailed(true)}
       />
       {/* Play overlay is always mounted while the video is paused so the
