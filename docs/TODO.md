@@ -8,26 +8,60 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v32 反映済** (Task 31 完了 — 本物のリキッドグラス = lens-magnify プリセット)
+- **本番**: `https://booklage.pages.dev` に **v40 反映済**
+- **Service Worker**: `v40-2026-05-04-close-no-autofocus`
 
-### 🎯 Task 31 完了 (2026-05-04 v32)
+### 🔥 次セッション最優先: Tweet 動画 — 再生ボタン下のロード インジケーター問題
 
-**やったこと**:
-1. **Glass Lab 構築** — `/glass-lab` 専用 playground、Snell 屈折 + Map B 拡大 + 全パラメータをスライダーで調整可能
-2. **kube.io 二段 displacement 方式を実装** — `lib/glass/displacement-map.ts` に Map A (bezel Snell) + Map B (lens magnification) の両層を canvas 2D で事前生成
-3. **共通コンポーネント `<LiquidGlass>` 作成** — `components/ui/LiquidGlass.tsx`、preset + override + as: button|div + forwardRef 対応
-4. **`lens-magnify` プリセット確定** — Lab で詰めた値を `lib/glass/presets.ts` に保存。詳細は `docs/private/liquid-glass-recipe.md`
-5. **Lightbox 改修** — v31 の `feTurbulence` 廃止。play button (92px) + close button (36px) を `<LiquidGlass>` で再構築
+**現象**: Tweet 動画のブクマを Lightbox で開く → 中央に ▶ ボタンが見えるが、その**下でブラウザのネイティブ ロード スピナーが回転**、レンズ越しに黒い弧として透けて見える。
+
+**ユーザーの指示**: スピナー出ている間は ▶ ボタンを出さない、シンプル。
+
+**やった対策 (全て効かなかったか未確認)**:
+- v34: `data-ready` 属性 + onCanPlay event 駆動の reveal animation
+- v35: イベント追加 (`onSuspend`/`onCanPlayThrough`/`onPlaying` で reveal、`onWaiting`/`onStalled`/`onSeeking` で hide)
+- v36: rAF (60Hz) で `videoRef.current.networkState !== 2 && readyState >= 1` を polling に切替
+- v37: Chrome ネイティブ overlay 大再生ボタンを CSS `::-webkit-media-controls-overlay-play-button { display: none }` で消去
+- v38: `preload="metadata"` → `preload="auto"` + polling 閾値を `readyState >= 4` (HAVE_ENOUGH_DATA) に厳格化
+
+**v38 後ユーザーから「全く変わっていない」報告 → 焦らず ×ボタン優先で続行 → 次セッションで仕切り直し**
+
+**次セッションで試すべき調査手順**:
+1. **必ず本番 (booklage.pages.dev) でハードリロードしてから検証** — SW v40 含めて最新が反映されているか browser dev tool (Application → Service Workers) で確認
+2. **本番に test bookmark を Playwright で injection** して開発者ツール開いて video element の internal state を観測 (今までは sample mp4 で検証していたが、Twitter CDN proxy 通すと挙動が違う可能性大)
+3. **Chromium 内部で spinner を draw する hidden pseudo-element 候補**:
+   - `::-webkit-media-controls-loading-panel` (試す価値あり)
+   - `::-webkit-media-controls-overlay-enclosure` 全消去
+   - `::-webkit-media-text-track-container` 周辺
+4. **最後の手段**: `controls={false}` で完全カスタムコントロール構築 (seek bar / pause を自前)
+
+**触らないものの再確認 (絶対に弄らない)**:
+- ✅ `lib/glass/presets.ts` (`lens-magnify`)
+- ✅ `lib/glass/displacement-map.ts`
+- ✅ `components/ui/LiquidGlass.tsx`
+- ✅ Glass Lab (`/glass-lab`)
+
+### 🎯 Task 31 + UI polish 完了サマリー (2026-05-04)
+
+**v32**: Lab 構築 + `lens-magnify` 確定 + 共通 `<LiquidGlass>` コンポーネント + Lightbox に適用
+**v33**: Lab tuned 値を完全復元 (dead-code 整理を撤回) + filter region 300% 拡大
+**v34**: play button reveal animation (`canplay` → ぽよん表示) + close styles トークン化
+**v35**: 多重イベント監視 (canplay 不十分問題)
+**v36**: rAF networkState polling に切替 (event 取りこぼし対策)
+**v37**: Chrome native overlay play button を CSS で suppress
+**v38**: preload="auto" + readyState >= 4 厳格化 + close button を **plain ✕** に変更 (LiquidGlass 撤去、ユーザー指定)
+**v40**: close button の auto-focus 削除 + `:focus-visible` のみ ring 表示 (programmatic focus で枠出ないように)
 
 **確定したリキッドグラスの設計思想 (将来も継承)**:
-- **本質はレンズ屈折** (kube.io frog 風の Map B 拡大)。ぷるぷる水玉変形は **本質ではない** (production では OFF)
-- **子要素は backdrop-filter を通らない** ので、ガラス内側に icon/text を置けば歪まない (= 強い magnify でも UI は読める)
+- **本質はレンズ屈折** (kube.io frog 風の Map B 拡大)。ぷるぷる水玉変形は **本質ではない**
+- **子要素は backdrop-filter を通らない** ので、ガラス内側に icon/text を置けば歪まない
 - **完全透明トリオ**: `bgAlpha=0` / `saturate=1` / `blurStdDev=0` を維持
 - **黒ずみ主犯**: `feColorMatrix saturate>1` / `specularMaxAlpha` 高すぎ — 両方 0 で解決
+- **小さなボタンには glass を当てない**: 36px close は plain ✕、92px play は full LiquidGlass、card 用は将来別 preset
 
-**検証**: tsc EXIT=0 / vitest 209 PASS / pnpm build 成功 / 本番 deploy 完了
+**検証**: tsc EXIT=0 / vitest 209 PASS / pnpm build 成功 / 本番 deploy 完了 / Playwright で挙動確認済 (focus ring / 動画 polling timeline)
 
-### 🚧 次フェーズ候補 (ユーザー判断)
+### 🚧 次フェーズ候補 (Spinner 問題後にユーザー判断)
 
 - **`card-rect` プリセット** — B1 装飾フェーズで Lab を使って詰める (角丸長方形 / カード hover)
 - **`cursor-lens` プリセット** — 将来テーマ。R3F or HTML in Canvas で別途検討
