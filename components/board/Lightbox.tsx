@@ -161,6 +161,33 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       data-testid="lightbox"
     >
+      {/* Hidden SVG filter: backdrop displacement for the play button's
+          liquid-glass surface. feTurbulence generates a low-frequency
+          fractal noise field; feDisplacementMap uses it to bend each
+          backdrop pixel by up to `scale` px. The result reads as light
+          refracting through a curved piece of warm glass instead of a
+          flat frosted disc. Defined inline (vs. global) so the filter
+          mounts only while a Lightbox is open and disappears with it. */}
+      <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
+        <defs>
+          <filter id="liquid-glass-button" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.012 0.018"
+              numOctaves="2"
+              seed="3"
+              result="turbulence"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="turbulence"
+              scale="14"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+      </svg>
       <div ref={frameRef} className={styles.frame}>
         <div className={styles.media}>
           {tweetId

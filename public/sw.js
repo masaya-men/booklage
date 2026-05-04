@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v30-2026-05-03-liquid-glass-play-button-pause-state'
+const CACHE_VERSION = 'v31-2026-05-03-real-liquid-glass-svg-displacement'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [
