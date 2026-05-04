@@ -131,16 +131,34 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       const endScaleY = Math.max(0.05, sy)
       const TILT_MAX = 8
       const TILT_DIST = 600
-      const distNorm = Math.min(1, Math.hypot(dx, dy) / TILT_DIST)
-      const endRotateY = -(Math.sign(dx) || 0) * TILT_MAX * distNorm
-      const endRotateX = (Math.sign(dy) || 0) * TILT_MAX * distNorm * 0.7
+      const dist = Math.hypot(dx, dy)
+      const distNorm = Math.min(1, dist / TILT_DIST)
+      const dirX = dist > 0 ? dx / dist : 0
+      const dirY = dist > 0 ? dy / dist : 0
+      const endRotateY = -Math.sign(dx) * TILT_MAX * distNorm
+      const endRotateX = Math.sign(dy) * TILT_MAX * distNorm * 0.7
+      // Mirror the open animation's screen-center-side anchor — the
+      // lightbox retracts to its source by collapsing back onto the
+      // same edge that grew out from. Without this, close used a
+      // centered (50% 50%) origin while open used the dynamic anchor,
+      // so the close motion didn't visually rewind the open and the
+      // lightbox seemed to drift before retreating.
+      const originPctX = 50 + 50 * dirX * distNorm
+      const originPctY = 50 + 50 * dirY * distNorm
+      const dynamicOrigin = `${originPctX}% ${originPctY}%`
 
       const tl = gsap.timeline({
         onComplete: () => onClose(),
       })
-      // power3.in accelerates into the source — feels like the lightbox
-      // is being "yanked back" into the card, mirroring the spring-out
-      // landing of the open animation in reverse.
+      // Single tween for the whole close: position, scale, tilt,
+      // motion-blur, opacity all collapse on the same power3.in curve.
+      // The shadow tween that used to ride alongside this was the
+      // source of a faint flicker on close — the elevation cast wound
+      // down on a different curve than the frame opacity, so for the
+      // last few frames the user saw a paled-shadow ghost still under
+      // the box. Letting frame opacity carry the shadow to invisibility
+      // implicitly (the box-shadow is part of the .media's box, which
+      // itself fades with the frame's opacity) eliminates that ghost.
       tl.to(el, {
         x: dx,
         y: dy,
@@ -152,25 +170,8 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         opacity: 0,
         duration: 0.5,
         ease: 'power3.in',
-        transformOrigin: '50% 50%',
+        transformOrigin: dynamicOrigin,
         transformPerspective: 900,
-      }, 0)
-      // Shadow shrinks back to flush as the lightbox retracts — the
-      // elevation bleeds out before the frame disappears, so the cast
-      // never lingers as a ghost rectangle on the dark backdrop.
-      // power2.in matches the frame's deceleration profile.
-      tl.to(el, {
-        '--lb-shadow-y-far': 1,
-        '--lb-shadow-blur-far': 2,
-        '--lb-shadow-a-far': 0.10,
-        '--lb-shadow-y-mid': 2,
-        '--lb-shadow-blur-mid': 4,
-        '--lb-shadow-a-mid': 0.06,
-        '--lb-shadow-y-near': 0,
-        '--lb-shadow-blur-near': 1,
-        '--lb-shadow-a-near': 0.03,
-        duration: 0.45,
-        ease: 'power2.in',
       }, 0)
       if (backdrop) {
         // Backdrop fade trails the frame slightly so the lightbox
@@ -298,9 +299,31 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       // lean visually points at the source card.
       const TILT_MAX = 8
       const TILT_DIST = 600 // px at which tilt saturates
-      const distNorm = Math.min(1, Math.hypot(dx, dy) / TILT_DIST)
-      const startRotateY = -(dx / Math.max(1, Math.abs(dx) || 1)) * TILT_MAX * distNorm
-      const startRotateX = (dy / Math.max(1, Math.abs(dy) || 1)) * TILT_MAX * distNorm * 0.7
+      const dist = Math.hypot(dx, dy)
+      const distNorm = Math.min(1, dist / TILT_DIST)
+      // Unit direction from source-card center toward viewport center.
+      // Used both for the 3D tilt sign and for the transform-origin
+      // anchor below.
+      const dirX = dist > 0 ? dx / dist : 0
+      const dirY = dist > 0 ? dy / dist : 0
+      const startRotateY = -Math.sign(dx) * TILT_MAX * distNorm
+      const startRotateX = Math.sign(dy) * TILT_MAX * distNorm * 0.7
+      // Transform-origin anchored on the screen-center side of the card
+      // bbox. With origin = (0% 50%) and a left-side card, the LEFT
+      // edge of the lightbox stays roughly fixed during scale-up while
+      // the right edge sweeps outward — visually this reads as "the
+      // edge of the card closest to viewport-center is the anchor that
+      // stays put, the far edge is the part that grows out." Same for
+      // a right-side card: origin = (100% 50%), the right edge anchors,
+      // the left edge expands. The strength scales with distance from
+      // center via distNorm so cards near the middle don't over-skew.
+      // Note: dx is (cardCenter - screenCenter), so dirX > 0 means the
+      // card is to the RIGHT of center, in which case we want the
+      // origin on the card's RIGHT side (high X%), and vice versa —
+      // hence the (50 + 50 * dirX * distNorm) sign.
+      const originPctX = 50 + 50 * dirX * distNorm
+      const originPctY = 50 + 50 * dirY * distNorm
+      const dynamicOrigin = `${originPctX}% ${originPctY}%`
 
       // Interior control elements that pop in once the frame has
       // mostly landed (close ✕ + any LiquidGlass play overlay). Marked
@@ -323,7 +346,12 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         // to convey speed; reads as "rich" without any 3D library.
         filter: 'blur(5px)',
         opacity: 0,
-        transformOrigin: '50% 50%',
+        // Anchor the scale-up on the side of the card nearest to
+        // viewport center. The far edge sweeps outward as the lightbox
+        // grows; the near edge barely moves. Visually reads as "the
+        // edge closest to where the lightbox is going stays put while
+        // the rest of the card unfolds outward to fill the screen."
+        transformOrigin: dynamicOrigin,
         transformPerspective: 900,
         // Shadow starts tight & shallow — the lightbox sits flush with
         // the board, near-zero elevation. The 3-layer cast tweens up to
@@ -339,11 +367,6 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         '--lb-shadow-y-near': 0,
         '--lb-shadow-blur-near': 1,
         '--lb-shadow-a-near': 0.05,
-        // Light sweep parked offscreen-left, invisible. The sweep is a
-        // 115° gradient on .media::before that translates across the
-        // surface during the landing window — see CSS for the visual.
-        '--lb-sweep-pos': -120,
-        '--lb-sweep-opacity': 0,
       })
       if (popTargets.length > 0) {
         gsap.set(popTargets, {
@@ -395,27 +418,6 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         duration: 0.8,
         ease: 'power3.out',
       }, 0)
-      // Light sweep — three overlapping tweens form a fade-in / sweep /
-      // fade-out window. Begins at 0.4s (after the blur has cleared so
-      // the highlight reads sharp, not smeared) and concludes by 1.05s.
-      // The peak crossing happens around 0.65s, almost exactly when the
-      // frame visually "lands" — the eye reads this as light catching
-      // on a glass plate as it rotates to vertical.
-      tl.to(el, {
-        '--lb-sweep-opacity': 1,
-        duration: 0.12,
-        ease: 'power1.out',
-      }, 0.4)
-      tl.to(el, {
-        '--lb-sweep-pos': 200,
-        duration: 0.5,
-        ease: 'power2.inOut',
-      }, 0.4)
-      tl.to(el, {
-        '--lb-sweep-opacity': 0,
-        duration: 0.2,
-        ease: 'power1.in',
-      }, 0.85)
       // Control pop — close ✕ + LiquidGlass play overlay snap in with a
       // crisper overshoot than the frame (back.out(2.4) vs frame's 1.2).
       // The contrast in elasticity makes them feel like distinct objects:
