@@ -154,15 +154,27 @@
   object-fit: contain;
 }
 
-/* Big center play button shown ONLY before first play. Native <video
-   controls> hides its own giant play button on small/medium widths in
-   most browsers, so users had to hunt for the small bottom-bar play.
-   This overlay surfaces a clear glassy CTA, then disappears once the
-   user kicks off playback (native bottom controls take over for
-   pause/seek/volume from then on). */
+/* Big center play button. Visible whenever the video is paused (initial
+   AND after user-pause), hidden while playing. Native <video controls>
+   bottom bar still operates for pause/seek/volume — we leave 56px of
+   clear space at the bottom so the seek bar isn't blocked by the
+   overlay click trap.
+
+   Liquid-glass treatment: heavy blur + saturate gives the colour
+   absorption a real piece of frosted glass shows; layered shadows
+   stack an inner top-edge highlight, an inner bottom shading, and an
+   outer diffuse drop shadow for the "lit from above" 3D feel. The
+   pseudo-element adds a soft elliptical sheen across the upper half
+   to read as a curved glass cap (caustic). */
 .playOverlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Native controls live in the bottom ~50px on desktop browsers. Leaving
+     56px clear means the seek bar / volume / fullscreen button stay
+     reachable even while the play overlay is showing on a paused video. */
+  bottom: 56px;
   display: grid;
   place-items: center;
   border: none;
@@ -172,7 +184,7 @@
     rgba(0, 0, 0, 0) 0%,
     rgba(0, 0, 0, 0.18) 100%
   );
-  transition: background 0.2s ease-out;
+  transition: background 0.2s ease-out, opacity 0.2s ease-out;
   padding: 0;
   z-index: 1;
 }
@@ -184,30 +196,57 @@
   );
 }
 .playOverlayCircle {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 84px;
-  height: 84px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: transform 0.22s ease-out, background 0.22s ease-out;
+  /* Layered "liquid glass" surface. */
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(24px) saturate(180%) brightness(110%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(110%);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.5),
+    inset 0 2px 1px rgba(255, 255, 255, 0.35),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: transform 0.22s ease-out, background 0.22s ease-out, box-shadow 0.22s ease-out;
+}
+/* Caustic / sheen highlight: a soft ellipse at the top half of the circle
+   simulates light bending across a curved glass surface. */
+.playOverlayCircle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 70% 50% at 50% 22%,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  pointer-events: none;
 }
 .playOverlay:hover .playOverlayCircle {
-  background: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.18);
   transform: scale(1.06);
+  box-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.55),
+    inset 0 2px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 .playOverlayIcon {
-  width: 32px;
-  height: 32px;
+  position: relative;
+  width: 30px;
+  height: 30px;
   fill: #ffffff;
-  /* Visual-center the play triangle inside the circle (geometric
-     center is right-of-visual-center for a triangle pointing right). */
-  margin-left: 5px;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+  /* Path is bbox-centered in viewBox; the +1.5px translate compensates
+     for the right-pointing triangle's centroid sitting left of bbox
+     center, putting the optical mass at the circle's true center. */
+  transform: translateX(1.5px);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
 }
 
 /* Fallback shown when inline video playback fails (CDN reject, takedown,

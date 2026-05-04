@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { TweetMeta } from '@/lib/embed/types'
@@ -237,11 +237,15 @@ function TweetMedia({
   return <div className={styles.placeholder}>{item.title}</div>
 }
 
-/** Inline mp4 player for tweet videos. Adds a frosted-glass center play
- *  button overlay that disappears on first play (native bottom controls
- *  take over from there). If playback fails — CDN takedown, geo-block,
- *  proxy outage — falls back to a poster + "Watch on X" link so the
- *  user is never stuck on a dead element. */
+/** Inline mp4 player for tweet videos. Frames the clip at its actual
+ *  aspect ratio (no 16:9 / 9:16 letterboxing) and shows a liquid-glass
+ *  center play button whenever the video is paused — initial state and
+ *  every subsequent pause. Once the user is playing, the overlay fades
+ *  out and the native bottom controls handle pause/seek/volume. The
+ *  overlay leaves the bottom 56px clear so the seek bar is reachable
+ *  even from the paused state. If playback fails — CDN takedown,
+ *  geo-block, proxy outage — falls back to a poster + "Watch on X"
+ *  link so the user is never stuck on a dead element. */
 function TweetVideoPlayer({
   item,
   meta,
@@ -249,7 +253,7 @@ function TweetVideoPlayer({
   readonly item: BoardItem
   readonly meta: TweetMeta
 }): ReactNode {
-  const [hasStarted, setHasStarted] = useState<boolean>(false)
+  const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [videoFailed, setVideoFailed] = useState<boolean>(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -267,13 +271,25 @@ function TweetVideoPlayer({
     )
   }
 
+  // Use the syndication-reported aspect verbatim so the wrapper matches the
+  // video's natural proportions — eliminates the letterbox bars caused by
+  // forcing every clip into a 16:9 or 9:16 bucket. Caps come from viewport.
   const aspect = meta.videoAspectRatio ?? 16 / 9
-  const wrapperClass = aspect < 1 ? styles.iframeWrap9x16 : styles.iframeWrap16x9
+  const isVertical = aspect < 1
+  const wrapperStyle: CSSProperties = {
+    position: 'relative',
+    aspectRatio: aspect,
+    maxHeight: '88vh',
+    maxWidth: isVertical ? '50vw' : 'min(920px, 60vw)',
+    background: 'black',
+    borderRadius: 'var(--lightbox-media-radius)',
+    overflow: 'hidden',
+  }
   const proxiedSrc = `/api/tweet-video?url=${encodeURIComponent(meta.videoUrl ?? '')}`
   const handleOverlayClick = (): void => { void videoRef.current?.play() }
 
   return (
-    <div className={wrapperClass}>
+    <div style={wrapperStyle}>
       <video
         ref={videoRef}
         className={styles.tweetVideo}
@@ -282,10 +298,12 @@ function TweetVideoPlayer({
         controls
         playsInline
         preload="metadata"
-        onPlay={(): void => setHasStarted(true)}
+        onPlay={(): void => setIsPlaying(true)}
+        onPause={(): void => setIsPlaying(false)}
+        onEnded={(): void => setIsPlaying(false)}
         onError={(): void => setVideoFailed(true)}
       />
-      {!hasStarted && (
+      {!isPlaying && (
         <button
           type="button"
           className={styles.playOverlay}
@@ -294,7 +312,10 @@ function TweetVideoPlayer({
         >
           <span className={styles.playOverlayCircle} aria-hidden="true">
             <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
+              {/* Path is bbox-centered in viewBox; CSS adds 1.5px optical
+                  shift right (centroid lies left of bbox center for a
+                  right-pointing triangle). */}
+              <path d="M6.5 5v14l11-7z" />
             </svg>
           </span>
         </button>
