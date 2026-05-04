@@ -259,18 +259,43 @@ function TweetVideoPlayer({
   readonly meta: TweetMeta
 }): ReactNode {
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
-  // `isReady` tracks "is the browser's native loading spinner gone?" — flips
-  // true on signals that imply the spinner has cleared, false on signals
-  // that imply it's drawing again (waiting / stalled / seeking). Plain
-  // `canplay` alone fires too early: Twitter's video CDN through our
-  // proxy can keep the centre spinner visible for ~half a second past
-  // canplay, sandwiching it under our overlay. So we lean on `suspend`
-  // (browser deliberately stopped fetching → has what it needs), on
-  // `canplaythrough` (most conservative ready signal), and on `playing`
-  // (definitive — playback actually started).
+  // `isReady` tracks "is the browser's native loading spinner gone?". The
+  // value is driven by a per-frame poll of the video element's internal
+  // state (see useEffect below) — NOT by media events, which fire out of
+  // sync with the spinner UI on Twitter's proxied CDN. The play overlay
+  // becomes visible only when the spinner is genuinely gone, so it can
+  // never sit on top of a spinner getting refracted through the lens.
   const [isReady, setIsReady] = useState<boolean>(false)
   const [videoFailed, setVideoFailed] = useState<boolean>(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Per-frame spinner-state poll. The single source of truth for "is the
+  // browser drawing its native loading spinner right now?" is the
+  // combination of networkState (NETWORK_LOADING = currently fetching) and
+  // readyState (HAVE_NOTHING = before any data). Polling at requestAnimation-
+  // Frame cadence is essentially free — one property read per repaint, with
+  // a state-change guard so React only re-renders on a real transition.
+  // Auto-pauses when the tab is backgrounded (rAF behaviour) and tears down
+  // cleanly when the lightbox closes (cleanup cancels the frame).
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    let raf = 0
+    let last: boolean | null = null
+    const tick = (): void => {
+      // NETWORK_LOADING (2) = browser is actively fetching → spinner drawn.
+      // readyState >= 1 (HAVE_METADATA) ensures we don't reveal the button
+      // over a still-blank video before the poster has even loaded.
+      const ready = v.networkState !== 2 && v.readyState >= 1
+      if (ready !== last) {
+        last = ready
+        setIsReady(ready)
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return (): void => { cancelAnimationFrame(raf) }
+  }, [])
 
   if (videoFailed) {
     return (
@@ -313,28 +338,12 @@ function TweetVideoPlayer({
         controls
         playsInline
         preload="metadata"
-        // ── Spinner-gone signals → reveal the play overlay ─────────
-        onSuspend={(): void => setIsReady(true)}
-        onCanPlayThrough={(): void => setIsReady(true)}
-        onPlaying={(): void => { setIsPlaying(true); setIsReady(true) }}
+        // isReady is driven by the rAF poll above — events here only need
+        // to track playback start/stop, which the React UI conditionally
+        // unmounts the overlay from when isPlaying flips true.
         onPlay={(): void => setIsPlaying(true)}
         onPause={(): void => setIsPlaying(false)}
         onEnded={(): void => setIsPlaying(false)}
-        onSeeked={(): void => {
-          if ((videoRef.current?.readyState ?? 0) >= 3) setIsReady(true)
-        }}
-        // canplay can fire while the spinner is still being drawn for
-        // another frame or two; defer ~500 ms then re-check readyState
-        // so we only reveal once the browser is genuinely past loading.
-        onCanPlay={(): void => {
-          window.setTimeout(() => {
-            if ((videoRef.current?.readyState ?? 0) >= 3) setIsReady(true)
-          }, 500)
-        }}
-        // ── Spinner-drawing signals → hide the play overlay ───────
-        onWaiting={(): void => setIsReady(false)}
-        onStalled={(): void => setIsReady(false)}
-        onSeeking={(): void => setIsReady(false)}
         onError={(): void => setVideoFailed(true)}
       />
       {/* Play overlay is always mounted while the video is paused so the
