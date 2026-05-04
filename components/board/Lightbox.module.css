@@ -157,6 +157,19 @@
   background: black;
   object-fit: contain;
 }
+/* Suppress Chromium's native centred "big play button" overlay. We provide
+   our own LiquidGlass overlay; having Chrome's triangle stacked underneath
+   shows up as visible distortion through the lens (the user reads it as a
+   "spinner under the button"). The native bottom controls bar — pause /
+   seek / volume / fullscreen — is not affected by this rule. */
+.tweetVideo::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+}
+/* Belt-and-braces: also hide via the alternative shadow-DOM selector that
+   some Chromium versions expose. */
+.tweetVideo::-internal-media-controls-overlay-cast-button {
+  display: none !important;
+}
 
 /* Big center play button. Visible whenever the video is paused (initial
    AND after user-pause), hidden while playing. Native <video controls>

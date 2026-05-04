@@ -189,6 +189,11 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
           onClick={onClose}
           className={styles.close}
           aria-label={t('board.lightbox.close')}
+          /* Drop the bright top-edge highlight that the global preset uses
+           * for hero buttons — at 36 px it reads as a glaring crescent
+           * rather than a subtle dome cap. The lens refraction alone gives
+           * enough definition for a tap target this size. */
+          override={{ innerTopHighlightAlpha: 0 }}
         >
           <span className={styles.closeIcon} aria-hidden="true">✕</span>
         </LiquidGlass>
