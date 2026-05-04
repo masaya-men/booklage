@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v47-2026-05-05-r3f-disabled-pending-cors-fallback'
+const CACHE_VERSION = 'v48-2026-05-05-lightbox-richness-shadow-sweep-pop'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

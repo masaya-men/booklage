@@ -43,6 +43,33 @@
      micro-blink that comes from layer creation mid-tween. */
   opacity: 0;
   will-change: transform, opacity;
+  /* === FLIP open richness layer (driven by GSAP timeline) ===
+     These CSS variables are tweened during the open animation to add
+     two layered effects without any per-frame DOM mutation:
+     1. Multi-layer box-shadow growing on .media as the lightbox lifts
+        from "card flush against board" → "glass plate floating with
+        ceiling-cast elevation". Three layers compose the lift:
+          - 'far'  : the deep cast that conveys distance from board
+          - 'mid'  : the mid-range scatter that softens the edge
+          - 'near' : the contact shadow keeping it grounded
+     2. Diagonal light sweep across .media (caustic / specular flash)
+        as the lightbox tilts to its final orientation. mix-blend
+        screen lightens the dark backdrop where it passes — reads as
+        actual light catching on a glass surface.
+     Defaults equal the LANDED state so a hot-reload mid-session lands
+     on the rich look, not a flash of empty surface. The GSAP timeline
+     overrides these in tl.set() before first paint. */
+  --lb-shadow-y-far: 16;
+  --lb-shadow-blur-far: 32;
+  --lb-shadow-a-far: 0.40;
+  --lb-shadow-y-mid: 32;
+  --lb-shadow-blur-mid: 64;
+  --lb-shadow-a-mid: 0.30;
+  --lb-shadow-y-near: 6;
+  --lb-shadow-blur-near: 12;
+  --lb-shadow-a-near: 0.18;
+  --lb-sweep-pos: 200;
+  --lb-sweep-opacity: 0;
 }
 @media (max-width: 900px) {
   .frame {
@@ -63,6 +90,42 @@
   min-width: 0;
   min-height: 0;
   max-height: 88vh;
+  /* position:relative anchors the ::before light sweep + lets it inherit
+     the rounded shape of .media. border-radius rounds the container so
+     the multi-layer box-shadow casts around a smooth shape (and the
+     ::before sweep clips to it via overflow:hidden inherited above). */
+  position: relative;
+  border-radius: var(--lightbox-media-radius);
+  /* Multi-layer elevation shadow driven by --lb-shadow-* CSS variables
+     tweened from the GSAP open timeline. See .frame for the var defaults
+     and the rationale for the 3-layer composition (far/mid/near). */
+  box-shadow:
+    0 calc(var(--lb-shadow-y-far) * 1px) calc(var(--lb-shadow-blur-far) * 1px) rgba(0, 0, 0, var(--lb-shadow-a-far)),
+    0 calc(var(--lb-shadow-y-mid) * 1px) calc(var(--lb-shadow-blur-mid) * 1px) rgba(0, 0, 0, var(--lb-shadow-a-mid)),
+    0 calc(var(--lb-shadow-y-near) * 1px) calc(var(--lb-shadow-blur-near) * 1px) rgba(0, 0, 0, var(--lb-shadow-a-near));
+}
+/* Light sweep that crosses the lightbox surface as it lands. The 115°
+   diagonal matches glass caustic / specular intuition (top-left to
+   bottom-right). mix-blend-mode: screen lightens the dark backdrop
+   under the sweep, reading as a real-world specular flash rather than
+   a translucent overlay tile. Position + opacity tweened via CSS vars
+   from the GSAP open timeline (see Lightbox.tsx FLIP timeline). */
+.media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.32) 50%,
+    transparent 62%
+  );
+  background-size: 250% 100%;
+  background-position: calc(var(--lb-sweep-pos) * 1%) 0;
+  opacity: var(--lb-sweep-opacity);
+  mix-blend-mode: screen;
 }
 .media img {
   max-width: 100%;

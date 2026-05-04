@@ -155,6 +155,23 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         transformOrigin: '50% 50%',
         transformPerspective: 900,
       }, 0)
+      // Shadow shrinks back to flush as the lightbox retracts — the
+      // elevation bleeds out before the frame disappears, so the cast
+      // never lingers as a ghost rectangle on the dark backdrop.
+      // power2.in matches the frame's deceleration profile.
+      tl.to(el, {
+        '--lb-shadow-y-far': 1,
+        '--lb-shadow-blur-far': 2,
+        '--lb-shadow-a-far': 0.10,
+        '--lb-shadow-y-mid': 2,
+        '--lb-shadow-blur-mid': 4,
+        '--lb-shadow-a-mid': 0.06,
+        '--lb-shadow-y-near': 0,
+        '--lb-shadow-blur-near': 1,
+        '--lb-shadow-a-near': 0.03,
+        duration: 0.45,
+        ease: 'power2.in',
+      }, 0)
       if (backdrop) {
         // Backdrop fade trails the frame slightly so the lightbox
         // visibly returns to the card before the dim disappears.
@@ -285,6 +302,14 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       const startRotateY = -(dx / Math.max(1, Math.abs(dx) || 1)) * TILT_MAX * distNorm
       const startRotateX = (dy / Math.max(1, Math.abs(dy) || 1)) * TILT_MAX * distNorm * 0.7
 
+      // Interior control elements that pop in once the frame has
+      // mostly landed (close ✕ + any LiquidGlass play overlay). Marked
+      // with [data-controlpop] in the JSX. Querying the frame ref
+      // catches whatever subtree LightboxMedia/TweetMedia rendered for
+      // this item type. Stored before tl.set so we can null-init their
+      // scale/opacity in the same pre-paint frame as the frame setup,
+      // avoiding any flash of a full-size control before the pop fires.
+      const popTargets = el.querySelectorAll<HTMLElement>('[data-controlpop]')
       const tl = gsap.timeline()
       tl.set(el, {
         x: dx,
@@ -300,7 +325,33 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         opacity: 0,
         transformOrigin: '50% 50%',
         transformPerspective: 900,
+        // Shadow starts tight & shallow — the lightbox sits flush with
+        // the board, near-zero elevation. The 3-layer cast tweens up to
+        // deep ceiling-level lift as the FLIP transform unspools (see
+        // Lightbox.module.css for the calc()-based box-shadow on .media
+        // that consumes these vars).
+        '--lb-shadow-y-far': 1,
+        '--lb-shadow-blur-far': 2,
+        '--lb-shadow-a-far': 0.20,
+        '--lb-shadow-y-mid': 2,
+        '--lb-shadow-blur-mid': 4,
+        '--lb-shadow-a-mid': 0.12,
+        '--lb-shadow-y-near': 0,
+        '--lb-shadow-blur-near': 1,
+        '--lb-shadow-a-near': 0.05,
+        // Light sweep parked offscreen-left, invisible. The sweep is a
+        // 115° gradient on .media::before that translates across the
+        // surface during the landing window — see CSS for the visual.
+        '--lb-sweep-pos': -120,
+        '--lb-sweep-opacity': 0,
       })
+      if (popTargets.length > 0) {
+        gsap.set(popTargets, {
+          scale: 0.4,
+          opacity: 0,
+          transformOrigin: '50% 50%',
+        })
+      }
       tl.to(el, {
         opacity: 1,
         duration: 0.35,
@@ -318,12 +369,68 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         scaleY: 1,
         rotateX: 0,
         rotateY: 0,
-        // power4.out is sharper at the tail than power3 — the lightbox
-        // "lands and settles" with a more definitive arrival, matching
-        // the snappier feel real physical objects have when they stop.
-        duration: 0.7,
-        ease: 'power4.out',
+        // back.out(1.2) — gentle ~2% overshoot past the landing point,
+        // then settle. Reads as "this object has weight, compresses on
+        // impact, and rebounds slightly" instead of stopping dead. 1.2
+        // (vs default 1.7) keeps the elasticity below the threshold
+        // where it would feel cartoony/playful — the rebound is sub-
+        // perceptual but the eye still registers the physicality.
+        duration: 0.75,
+        ease: 'back.out(1.2)',
       }, 0)
+      // Box-shadow elevation grows on power3.out across the FULL
+      // transform duration. Trails the back.out curve so the shadow
+      // keeps deepening for ~50ms after the frame appears to land —
+      // the "weight settling" beat after the visual arrival.
+      tl.to(el, {
+        '--lb-shadow-y-far': 16,
+        '--lb-shadow-blur-far': 32,
+        '--lb-shadow-a-far': 0.40,
+        '--lb-shadow-y-mid': 32,
+        '--lb-shadow-blur-mid': 64,
+        '--lb-shadow-a-mid': 0.30,
+        '--lb-shadow-y-near': 6,
+        '--lb-shadow-blur-near': 12,
+        '--lb-shadow-a-near': 0.18,
+        duration: 0.8,
+        ease: 'power3.out',
+      }, 0)
+      // Light sweep — three overlapping tweens form a fade-in / sweep /
+      // fade-out window. Begins at 0.4s (after the blur has cleared so
+      // the highlight reads sharp, not smeared) and concludes by 1.05s.
+      // The peak crossing happens around 0.65s, almost exactly when the
+      // frame visually "lands" — the eye reads this as light catching
+      // on a glass plate as it rotates to vertical.
+      tl.to(el, {
+        '--lb-sweep-opacity': 1,
+        duration: 0.12,
+        ease: 'power1.out',
+      }, 0.4)
+      tl.to(el, {
+        '--lb-sweep-pos': 200,
+        duration: 0.5,
+        ease: 'power2.inOut',
+      }, 0.4)
+      tl.to(el, {
+        '--lb-sweep-opacity': 0,
+        duration: 0.2,
+        ease: 'power1.in',
+      }, 0.85)
+      // Control pop — close ✕ + LiquidGlass play overlay snap in with a
+      // crisper overshoot than the frame (back.out(2.4) vs frame's 1.2).
+      // The contrast in elasticity makes them feel like distinct objects:
+      // the heavy frame settles in slowly while the light controls bounce
+      // into place a beat later. Delayed to 0.5s so they arrive after
+      // the frame is ~80% landed — never floating in empty space.
+      if (popTargets.length > 0) {
+        tl.to(popTargets, {
+          scale: 1,
+          opacity: 1,
+          duration: 0.5,
+          ease: 'back.out(2.4)',
+          stagger: 0.04,
+        }, 0.5)
+      }
       let backdropTween: gsap.core.Tween | null = null
       if (backdrop) {
         backdropTween = gsap.fromTo(
@@ -335,6 +442,15 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       return (): void => {
         tl.kill()
         backdropTween?.kill()
+        // Clear control pop transforms — if the lightbox unmounts mid-
+        // tween (e.g. user opens a different card before this one's
+        // open animation completes), GSAP would otherwise leave the
+        // controls stuck at scale 0.4 / opacity 0 on next mount.
+        if (popTargets.length > 0) {
+          gsap.set(popTargets, {
+            clearProps: 'scale,opacity,transformOrigin',
+          })
+        }
       }
     }
 
@@ -414,6 +530,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
           onClick={requestClose}
           className={styles.close}
           aria-label={t('board.lightbox.close')}
+          data-controlpop="true"
         >
           <span className={styles.closeIcon} aria-hidden="true">✕</span>
         </button>
@@ -571,6 +688,7 @@ function TweetVideoPlayer({
           className={styles.playOverlay}
           onClick={handleOverlayClick}
           aria-label="Play video"
+          data-controlpop="true"
         >
           <LiquidGlass shape="circle" size={92} aria-hidden="true">
             <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
@@ -677,6 +795,7 @@ function EmbedPoster({
         className={styles.playOverlay}
         onClick={onClick}
         aria-label="Play"
+        data-controlpop="true"
       >
         <LiquidGlass shape="circle" size={92} aria-hidden="true">
           <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
