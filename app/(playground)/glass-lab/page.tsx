@@ -420,10 +420,11 @@ export default function GlassLabPage(): ReactElement {
       {mounted && map.displacement && (
       <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true" colorInterpolationFilters="sRGB">
         <defs>
-          {/* Filter region runs out of the element bounds because the
-              magnification step can sample pixels well outside the source
-              area; clipping at 100% would crop the lens edges. */}
-          <filter id={filterId} x="-25%" y="-25%" width="150%" height="150%">
+          {/* Filter region 300% (= 100% margin per side) so strong Map B
+              magnification doesn't clip into black at the corners. Matches
+              the production <LiquidGlass> exactly so Lab-tuned previews
+              translate 1-to-1 into shipped UI. */}
+          <filter id={filterId} x="-100%" y="-100%" width="300%" height="300%">
             {params.blurStdDev > 0 && (
               <feGaussianBlur in="SourceGraphic" stdDeviation={params.blurStdDev} result="blurred" />
             )}

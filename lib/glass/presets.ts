@@ -44,34 +44,43 @@ export type GlassPreset = {
 /**
  * "lens-magnify" — v1 baseline. User-confirmed 2026-05-04.
  *
- * Pure Map B (magnification) — no bezel refraction, no shadow, no border.
- * Identity comes from the strong inner top highlight (white crescent at the
- * top inside) plus the heavy lens distortion at the edges.
- *
- * Why no bezel: cleaner / more "soap-bubble" feel. The visual centre of the
- * piece is the magnify hot-ring, not a separate refractive rim.
+ * Pure Map B (magnification) drives the look. Map A (bezel Snell), specular,
+ * shadow, and border are all dialled to dormant — but the values are stored
+ * VERBATIM as the user set them in the Lab, so re-engaging any single field
+ * (e.g. `borderWidth: 1` to wake up the 0.6 alpha border) gives the exact
+ * effect the Lab preview hinted at.
  *
  * Why extreme magnify (80 px) on small buttons is fine: any UI placed AS A
  * CHILD of <LiquidGlass> sits ABOVE the backdrop-filter, so the icon /
  * label never gets distorted. Only the page content BEHIND the glass bends.
  */
 const LENS_MAGNIFY: GlassPreset = {
+  // Map A (bezel) — disabled via strength=0, but ratios kept as user set
+  // them in case strength is later raised on a per-instance override.
   strength: 0,
-  bezelPercent: 0.15,        // unused (strength=0); kept at sensible default for re-use
-  profileExponent: 4,         // unused (strength=0)
-  refractiveIndex: 1.5,       // unused (strength=0)
+  bezelPercent: 0.05,
+  profileExponent: 1,
+  refractiveIndex: 2.4,
+  // Map B (lens magnification) — the visual core
   magnifyStrength: 80,
   magnifyExponent: 4,
+  // Filter chain — fully transparent trio
   blurStdDev: 0,
   saturate: 1,
-  specularEnabled: false,     // user kept alpha=0 → skip computation entirely
+  // Specular — toggled on but alpha 0 (component skips the chain when alpha=0).
+  // Stored as user set so flipping alpha alone re-enables the highlight.
+  specularEnabled: true,
   specularMaxAlpha: 0,
   specularBloomBlur: 0,
+  // Surface — completely transparent. Border alpha stored at user value so
+  // borderWidth: 1 (override) wakes a clean white outline at 0.6 opacity.
   bgAlpha: 0,
-  borderAlpha: 0,             // user had borderWidth=0 → border invisible regardless
+  borderAlpha: 0.6,
   borderWidth: 0,
+  // Shadow — same pattern. outerShadowBlur: 16 (override) wakes a 0.78 alpha
+  // dark cast that gives the glass a floating-bubble feel.
   outerShadowBlur: 0,
-  outerShadowAlpha: 0,        // user had blur=0 → shadow invisible regardless
+  outerShadowAlpha: 0.78,
   innerTopHighlightAlpha: 1,
   innerBottomShadeAlpha: 0,
 }

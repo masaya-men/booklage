@@ -151,9 +151,12 @@ export const LiquidGlass = forwardRef<HTMLElement, LiquidGlassProps>(function Li
     ...style,
   }
 
-  // Filter region of 200% × 200% accommodates strong magnification — Map B
-  // can sample pixels far outside the element bounds when magnifyStrength
-  // approaches the lens radius.
+  // Filter region of 300% × 300% (= 100% margin on each side) accommodates
+  // strong magnification — Map B can sample pixels well outside the element
+  // bounds when magnifyStrength approaches or exceeds the element radius.
+  // Below 200% the corners go black on small elements (e.g. 36 px close
+  // button at magnifyStrength: 80). Lab uses the same region so what the
+  // user previewed matches what the production component renders.
   const filterEl = chromium && map.displacement && (
     <svg
       width="0"
@@ -163,7 +166,7 @@ export const LiquidGlass = forwardRef<HTMLElement, LiquidGlassProps>(function Li
       colorInterpolationFilters="sRGB"
     >
       <defs>
-        <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
+        <filter id={filterId} x="-100%" y="-100%" width="300%" height="300%">
           {cfg.blurStdDev > 0 && (
             <feGaussianBlur in="SourceGraphic" stdDeviation={cfg.blurStdDev} result="blurred" />
           )}
