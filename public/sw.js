@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v37-2026-05-04-hide-native-play-overlay-and-close-edge'
+const CACHE_VERSION = 'v38-2026-05-04-preload-auto-readystate4-plain-close'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

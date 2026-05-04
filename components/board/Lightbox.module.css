@@ -368,17 +368,32 @@
 }
 .sourceLink:hover { color: var(--text-primary); }
 
-/* Positioning only — visual styling (size, glass surface, hover) is
-   provided by <LiquidGlass shape="circle" size={36}>. */
+/* Plain text-only close button. Intentionally NO glass surface, NO
+   background, NO border — the bare ✕ is the most refined treatment for
+   this corner element (user-confirmed 2026-05-04). Subtle hover dims the
+   character so the affordance is felt but not loud. */
 .close {
   position: absolute;
   top: var(--space-4);
   right: var(--space-4);
   z-index: 2;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: var(--space-2);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: opacity var(--duration-fast) var(--ease-in-out);
 }
+.close:hover { opacity: 0.6; }
+.close:active { opacity: 0.4; }
 .closeIcon {
   color: var(--color-text-primary);
   font-size: var(--text-lg);
   line-height: var(--leading-tight);
   font-weight: var(--weight-normal);
+  /* Subtle drop shadow keeps the ✕ readable over light frames inside the
+     lightbox media (e.g. white photo backgrounds). */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }

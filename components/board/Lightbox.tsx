@@ -29,7 +29,7 @@ type Props = {
 export function Lightbox({ item, originRect, onClose }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
-  const closeButtonRef = useRef<HTMLElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   const isTweet = item ? detectUrlType(item.url) === 'tweet' : false
   const tweetId = isTweet && item ? extractTweetId(item.url) : null
@@ -181,22 +181,15 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
             {t('board.lightbox.openSource')} →
           </a>
         </div>
-        <LiquidGlass
-          ref={closeButtonRef as React.Ref<HTMLElement>}
-          as="button"
-          shape="circle"
-          size={36}
+        <button
+          ref={closeButtonRef}
+          type="button"
           onClick={onClose}
           className={styles.close}
           aria-label={t('board.lightbox.close')}
-          /* Drop the bright top-edge highlight that the global preset uses
-           * for hero buttons — at 36 px it reads as a glaring crescent
-           * rather than a subtle dome cap. The lens refraction alone gives
-           * enough definition for a tap target this size. */
-          override={{ innerTopHighlightAlpha: 0 }}
         >
           <span className={styles.closeIcon} aria-hidden="true">✕</span>
-        </LiquidGlass>
+        </button>
       </div>
     </div>
   )
@@ -276,22 +269,25 @@ function TweetVideoPlayer({
 
   // Per-frame spinner-state poll. The single source of truth for "is the
   // browser drawing its native loading spinner right now?" is the
-  // combination of networkState (NETWORK_LOADING = currently fetching) and
-  // readyState (HAVE_NOTHING = before any data). Polling at requestAnimation-
-  // Frame cadence is essentially free — one property read per repaint, with
-  // a state-change guard so React only re-renders on a real transition.
-  // Auto-pauses when the tab is backgrounded (rAF behaviour) and tears down
-  // cleanly when the lightbox closes (cleanup cancels the frame).
+  // combination of networkState and readyState. We use the strictest
+  // possible "definitely no spinner" criteria:
+  //   networkState !== NETWORK_LOADING (= browser is idle, not fetching)
+  //   readyState   === HAVE_ENOUGH_DATA (4) (= can play through to end
+  //                  without rebuffering — Chrome guarantees the spinner
+  //                  is gone at this readyState)
+  // Combined with `preload="auto"` on the video element below, the browser
+  // pre-loads enough to reach readyState 4 before we ever reveal the play
+  // overlay, so the user never sees the button stacked on top of a
+  // spinning loader.
+  // rAF cadence keeps the check cost negligible (~µs per repaint) and
+  // pauses automatically when the tab is backgrounded.
   useEffect(() => {
     const v = videoRef.current
     if (!v) return
     let raf = 0
     let last: boolean | null = null
     const tick = (): void => {
-      // NETWORK_LOADING (2) = browser is actively fetching → spinner drawn.
-      // readyState >= 1 (HAVE_METADATA) ensures we don't reveal the button
-      // over a still-blank video before the poster has even loaded.
-      const ready = v.networkState !== 2 && v.readyState >= 1
+      const ready = v.networkState !== 2 && v.readyState >= 4
       if (ready !== last) {
         last = ready
         setIsReady(ready)
@@ -342,7 +338,13 @@ function TweetVideoPlayer({
         poster={meta.videoPosterUrl ?? item.thumbnail}
         controls
         playsInline
-        preload="metadata"
+        // Aggressive preload pairs with the readyState >= 4 polling above
+        // so the play overlay only appears once the video can play through
+        // without buffering — guaranteeing no native spinner under our
+        // LiquidGlass button. Bandwidth cost is acceptable: opening a
+        // lightbox on a video bookmark is an intentional click, not a
+        // passive page load, and the user almost always plays.
+        preload="auto"
         // isReady is driven by the rAF poll above — events here only need
         // to track playback start/stop, which the React UI conditionally
         // unmounts the overlay from when isPlaying flips true.
