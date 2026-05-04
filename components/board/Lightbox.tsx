@@ -423,6 +423,64 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
   )
 }
 
+/** Extract a byline + caption + date/likes/comments meta from the
+ *  Instagram OGP payload that bookmarklets typically capture. The raw
+ *  title looks like:
+ *    "sumy - Instagram: \"<caption>\""
+ *  and the raw description looks like:
+ *    "April 29, 2026、410 likes, 0 comments - iamsumy: \"<caption>\""
+ *  Both end up duplicated in the panel verbatim, including the giant
+ *  caption block in quotes — visually it reads as a wall of repeated
+ *  text. This parser strips the boilerplate ("Instagram:", the date /
+ *  stats line, the surrounding quotes) so the caption renders once,
+ *  with date + stats demoted to a small meta footer. Falls back to
+ *  the raw strings on parse failure so we never show NOTHING. */
+function cleanInstagramText(item: BoardItem): {
+  byline: string | null
+  caption: string
+  meta: string | null
+} {
+  const rawTitle = item.title ?? ''
+  const rawDesc = item.description ?? ''
+
+  // Regexes use [\s\S] in place of `.` so they match across newlines
+  // without needing the `s` (dotAll) flag, which requires ES2018+ — the
+  // tsconfig here doesn't quite reach that bar.
+  let byline: string | null = null
+  let titleCaption: string | null = null
+  const titleM = rawTitle.match(
+    /^([\s\S]+?)\s+[-–—]\s+Instagram\s*:\s*["“”']([\s\S]*)["“”']\s*$/i,
+  )
+  if (titleM) {
+    byline = titleM[1].trim()
+    titleCaption = titleM[2].trim()
+  }
+
+  let descCaption: string | null = null
+  let meta: string | null = null
+  const descM = rawDesc.match(
+    /^([\s\S]+?)[、,]\s*([\d,]+\s+likes?(?:[\s\S]*?comments?)?)\s+-\s+(\S+?)\s*:\s*["“”']([\s\S]*)["“”']\s*$/i,
+  )
+  if (descM) {
+    const date = descM[1].trim()
+    const stats = descM[2].trim()
+    const handle = descM[3].trim()
+    descCaption = descM[4].trim()
+    meta = `${date} · ${stats}`
+    if (!byline) byline = handle
+  }
+
+  // Pick the longer of the two caption candidates — the OGP description
+  // usually truncates earlier than the title since description has a
+  // smaller crawler budget.
+  const caption =
+    (titleCaption?.length ?? 0) >= (descCaption?.length ?? 0)
+      ? titleCaption ?? descCaption ?? rawTitle
+      : descCaption ?? titleCaption ?? rawTitle
+
+  return { byline, caption, meta }
+}
+
 function DefaultText({
   item,
   host,
@@ -430,6 +488,21 @@ function DefaultText({
   readonly item: BoardItem
   readonly host: string
 }): ReactElement {
+  const isInstagram = detectUrlType(item.url) === 'instagram'
+
+  if (isInstagram) {
+    const { byline, caption, meta } = cleanInstagramText(item)
+    return (
+      <>
+        <h1 id="lightbox-title" className={styles.bylineHeading}>
+          {byline ? `${byline} on Instagram` : 'Instagram'}
+        </h1>
+        <p className={styles.captionBody}>{caption}</p>
+        {meta && <div className={styles.meta}><span>{meta}</span></div>}
+      </>
+    )
+  }
+
   return (
     <>
       <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
@@ -775,8 +848,16 @@ function TikTokEmbed({
   )
 }
 
-/** Instagram official `/embed` iframe — public posts work without script.js.
- *  Instagram also blocks autoplay; same two-tap pattern as TikTok. */
+/** Instagram post — replaces the original `/embed` iframe with a poster +
+ *  external link. Background: Instagram's embed iframe is non-interactive
+ *  for video playback (Meta routes any "play" tap straight to instagram.com),
+ *  so the prior two-tap "click our overlay → reveals iframe → click again →
+ *  goes to Instagram" path was just a confusing detour to the same
+ *  destination. There is no public API to fetch the actual mp4 (Twitter has
+ *  syndication; Instagram only exposes login-required private endpoints
+ *  whose use violates Meta's ToS). The honest UX is therefore: show the
+ *  poster image we already have, and a single clear "Instagramで開く ↗"
+ *  overlay that opens the post in a new tab. No wasted iframe load. */
 function InstagramEmbed({
   shortcode,
   thumbnail,
@@ -786,32 +867,29 @@ function InstagramEmbed({
   readonly thumbnail: string | undefined
   readonly title: string
 }): ReactNode {
-  const [hasInteracted, setHasInteracted] = useState<boolean>(false)
+  const postUrl = `https://www.instagram.com/p/${shortcode}/`
   return (
     <div className={styles.iframeWrap9x16}>
-      {hasInteracted ? (
-        <iframe
-          src={`https://www.instagram.com/p/${shortcode}/embed`}
-          title="Instagram post"
-          className={styles.iframe}
-          allow="encrypted-media"
-          allowFullScreen
-        />
-      ) : thumbnail ? (
-        <EmbedPoster
-          thumbnail={thumbnail}
-          alt={title}
-          onClick={(): void => setHasInteracted(true)}
-        />
-      ) : (
-        <iframe
-          src={`https://www.instagram.com/p/${shortcode}/embed`}
-          title="Instagram post"
-          className={styles.iframe}
-          allow="encrypted-media"
-          allowFullScreen
-        />
-      )}
+      {thumbnail && <img src={thumbnail} alt={title} className={styles.embedPoster} />}
+      <a
+        className={styles.instagramOpenLink}
+        href={postUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Instagram で開く"
+      >
+        <span className={styles.instagramOpenBadge}>
+          {/* external-link icon — the upper-right arrow makes it obvious
+              this leaves the app, distinguishing it from a regular play
+              button which would imply inline playback. */}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 3h7v7" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M21 3l-9 9" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Instagramで開く
+        </span>
+      </a>
     </div>
   )
 }

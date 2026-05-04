@@ -136,6 +136,50 @@
   display: block;
 }
 
+/* Instagram-only overlay link (replaces the prior LiquidGlass play
+   button + iframe two-tap dance). The whole image area is one big
+   clickable link to instagram.com/p/<id>/, so any tap on the poster
+   takes the user straight where they wanted to go. The pill badge
+   centered on top is the affordance; a soft top-to-bottom darkening
+   keeps the badge legible against any thumbnail. */
+.instagramOpenLink {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.42) 100%);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.instagramOpenLink:hover {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.10) 0%, rgba(0, 0, 0, 0.55) 100%);
+}
+.instagramOpenBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+.instagramOpenBadge svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 .text {
   flex: 0 0 320px;
   color: #e8e8e8;
@@ -147,6 +191,36 @@
   gap: 14px;
   max-height: 88vh;
   overflow-y: auto;
+  /* Custom scrollbar — replaces the chunky default browser bar with a
+     hairline that matches the dark UI. Hidden until the panel is
+     hovered so it doesn't compete with the content for attention.
+     Firefox uses scrollbar-width/color; Chromium/Safari use the
+     ::-webkit-scrollbar pseudos below. The track is fully transparent
+     so the scrollbar visually "lives in" the text column rather than
+     carving out a strip. */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.18s ease;
+}
+.text:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.text::-webkit-scrollbar {
+  width: 4px;
+}
+.text::-webkit-scrollbar-track {
+  background: transparent;
+}
+.text::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+  transition: background 0.18s ease;
+}
+.text:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+}
+.text:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.36);
 }
 @media (max-width: 900px) {
   .text { flex: 0 0 auto; }
@@ -171,6 +245,32 @@
   color: var(--text-body);
   margin: 0;
   font-family: var(--font-sans);
+}
+
+/* Instagram-only typography. Posts have no real "title" — the most
+   meaningful header is "<handle> on Instagram", which sets context
+   and acts as the lightbox's accessible label without competing with
+   the caption visually. The caption is the actual content, so it's
+   sized like body copy and rendered with pre-wrap to preserve line
+   breaks the user wrote in the post. Rendering the caption only once
+   (here) replaces the prior "title + description" duplicate dump. */
+.bylineHeading {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.4;
+  margin: 0;
+  color: var(--text-body);
+  font-family: var(--font-sans);
+}
+.captionBody {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  margin: 0;
+  font-family: var(--font-sans);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* === Tweet branch ===
