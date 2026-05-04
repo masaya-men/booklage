@@ -388,6 +388,18 @@
 }
 .close:hover { opacity: 0.6; }
 .close:active { opacity: 0.4; }
+/* The lightbox auto-focuses the close button on open (so Esc-equivalent
+   keyboard interaction lands here immediately). The browser's default
+   focus ring around the bare ✕ reads as an unwanted "selected" box —
+   suppress it for that programmatic-focus case. Real keyboard navigation
+   (Tab → close button) still gets a ring via :focus-visible, preserving
+   accessibility. */
+.close:focus { outline: none; }
+.close:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .closeIcon {
   color: var(--color-text-primary);
   font-size: var(--text-lg);

@@ -29,7 +29,8 @@ type Props = {
 export function Lightbox({ item, originRect, onClose }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  // closeButtonRef intentionally absent — see "No programmatic auto-focus"
+  // comment near the keyboard handler below.
 
   const isTweet = item ? detectUrlType(item.url) === 'tweet' : false
   const tweetId = isTweet && item ? extractTweetId(item.url) : null
@@ -136,10 +137,12 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookmarkId])
 
-  // Focus close button when lightbox opens
-  useEffect(() => {
-    if (bookmarkId) closeButtonRef.current?.focus()
-  }, [bookmarkId])
+  // No programmatic auto-focus on open — the bare ✕ button rendered with
+  // a default browser focus ring reads as an unwanted "selected" rectangle
+  // around the corner. Esc still closes via the window keydown listener
+  // above, and Tab from anywhere lands on the close button as the first
+  // focusable element inside the lightbox, with the standard focus ring
+  // shown only for that genuine keyboard nav (CSS :focus-visible).
 
   if (!item) return null
 
@@ -182,7 +185,6 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
           </a>
         </div>
         <button
-          ref={closeButtonRef}
           type="button"
           onClick={onClose}
           className={styles.close}
