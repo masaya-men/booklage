@@ -259,6 +259,13 @@ function TweetVideoPlayer({
   readonly meta: TweetMeta
 }): ReactNode {
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
+  // `isReady` flips true on the first `canplay` event — at that point the
+  // browser has buffered enough to play immediately. We hide the play button
+  // until then so the native loading spinner (which the browser draws in the
+  // dead centre of the video) isn't covered by our overlay. Once true it
+  // stays true even after pause/seek, so re-pauses get the play button
+  // back instantly without re-waiting for `canplay`.
+  const [isReady, setIsReady] = useState<boolean>(false)
   const [videoFailed, setVideoFailed] = useState<boolean>(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -303,17 +310,26 @@ function TweetVideoPlayer({
         controls
         playsInline
         preload="metadata"
+        onCanPlay={(): void => setIsReady(true)}
         onPlay={(): void => setIsPlaying(true)}
         onPause={(): void => setIsPlaying(false)}
         onEnded={(): void => setIsPlaying(false)}
         onError={(): void => setVideoFailed(true)}
       />
+      {/* Play overlay is always mounted while the video is paused so the
+          appearance / disappearance can be a CSS transition (opacity +
+          back-easing scale). `data-ready` toggles the visible state — false
+          while the browser is still buffering (so its native centre spinner
+          isn't covered), true once `canplay` fires. */}
       {!isPlaying && (
         <button
           type="button"
           className={styles.playOverlay}
+          data-ready={isReady}
           onClick={handleOverlayClick}
           aria-label="Play video"
+          aria-hidden={!isReady}
+          tabIndex={isReady ? 0 : -1}
         >
           <LiquidGlass shape="circle" size={92} aria-hidden="true">
             <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">

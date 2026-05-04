@@ -10,7 +10,11 @@
   display: grid;
   place-items: center;
 }
-.backdrop.open { opacity: 1; pointer-events: auto; transition: opacity 200ms ease-out; }
+.backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity var(--duration-fast) var(--ease-in-out);
+}
 
 /* Flex (not grid): media uses its NATURAL width (whatever the
    aspect-ratio wrapper resolves to — 60vw for 16:9, ~50vw for 9:16
@@ -166,6 +170,17 @@
    outer diffuse drop shadow for the "lit from above" 3D feel. The
    pseudo-element adds a soft elliptical sheen across the upper half
    to read as a curved glass cap (caustic). */
+/* Play overlay covers the video frame above the native controls bar.
+   Two-state visibility:
+     • [data-ready="false"] — invisible & non-interactive while the browser
+       is buffering. Its native loading spinner draws in the centre of the
+       <video>; covering it would mean the user has no idea why nothing's
+       happening.
+     • [data-ready="true"] — fades + back-eases in once `canplay` fires.
+       The slight overshoot reads as "the button just landed, ready to be
+       pressed" rather than just appearing.
+   Hover deepens the dark gradient so the centred glass disc reads more
+   clearly against bright frames. */
 .playOverlay {
   position: absolute;
   top: 0;
@@ -178,22 +193,30 @@
   display: grid;
   place-items: center;
   border: none;
-  cursor: pointer;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.18) 100%
-  );
-  transition: background 0.2s ease-out, opacity 0.2s ease-out;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.18) 100%);
   padding: 0;
   z-index: 1;
+  cursor: pointer;
+  /* Reveal/dismiss state */
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
+  transition:
+    opacity var(--duration-normal) var(--ease-out-back),
+    transform var(--duration-normal) var(--ease-out-back),
+    background var(--duration-fast) var(--ease-in-out);
 }
-.playOverlay:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.05) 0%,
-    rgba(0, 0, 0, 0.28) 100%
-  );
+.playOverlay[data-ready="true"] {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.playOverlay[data-ready="true"]:hover {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.28) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .playOverlay { transition: opacity var(--duration-fast) linear; transform: none; }
+  .playOverlay[data-ready="true"] { transform: none; }
 }
 /* Glass surface for the play button is now provided by <LiquidGlass>
    (preset 'lens-magnify'). The triangle SVG below sits ABOVE the
@@ -336,13 +359,13 @@
    provided by <LiquidGlass shape="circle" size={36}>. */
 .close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: var(--space-4);
+  right: var(--space-4);
   z-index: 2;
 }
 .closeIcon {
-  color: #fff;
-  font-size: 20px;
-  line-height: 1;
-  font-weight: 300;
+  color: var(--color-text-primary);
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-normal);
 }
