@@ -70,8 +70,11 @@
 }
 
 /* Horizontal video (16:9). Width fills available column up to 920px,
-   height capped at 88vh — whichever constraint binds first. */
+   height capped at 88vh — whichever constraint binds first.
+   position:relative so an absolutely-positioned play overlay sits
+   inside the rounded corners instead of escaping to the lightbox. */
 .iframeWrap16x9 {
+  position: relative;
   width: min(920px, 60vw);
   aspect-ratio: 16 / 9;
   max-height: 88vh;
@@ -83,6 +86,7 @@
    take up to 88vh tall, width derived from 9:16 aspect-ratio. Never
    exceed ~50vw so text panel still fits beside it on wide screens. */
 .iframeWrap9x16 {
+  position: relative;
   height: min(88vh, 720px);
   aspect-ratio: 9 / 16;
   max-width: 50vw;
@@ -148,6 +152,62 @@
   display: block;
   background: black;
   object-fit: contain;
+}
+
+/* Big center play button shown ONLY before first play. Native <video
+   controls> hides its own giant play button on small/medium widths in
+   most browsers, so users had to hunt for the small bottom-bar play.
+   This overlay surfaces a clear glassy CTA, then disappears once the
+   user kicks off playback (native bottom controls take over for
+   pause/seek/volume from then on). */
+.playOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.18) 100%
+  );
+  transition: background 0.2s ease-out;
+  padding: 0;
+  z-index: 1;
+}
+.playOverlay:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.05) 0%,
+    rgba(0, 0, 0, 0.28) 100%
+  );
+}
+.playOverlayCircle {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: transform 0.22s ease-out, background 0.22s ease-out;
+}
+.playOverlay:hover .playOverlayCircle {
+  background: rgba(255, 255, 255, 0.32);
+  transform: scale(1.06);
+}
+.playOverlayIcon {
+  width: 32px;
+  height: 32px;
+  fill: #ffffff;
+  /* Visual-center the play triangle inside the circle (geometric
+     center is right-of-visual-center for a triangle pointing right). */
+  margin-left: 5px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
 }
 
 /* Fallback shown when inline video playback fails (CDN reject, takedown,

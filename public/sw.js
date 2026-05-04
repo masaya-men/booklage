@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v28-2026-05-03-flip-smoothing-video-proxy'
+const CACHE_VERSION = 'v29-2026-05-03-tweet-video-play-overlay'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

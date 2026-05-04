@@ -212,13 +212,11 @@ function DefaultText({
  *  text (text-only tweets). Falls back to the bookmark thumbnail before
  *  metadata loads so the slot never appears empty.
  *
- *  Why `referrerPolicy=no-referrer`: Twitter's video CDN
- *  (`video.twimg.com`) refuses cross-origin requests that carry a Referer
- *  header pointing at non-Twitter domains. Stripping the Referer is
- *  enough to make the request look like a direct hit and play through.
- *  When that still fails for a given clip (geo-block, takedown, etc.),
- *  `onError` swaps the player out for a `Watch on X` poster link so the
- *  user is never stuck staring at a dead element. */
+ *  Video playback routes through `/api/tweet-video` (a Pages Function) to
+ *  side-step the Twitter CDN's cross-origin Referer/Origin block — see
+ *  functions/api/tweet-video.ts. The custom big play button overlay
+ *  appears only before first play; once the user starts the clip,
+ *  native bottom controls take over for pause/seek/volume. */
 function TweetMedia({
   item,
   meta,
@@ -226,44 +224,8 @@ function TweetMedia({
   readonly item: BoardItem
   readonly meta: TweetMeta | null
 }): ReactNode {
-  const [videoFailed, setVideoFailed] = useState<boolean>(false)
-  if (meta?.videoUrl && !videoFailed) {
-    const aspect = meta.videoAspectRatio ?? 16 / 9
-    const wrapperClass = aspect < 1 ? styles.iframeWrap9x16 : styles.iframeWrap16x9
-    // Route through our /api/tweet-video Pages Function. video.twimg.com
-    // rejects browser-direct fetches from non-Twitter Referer/Origin, so
-    // the proxy fetches server-to-server (no browser headers) and relays
-    // the bytes with permissive CORS + Range support.
-    const proxiedSrc = `/api/tweet-video?url=${encodeURIComponent(meta.videoUrl)}`
-    return (
-      <div className={wrapperClass}>
-        <video
-          className={styles.tweetVideo}
-          src={proxiedSrc}
-          poster={meta.videoPosterUrl ?? item.thumbnail}
-          controls
-          playsInline
-          preload="metadata"
-          onError={(): void => setVideoFailed(true)}
-        />
-      </div>
-    )
-  }
-  if (videoFailed && (meta?.videoPosterUrl || item.thumbnail)) {
-    // Inline playback rejected by the CDN. Render the poster + a click-to-X
-    // link so the user can still watch the clip. Mirrors react-tweet's
-    // historical fallback behaviour.
-    return (
-      <a
-        className={styles.tweetWatchOnX}
-        href={item.url}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <img src={meta?.videoPosterUrl ?? item.thumbnail} alt={item.title} />
-        <span className={styles.tweetWatchOnXBadge}>Watch on X →</span>
-      </a>
-    )
+  if (meta?.videoUrl) {
+    return <TweetVideoPlayer item={item} meta={meta} />
   }
   const photoUrl = meta?.photoUrl ?? item.thumbnail
   if (photoUrl) {
@@ -273,6 +235,72 @@ function TweetMedia({
     return <p className={styles.tweetTextOnly}>{meta.text}</p>
   }
   return <div className={styles.placeholder}>{item.title}</div>
+}
+
+/** Inline mp4 player for tweet videos. Adds a frosted-glass center play
+ *  button overlay that disappears on first play (native bottom controls
+ *  take over from there). If playback fails — CDN takedown, geo-block,
+ *  proxy outage — falls back to a poster + "Watch on X" link so the
+ *  user is never stuck on a dead element. */
+function TweetVideoPlayer({
+  item,
+  meta,
+}: {
+  readonly item: BoardItem
+  readonly meta: TweetMeta
+}): ReactNode {
+  const [hasStarted, setHasStarted] = useState<boolean>(false)
+  const [videoFailed, setVideoFailed] = useState<boolean>(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  if (videoFailed) {
+    return (
+      <a
+        className={styles.tweetWatchOnX}
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <img src={meta.videoPosterUrl ?? item.thumbnail} alt={item.title} />
+        <span className={styles.tweetWatchOnXBadge}>Watch on X →</span>
+      </a>
+    )
+  }
+
+  const aspect = meta.videoAspectRatio ?? 16 / 9
+  const wrapperClass = aspect < 1 ? styles.iframeWrap9x16 : styles.iframeWrap16x9
+  const proxiedSrc = `/api/tweet-video?url=${encodeURIComponent(meta.videoUrl ?? '')}`
+  const handleOverlayClick = (): void => { void videoRef.current?.play() }
+
+  return (
+    <div className={wrapperClass}>
+      <video
+        ref={videoRef}
+        className={styles.tweetVideo}
+        src={proxiedSrc}
+        poster={meta.videoPosterUrl ?? item.thumbnail}
+        controls
+        playsInline
+        preload="metadata"
+        onPlay={(): void => setHasStarted(true)}
+        onError={(): void => setVideoFailed(true)}
+      />
+      {!hasStarted && (
+        <button
+          type="button"
+          className={styles.playOverlay}
+          onClick={handleOverlayClick}
+          aria-label="Play video"
+        >
+          <span className={styles.playOverlayCircle} aria-hidden="true">
+            <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+        </button>
+      )}
+    </div>
+  )
 }
 
 /** Right-column text panel for a tweet: avatar + author name + handle, then
