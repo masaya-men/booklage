@@ -1,0 +1,430 @@
+/* === Glass Lab — playground for tuning liquid-glass parameters in real time ===
+   Two-pane: stage (left) + controls (right). Stage holds a draggable glass
+   element on top of swappable backgrounds; controls is a scrollable panel
+   of grouped sliders. State is mirrored to localStorage + URL hash so a
+   tuning session survives reload, and a chosen preset can be shared / pasted
+   into the recipe doc.                                                   */
+
+.shell {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #0a0a0f;
+  color: #e8e8e8;
+  font-family: var(--font-geist), system-ui, sans-serif;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: 60vh 40vh;
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
+/* ── Stage (left) ───────────────────────────────────────────────────── */
+.stage {
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  isolation: isolate; /* contain backdrop-filter to this stacking context */
+}
+
+.stageGradient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 30%, #ff5e62 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, #6a82fb 0%, transparent 50%),
+    radial-gradient(circle at 60% 80%, #00f5a0 0%, transparent 50%),
+    radial-gradient(circle at 30% 90%, #ffd86b 0%, transparent 50%),
+    linear-gradient(135deg, #1a0033 0%, #0a0014 100%);
+}
+
+/* ── Pattern backgrounds (test surfaces) ──
+   Designed so refraction is *immediately* visible. Straight lines bend, rings
+   compress, sharp color boundaries shift. Ideal for inspection, less great
+   for production-feel testing — switch to image once tuning is dialed in. */
+.stagePattern {
+  position: absolute;
+  inset: -25%;        /* overflow because we apply transform: scale() */
+  pointer-events: none;
+  transform-origin: center;
+}
+.patternChecker {
+  background-image:
+    conic-gradient(from 0deg at 50% 50%, #fff 0deg 90deg, #000 90deg 180deg, #fff 180deg 270deg, #000 270deg 360deg);
+  background-size: 60px 60px;
+  background-repeat: repeat;
+}
+.patternRings {
+  background:
+    repeating-radial-gradient(
+      circle at 50% 50%,
+      #ff5e62 0 14px,
+      #ffd86b 14px 28px,
+      #00f5a0 28px 42px,
+      #6a82fb 42px 56px,
+      #c084fc 56px 70px
+    );
+}
+.patternGrid {
+  background-color: #07070b;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.85) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.85) 1px, transparent 1px),
+    linear-gradient(rgba(255, 100, 100, 0.6) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 200, 255, 0.6) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px, 8px 8px, 8px 8px;
+}
+.patternMesh {
+  background:
+    radial-gradient(circle at 18% 22%, #ff5e62 0%, transparent 32%),
+    radial-gradient(circle at 78% 18%, #6a82fb 0%, transparent 32%),
+    radial-gradient(circle at 60% 78%, #00f5a0 0%, transparent 32%),
+    radial-gradient(circle at 25% 80%, #ffd86b 0%, transparent 32%),
+    radial-gradient(circle at 85% 60%, #c084fc 0%, transparent 32%),
+    #1a0033;
+}
+
+/* ── Text background ──
+   Verifies the lens bends typography (kube.io's frog demo lets you see "OPTICS
+   STUDY" warp under the lens). Multi-colored stacked paragraphs at varied
+   sizes guarantee strong edges everywhere on the stage.                      */
+.stageText {
+  position: absolute;
+  inset: 0;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-weight: 700;
+  background: #07070b;
+  overflow: hidden;
+  transform-origin: center center;
+}
+.stageText p {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 0.5px currentColor;
+}
+.stageText p:nth-child(odd)  { font-size: 36px; font-weight: 800; }
+.stageText p:nth-child(3n)   { font-size: 22px; font-style: italic; }
+.stageText p:nth-child(5n+1) { letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* ── Debug map preview ── */
+.debugMaps {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  pointer-events: none;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: #aaa;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.debugMaps img {
+  width: 120px;
+  height: auto;
+  display: block;
+  image-rendering: pixelated;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+.debugMapsLabel {
+  font-size: 9px;
+  color: #888;
+}
+
+.stageInfo {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #aaa;
+  pointer-events: none;
+}
+
+.stageGuide {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 10;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #ccc;
+  pointer-events: none;
+}
+
+/* The glass itself. position:absolute so GSAP Draggable can move it. */
+.glass {
+  position: absolute;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  will-change: transform, border-radius;
+}
+.glass:active { cursor: grabbing; }
+
+.glassInner {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* ── Controls (right) ───────────────────────────────────────────────── */
+.controls {
+  height: 100vh;
+  overflow-y: auto;
+  background: #0e0e14;
+  border-left: 1px solid #1f1f28;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .controls { height: auto; }
+}
+
+.controlsHeader {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #0e0e14;
+  padding: 16px 20px;
+  border-bottom: 1px solid #1f1f28;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0;
+  color: #fff;
+}
+
+.subtitle {
+  font-size: 11px;
+  color: #888;
+  margin: 0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.headerActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid #2a2a35;
+  background: #16161e;
+  color: #ddd;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.12s, border-color 0.12s;
+}
+.btn:hover { background: #1c1c26; border-color: #3a3a47; }
+.btn:active { background: #20202c; }
+.btnPrimary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.btnPrimary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+.btnDanger {
+  background: transparent;
+  border-color: #5a2a2a;
+  color: #d88;
+}
+.btnDanger:hover { background: #2a1414; border-color: #7a3a3a; }
+
+.section {
+  border-bottom: 1px solid #1a1a22;
+  padding: 14px 20px 16px;
+}
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a8aff;
+  margin: 0 0 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.row label {
+  font-size: 12px;
+  color: #bbb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+  accent-color: #6a8aff;
+  cursor: pointer;
+}
+
+.value {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: #fff;
+  background: #16161e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 48px;
+  text-align: right;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  cursor: pointer;
+  font-size: 12px;
+  color: #ddd;
+}
+.toggleRow input { accent-color: #6a8aff; cursor: pointer; }
+
+/* In-section hint text — explains the slider's "neutral" point + suggested
+   direction. Sits under the slider, dim so it doesn't compete visually.    */
+.hint {
+  font-size: 10.5px;
+  color: #777;
+  margin: 4px 0 0;
+  letter-spacing: 0.02em;
+  font-style: italic;
+}
+
+.select, .urlInput {
+  width: 100%;
+  appearance: none;
+  background: #16161e;
+  color: #ddd;
+  border: 1px solid #2a2a35;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  margin-top: 4px;
+}
+.select:focus, .urlInput:focus {
+  outline: none;
+  border-color: #6a8aff;
+}
+
+.bgGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.bgThumb {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid transparent;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.bgThumb:hover { transform: scale(1.05); }
+.bgThumbActive {
+  border-color: #6a8aff;
+}
+
+.shapeRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+.shapeBtn {
+  appearance: none;
+  background: #16161e;
+  border: 1px solid #2a2a35;
+  color: #ddd;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.shapeBtn:hover { background: #1c1c26; }
+.shapeBtnActive {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.recipeOut {
+  width: 100%;
+  min-height: 110px;
+  background: #07070b;
+  color: #aef;
+  border: 1px solid #1f1f28;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  line-height: 1.45;
+  resize: vertical;
+  white-space: pre;
+  overflow: auto;
+}

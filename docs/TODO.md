@@ -8,27 +8,30 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v25 反映済** (Task 30 修正完了 — Lightbox tweet 無限再レンダリングループ解消)
+- **本番**: `https://booklage.pages.dev` に **v32 反映済** (Task 31 完了 — 本物のリキッドグラス = lens-magnify プリセット)
 
-### 🔥 次セッション最優先: 本物のリキッドグラス実装 (Task 31)
+### 🎯 Task 31 完了 (2026-05-04 v32)
 
-**現状の問題**: v31 で SVG `feTurbulence + feDisplacementMap` で湾曲屈折は表現したが、**動きと連動して水滴のように歪むアニメーション** (ぽよんぽよん感) と、**透明感** が memory 要件に未達。ユーザー曰く「リキッドグラスは毎回全然できていない」。
+**やったこと**:
+1. **Glass Lab 構築** — `/glass-lab` 専用 playground、Snell 屈折 + Map B 拡大 + 全パラメータをスライダーで調整可能
+2. **kube.io 二段 displacement 方式を実装** — `lib/glass/displacement-map.ts` に Map A (bezel Snell) + Map B (lens magnification) の両層を canvas 2D で事前生成
+3. **共通コンポーネント `<LiquidGlass>` 作成** — `components/ui/LiquidGlass.tsx`、preset + override + as: button|div + forwardRef 対応
+4. **`lens-magnify` プリセット確定** — Lab で詰めた値を `lib/glass/presets.ts` に保存。詳細は `docs/private/liquid-glass-recipe.md`
+5. **Lightbox 改修** — v31 の `feTurbulence` 廃止。play button (92px) + close button (36px) を `<LiquidGlass>` で再構築
 
-**参考 URL (memory: reference_design_inspirations.md より)**:
-1. **https://kube.io/blog/liquid-glass-css-svg/** — 本命参考。CSS + SVG でリキッドグラスを移動時にぽよんぽよん水玉のように歪ませる手法
-2. **https://r3f.maximeheckel.com/lens2** — R3F (WebGL) のガラスレンズ効果。カーソルに取り入れる候補
-3. **https://github.com/WICG/html-in-canvas** — HTML in Canvas 提案。パフォーマンス改善で重要
+**確定したリキッドグラスの設計思想 (将来も継承)**:
+- **本質はレンズ屈折** (kube.io frog 風の Map B 拡大)。ぷるぷる水玉変形は **本質ではない** (production では OFF)
+- **子要素は backdrop-filter を通らない** ので、ガラス内側に icon/text を置けば歪まない (= 強い magnify でも UI は読める)
+- **完全透明トリオ**: `bgAlpha=0` / `saturate=1` / `blurStdDev=0` を維持
+- **黒ずみ主犯**: `feColorMatrix saturate>1` / `specularMaxAlpha` 高すぎ — 両方 0 で解決
 
-**memory 要件**:
-- 「現在の実装が黒ずんでいる → もっと透明にすべき」
-- 「移動時にぽよんぽよん水玉のように変形するアニメーションが欲しい」
+**検証**: tsc EXIT=0 / vitest 209 PASS / pnpm build 成功 / 本番 deploy 完了
 
-**着手手順 (次セッション)**:
-1. kube.io の記事を Read で熟読 (CSS + SVG filter のアニメ化テクニック理解)
-2. r3f.maximeheckel.com/lens2 のソース確認 (R3F が必要か、CSS/SVG で十分か判断)
-3. play button だけでなく、**Lightbox 全体 / カード hover / カーソル** など水平展開を視野に共通コンポーネント化を検討
-4. `LiquidGlass` 共通 React component (props で size / shape / animation strength を受け取る) を新規作成し、play button・他箇所で再利用
-5. HTML in Canvas の WICG 提案も読み、Canvas ベース化が必要か (= performance 上の意義) を評価
+### 🚧 次フェーズ候補 (ユーザー判断)
+
+- **`card-rect` プリセット** — B1 装飾フェーズで Lab を使って詰める (角丸長方形 / カード hover)
+- **`cursor-lens` プリセット** — 将来テーマ。R3F or HTML in Canvas で別途検討
+- **B1 全体 (装飾レイヤー) 着手** — カード装飾、スプリング物理、3D タイル演出
 
 ---
 

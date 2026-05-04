@@ -5,6 +5,7 @@ import { gsap } from 'gsap'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { TweetMeta } from '@/lib/embed/types'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
+import { LiquidGlass } from '@/components/ui/LiquidGlass'
 import { t } from '@/lib/i18n/t'
 import {
   detectUrlType,
@@ -28,7 +29,7 @@ type Props = {
 export function Lightbox({ item, originRect, onClose }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLElement>(null)
 
   const isTweet = item ? detectUrlType(item.url) === 'tweet' : false
   const tweetId = isTweet && item ? extractTweetId(item.url) : null
@@ -161,33 +162,6 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       data-testid="lightbox"
     >
-      {/* Hidden SVG filter: backdrop displacement for the play button's
-          liquid-glass surface. feTurbulence generates a low-frequency
-          fractal noise field; feDisplacementMap uses it to bend each
-          backdrop pixel by up to `scale` px. The result reads as light
-          refracting through a curved piece of warm glass instead of a
-          flat frosted disc. Defined inline (vs. global) so the filter
-          mounts only while a Lightbox is open and disappears with it. */}
-      <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
-        <defs>
-          <filter id="liquid-glass-button" x="-10%" y="-10%" width="120%" height="120%">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.012 0.018"
-              numOctaves="2"
-              seed="3"
-              result="turbulence"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="turbulence"
-              scale="14"
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </defs>
-      </svg>
       <div ref={frameRef} className={styles.frame}>
         <div className={styles.media}>
           {tweetId
@@ -207,13 +181,17 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
             {t('board.lightbox.openSource')} →
           </a>
         </div>
-        <button
-          ref={closeButtonRef}
-          type="button"
+        <LiquidGlass
+          ref={closeButtonRef as React.Ref<HTMLElement>}
+          as="button"
+          shape="circle"
+          size={36}
           onClick={onClose}
           className={styles.close}
           aria-label={t('board.lightbox.close')}
-        >✕</button>
+        >
+          <span className={styles.closeIcon} aria-hidden="true">✕</span>
+        </LiquidGlass>
       </div>
     </div>
   )
@@ -337,14 +315,14 @@ function TweetVideoPlayer({
           onClick={handleOverlayClick}
           aria-label="Play video"
         >
-          <span className={styles.playOverlayCircle} aria-hidden="true">
+          <LiquidGlass shape="circle" size={92} aria-hidden="true">
             <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
               {/* Path is bbox-centered in viewBox; CSS adds 1.5px optical
                   shift right (centroid lies left of bbox center for a
                   right-pointing triangle). */}
               <path d="M6.5 5v14l11-7z" />
             </svg>
-          </span>
+          </LiquidGlass>
         </button>
       )}
     </div>

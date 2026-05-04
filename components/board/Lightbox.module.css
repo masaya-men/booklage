@@ -195,87 +195,10 @@
     rgba(0, 0, 0, 0.28) 100%
   );
 }
-.playOverlayCircle {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  /* Liquid-glass surface — built in three stacked passes:
-     1) `backdrop-filter: url(#liquid-glass-button)` runs the SVG
-        feTurbulence + feDisplacementMap on the backdrop, **bending
-        the video pixels** as if seen through a curved piece of glass.
-        This is what reads as "湾曲" (curved) — pure CSS blur is flat,
-        but a displacement filter actually offsets each pixel along a
-        smooth-noise vector, producing the wandering refraction edges
-        that visionOS-style glass shows.
-     2) `blur` softens what's left after the displacement (real glass
-        is never razor-sharp through the curve).
-     3) `saturate` + `brightness` give the colour absorption + light
-        gathering of a polished glass surface.
-     Outer / inner shadows then sculpt the rim and dome highlight. */
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: url(#liquid-glass-button) blur(8px) saturate(180%) brightness(112%);
-  -webkit-backdrop-filter: url(#liquid-glass-button) blur(8px) saturate(180%) brightness(112%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow:
-    /* Outer cast shadow (heavier for the bigger button) */
-    0 24px 56px rgba(0, 0, 0, 0.55),
-    /* Top rim catching highlight — the lit edge of the dome */
-    inset 0 2px 2px rgba(255, 255, 255, 0.55),
-    /* Bottom rim shading — under-edge in self-shadow */
-    inset 0 -3px 6px rgba(0, 0, 0, 0.22),
-    /* Subtle inner edge halo (1px sheen all around) */
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  transition: transform 0.22s ease-out, background 0.22s ease-out, box-shadow 0.22s ease-out;
-  isolation: isolate;
-}
-/* Curved-cap caustic: a soft ellipse on the upper half simulates the
-   directional light reflecting off a domed glass surface. Pulled inward
-   1px so it sits inside the rim highlight instead of bleeding past it. */
-.playOverlayCircle::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse 70% 50% at 50% 20%,
-    rgba(255, 255, 255, 0.34) 0%,
-    rgba(255, 255, 255, 0) 65%
-  );
-  pointer-events: none;
-}
-/* Subtle chromatic edge — a thin coloured halo where the glass curves
-   most steeply. mix-blend-mode: screen lets the colour additive-blend
-   only into highlights, so the chroma reads as light dispersion rather
-   than a tinted ring. */
-.playOverlayCircle::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  pointer-events: none;
-  background: conic-gradient(
-    from 220deg,
-    rgba(180, 220, 255, 0.18) 0deg,
-    rgba(255, 255, 255, 0) 60deg,
-    rgba(255, 240, 220, 0.16) 200deg,
-    rgba(255, 255, 255, 0) 260deg,
-    rgba(180, 220, 255, 0.18) 360deg
-  );
-  mix-blend-mode: screen;
-  opacity: 0.7;
-}
-.playOverlay:hover .playOverlayCircle {
-  background: rgba(255, 255, 255, 0.1);
-  transform: scale(1.06);
-  box-shadow:
-    0 28px 64px rgba(0, 0, 0, 0.6),
-    inset 0 2px 2px rgba(255, 255, 255, 0.65),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.22),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
+/* Glass surface for the play button is now provided by <LiquidGlass>
+   (preset 'lens-magnify'). The triangle SVG below sits ABOVE the
+   backdrop-filter as a child, so it stays crisp even when the video
+   pixels behind the lens are heavily distorted by Map B. */
 .playOverlayIcon {
   position: relative;
   z-index: 1;  /* sit above ::before highlight + ::after chroma */
@@ -409,18 +332,17 @@
 }
 .sourceLink:hover { color: var(--text-primary); }
 
+/* Positioning only — visual styling (size, glass surface, hover) is
+   provided by <LiquidGlass shape="circle" size={36}>. */
 .close {
   position: absolute;
   top: 16px;
   right: 16px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
+  z-index: 2;
+}
+.closeIcon {
   color: #fff;
-  border: 0;
-  cursor: pointer;
   font-size: 20px;
   line-height: 1;
+  font-weight: 300;
 }
-.close:hover { background: rgba(255, 255, 255, 0.12); }
