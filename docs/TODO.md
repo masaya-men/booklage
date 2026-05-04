@@ -10,6 +10,28 @@
 - **ブランチ**: `master` 単一運用
 - **本番**: `https://booklage.pages.dev` に **v25 反映済** (Task 30 修正完了 — Lightbox tweet 無限再レンダリングループ解消)
 
+### 🔥 次セッション最優先: 本物のリキッドグラス実装 (Task 31)
+
+**現状の問題**: v31 で SVG `feTurbulence + feDisplacementMap` で湾曲屈折は表現したが、**動きと連動して水滴のように歪むアニメーション** (ぽよんぽよん感) と、**透明感** が memory 要件に未達。ユーザー曰く「リキッドグラスは毎回全然できていない」。
+
+**参考 URL (memory: reference_design_inspirations.md より)**:
+1. **https://kube.io/blog/liquid-glass-css-svg/** — 本命参考。CSS + SVG でリキッドグラスを移動時にぽよんぽよん水玉のように歪ませる手法
+2. **https://r3f.maximeheckel.com/lens2** — R3F (WebGL) のガラスレンズ効果。カーソルに取り入れる候補
+3. **https://github.com/WICG/html-in-canvas** — HTML in Canvas 提案。パフォーマンス改善で重要
+
+**memory 要件**:
+- 「現在の実装が黒ずんでいる → もっと透明にすべき」
+- 「移動時にぽよんぽよん水玉のように変形するアニメーションが欲しい」
+
+**着手手順 (次セッション)**:
+1. kube.io の記事を Read で熟読 (CSS + SVG filter のアニメ化テクニック理解)
+2. r3f.maximeheckel.com/lens2 のソース確認 (R3F が必要か、CSS/SVG で十分か判断)
+3. play button だけでなく、**Lightbox 全体 / カード hover / カーソル** など水平展開を視野に共通コンポーネント化を検討
+4. `LiquidGlass` 共通 React component (props で size / shape / animation strength を受け取る) を新規作成し、play button・他箇所で再利用
+5. HTML in Canvas の WICG 提案も読み、Canvas ベース化が必要か (= performance 上の意義) を評価
+
+---
+
 ### 💡 アイデア memo: HTML in Canvas (3D / WebGL 演出フック)
 
 「HTML in Canvas」(react-three-fiber `<Html>` / Three.js `CSS3DObject` 等) を使うと、HTML 要素を 3D シーン内に配置して視差・屈折・depth・流体歪みなどを掛けられる。Lightbox など single-element の polish には過剰だが、以下の領域では効果的:
