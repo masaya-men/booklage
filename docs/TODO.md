@@ -8,38 +8,51 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v40 反映済**
-- **Service Worker**: `v40-2026-05-04-close-no-autofocus`
+- **本番**: `https://booklage.pages.dev` に **v47 反映済**
+- **Service Worker**: `v47-2026-05-05-r3f-disabled-pending-cors-fallback`
 
-### 🔥 次セッション最優先: Tweet 動画 — 再生ボタン下のロード インジケーター問題
+### 🔥 次セッション最優先: Lightbox open animation の richness 深掘り (option B → A)
 
-**現象**: Tweet 動画のブクマを Lightbox で開く → 中央に ▶ ボタンが見えるが、その**下でブラウザのネイティブ ロード スピナーが回転**、レンズ越しに黒い弧として透けて見える。
+**今セッション (v42→v47) で確定した richness 基盤**:
+- v42: `<video controls={hasInteracted}>` で初回クリック前 native chrome 一切描画させない → spinner 問題完全消滅
+- v43: Lightbox を `.canvas` 内に移動 + backdrop `position: absolute` → 黒角丸内に完全クリップ + FLIP に motion blur (5→0) + 3D tilt (perspective 900px, ±8°) + 非 uniform scale + power4.out スナップ着地
+- v44: YouTube/TikTok/Instagram にも `hasInteracted` ポスター方式適用 → FLIP 中サムネが見える視覚連続性
+- v45: `lib/glass/displacement-map.ts` を DPR スケール (max 2x) で生成 → 「PS1 ポリゴン」感解消 + reverse FLIP close (カードに吸い込まれる) 実装
 
-**ユーザーの指示**: スピナー出ている間は ▶ ボタンを出さない、シンプル。
+**次にやる順番 (ユーザー合意済 B→A)**:
 
-**やった対策 (全て効かなかったか未確認)**:
-- v34: `data-ready` 属性 + onCanPlay event 駆動の reveal animation
-- v35: イベント追加 (`onSuspend`/`onCanPlayThrough`/`onPlaying` で reveal、`onWaiting`/`onStalled`/`onSeeking` で hide)
-- v36: rAF (60Hz) で `videoRef.current.networkState !== 2 && readyState >= 1` を polling に切替
-- v37: Chrome ネイティブ overlay 大再生ボタンを CSS `::-webkit-media-controls-overlay-play-button { display: none }` で消去
-- v38: `preload="metadata"` → `preload="auto"` + polling 閾値を `readyState >= 4` (HAVE_ENOUGH_DATA) に厳格化
+#### 🅑 CSS で richness 深掘り (まず先にやる)
+candidates (実装前に一つ一つユーザー承認 → トライ):
+1. **box-shadow growth animation**: FLIP 中に shadow が薄→深くレイヤー化、着地で elevation 24 相当の重み感
+2. **SVG turbulence + displacement**: feTurbulence を CSS filter で適用 → 着地までに歪み収束する流体感 (GPU 重さ要計測)
+3. **light sweep**: 着地時に lightbox 表面を斜め gradient が一瞬流れる (glass の caustic 演出)
+4. **subtle elastic landing**: power4.out → back.out (1.05) → 着地後ほんの少し overshoot して落ち着く
+5. **icon/control scale-pop on land**: 着地と同時に内部の ✕ や text panel が scale 0.95→1 でぽよん
 
-**v38 後ユーザーから「全く変わっていない」報告 → 焦らず ×ボタン優先で続行 → 次セッションで仕切り直し**
+#### 🅐 R3F shader FLIP の本気完成 (B が物足りなければ)
+v46 で scaffolding 完了、v47 で `SCENE_ENABLED = false` に固定して凍結中。
 
-**次セッションで試すべき調査手順**:
-1. **必ず本番 (booklage.pages.dev) でハードリロードしてから検証** — SW v40 含めて最新が反映されているか browser dev tool (Application → Service Workers) で確認
-2. **本番に test bookmark を Playwright で injection** して開発者ツール開いて video element の internal state を観測 (今までは sample mp4 で検証していたが、Twitter CDN proxy 通すと挙動が違う可能性大)
-3. **Chromium 内部で spinner を draw する hidden pseudo-element 候補**:
-   - `::-webkit-media-controls-loading-panel` (試す価値あり)
-   - `::-webkit-media-controls-overlay-enclosure` 全消去
-   - `::-webkit-media-text-track-container` 周辺
-4. **最後の手段**: `controls={false}` で完全カスタムコントロール構築 (seek bar / pause を自前)
+**残作業**:
+- **CORS proxy** (`functions/api/img-proxy.ts`): 全 thumbnail を server-side fetch して `Access-Control-Allow-Origin: *` で relay → WebGL テクスチャに使える
+- **Safety timeout**: scene mode 起動後 1.5s 以内に onComplete 来なければ強制で frame 表示
+- **Texture pre-check**: scene 起動前に thumbnail を `<img crossorigin>` で先読みテスト → 成功時のみ scene 起動
+- **Reduced motion fallback**: `prefers-reduced-motion: reduce` 時は CSS FLIP 強制
+- 上記が揃ったら `SCENE_ENABLED = true` 復活
 
-**触らないものの再確認 (絶対に弄らない)**:
-- ✅ `lib/glass/presets.ts` (`lens-magnify`)
-- ✅ `lib/glass/displacement-map.ts`
+**触ったファイル参考**:
+- `components/board/LightboxFlipScene.tsx` (新規、shader 込み)
+- `components/board/Lightbox.tsx` の `useLayoutEffect` 内 scene mode 分岐 + lazy-load
+- `package.json`: `three` + `@react-three/fiber` 追加済
+
+**v46 で起きた regression (再発防止メモ)**:
+- scene mode が起動 → frame opacity 0 で固定 → R3F texture が CORS で読めず + safety timeout なし → 永久に frame 出ない「暗くなるだけ」状態になった
+- 再有効化前に必ず safety timeout を入れる
+
+### 🚧 触らないものの再確認 (絶対に弄らない)
+- ✅ `lib/glass/presets.ts` (`lens-magnify` プリセット)
 - ✅ `components/ui/LiquidGlass.tsx`
 - ✅ Glass Lab (`/glass-lab`)
+- ⚠️ `lib/glass/displacement-map.ts` は v45 で DPR スケール対応 (許可済の改修)。これ以外の改修は要相談
 
 ### 🎯 Task 31 + UI polish 完了サマリー (2026-05-04)
 

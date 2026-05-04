@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ComponentType, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { TweetMeta } from '@/lib/embed/types'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import { LiquidGlass } from '@/components/ui/LiquidGlass'
 import { t } from '@/lib/i18n/t'
+import type { LightboxFlipSceneProps } from './LightboxFlipScene'
 import {
   detectUrlType,
   extractInstagramShortcode,
@@ -56,18 +57,166 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
     return (): void => { cancelled = true }
   }, [tweetId])
 
+  // Lazy-load the R3F flip scene module on idle. This keeps the
+  // ~250 KB three.js + @react-three/fiber payload OUT of the initial
+  // bundle — first paint is unaffected — and prefetches it during the
+  // browser's quiet time so by the time the user clicks any card the
+  // scene is already cached and instantaneous to mount.
+  const [SceneComp, setSceneComp] = useState<ComponentType<LightboxFlipSceneProps> | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const load = (): void => {
+      void import('./LightboxFlipScene').then((m) => {
+        if (!cancelled) setSceneComp(() => m.default)
+      }).catch(() => {
+        // Module load failure → silently fall back to CSS FLIP forever.
+        // No telemetry here; if it can't load the user just gets the
+        // (already-rich) CSS animation instead.
+      })
+    }
+    // requestIdleCallback fires when the main thread is quiet; lets
+    // initial paint finish before we start the network fetch. Falls
+    // back to setTimeout for Safari (no rIC support yet).
+    const w = window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }
+    if (typeof w.requestIdleCallback === 'function') {
+      w.requestIdleCallback(load, { timeout: 2000 })
+    } else {
+      setTimeout(load, 800)
+    }
+    return (): void => { cancelled = true }
+  }, [])
+
+  // Scene-mode coordination: when the scene is rendering, the actual
+  // .frame is held at opacity 0 and close requests are ignored. The
+  // ref mirror exists so requestClose's useCallback closure can read
+  // the current value without becoming a re-render dep.
+  const [sceneActive, setSceneActive] = useState<boolean>(false)
+  const sceneActiveRef = useRef<boolean>(false)
+  const [targetRectState, setTargetRectState] = useState<DOMRect | null>(null)
+
+  // Reverse FLIP close — mirror the open animation: shrink + translate +
+  // tilt + blur back to the source card's rect, fade out, then call the
+  // real onClose (which unmounts the lightbox in BoardRoot). Without this
+  // the lightbox just blinked away on close, which felt cheap next to
+  // the rich open animation. closingRef guards against double-fire from
+  // (Esc + backdrop + ✕) chains.
+  const closingRef = useRef<boolean>(false)
+  const requestClose = useCallback((): void => {
+    // Block close while the R3F open scene is mid-tween — the .frame is
+    // hidden during that ~700 ms window and would animate invisibly,
+    // leaving the user staring at a paused scene with nothing happening.
+    if (closingRef.current || sceneActiveRef.current) return
+    closingRef.current = true
+    const el = frameRef.current
+    const backdrop = backdropRef.current
+    if (!el) {
+      onClose()
+      return
+    }
+    // Kill any in-flight open tween so we animate from current state.
+    gsap.killTweensOf(el)
+    if (backdrop) gsap.killTweensOf(backdrop)
+
+    if (originRect) {
+      const targetRect = el.getBoundingClientRect()
+      const targetCenterX = targetRect.left + targetRect.width / 2
+      const targetCenterY = targetRect.top + targetRect.height / 2
+      const originCenterX = originRect.left + originRect.width / 2
+      const originCenterY = originRect.top + originRect.height / 2
+      const dx = originCenterX - targetCenterX
+      const dy = originCenterY - targetCenterY
+      const sx = originRect.width / targetRect.width
+      const sy = originRect.height / targetRect.height
+      const endScaleX = Math.max(0.05, sx)
+      const endScaleY = Math.max(0.05, sy)
+      const TILT_MAX = 8
+      const TILT_DIST = 600
+      const distNorm = Math.min(1, Math.hypot(dx, dy) / TILT_DIST)
+      const endRotateY = -(Math.sign(dx) || 0) * TILT_MAX * distNorm
+      const endRotateX = (Math.sign(dy) || 0) * TILT_MAX * distNorm * 0.7
+
+      const tl = gsap.timeline({
+        onComplete: () => onClose(),
+      })
+      // power3.in accelerates into the source — feels like the lightbox
+      // is being "yanked back" into the card, mirroring the spring-out
+      // landing of the open animation in reverse.
+      tl.to(el, {
+        x: dx,
+        y: dy,
+        scaleX: endScaleX,
+        scaleY: endScaleY,
+        rotateX: endRotateX,
+        rotateY: endRotateY,
+        filter: 'blur(4px)',
+        opacity: 0,
+        duration: 0.5,
+        ease: 'power3.in',
+        transformOrigin: '50% 50%',
+        transformPerspective: 900,
+      }, 0)
+      if (backdrop) {
+        // Backdrop fade trails the frame slightly so the lightbox
+        // visibly returns to the card before the dim disappears.
+        tl.to(backdrop, {
+          opacity: 0,
+          duration: 0.4,
+          ease: 'power2.in',
+        }, 0.1)
+      }
+    } else {
+      gsap.to(el, {
+        scale: 0.86,
+        opacity: 0,
+        duration: 0.3,
+        ease: 'power3.in',
+        onComplete: () => onClose(),
+      })
+    }
+  }, [onClose, originRect])
+
   // Escape key closes
   useEffect(() => {
     if (!bookmarkId) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        onClose()
+        requestClose()
       }
     }
     window.addEventListener('keydown', onKey)
     return (): void => window.removeEventListener('keydown', onKey)
-  }, [bookmarkId, onClose])
+  }, [bookmarkId, requestClose])
+
+  // Reset closingRef when item changes (= a new lightbox session opens
+  // after a previous close completed). bookmarkId is the stable string
+  // identity, so this only fires when the user opens a different card.
+  useEffect(() => {
+    closingRef.current = false
+    // Also reset scene state on each new open so we don't carry over
+    // a stale sceneActive=true from a previous session that happened
+    // to unmount before its completion callback fired.
+    sceneActiveRef.current = false
+    setSceneActive(false)
+    setTargetRectState(null)
+  }, [bookmarkId])
+
+  // Fired by the R3F scene when the open tween reaches progress=1.
+  // We unmount the scene (setSceneActive false) and reveal the actual
+  // .frame with a brief opacity fade so the swap is imperceptible.
+  // The frame's transforms have never been touched by the scene path,
+  // so it lands at the natural centred position with no jump.
+  const handleSceneComplete = useCallback((): void => {
+    sceneActiveRef.current = false
+    setSceneActive(false)
+    if (frameRef.current) {
+      gsap.fromTo(
+        frameRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.18, ease: 'power2.out' },
+      )
+    }
+  }, [])
 
   // Open animation: FLIP from the clicked card's screen position when an
   // originRect is supplied, otherwise a scale-in fallback. Uses two
@@ -83,6 +232,30 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
     const el = frameRef.current
     const backdrop = backdropRef.current
 
+    // R3F scene mode is currently DISABLED at the activation site
+    // because the first end-to-end test left the lightbox stuck on
+    // an empty backdrop (likely texture-load CORS failure leaving
+    // onComplete unfired). The scene module is still lazy-loaded
+    // and ready; flip the SCENE_ENABLED flag below to re-enable
+    // once we've added a load timeout + texture fallback path.
+    const SCENE_ENABLED = false
+    if (SCENE_ENABLED && originRect && SceneComp && item?.thumbnail) {
+      const targetRect = el.getBoundingClientRect()
+      setTargetRectState(targetRect)
+      sceneActiveRef.current = true
+      setSceneActive(true)
+      gsap.set(el, { opacity: 0 })
+      let backdropTween: gsap.core.Tween | null = null
+      if (backdrop) {
+        backdropTween = gsap.fromTo(
+          backdrop,
+          { opacity: 0 },
+          { opacity: 1, duration: 0.22, ease: 'power2.out' },
+        )
+      }
+      return (): void => { backdropTween?.kill() }
+    }
+
     if (originRect) {
       const targetRect = el.getBoundingClientRect()
       const targetCenterX = targetRect.left + targetRect.width / 2
@@ -91,26 +264,65 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       const originCenterY = originRect.top + originRect.height / 2
       const dx = originCenterX - targetCenterX
       const dy = originCenterY - targetCenterY
-      // Uniform scale = card / target along smaller axis, so the card never
-      // visually overflows its source bounds at frame 0. Aspect mismatch is
-      // absorbed by the surrounding fade rather than a stretch.
       const sx = originRect.width / targetRect.width
       const sy = originRect.height / targetRect.height
-      const startScale = Math.max(0.05, Math.min(sx, sy))
+      // Non-uniform scale: start frame matches the card's exact rect so the
+      // motion reads as "this card grew into the lightbox" instead of "a
+      // smaller box appeared inside the card and grew out". Brief intra-tween
+      // content stretch is hidden under the opacity 0→1 fade and motion blur.
+      const startScaleX = Math.max(0.05, sx)
+      const startScaleY = Math.max(0.05, sy)
+      // Direction-aware 3D tilt: the lightbox leans TOWARD the card's
+      // origin direction, so a card in the top-left makes the lightbox
+      // start tilted up-and-left, and the tilt unwinds as it travels to
+      // center. The maximum magnitude is small (≤ 8°) — enough to read
+      // as "this object has weight and is swinging into place" without
+      // looking gimmicky. Sign matches the FLIP delta direction so the
+      // lean visually points at the source card.
+      const TILT_MAX = 8
+      const TILT_DIST = 600 // px at which tilt saturates
+      const distNorm = Math.min(1, Math.hypot(dx, dy) / TILT_DIST)
+      const startRotateY = -(dx / Math.max(1, Math.abs(dx) || 1)) * TILT_MAX * distNorm
+      const startRotateX = (dy / Math.max(1, Math.abs(dy) || 1)) * TILT_MAX * distNorm * 0.7
 
       const tl = gsap.timeline()
-      tl.set(el, { x: dx, y: dy, scale: startScale, opacity: 0, transformOrigin: '50% 50%' })
+      tl.set(el, {
+        x: dx,
+        y: dy,
+        scaleX: startScaleX,
+        scaleY: startScaleY,
+        rotateX: startRotateX,
+        rotateY: startRotateY,
+        // Motion blur — the lightbox content reads as smeared while
+        // travelling, sharpens as it lands. Same trick film cameras use
+        // to convey speed; reads as "rich" without any 3D library.
+        filter: 'blur(5px)',
+        opacity: 0,
+        transformOrigin: '50% 50%',
+        transformPerspective: 900,
+      })
       tl.to(el, {
         opacity: 1,
-        duration: 0.22,
+        duration: 0.35,
         ease: 'power2.out',
+      }, 0)
+      tl.to(el, {
+        filter: 'blur(0px)',
+        duration: 0.45,
+        ease: 'power3.out',
       }, 0)
       tl.to(el, {
         x: 0,
         y: 0,
-        scale: 1,
-        duration: 0.55,
-        ease: 'power3.out',
+        scaleX: 1,
+        scaleY: 1,
+        rotateX: 0,
+        rotateY: 0,
+        // power4.out is sharper at the tail than power3 — the lightbox
+        // "lands and settles" with a more definitive arrival, matching
+        // the snappier feel real physical objects have when they stop.
+        duration: 0.7,
+        ease: 'power4.out',
       }, 0)
       let backdropTween: gsap.core.Tween | null = null
       if (backdrop) {
@@ -156,15 +368,28 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
   // cells — see TweetMedia and TweetText. This replaces the prior react-tweet
   // single-column branch, which couldn't play tweet videos inline.
   return (
-    <div
-      ref={backdropRef}
-      className={`${styles.backdrop} ${styles.open}`.trim()}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="lightbox-title"
-      onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
-      data-testid="lightbox"
-    >
+    <>
+      {/* R3F open scene — only rendered while sceneActive. The Canvas
+          is a fixed-position viewport-level overlay that does its own
+          tween in WebGL, then signals onComplete which fades in the
+          actual lightbox content below. */}
+      {sceneActive && SceneComp && originRect && targetRectState && item.thumbnail && (
+        <SceneComp
+          originRect={originRect}
+          targetRect={targetRectState}
+          thumbnail={item.thumbnail}
+          onComplete={handleSceneComplete}
+        />
+      )}
+      <div
+        ref={backdropRef}
+        className={`${styles.backdrop} ${styles.open}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lightbox-title"
+        onClick={(e) => { if (e.target === backdropRef.current) requestClose() }}
+        data-testid="lightbox"
+      >
       <div ref={frameRef} className={styles.frame}>
         <div className={styles.media}>
           {tweetId
@@ -186,7 +411,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         </div>
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           className={styles.close}
           aria-label={t('board.lightbox.close')}
         >
@@ -194,6 +419,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         </button>
       </div>
     </div>
+    </>
   )
 }
 
@@ -259,46 +485,20 @@ function TweetVideoPlayer({
   readonly meta: TweetMeta
 }): ReactNode {
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
-  // `isReady` tracks "is the browser's native loading spinner gone?". The
-  // value is driven by a per-frame poll of the video element's internal
-  // state (see useEffect below) — NOT by media events, which fire out of
-  // sync with the spinner UI on Twitter's proxied CDN. The play overlay
-  // becomes visible only when the spinner is genuinely gone, so it can
-  // never sit on top of a spinner getting refracted through the lens.
-  const [isReady, setIsReady] = useState<boolean>(false)
+  // `hasInteracted` is the actual fix for the "native spinner under play
+  // button" problem. While false, the <video> below renders WITHOUT the
+  // `controls` attribute, so Chromium draws no native chrome at all —
+  // including its loading panel. No spinner can possibly stack under our
+  // LiquidGlass play overlay because there's nothing native to stack.
+  // Once the user clicks play, we flip this to true so the native bottom
+  // bar (seek/volume/fullscreen) is available for the rest of the
+  // session, even after the user pauses. Modern Chromium's loading
+  // panel lives in a closed shadow DOM that CSS pseudo-elements cannot
+  // reach, so this controls-toggle is the only reliable way to suppress
+  // it. v34→v41 of the prior approaches all failed at this same point.
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false)
   const [videoFailed, setVideoFailed] = useState<boolean>(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-
-  // Per-frame spinner-state poll. The single source of truth for "is the
-  // browser drawing its native loading spinner right now?" is the
-  // combination of networkState and readyState. We use the strictest
-  // possible "definitely no spinner" criteria:
-  //   networkState !== NETWORK_LOADING (= browser is idle, not fetching)
-  //   readyState   === HAVE_ENOUGH_DATA (4) (= can play through to end
-  //                  without rebuffering — Chrome guarantees the spinner
-  //                  is gone at this readyState)
-  // Combined with `preload="auto"` on the video element below, the browser
-  // pre-loads enough to reach readyState 4 before we ever reveal the play
-  // overlay, so the user never sees the button stacked on top of a
-  // spinning loader.
-  // rAF cadence keeps the check cost negligible (~µs per repaint) and
-  // pauses automatically when the tab is backgrounded.
-  useEffect(() => {
-    const v = videoRef.current
-    if (!v) return
-    let raf = 0
-    let last: boolean | null = null
-    const tick = (): void => {
-      const ready = v.networkState !== 2 && v.readyState >= 4
-      if (ready !== last) {
-        last = ready
-        setIsReady(ready)
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return (): void => { cancelAnimationFrame(raf) }
-  }, [])
 
   if (videoFailed) {
     return (
@@ -329,7 +529,10 @@ function TweetVideoPlayer({
     overflow: 'hidden',
   }
   const proxiedSrc = `/api/tweet-video?url=${encodeURIComponent(meta.videoUrl ?? '')}`
-  const handleOverlayClick = (): void => { void videoRef.current?.play() }
+  const handleOverlayClick = (): void => {
+    setHasInteracted(true)
+    void videoRef.current?.play()
+  }
 
   return (
     <div style={wrapperStyle}>
@@ -338,37 +541,36 @@ function TweetVideoPlayer({
         className={styles.tweetVideo}
         src={proxiedSrc}
         poster={meta.videoPosterUrl ?? item.thumbnail}
-        controls
+        // controls is gated on first interaction (see hasInteracted comment
+        // above). Before first click: no native chrome at all → no native
+        // loading spinner can appear under our LiquidGlass disc. After
+        // first click: native bottom bar (seek/volume/fullscreen) is
+        // available for the rest of the session.
+        controls={hasInteracted}
         playsInline
-        // Aggressive preload pairs with the readyState >= 4 polling above
-        // so the play overlay only appears once the video can play through
-        // without buffering — guaranteeing no native spinner under our
-        // LiquidGlass button. Bandwidth cost is acceptable: opening a
-        // lightbox on a video bookmark is an intentional click, not a
-        // passive page load, and the user almost always plays.
-        preload="auto"
-        // isReady is driven by the rAF poll above — events here only need
-        // to track playback start/stop, which the React UI conditionally
-        // unmounts the overlay from when isPlaying flips true.
+        // Preload metadata only — the user must explicitly click play, so
+        // there's no benefit to pre-fetching the entire stream up front.
+        // Keeps bandwidth lean and avoids the CDN warming up a stream the
+        // user might never watch (e.g. they open the lightbox just to read
+        // the tweet text on the right).
+        preload="metadata"
         onPlay={(): void => setIsPlaying(true)}
         onPause={(): void => setIsPlaying(false)}
         onEnded={(): void => setIsPlaying(false)}
         onError={(): void => setVideoFailed(true)}
       />
-      {/* Play overlay is always mounted while the video is paused so the
-          appearance / disappearance can be a CSS transition (opacity +
-          back-easing scale). `data-ready` toggles the visible state — false
-          while the browser is still buffering (so its native centre spinner
-          isn't covered), true once `canplay` fires. */}
+      {/* Single play button while paused — no separate loading state. The
+          button is always clickable; if the network is slow, the click
+          fires play() and the browser begins fetching at that moment. The
+          native bottom controls bar (which appears after the first click)
+          shows progress for any subsequent buffering, so the user always
+          knows what's happening once they've engaged with the player. */}
       {!isPlaying && (
         <button
           type="button"
           className={styles.playOverlay}
-          data-ready={isReady}
           onClick={handleOverlayClick}
           aria-label="Play video"
-          aria-hidden={!isReady}
-          tabIndex={isReady ? 0 : -1}
         >
           <LiquidGlass shape="circle" size={92} aria-hidden="true">
             <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
@@ -430,6 +632,7 @@ function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
           videoId={videoId}
           title={item.title}
           vertical={isYoutubeShorts(item.url)}
+          thumbnail={item.thumbnail}
         />
       )
     }
@@ -437,12 +640,12 @@ function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
 
   if (urlType === 'tiktok') {
     const videoId = extractTikTokVideoId(item.url)
-    if (videoId) return <TikTokEmbed videoId={videoId} />
+    if (videoId) return <TikTokEmbed videoId={videoId} thumbnail={item.thumbnail} title={item.title} />
   }
 
   if (urlType === 'instagram') {
     const shortcode = extractInstagramShortcode(item.url)
-    if (shortcode) return <InstagramEmbed shortcode={shortcode} />
+    if (shortcode) return <InstagramEmbed shortcode={shortcode} thumbnail={item.thumbnail} title={item.title} />
   }
 
   // image / website / fallbacks
@@ -452,54 +655,163 @@ function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
   return <div className={styles.placeholder}>{item.title}</div>
 }
 
+/** Shared poster + LiquidGlass play button overlay used by every embed
+ *  type (YouTube / TikTok / Instagram) until the user clicks play. The
+ *  poster image guarantees visual continuity from the source card during
+ *  the FLIP open animation — instead of a black iframe loading frame,
+ *  the lightbox grows showing the same artwork the user clicked on. */
+function EmbedPoster({
+  thumbnail,
+  alt,
+  onClick,
+}: {
+  readonly thumbnail: string
+  readonly alt: string
+  readonly onClick: () => void
+}): ReactNode {
+  return (
+    <>
+      <img src={thumbnail} alt={alt} className={styles.embedPoster} />
+      <button
+        type="button"
+        className={styles.playOverlay}
+        onClick={onClick}
+        aria-label="Play"
+      >
+        <LiquidGlass shape="circle" size={92} aria-hidden="true">
+          <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
+            <path d="M6.5 5v14l11-7z" />
+          </svg>
+        </LiquidGlass>
+      </button>
+    </>
+  )
+}
+
 function YouTubeEmbed({
   videoId,
   title,
   vertical,
+  thumbnail,
 }: {
   readonly videoId: string
   readonly title: string
   readonly vertical: boolean
+  readonly thumbnail: string | undefined
 }): ReactNode {
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false)
+  // YouTube CDN poster — used only as fallback when the bookmarklet
+  // didn't capture an og:image. maxresdefault works for ~95% of videos;
+  // hqdefault is the universal fallback if max isn't available, but we
+  // only reach this code path when item.thumbnail is missing entirely.
+  const poster = thumbnail || `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
   return (
     <div className={vertical ? styles.iframeWrap9x16 : styles.iframeWrap16x9}>
-      <iframe
-        src={`https://www.youtube.com/embed/${videoId}`}
-        title={title}
-        className={styles.iframe}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-      />
+      {hasInteracted ? (
+        <iframe
+          // autoplay=1 starts playback immediately on the first iframe
+          // mount, which is allowed because the click on our overlay
+          // satisfies Chromium's user-gesture requirement for autoplay.
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+          title={title}
+          className={styles.iframe}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      ) : (
+        <EmbedPoster
+          thumbnail={poster}
+          alt={title}
+          onClick={(): void => setHasInteracted(true)}
+        />
+      )}
     </div>
   )
 }
 
-/** TikTok official iframe embed — no script.js needed, works inside any CSP. */
-function TikTokEmbed({ videoId }: { readonly videoId: string }): ReactNode {
+/** TikTok official iframe embed — no script.js needed, works inside any CSP.
+ *  TikTok blocks autoplay, so even after our overlay click the user will
+ *  see TikTok's own play button inside the iframe and tap once more. The
+ *  benefit of the deferred-mount is purely visual continuity during FLIP. */
+function TikTokEmbed({
+  videoId,
+  thumbnail,
+  title,
+}: {
+  readonly videoId: string
+  readonly thumbnail: string | undefined
+  readonly title: string
+}): ReactNode {
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false)
   return (
     <div className={styles.iframeWrap9x16}>
-      <iframe
-        src={`https://www.tiktok.com/embed/v2/${videoId}`}
-        title="TikTok video"
-        className={styles.iframe}
-        allow="encrypted-media"
-        allowFullScreen
-      />
+      {hasInteracted ? (
+        <iframe
+          src={`https://www.tiktok.com/embed/v2/${videoId}`}
+          title="TikTok video"
+          className={styles.iframe}
+          allow="encrypted-media"
+          allowFullScreen
+        />
+      ) : thumbnail ? (
+        <EmbedPoster
+          thumbnail={thumbnail}
+          alt={title}
+          onClick={(): void => setHasInteracted(true)}
+        />
+      ) : (
+        // No thumbnail captured — skip the poster step and mount iframe
+        // immediately. Loses the FLIP-time visual continuity but better
+        // than showing an empty button hovering over a black square.
+        <iframe
+          src={`https://www.tiktok.com/embed/v2/${videoId}`}
+          title="TikTok video"
+          className={styles.iframe}
+          allow="encrypted-media"
+          allowFullScreen
+        />
+      )}
     </div>
   )
 }
 
-/** Instagram official `/embed` iframe — public posts work without script.js. */
-function InstagramEmbed({ shortcode }: { readonly shortcode: string }): ReactNode {
+/** Instagram official `/embed` iframe — public posts work without script.js.
+ *  Instagram also blocks autoplay; same two-tap pattern as TikTok. */
+function InstagramEmbed({
+  shortcode,
+  thumbnail,
+  title,
+}: {
+  readonly shortcode: string
+  readonly thumbnail: string | undefined
+  readonly title: string
+}): ReactNode {
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false)
   return (
     <div className={styles.iframeWrap9x16}>
-      <iframe
-        src={`https://www.instagram.com/p/${shortcode}/embed`}
-        title="Instagram post"
-        className={styles.iframe}
-        allow="encrypted-media"
-        allowFullScreen
-      />
+      {hasInteracted ? (
+        <iframe
+          src={`https://www.instagram.com/p/${shortcode}/embed`}
+          title="Instagram post"
+          className={styles.iframe}
+          allow="encrypted-media"
+          allowFullScreen
+        />
+      ) : thumbnail ? (
+        <EmbedPoster
+          thumbnail={thumbnail}
+          alt={title}
+          onClick={(): void => setHasInteracted(true)}
+        />
+      ) : (
+        <iframe
+          src={`https://www.instagram.com/p/${shortcode}/embed`}
+          title="Instagram post"
+          className={styles.iframe}
+          allow="encrypted-media"
+          allowFullScreen
+        />
+      )}
     </div>
   )
 }

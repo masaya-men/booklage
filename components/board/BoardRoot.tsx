@@ -462,18 +462,22 @@ export function BoardRoot() {
         {!loading && items.length === 0 && (
           <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
         )}
+        {/* Lightbox lives INSIDE the dark canvas so its backdrop and
+            FLIP open animation are clipped to the canvas's rounded
+            border-radius. The white outer margin remains visible
+            during lightbox — the rounded stage is preserved. */}
+        <Lightbox
+          item={lightboxItem}
+          originRect={lightboxOriginRect}
+          onClose={handleLightboxClose}
+        />
       </div>
-      {/* Modals + Lightbox sit outside the canvas so they cover the whole
-          viewport (including the white outer margin). */}
+      {/* Modals stay viewport-level so they cover everything including
+          the outer margin (different visual treatment from Lightbox). */}
       <BookmarkletInstallModal
         isOpen={bookmarkletModalOpen}
         onClose={handleCloseBookmarkletModal}
         appUrl={typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? 'https://booklage.pages.dev')}
-      />
-      <Lightbox
-        item={lightboxItem}
-        originRect={lightboxOriginRect}
-        onClose={handleLightboxClose}
       />
     </div>
   )

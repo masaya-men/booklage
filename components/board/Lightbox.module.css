@@ -1,5 +1,10 @@
+/* Lightbox lives inside the rounded dark canvas (.canvas in BoardRoot)
+   which has overflow: hidden + border-radius. So absolute positioning
+   here naturally clips the backdrop AND the FLIP open animation to the
+   canvas's rounded shape — the lightbox can never visually escape into
+   the white outer margin. */
 .backdrop {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 300;
   background: var(--lightbox-backdrop);
@@ -105,6 +110,20 @@
   display: block;
 }
 
+/* Poster image shown for YouTube/TikTok/Instagram embeds before the
+   user clicks play. Fills the aspect-ratio wrapper exactly so the FLIP
+   open animation grows the SAME image the user clicked on as the card,
+   giving real visual continuity instead of a black iframe loading frame.
+   Underneath sits the LiquidGlass play overlay (.playOverlay). */
+.embedPoster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .text {
   flex: 0 0 320px;
   color: #e8e8e8;
@@ -157,51 +176,24 @@
   background: black;
   object-fit: contain;
 }
-/* Suppress Chromium's native centred "big play button" overlay. We provide
-   our own LiquidGlass overlay; having Chrome's triangle stacked underneath
-   shows up as visible distortion through the lens (the user reads it as a
-   "spinner under the button"). The native bottom controls bar — pause /
-   seek / volume / fullscreen — is not affected by this rule. */
-.tweetVideo::-webkit-media-controls-overlay-play-button {
-  display: none !important;
-}
-/* Belt-and-braces: also hide via the alternative shadow-DOM selector that
-   some Chromium versions expose. */
-.tweetVideo::-internal-media-controls-overlay-cast-button {
-  display: none !important;
-}
+/* Native chrome suppression is handled at the React level by gating the
+   `controls` attribute on first interaction (see TweetVideoPlayer's
+   hasInteracted state). Modern Chromium's loading panel lives in a
+   closed shadow DOM that CSS pseudo-elements cannot reach reliably, so
+   the only sure way to hide it is to not enable controls in the first
+   place. We keep no `::-webkit-media-controls-*` rules here. */
 
-/* Big center play button. Visible whenever the video is paused (initial
-   AND after user-pause), hidden while playing. Native <video controls>
-   bottom bar still operates for pause/seek/volume — we leave 56px of
-   clear space at the bottom so the seek bar isn't blocked by the
-   overlay click trap.
-
-   Liquid-glass treatment: heavy blur + saturate gives the colour
-   absorption a real piece of frosted glass shows; layered shadows
-   stack an inner top-edge highlight, an inner bottom shading, and an
-   outer diffuse drop shadow for the "lit from above" 3D feel. The
-   pseudo-element adds a soft elliptical sheen across the upper half
-   to read as a curved glass cap (caustic). */
-/* Play overlay covers the video frame above the native controls bar.
-   Two-state visibility:
-     • [data-ready="false"] — invisible & non-interactive while the browser
-       is buffering. Its native loading spinner draws in the centre of the
-       <video>; covering it would mean the user has no idea why nothing's
-       happening.
-     • [data-ready="true"] — fades + back-eases in once `canplay` fires.
-       The slight overshoot reads as "the button just landed, ready to be
-       pressed" rather than just appearing.
-   Hover deepens the dark gradient so the centred glass disc reads more
-   clearly against bright frames. */
+/* Big center play button. Sole indicator in the paused state — there is
+   no separate loading spinner, because before the user clicks we don't
+   render `controls` (so no native spinner can appear), and after they
+   click the native bottom bar takes over for buffering progress. The
+   button leaves 56px clear at the bottom so the native seek bar isn't
+   blocked once it appears post-click. */
 .playOverlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  /* Native controls live in the bottom ~50px on desktop browsers. Leaving
-     56px clear means the seek bar / volume / fullscreen button stay
-     reachable even while the play overlay is showing on a paused video. */
   bottom: 56px;
   display: grid;
   place-items: center;
@@ -210,28 +202,12 @@
   padding: 0;
   z-index: 1;
   cursor: pointer;
-  /* Reveal/dismiss state */
-  opacity: 0;
-  transform: scale(0.9);
-  pointer-events: none;
-  transition:
-    opacity var(--duration-normal) var(--ease-out-back),
-    transform var(--duration-normal) var(--ease-out-back),
-    background var(--duration-fast) var(--ease-in-out);
+  transition: background var(--duration-fast) var(--ease-in-out);
 }
-.playOverlay[data-ready="true"] {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
-}
-.playOverlay[data-ready="true"]:hover {
+.playOverlay:hover {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.28) 100%);
 }
-@media (prefers-reduced-motion: reduce) {
-  .playOverlay { transition: opacity var(--duration-fast) linear; transform: none; }
-  .playOverlay[data-ready="true"] { transform: none; }
-}
-/* Glass surface for the play button is now provided by <LiquidGlass>
+/* Glass surface for the play button is provided by <LiquidGlass>
    (preset 'lens-magnify'). The triangle SVG below sits ABOVE the
    backdrop-filter as a child, so it stays crisp even when the video
    pixels behind the lens are heavily distorted by Map B. */

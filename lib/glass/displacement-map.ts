@@ -100,48 +100,72 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
     magnifyStrength, magnifyExponent,
   } = config
 
+  // Render the displacement map at DEVICE pixel resolution (clamped to 2x)
+  // so the bezel/edge transitions are sampled densely enough to look smooth
+  // on Retina-class displays. At 1:1 CSS-pixel resolution, the bezel ramp
+  // showed visible stair-stepping ("PS1 polygon look") around the rim of
+  // small elements (≈92px play disc). The final <feImage> in LiquidGlass.tsx
+  // displays at the CSS-pixel size, so the browser bilinear-downsamples the
+  // 2x texture to give an antialiased perimeter. Displacement magnitudes
+  // (R/G channel encoding) are unit-agnostic — they're normalised by
+  // globalMaxDisplacement and rescaled by feDisplacementMap's `scale`
+  // attribute, so internal pixel resolution doesn't affect the visual
+  // refraction strength, only the smoothness of its sampling.
+  const scale = (typeof window !== 'undefined')
+    ? Math.min(2, window.devicePixelRatio || 1)
+    : 1
+  const iw = Math.round(width * scale)
+  const ih = Math.round(height * scale)
+  const ibr = borderRadius * scale
+
   const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
+  canvas.width = iw
+  canvas.height = ih
   const ctx = canvas.getContext('2d')
   if (!ctx) return { displacement: '', specular: '', maxDisplacement: 0 }
 
   const specCanvas = document.createElement('canvas')
-  specCanvas.width = width
-  specCanvas.height = height
+  specCanvas.width = iw
+  specCanvas.height = ih
   const specCtx = specCanvas.getContext('2d')
 
-  const imageData = ctx.createImageData(width, height)
+  const imageData = ctx.createImageData(iw, ih)
   const data = imageData.data
-  const specData = specCtx ? specCtx.createImageData(width, height) : null
+  const specData = specCtx ? specCtx.createImageData(iw, ih) : null
 
-  const bezelWidth = Math.min(width, height) * bezelPercent
-  const cx = width / 2
-  const cy = height / 2
+  // All geometry math runs in INTERNAL pixel space (iw × ih). Distances,
+  // bezelWidth, and lensRadius are dimensionless ratios when normalised
+  // (e.g. minDist / bezelWidth), so they work the same regardless of the
+  // chosen scale factor. The displacement magnitudes (`strength`,
+  // `magnifyStrength`) are CSS-pixel quantities stored verbatim in the
+  // texture and rescaled by the SVG filter at use time.
+  const bezelWidth = Math.min(iw, ih) * bezelPercent
+  const cx = iw / 2
+  const cy = ih / 2
   // Lens radius for magnification — distance from center to nearest interior edge.
   // Subtracting bezelWidth keeps the magnification "field" inside the bezel area.
-  const lensRadius = Math.max(1, Math.min(width, height) / 2 - bezelWidth)
+  const lensRadius = Math.max(1, Math.min(iw, ih) / 2 - bezelWidth)
   let globalMaxDisplacement = 0
 
   type Pix = { dx: number; dy: number; spec: number }
-  const pixels: Pix[] = new Array(width * height)
+  const pixels: Pix[] = new Array(iw * ih)
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = y * width + x
+  for (let y = 0; y < ih; y++) {
+    for (let x = 0; x < iw; x++) {
+      const idx = y * iw + x
       const distLeft = x
-      const distRight = width - 1 - x
+      const distRight = iw - 1 - x
       const distTop = y
-      const distBottom = height - 1 - y
+      const distBottom = ih - 1 - y
       let minDist = Math.min(distLeft, distRight, distTop, distBottom)
 
       const cornerX = Math.min(distLeft, distRight)
       const cornerY = Math.min(distTop, distBottom)
-      if (cornerX < borderRadius && cornerY < borderRadius) {
+      if (cornerX < ibr && cornerY < ibr) {
         const cornerDist = Math.sqrt(
-          (borderRadius - cornerX) ** 2 + (borderRadius - cornerY) ** 2,
+          (ibr - cornerX) ** 2 + (ibr - cornerY) ** 2,
         )
-        minDist = Math.max(0, borderRadius - cornerDist)
+        minDist = Math.max(0, ibr - cornerDist)
       }
 
       let dx = 0
