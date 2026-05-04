@@ -131,34 +131,16 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       const endScaleY = Math.max(0.05, sy)
       const TILT_MAX = 8
       const TILT_DIST = 600
-      const dist = Math.hypot(dx, dy)
-      const distNorm = Math.min(1, dist / TILT_DIST)
-      const dirX = dist > 0 ? dx / dist : 0
-      const dirY = dist > 0 ? dy / dist : 0
-      const endRotateY = -Math.sign(dx) * TILT_MAX * distNorm
-      const endRotateX = Math.sign(dy) * TILT_MAX * distNorm * 0.7
-      // Mirror the open animation's screen-center-side anchor — the
-      // lightbox retracts to its source by collapsing back onto the
-      // same edge that grew out from. Without this, close used a
-      // centered (50% 50%) origin while open used the dynamic anchor,
-      // so the close motion didn't visually rewind the open and the
-      // lightbox seemed to drift before retreating.
-      const originPctX = 50 + 50 * dirX * distNorm
-      const originPctY = 50 + 50 * dirY * distNorm
-      const dynamicOrigin = `${originPctX}% ${originPctY}%`
+      const distNorm = Math.min(1, Math.hypot(dx, dy) / TILT_DIST)
+      const endRotateY = -(Math.sign(dx) || 0) * TILT_MAX * distNorm
+      const endRotateX = (Math.sign(dy) || 0) * TILT_MAX * distNorm * 0.7
 
       const tl = gsap.timeline({
         onComplete: () => onClose(),
       })
-      // Single tween for the whole close: position, scale, tilt,
-      // motion-blur, opacity all collapse on the same power3.in curve.
-      // The shadow tween that used to ride alongside this was the
-      // source of a faint flicker on close — the elevation cast wound
-      // down on a different curve than the frame opacity, so for the
-      // last few frames the user saw a paled-shadow ghost still under
-      // the box. Letting frame opacity carry the shadow to invisibility
-      // implicitly (the box-shadow is part of the .media's box, which
-      // itself fades with the frame's opacity) eliminates that ghost.
+      // power3.in accelerates into the source — feels like the lightbox
+      // is being "yanked back" into the card, mirroring the spring-out
+      // landing of the open animation in reverse.
       tl.to(el, {
         x: dx,
         y: dy,
@@ -170,7 +152,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         opacity: 0,
         duration: 0.5,
         ease: 'power3.in',
-        transformOrigin: dynamicOrigin,
+        transformOrigin: '50% 50%',
         transformPerspective: 900,
       }, 0)
       if (backdrop) {
@@ -299,40 +281,10 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       // lean visually points at the source card.
       const TILT_MAX = 8
       const TILT_DIST = 600 // px at which tilt saturates
-      const dist = Math.hypot(dx, dy)
-      const distNorm = Math.min(1, dist / TILT_DIST)
-      // Unit direction from source-card center toward viewport center.
-      // Used both for the 3D tilt sign and for the transform-origin
-      // anchor below.
-      const dirX = dist > 0 ? dx / dist : 0
-      const dirY = dist > 0 ? dy / dist : 0
-      const startRotateY = -Math.sign(dx) * TILT_MAX * distNorm
-      const startRotateX = Math.sign(dy) * TILT_MAX * distNorm * 0.7
-      // Transform-origin anchored on the screen-center side of the card
-      // bbox. With origin = (0% 50%) and a left-side card, the LEFT
-      // edge of the lightbox stays roughly fixed during scale-up while
-      // the right edge sweeps outward — visually this reads as "the
-      // edge of the card closest to viewport-center is the anchor that
-      // stays put, the far edge is the part that grows out." Same for
-      // a right-side card: origin = (100% 50%), the right edge anchors,
-      // the left edge expands. The strength scales with distance from
-      // center via distNorm so cards near the middle don't over-skew.
-      // Note: dx is (cardCenter - screenCenter), so dirX > 0 means the
-      // card is to the RIGHT of center, in which case we want the
-      // origin on the card's RIGHT side (high X%), and vice versa —
-      // hence the (50 + 50 * dirX * distNorm) sign.
-      const originPctX = 50 + 50 * dirX * distNorm
-      const originPctY = 50 + 50 * dirY * distNorm
-      const dynamicOrigin = `${originPctX}% ${originPctY}%`
+      const distNorm = Math.min(1, Math.hypot(dx, dy) / TILT_DIST)
+      const startRotateY = -(dx / Math.max(1, Math.abs(dx) || 1)) * TILT_MAX * distNorm
+      const startRotateX = (dy / Math.max(1, Math.abs(dy) || 1)) * TILT_MAX * distNorm * 0.7
 
-      // Interior control elements that pop in once the frame has
-      // mostly landed (close ✕ + any LiquidGlass play overlay). Marked
-      // with [data-controlpop] in the JSX. Querying the frame ref
-      // catches whatever subtree LightboxMedia/TweetMedia rendered for
-      // this item type. Stored before tl.set so we can null-init their
-      // scale/opacity in the same pre-paint frame as the frame setup,
-      // avoiding any flash of a full-size control before the pop fires.
-      const popTargets = el.querySelectorAll<HTMLElement>('[data-controlpop]')
       const tl = gsap.timeline()
       tl.set(el, {
         x: dx,
@@ -346,35 +298,9 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         // to convey speed; reads as "rich" without any 3D library.
         filter: 'blur(5px)',
         opacity: 0,
-        // Anchor the scale-up on the side of the card nearest to
-        // viewport center. The far edge sweeps outward as the lightbox
-        // grows; the near edge barely moves. Visually reads as "the
-        // edge closest to where the lightbox is going stays put while
-        // the rest of the card unfolds outward to fill the screen."
-        transformOrigin: dynamicOrigin,
+        transformOrigin: '50% 50%',
         transformPerspective: 900,
-        // Shadow starts tight & shallow — the lightbox sits flush with
-        // the board, near-zero elevation. The 3-layer cast tweens up to
-        // deep ceiling-level lift as the FLIP transform unspools (see
-        // Lightbox.module.css for the calc()-based box-shadow on .media
-        // that consumes these vars).
-        '--lb-shadow-y-far': 1,
-        '--lb-shadow-blur-far': 2,
-        '--lb-shadow-a-far': 0.20,
-        '--lb-shadow-y-mid': 2,
-        '--lb-shadow-blur-mid': 4,
-        '--lb-shadow-a-mid': 0.12,
-        '--lb-shadow-y-near': 0,
-        '--lb-shadow-blur-near': 1,
-        '--lb-shadow-a-near': 0.05,
       })
-      if (popTargets.length > 0) {
-        gsap.set(popTargets, {
-          scale: 0.4,
-          opacity: 0,
-          transformOrigin: '50% 50%',
-        })
-      }
       tl.to(el, {
         opacity: 1,
         duration: 0.35,
@@ -392,47 +318,12 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         scaleY: 1,
         rotateX: 0,
         rotateY: 0,
-        // back.out(1.2) — gentle ~2% overshoot past the landing point,
-        // then settle. Reads as "this object has weight, compresses on
-        // impact, and rebounds slightly" instead of stopping dead. 1.2
-        // (vs default 1.7) keeps the elasticity below the threshold
-        // where it would feel cartoony/playful — the rebound is sub-
-        // perceptual but the eye still registers the physicality.
-        duration: 0.75,
-        ease: 'back.out(1.2)',
+        // power4.out is sharper at the tail than power3 — the lightbox
+        // "lands and settles" with a more definitive arrival, matching
+        // the snappier feel real physical objects have when they stop.
+        duration: 0.7,
+        ease: 'power4.out',
       }, 0)
-      // Box-shadow elevation grows on power3.out across the FULL
-      // transform duration. Trails the back.out curve so the shadow
-      // keeps deepening for ~50ms after the frame appears to land —
-      // the "weight settling" beat after the visual arrival.
-      tl.to(el, {
-        '--lb-shadow-y-far': 16,
-        '--lb-shadow-blur-far': 32,
-        '--lb-shadow-a-far': 0.40,
-        '--lb-shadow-y-mid': 32,
-        '--lb-shadow-blur-mid': 64,
-        '--lb-shadow-a-mid': 0.30,
-        '--lb-shadow-y-near': 6,
-        '--lb-shadow-blur-near': 12,
-        '--lb-shadow-a-near': 0.18,
-        duration: 0.8,
-        ease: 'power3.out',
-      }, 0)
-      // Control pop — close ✕ + LiquidGlass play overlay snap in with a
-      // crisper overshoot than the frame (back.out(2.4) vs frame's 1.2).
-      // The contrast in elasticity makes them feel like distinct objects:
-      // the heavy frame settles in slowly while the light controls bounce
-      // into place a beat later. Delayed to 0.5s so they arrive after
-      // the frame is ~80% landed — never floating in empty space.
-      if (popTargets.length > 0) {
-        tl.to(popTargets, {
-          scale: 1,
-          opacity: 1,
-          duration: 0.5,
-          ease: 'back.out(2.4)',
-          stagger: 0.04,
-        }, 0.5)
-      }
       let backdropTween: gsap.core.Tween | null = null
       if (backdrop) {
         backdropTween = gsap.fromTo(
@@ -444,15 +335,6 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       return (): void => {
         tl.kill()
         backdropTween?.kill()
-        // Clear control pop transforms — if the lightbox unmounts mid-
-        // tween (e.g. user opens a different card before this one's
-        // open animation completes), GSAP would otherwise leave the
-        // controls stuck at scale 0.4 / opacity 0 on next mount.
-        if (popTargets.length > 0) {
-          gsap.set(popTargets, {
-            clearProps: 'scale,opacity,transformOrigin',
-          })
-        }
       }
     }
 
@@ -532,7 +414,6 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
           onClick={requestClose}
           className={styles.close}
           aria-label={t('board.lightbox.close')}
-          data-controlpop="true"
         >
           <span className={styles.closeIcon} aria-hidden="true">✕</span>
         </button>
@@ -690,7 +571,6 @@ function TweetVideoPlayer({
           className={styles.playOverlay}
           onClick={handleOverlayClick}
           aria-label="Play video"
-          data-controlpop="true"
         >
           <LiquidGlass shape="circle" size={92} aria-hidden="true">
             <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
@@ -797,7 +677,6 @@ function EmbedPoster({
         className={styles.playOverlay}
         onClick={onClick}
         aria-label="Play"
-        data-controlpop="true"
       >
         <LiquidGlass shape="circle" size={92} aria-hidden="true">
           <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
