@@ -794,7 +794,7 @@ function YouTubeEmbed({
           // autoplay=1 starts playback immediately on the first iframe
           // mount, which is allowed because the click on our overlay
           // satisfies Chromium's user-gesture requirement for autoplay.
-          src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3`}
           title={title}
           className={styles.iframe}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
