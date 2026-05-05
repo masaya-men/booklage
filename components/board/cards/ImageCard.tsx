@@ -19,15 +19,15 @@ const ASPECT_EPSILON = 0.005
 export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const imgRef = useRef<HTMLImageElement>(null)
   const urlType = detectUrlType(item.url)
-  // Show a small play badge when this image card actually wraps a video
-  // source. Two confirmed-video signals:
-  //   - Instagram /reel/ or /tv/ — the URL alone is enough; /p/ is left
-  //     out because it can be a still photo.
-  //   - X tweet with hasVideo=true (set by the syndication backfill).
-  // For YouTube/TikTok the play badge lives on VideoThumbCard, not here.
+  // Instagram-reel-only treatment: soften the JPEG-baked play icon that
+  // Instagram bakes into the og:image so it doesn't visually compete with
+  // the rest of the board. The tint stays even though the play overlay
+  // was removed in v59 — IG's printed icon is part of the image pixels
+  // and would otherwise stick out as the only "loud" element on a clean
+  // board. The hover-revealed MediaTypeIndicator (in CardsLayer) is
+  // what tells the user "this is a video"; the tint just neutralises
+  // the rogue printed icon underneath.
   const isReel = urlType === 'instagram' && isInstagramReel(item.url)
-  const isTweetVideo = urlType === 'tweet' && item.hasVideo === true
-  const showPlayBadge = isReel || isTweetVideo
 
   // Re-measure intrinsic aspect from natural width/height once the thumbnail
   // loads. This corrects stale aspectRatio values written by previous
@@ -70,17 +70,9 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
           loading="lazy"
         />
       )}
-      {/* Reel-specific tint dims the center where IG's printed play icon
-          usually sits, so our own .playBadge below reads as the dominant
-          affordance instead of competing with IG's branded one. */}
+      {/* Reel-only tint dims the area where IG's printed play icon usually
+          sits, neutralising it without adding our own loud overlay. */}
       {isReel && <div className={styles.tintInstagramReel} aria-hidden="true" />}
-      {showPlayBadge && (
-        <div className={styles.playBadge} aria-hidden="true">
-          <svg className={styles.playBadgeIcon} viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" fill="currentColor" />
-          </svg>
-        </div>
-      )}
     </div>
   )
 }

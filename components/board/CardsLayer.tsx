@@ -20,10 +20,28 @@ import {
   SIZE_PRESET_SPAN,
 } from '@/lib/board/constants'
 import type { BoardItem } from '@/lib/storage/use-board-data'
+import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
 import { CardNode } from './CardNode'
 import { SizePresetToggle } from './SizePresetToggle'
+import { MediaTypeIndicator, type MediaType } from './MediaTypeIndicator'
 import { useCardReorderDrag, computeVirtualOrder } from './use-card-reorder-drag'
 import { pickCard } from './cards'
+
+/** Derive the media-type badge for a bookmark from existing fields — no
+ *  new persisted data needed. Returns null for cards where a video/photo
+ *  badge wouldn't add information (text-only items: the card itself
+ *  already reads as text). */
+function deriveMediaType(item: BoardItem): MediaType | null {
+  const urlType = detectUrlType(item.url)
+  const isVideo =
+    urlType === 'youtube' ||
+    urlType === 'tiktok' ||
+    (urlType === 'instagram' && isInstagramReel(item.url)) ||
+    (urlType === 'tweet' && item.hasVideo === true)
+  if (isVideo) return 'video'
+  if (item.thumbnail) return 'photo'
+  return null
+}
 
 type Viewport = {
   readonly x: number
@@ -413,6 +431,10 @@ export function CardsLayer({
                 )
               })()}
             </CardNode>
+            <MediaTypeIndicator
+              type={deriveMediaType(it)}
+              visible={hoveredBookmarkId === it.bookmarkId}
+            />
             <SizePresetToggle
               preset={it.sizePreset}
               visible={hoveredBookmarkId === it.bookmarkId}

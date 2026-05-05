@@ -21,29 +21,5 @@
   background: #1a1a1a;
 }
 
-/* Matches ImageCard's .playBadge so YouTube / TikTok / Instagram-reel /
-   Twitter-video all share the same visual language on the board grid.
-   Down from the 56 px version that read more like a button than a label. */
-.playOverlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  pointer-events: none;
-}
-
-.playIcon {
-  width: 16px;
-  height: 16px;
-  margin-left: 2px; /* optical centering for triangle */
-}
+/* Play overlay removed in v59. The video-vs-photo indicator now lives
+   on the hover-revealed MediaTypeIndicator next to SizePresetToggle. */

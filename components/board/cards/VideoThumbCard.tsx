@@ -105,11 +105,6 @@ export function VideoThumbCard({ item, persistMeasuredAspect }: Props): ReactNod
       ) : (
         <div className={styles.placeholder} aria-hidden="true" />
       )}
-      <div className={styles.playOverlay}>
-        <svg className={styles.playIcon} viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M8 5v14l11-7z" fill="currentColor" />
-        </svg>
-      </div>
     </div>
   )
 }
