@@ -802,17 +802,16 @@ function YouTubeEmbed({
   )
 }
 
-/** TikTok post — same link-out pattern as InstagramEmbed. The official
- *  embed iframe (`tiktok.com/embed/v2/<id>`) DOES play the video inline
- *  on first click, but it stuffs the frame with profile header, related
- *  videos sidebar, a pink "今すぐ見る" CTA banner, and a vertical
- *  scrollbar — none of which can be hidden via CSS because the iframe
- *  is cross-origin. There is no public TikTok API that returns the
- *  underlying mp4 URL (the oEmbed endpoint only echoes back the same
- *  HTML iframe). The clean alternatives — scraping tikwm.com or
- *  tiktok-scraper — violate ByteDance's ToS. So we apply the same
- *  honest UX as Instagram: poster + "TikTokで開く ↗" overlay that
- *  opens the post in a new tab, no iframe load at all. */
+/** TikTok official iframe embed — keeps inline playback (the iframe
+ *  DOES play the video on first click, unlike Instagram which routes
+ *  every play tap to instagram.com). The trade-off is that the iframe
+ *  ships with profile header, related-videos sidebar, a pink CTA
+ *  banner, and a vertical scrollbar; none of those can be hidden
+ *  because the iframe is cross-origin. We tried link-out parity with
+ *  Instagram in v52, but inline TikTok playback is genuinely useful
+ *  to the user, so v53 reinstates it as-is. The deferred-mount lets
+ *  the FLIP open animation grow the same poster image the user
+ *  clicked on, instead of a black iframe loading frame. */
 function TikTokEmbed({
   videoId,
   thumbnail,
@@ -822,26 +821,35 @@ function TikTokEmbed({
   readonly thumbnail: string | undefined
   readonly title: string
 }): ReactNode {
-  const postUrl = `https://www.tiktok.com/@_/video/${videoId}`
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false)
   return (
     <div className={styles.iframeWrap9x16}>
-      {thumbnail && <img src={thumbnail} alt={title} className={styles.embedPoster} />}
-      <a
-        className={styles.embedOpenLink}
-        href={postUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="TikTok で開く"
-      >
-        <span className={styles.embedOpenBadge}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14 3h7v7" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M21 3l-9 9" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          TikTokで開く
-        </span>
-      </a>
+      {hasInteracted ? (
+        <iframe
+          src={`https://www.tiktok.com/embed/v2/${videoId}`}
+          title="TikTok video"
+          className={styles.iframe}
+          allow="encrypted-media"
+          allowFullScreen
+        />
+      ) : thumbnail ? (
+        <EmbedPoster
+          thumbnail={thumbnail}
+          alt={title}
+          onClick={(): void => setHasInteracted(true)}
+        />
+      ) : (
+        // No thumbnail — mount iframe directly. Loses the FLIP-time
+        // visual continuity but better than an empty button hovering
+        // over a black square.
+        <iframe
+          src={`https://www.tiktok.com/embed/v2/${videoId}`}
+          title="TikTok video"
+          className={styles.iframe}
+          allow="encrypted-media"
+          allowFullScreen
+        />
+      )}
     </div>
   )
 }

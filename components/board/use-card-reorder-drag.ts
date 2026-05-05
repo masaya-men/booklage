@@ -53,6 +53,15 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
 
   const handleCardPointerDown = useCallback(
     (e: PointerEvent<HTMLDivElement>, bookmarkId: string): void => {
+      // Only the primary (left) button initiates a drag/click. Right
+      // clicks (button 2) and middle clicks (button 1) must pass
+      // straight through so onContextMenu can fire on the card div —
+      // we used to setPointerCapture for ALL buttons, which silently
+      // broke right-click delete because the captured pointer
+      // suppressed the contextmenu event from reaching the React
+      // synthetic handler. button === -1 means an unknown / synthetic
+      // pointer (e.g. some test runners) which we treat as primary.
+      if (e.button > 0) return
       if (spaceHeld) return
       e.stopPropagation()
       const el = e.currentTarget
