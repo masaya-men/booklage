@@ -19,7 +19,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: #fff;
+  color: var(--share-pill-text-active);
 }
 
 .header {
