@@ -1,0 +1,311 @@
+/* YouTube IFrame API mount target — fills the lightbox iframe wrapper.
+   YT.Player creates an <iframe> as a child of this div; we set 100%
+   sizing so the player exactly tracks the wrapper's aspect-ratio sizing
+   from Lightbox.module.css (.iframeWrap16x9 / .iframeWrap9x16). */
+.playerMount {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.playerMount > div,
+.playerMount iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  display: block;
+}
+
+/* Chrome layer: floats above the iframe and contains all of our custom
+   controls. Pointer-events flip with `data-visible` so when controls
+   are hidden the layer doesn't intercept clicks (the iframe sits below
+   it, but YT's `controls=0` means iframe clicks are no-ops anyway). */
+.chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 1;
+}
+.chrome[data-visible='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Top region — title rendered over a subtle gradient that keeps text
+   legible on bright frames without dominating the image. Mirrors the
+   native YouTube top bar's height and gradient feel. */
+.chromeTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 14px 18px 30px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: auto;
+}
+
+.titleText {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  line-height: 1.35;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Click-anywhere-to-toggle hit zone. Sits between top+bottom chrome
+   and covers the full middle area so clicking the video toggles play
+   exactly like native YouTube. The button has no visible style of its
+   own — it's a transparent click target. */
+.clickZone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+/* Suppress default button outline; chrome itself communicates focus
+   via the visible controls. */
+.clickZone:focus { outline: none; }
+.clickZone:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: -4px;
+}
+
+/* Bottom region — gradient + progress bar + controls row, layered like
+   native YT. Higher z-index than .clickZone so buttons take precedence. */
+.chromeBottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 36px 16px 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2;
+}
+
+/* Progress bar — slim by default, expands on hover to invite scrubbing.
+   Filled portion uses YouTube's signature red so the bar reads as
+   "the video timeline" without any label. */
+.progressTrack {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+.progressTrack::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 2px;
+  transition: height 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.progressTrack:hover::before,
+.progressTrack:focus-visible::before {
+  height: 5px;
+}
+.progressFill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 3px;
+  background: #ff0033;
+  border-radius: 2px;
+  pointer-events: none;
+  transition: height 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.progressTrack:hover .progressFill {
+  height: 5px;
+}
+.progressThumb {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  background: #ff0033;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+.progressTrack:hover .progressThumb,
+.progressTrack:focus-visible .progressThumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Controls row — left cluster (play, volume, time) + right cluster
+   (YT logo, fullscreen). Spacer between flexes the gap. Mirrors
+   native YouTube's bottom-bar layout almost 1:1. */
+.controlsRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffffff;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: 0.92;
+  transition: opacity 120ms ease, transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.iconButton:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+.iconButton:active {
+  transform: scale(0.96);
+}
+.iconButton:focus { outline: none; }
+.iconButton:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: -3px;
+}
+.iconButton svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+/* Volume group — button + reveal-on-hover slider, identical to native
+   YT's bottom-bar volume area. The slider stays at 0 width when closed
+   so it doesn't push other controls; transitioning width gives the
+   familiar "slide out" feel. */
+.volumeGroup {
+  display: inline-flex;
+  align-items: center;
+}
+
+.volumeSliderWrap {
+  display: inline-flex;
+  align-items: center;
+  width: 0;
+  overflow: hidden;
+  transition: width 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.volumeSliderWrap[data-open='true'] {
+  width: 70px;
+  margin-right: 4px;
+}
+
+/* Range input styled to match the seek-bar treatment — red fill
+   driven by --pct CSS var would be ideal, but plain accent-color +
+   neutral track keeps the implementation simple while still reading
+   as a YouTube-flavored slider. */
+.volumeSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.32);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  accent-color: #ffffff;
+}
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 0;
+  cursor: pointer;
+}
+.volumeSlider::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 0;
+  cursor: pointer;
+}
+
+.timeText {
+  margin-left: 4px;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* YouTube wordmark/icon — link out to original. Matches the small
+   lockup native YT uses in its bottom-bar right cluster. */
+.youtubeLogo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  opacity: 0.95;
+  transition: opacity 120ms ease, transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.youtubeLogo:hover {
+  opacity: 1;
+  transform: scale(1.06);
+}
+.youtubeLogo:focus { outline: none; }
+.youtubeLogo:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: -3px;
+}
+.youtubeLogo svg {
+  width: 28px;
+  height: 20px;
+}
