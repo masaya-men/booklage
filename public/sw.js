@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v59-2026-05-05-remove-play-badges-add-mediatype-indicator'
+const CACHE_VERSION = 'v60-2026-05-05-toolbar-liquid-glass'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

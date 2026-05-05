@@ -42,6 +42,9 @@ export type LiquidGlassProps = {
   readonly as?: 'button' | 'div'
   readonly onClick?: MouseEventHandler<HTMLElement>
   readonly 'aria-label'?: string
+  readonly 'aria-haspopup'?: 'menu' | 'listbox' | 'dialog' | 'true' | 'false' | boolean
+  readonly 'aria-expanded'?: boolean
+  readonly 'data-testid'?: string
   readonly children?: ReactNode
   readonly className?: string
   readonly style?: CSSProperties
@@ -65,6 +68,9 @@ export const LiquidGlass = forwardRef<HTMLElement, LiquidGlassProps>(function Li
     as = 'div',
     onClick,
     'aria-label': ariaLabel,
+    'aria-haspopup': ariaHasPopup,
+    'aria-expanded': ariaExpanded,
+    'data-testid': dataTestId,
     children,
     className,
     style,
@@ -240,6 +246,9 @@ export const LiquidGlass = forwardRef<HTMLElement, LiquidGlassProps>(function Li
           style={glassStyle}
           onClick={onClick}
           aria-label={ariaLabel}
+          aria-haspopup={ariaHasPopup}
+          aria-expanded={ariaExpanded}
+          data-testid={dataTestId}
         >
           {children}
         </button>
@@ -255,6 +264,7 @@ export const LiquidGlass = forwardRef<HTMLElement, LiquidGlassProps>(function Li
         className={className}
         style={glassStyle}
         aria-label={ariaLabel}
+        data-testid={dataTestId}
       >
         {children}
       </div>
