@@ -14,6 +14,7 @@ import { useBoardData } from '@/lib/storage/use-board-data'
 import { subscribeBookmarkSaved } from '@/lib/board/channel'
 import { detectUrlType, extractTweetId } from '@/lib/utils/url'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
+import { fetchTikTokMeta } from '@/lib/embed/tiktok-meta'
 import { useMoods } from '@/lib/storage/use-moods'
 import { initDB } from '@/lib/storage/indexeddb'
 import { loadBoardConfig, saveBoardConfig } from '@/lib/storage/board-config'
@@ -330,6 +331,43 @@ export function BoardRoot() {
           await persistThumbnail(it.bookmarkId, url, true)
         } catch {
           /* swallow per-tweet failures so the loop keeps draining the queue */
+        }
+        if (cancelled) return
+        await sleep(200)
+      }
+    })()
+    return (): void => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, items.length, persistThumbnail])
+
+  // TikTok thumbnail backfill via the public oEmbed endpoint
+  // (https://www.tiktok.com/oembed?url=...). The bookmarklet's og:image
+  // capture often gets the generic TikTok-logo card instead of a real
+  // video first-frame because tiktok.com is a SPA, identical to the X
+  // tweet problem. oEmbed returns a `thumbnail_url` that points at the
+  // video's actual cover image (CDN), so we overwrite bookmark.thumbnail
+  // with force=true on every TikTok item the first time we see it.
+  // processedTikTokIdsRef dedupes the same way as the tweet pipeline so
+  // we don't re-fetch when items.length re-fires the effect.
+  const processedTikTokIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (loading || items.length === 0) return
+    let cancelled = false
+    const sleep = (ms: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, ms))
+    void (async (): Promise<void> => {
+      for (const it of items) {
+        if (cancelled) return
+        if (detectUrlType(it.url) !== 'tiktok') continue
+        if (processedTikTokIdsRef.current.has(it.bookmarkId)) continue
+        processedTikTokIdsRef.current.add(it.bookmarkId)
+        try {
+          const meta = await fetchTikTokMeta(it.url)
+          if (cancelled) return
+          if (!meta?.thumbnailUrl) continue
+          await persistThumbnail(it.bookmarkId, meta.thumbnailUrl, true)
+        } catch {
+          /* swallow per-item failures; the next item still tries */
         }
         if (cancelled) return
         await sleep(200)

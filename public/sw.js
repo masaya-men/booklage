@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v53-2026-05-05-tiktok-inline-restored-rightclick-fix'
+const CACHE_VERSION = 'v54-2026-05-05-tiktok-thumb-backfill-glass-3x-supersample'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

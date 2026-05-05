@@ -100,20 +100,24 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
     magnifyStrength, magnifyExponent,
   } = config
 
-  // Render the displacement map at DEVICE pixel resolution (clamped to 2x)
-  // so the bezel/edge transitions are sampled densely enough to look smooth
-  // on Retina-class displays. At 1:1 CSS-pixel resolution, the bezel ramp
-  // showed visible stair-stepping ("PS1 polygon look") around the rim of
-  // small elements (≈92px play disc). The final <feImage> in LiquidGlass.tsx
-  // displays at the CSS-pixel size, so the browser bilinear-downsamples the
-  // 2x texture to give an antialiased perimeter. Displacement magnitudes
-  // (R/G channel encoding) are unit-agnostic — they're normalised by
+  // Always supersample the displacement map to at least 3× the CSS-pixel
+  // size of the element. v45 used `Math.min(2, devicePixelRatio)` which
+  // looked great on retina (2× DPR) but on standard 1× monitors silently
+  // dropped back to 1× sampling — the bezel rim and the interior
+  // refraction still showed faint blockiness because each CSS pixel
+  // mapped 1:1 to a texture pixel with no bilinear smoothing. Forcing a
+  // floor of 3× (then capping at 4× on phones with dpr≥4 to keep memory
+  // sane) means the browser always has a denser texture to downsample
+  // from than the device can show, so the perimeter and the interior
+  // both read as crisp. Memory cost on a 1× display jumps from 92×92
+  // (~34 KB raw) to 276×276 (~300 KB) per displacement map; with 1–2
+  // active glass instances this is well under a MB. Displacement
+  // magnitudes (R/G channels) are unit-agnostic — normalised by
   // globalMaxDisplacement and rescaled by feDisplacementMap's `scale`
-  // attribute, so internal pixel resolution doesn't affect the visual
-  // refraction strength, only the smoothness of its sampling.
-  const scale = (typeof window !== 'undefined')
-    ? Math.min(2, window.devicePixelRatio || 1)
-    : 1
+  // attribute — so supersampling affects sampling smoothness only,
+  // never the refraction strength.
+  const dpr = (typeof window !== 'undefined') ? (window.devicePixelRatio || 1) : 1
+  const scale = Math.min(4, Math.max(3, dpr))
   const iw = Math.round(width * scale)
   const ih = Math.round(height * scale)
   const ibr = borderRadius * scale
