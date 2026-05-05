@@ -13,24 +13,52 @@
 
 ### 🎯 今セッション (2026-05-06, v72 → v73) の到達点
 
-**Share System sender flow 完成**：Composer + ActionSheet + Toolbar 統合 + E2E テスト。
+**Share System sender flow 出荷 + ユーザー実機テストでバグ・改善項目発見**：22 commits / 235 tests / 本番 deploy 済み。
 
-**完了したもの**:
-1. **Task 5.2**: `BoardRoot.tsx` に `ShareComposer` + `ShareActionSheet` を配線。Toolbar の Share pill から起動。`dom-to-image-more` の SSR クラッシュを dynamic import で回避
-2. **Task 5.3**: スキップ（share コンポーネントは日本語ハードコード済み、messages/*.json 配線は不要）
-3. **Task 6.1**: E2E テスト `tests/e2e/share-sender.spec.ts` 新規作成 → **1 passed** (1.3s)
-4. **Task 6.3**: tsc ✅ / vitest 235 passed ✅ / build ✅ / Cloudflare Pages deploy ✅
+**完成して動作確認済み**:
+- Toolbar の **Share ↗ pill** (hover で accent オレンジに変化)
+- **ShareComposer モーダル** — タイトル / アスペクト 4 ピル切替 / 中央 frame / 下部 source 横スクロール / 確定 outline CTA
+- **ShareActionSheet** — PNG プレビュー + DL / Copy URL / X intent
+- **PNG 出力** — ウォーターマーク右下 (Variant A、`Booklage` 11px)
+- 全色 `--share-*` CSS 変数化（`app/globals.css` `:root` で集中管理）
+- 受信側 `/share#d=...` ルート（view-only 表示、左下に `Booklage で表現する ↗` リンク、import ボタンは未実装）
+- E2E sender flow `tests/e2e/share-sender.spec.ts` 1 passed
+- `dom-to-image-more` の SSR クラッシュを dynamic import で回避
 
-**Share System の現状**:
-- **送信側**: Share pill → ShareComposer（カード選択 + アスペクト切替） → ShareActionSheet（PNG DL / URL コピー / X 投稿）= **完成**
-- **受信側** (`/share`): URL hash デコード → read-only 表示 = 実装済みだが「自分のボードに追加」import フローは**未実装**
-- **受信者 import 機能**: 次セッションで brainstorm + 設計 → 実装
+**実装プラン**: `docs/superpowers/plans/2026-05-06-share-system.md` （Phase 1-6, 26 タスク、うち 21 完了）
 
-### 🔥 次セッション最優先タスク
+### 🚨 緊急バグ（次セッション最優先で修正）
 
-1. **AdSense / Amazon Associates 申請** — ページが揃ったので申請可能。`docs/private/launch-plan-2026-04.md` 参照
-2. **受信者側 import フロー** — `/share` ページの「自分のボードに追加」ボタン実装（brainstorm → 設計 → 実装）
-3. （後回し OK）**B1: スライダー型カード拡縮、絞込機能、同時再生機能**
+**Plan A 継続作業**（ユーザーが「明日やる」で寝た）：
+
+1. **【致命的】 受信側 URL「シェアデータが破損しています」バグ**
+   - 送信者が生成した URL を別ブラウザ / シークレットウィンドウで開くと decode 失敗
+   - 原因不明 — decode の 4 段階（base64 / gzip / JSON / schema）どこで落ちるか要調査
+   - **次セッション開始時にユーザーに F12 console エラーまたは生成 URL サンプル提示を依頼してから着手**
+   - 既知の壊れ URL `/share#d=invalid` でのエラー画面表示は OK
+
+2. **Composer の見た目欠陥（plan §2.1 step 5 で約束していたが MVP で省略）**
+   - **カードが枠から切れる / スクロールしない** → アスペクト切替時に column-masonry を **枠サイズ基準で再計算** して reflow させる必要あり
+   - **カード並び替え・サイズ変更不可** → ShareFrame に編集 layer 追加 (board の InteractionLayer 簡易版、drag / S/M/L / 削除)
+   - 「シェア時の見た目に直結する」とユーザーから明言、シェア体験の質に直結するので必須
+
+3. **細かい改善 4 つ（1 commit でまとめて対応可能）**
+   - 「全部入れる」ボタンを toggle 化（選択中 100% なら「全部外す」に切替）
+   - ウォーターマーク 11px → 14-16px に上げる（ユーザー: 「小さすぎる」）
+   - ShareActionSheet で **ESC キー閉じる** 効くようにする（Composer の handler 流用）
+   - 修正方針はすべて `--share-*` トークン経由 / コンポーネント内完結なので影響範囲は局所的
+
+### 🆕 別タスクとして登録（後回し OK、Plan A の後）
+
+- **AdSense / Amazon Associates 申請** — マーケページ + Share 機能が揃った。`docs/private/launch-plan-2026-04.md` 参照
+- **受信者側 import フロー** — ユーザー曰く「matching-app 風振り分け」UX を希望。`superpowers:brainstorming` で UX 詰めてから実装。`lib/share/import.ts` (Task 4.1) と `<ImportConfirmModal>` (Task 4.2) は未実装、deferred
+- **i18n プロジェクト全体の多言語化** — share だけでなく Toolbar / Lightbox 等すべて日本語ハードコード。15 言語対応のため別タスクで一括 messages/*.json 化が必要（spec 上 next-intl / i18next 想定）
+- **Source list のタグ絞り込み / タグ単位シェア** — タグ機能 (mood) がボードで成熟してから検討、post-launch
+- **サービス名再考** — Booklage で OK か別 brainstorming で確認したい
+- **B1: スライダー型カード拡縮** — 連続値 80-480px、masonry 滑らか追従
+- **絞込機能（動画/写真/テキスト）** — FilterPill 拡張、半日
+- **同時再生機能（B1）** — IFrame API loader を commit 1cee968 から復元
+- **ゴミ箱 / 復元 UI** — archive フィルタ既存、UI polish のみ
 
 ### 🆕 別タスクとして登録（後回し OK）
 
