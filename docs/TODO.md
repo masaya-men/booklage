@@ -8,10 +8,37 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v68 反映済**
-- **Service Worker**: `v68-2026-05-05-revert-noop-youtube-params`
+- **本番**: `https://booklage.pages.dev` に **v70 反映済**
+- **Service Worker**: `v70-2026-05-05-revert-iframe-api-back-to-native-controls`
 
-### 🎯 今セッション (v60 → v68) の到達点
+### 🎯 今セッション (v69 → v70) の到達点
+
+**YouTube IFrame API + 自製 hover-only controls を試して revert** (v69 → v70):
+
+- **v69** ([commit 1cee968](https://github.com/masaya-men/booklage/commit/1cee968)): IFrame API singleton loader (`lib/youtube/iframe-api.ts`) + 自製コントロール (`components/board/embeds/YouTubeEmbed.tsx` + `.module.css`) を新規実装。`controls=0` で native chrome を完全 OFF、上端タイトル + 下端 progress (赤) / 再生停止 / 音量 / 時間 / YouTube ロゴ link / 全画面 を 140ms hover fade で重ねる。再生中・一時停止中問わず leave 即消えを実現
+- **問題**: ユーザー要望「画質変更 / 字幕 / 関連動画 / もっと見る もすべて純正と同じに使えてほしい」と判明。これは `controls=0` 自製路線では実装不可:
+  - `setPlaybackQuality` は 2018 年に effective deprecated、YouTube 内部が回線/画面で自動決定
+  - `loadModule('captions')` は public API でなく不安定
+  - 関連動画 / カードは iframe 内 chrome、外から制御不可
+- **v70** ([commit f109599](https://github.com/masaya-men/booklage/commit/f109599)): v69 を完全 revert。native iframe (`controls=1`) + autoplay の v68 構成に戻し。純正機能 100% 利用可能、leave 時の即消えは断念 (native auto-fade 3秒 + 一時停止時は中央 ▶ + 関連動画タイル永続表示)
+
+**v69 のコード回収方法**:
+- `git checkout 1cee968 -- components/board/embeds/ lib/youtube/`
+- `git show 1cee968:components/board/Lightbox.tsx > /tmp/lightbox-v69.tsx` で旧 import + 配線を参照
+- 将来 **B1 同時再生機能** (memory `project_booklage_vision_multiplayback.md`) で IFrame API loader が必要になれば、`lib/youtube/iframe-api.ts` だけ復元すれば即使える
+
+### 🔥 次セッション最優先: ユーザーの次の指示待ち
+
+YouTube の挙動はこれで confirmed (純正路線確定)。次の作業候補:
+- **絞込機能** (動画 / 写真 / テキスト)
+- **同時再生機能 (B1)** — Booklage の差別化機能、IFrame API loader を復元して使う
+- **ゴミ箱 / 復元 UI** (右クリック削除した bookmarks の復活)
+- **B1 装飾レイヤー全般** (カード装飾、スプリング物理、3D タイル等)
+- **広告戦略 Phase 1 着手** (`docs/private/launch-plan-2026-04.md`)
+
+---
+
+### 🎯 前セッション (v60 → v68) の到達点
 
 **広告戦略の方針シフト確定** (`docs/private/launch-plan-2026-04.md`):
 - 「広告は最大化、世界観は完璧維持」の 3 phase
