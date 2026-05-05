@@ -8,10 +8,53 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v70 反映済**
-- **Service Worker**: `v70-2026-05-05-revert-iframe-api-back-to-native-controls`
+- **本番**: `https://booklage.pages.dev` に **v72 反映済**
+- **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`
 
-### 🎯 今セッション (v69 → v70) の到達点
+### 🎯 今セッション (2026-05-05/06, v70 → v72) の到達点
+
+**マーケティングサイト整備 + Share System 設計**：launch 申請に向けた基盤固めと、核機能 Share の設計確定。
+
+**完了したもの**:
+1. **launch-plan 棚卸し** — 4 並行 Agent で実装状況を確認、ギャップ一覧を作成
+2. **`/features` `/guide` 新規作成** — メディア対応表 + 使い方手順、AdSense 申請に必要な 8 ページ揃った
+3. **`app/sitemap.ts` + `app/robots.ts`** — Next.js App Router 規約 + `output: 'export'` 対応（`dynamic = 'force-static'`）
+4. **全ページ間ナビゲーション完成** — `<SiteHeader>` + `<SiteFooter>` を LP に追加、`<BoardChrome>` を /board 白マージンに追加
+5. **Share System 設計仕様書** — `docs/superpowers/specs/2026-05-05-share-system-design.md` に確定（15 セクション）
+
+**Share System 設計の要点**（次セッション実装着手）:
+- **方式**: PNG + URL 両方、URL fragment（`#d=`）に gzip + base64url で埋め込み
+- **UI**: Composer 型（「ボードを切り取る」ではなく「シェア用ムードボードを組む」）
+- **Composer 初期状態**: viewport snapshot（今見えてる部分が初期値）
+- **ショートカット**: 「全部入れる」「表示中のみ」ボタンでめんどい派対応
+- **シェア枠内**: drag / S/M/L / 削除すべて編集可能（board と完全パリティ）
+- **アスペクトプリセット**: 全体 / 1:1 / 9:16 / 16:9（4 種）
+- **受信者フロー**: view-only 表示 → 「自分のボードに追加」ボタン → ImportConfirmModal → IndexedDB 書き込み
+- **セキュリティ 7 要件**: URL スキーム allowlist / XSS 防御 / 埋め込み type 再判定 / サイズ件数上限 / 文字長制限 / fragment 使用 / IP リーク開示
+- **ウォーターマーク**: Variant A（テキストのみ）デフォルト、B（テキスト + URL）はドメイン取得後切替
+- **工数見積**: 集中して 3-4 日
+
+### 🔥 次セッション最優先: Share System 実装（writing-plans → 実装）
+
+1. `superpowers:writing-plans` skill で `2026-05-05-share-system-design.md` を実装タスクに分解
+2. Phase 1 から順に実装（lib/share/* → ShareComposer → png-export → SharedView → Toolbar 統合 → polish）
+3. 完了したら AdSense / Amazon Associates 申請（カスタムドメイン取得は後）
+
+### 🆕 別タスクとして登録（後回し OK）
+
+- **サービス名再考** — Booklage で OK か別 brainstorming で確認したい（Share 完了後に実施）。memory `project_booklage.md` 更新可能性あり
+- **B1: スライダー型カード拡縮** — 個別カードを連続値スライダーで滑らかにリサイズ。S/M/L 離散値ではなく 80px-480px 連続値。masonry が滑らかに追従する必要あり。Share とは別タスク
+- **絞込機能（動画/写真/テキスト）** — Toolbar の FilterPill 拡張で実装可、半日
+- **同時再生機能（B1）** — IFrame API loader を commit 1cee968 から復元して使う
+- **ゴミ箱 / 復元 UI** — archive フィルタは既存、UI polish のみ
+
+### 触らないもの（テーマ用に保管）
+- `lib/glass/presets.ts` / `components/ui/LiquidGlass.tsx` / `components/ui/GlassPill.tsx`
+- `lib/glass/displacement-map.ts` / `/glass-lab`
+
+---
+
+### 🎯 前セッション (v69 → v70) の到達点
 
 **YouTube IFrame API + 自製 hover-only controls を試して revert** (v69 → v70):
 
