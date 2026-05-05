@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { DisplayMode } from '@/lib/board/types'
+import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
 import styles from './ImageCard.module.css'
 
 type Props = {
@@ -17,6 +18,16 @@ const ASPECT_EPSILON = 0.005
 
 export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const imgRef = useRef<HTMLImageElement>(null)
+  const urlType = detectUrlType(item.url)
+  // Show a small play badge when this image card actually wraps a video
+  // source. Two confirmed-video signals:
+  //   - Instagram /reel/ or /tv/ — the URL alone is enough; /p/ is left
+  //     out because it can be a still photo.
+  //   - X tweet with hasVideo=true (set by the syndication backfill).
+  // For YouTube/TikTok the play badge lives on VideoThumbCard, not here.
+  const isReel = urlType === 'instagram' && isInstagramReel(item.url)
+  const isTweetVideo = urlType === 'tweet' && item.hasVideo === true
+  const showPlayBadge = isReel || isTweetVideo
 
   // Re-measure intrinsic aspect from natural width/height once the thumbnail
   // loads. This corrects stale aspectRatio values written by previous
@@ -43,17 +54,32 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
     return (): void => img.removeEventListener('load', measure)
   }, [item.cardId, item.aspectRatio, item.thumbnail, persistMeasuredAspect])
 
+  const thumbClass = isReel
+    ? `${styles.thumb} ${styles.thumbInstagramReel}`
+    : styles.thumb
+
   return (
     <div className={styles.imageCard}>
       {item.thumbnail && (
         <img
           ref={imgRef}
-          className={styles.thumb}
+          className={thumbClass}
           src={item.thumbnail}
           alt=""
           draggable={false}
           loading="lazy"
         />
+      )}
+      {/* Reel-specific tint dims the center where IG's printed play icon
+          usually sits, so our own .playBadge below reads as the dominant
+          affordance instead of competing with IG's branded one. */}
+      {isReel && <div className={styles.tintInstagramReel} aria-hidden="true" />}
+      {showPlayBadge && (
+        <div className={styles.playBadge} aria-hidden="true">
+          <svg className={styles.playBadgeIcon} viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" fill="currentColor" />
+          </svg>
+        </div>
       )}
     </div>
   )

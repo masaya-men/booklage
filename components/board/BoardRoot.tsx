@@ -34,7 +34,7 @@ import styles from './BoardRoot.module.css'
 const BOARD_TOP_PAD_PX = 80
 
 export function BoardRoot() {
-  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistSoftDelete, reload } = useBoardData()
+  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistVideoFlag, persistSoftDelete, reload } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
   const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
@@ -329,6 +329,14 @@ export function BoardRoot() {
           if (!meta) continue
           const url = meta.photoUrl ?? meta.videoPosterUrl ?? ''
           await persistThumbnail(it.bookmarkId, url, true)
+          // Mark the bookmark as a video source if syndication confirms
+          // it. This drives the small play-overlay badge on the board
+          // grid so video tweets stop looking like still photos. Photos
+          // and text-only tweets never set the flag, so they stay
+          // overlay-free.
+          if (meta.hasVideo) {
+            await persistVideoFlag(it.bookmarkId, true)
+          }
         } catch {
           /* swallow per-tweet failures so the loop keeps draining the queue */
         }
@@ -338,7 +346,7 @@ export function BoardRoot() {
     })()
     return (): void => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, items.length, persistThumbnail])
+  }, [loading, items.length, persistThumbnail, persistVideoFlag])
 
   // TikTok thumbnail backfill via the public oEmbed endpoint
   // (https://www.tiktok.com/oembed?url=...). The bookmarklet's og:image

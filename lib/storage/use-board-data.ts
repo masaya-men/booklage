@@ -33,6 +33,11 @@ export type BoardItem = {
   readonly isDeleted: boolean
   readonly tags: readonly string[]
   readonly displayMode: 'visual' | 'editorial' | 'native' | null
+  /** True when the bookmark's source is known to be a video. Drives the
+   *  small play-overlay badge on the board grid. undefined = unknown,
+   *  treated as "do not show overlay" so we don't put a play icon on a
+   *  still photo. */
+  readonly hasVideo?: boolean
 }
 
 type DbLike = IDBPDatabase<unknown>
@@ -96,6 +101,7 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     isDeleted: b.isDeleted ?? false,
     tags: b.tags ?? [],
     displayMode: b.displayMode ?? null,
+    hasVideo: b.hasVideo,
   }
 }
 
@@ -118,6 +124,12 @@ export function useBoardData(): {
    *  photo URL. force=true with empty thumbnail clears the field, which flips
    *  the card from ImageCard back to TextCard (text-only tweets). */
   persistThumbnail: (bookmarkId: string, thumbnail: string, force?: boolean) => Promise<void>
+  /** Mark a bookmark as a video source. Called by the tweet-meta backfill
+   *  in BoardRoot when meta.hasVideo is true; written through to IDB so
+   *  the play-overlay badge survives reloads. No-op when the value is
+   *  already what we'd write (avoids a setItems re-render storm).
+   */
+  persistVideoFlag: (bookmarkId: string, hasVideo: boolean) => Promise<void>
   persistTags: (bookmarkId: string, tags: readonly string[]) => Promise<void>
   persistDisplayMode: (bookmarkId: string, displayMode: BoardItem['displayMode']) => Promise<void>
   reload: () => Promise<void>
@@ -318,6 +330,27 @@ export function useBoardData(): {
     [],
   )
 
+  const persistVideoFlag = useCallback(
+    async (bookmarkId: string, hasVideo: boolean): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      const existing = (await db.get('bookmarks', bookmarkId)) as BookmarkRecord | undefined
+      if (!existing) return
+      // No-op when already at the desired value. Defense against the
+      // backfill loop firing repeatedly on items.length changes — without
+      // this guard each "true" call would invalidate items reference and
+      // re-trigger every effect that depends on it.
+      if ((existing.hasVideo ?? false) === hasVideo) return
+      await db.put('bookmarks', { ...existing, hasVideo })
+      setItems((prev) =>
+        prev.map((it) =>
+          it.bookmarkId === bookmarkId ? { ...it, hasVideo } : it,
+        ),
+      )
+    },
+    [],
+  )
+
   const persistTags = useCallback(
     async (bookmarkId: string, tags: readonly string[]): Promise<void> => {
       const db = dbRef.current
@@ -389,6 +422,7 @@ export function useBoardData(): {
     persistSoftDelete,
     persistMeasuredAspect,
     persistThumbnail,
+    persistVideoFlag,
     persistTags,
     persistDisplayMode,
     reload,

@@ -50,6 +50,14 @@ export interface BookmarkRecord {
   tags: string[]
   /** v9: null = follow global displayMode (BoardConfig). */
   displayMode?: 'visual' | 'editorial' | 'native' | null
+  /** True when the bookmark's underlying source is known to be a video.
+   *  Set asynchronously by metadata backfills (tweet syndication for X
+   *  videos; URL-pattern check for Instagram /reel/ and /tv/; URL-type
+   *  itself for YouTube and TikTok). undefined means "we don't know" —
+   *  card UI should NOT show a play overlay in that case to avoid
+   *  misleading the user about a still photo.
+   *  Stored as an optional field so existing IDB rows need no migration. */
+  hasVideo?: boolean
 }
 
 /** Mood record (v9) — replaces the legacy folder concept. Stored in `moods` store. */

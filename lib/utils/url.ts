@@ -85,6 +85,22 @@ export function extractInstagramShortcode(url: string): string | null {
 }
 
 /**
+ * True when the URL is an Instagram path that's guaranteed to be video
+ * (`/reel/` for short-form video, `/tv/` for the deprecated IGTV format).
+ *
+ * `/p/<shortcode>/` is intentionally NOT included even though some `/p/`
+ * posts contain video — the path is also used for photos and carousels,
+ * and we have no way to disambiguate from the URL alone. Showing a play
+ * overlay on a still photo would be misleading, so we stay conservative.
+ *
+ * @param url - The Instagram URL
+ * @returns true if /reel/ or /tv/ in the path
+ */
+export function isInstagramReel(url: string): boolean {
+  return /instagram\.com\/(?:reel|tv)\//.test(url)
+}
+
+/**
  * Extracts the first HTTP/HTTPS URL from a text string.
  * Used by Web Share Target to extract URLs from shared text.
  * @param text - The text to search for URLs

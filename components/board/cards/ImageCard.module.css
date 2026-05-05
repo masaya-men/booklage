@@ -17,3 +17,54 @@
   user-select: none;
   -webkit-user-drag: none;
 }
+
+/* Small unified play badge — same visual language as VideoThumbCard so
+   YouTube / TikTok / Instagram-reel / Twitter-video all read as "this
+   is a clip" with the same affordance. 36px (down from 56px) keeps
+   the badge feeling like a label, not a button — the whole card is
+   already clickable, so the badge just needs to be a visual hint. */
+.playBadge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  pointer-events: none;
+}
+.playBadgeIcon {
+  width: 16px;
+  height: 16px;
+  margin-left: 2px; /* optical centering for triangle */
+}
+
+/* Instagram reel only — soften the bookmarklet-captured thumbnail (which
+   has Instagram's own play icon baked into the JPEG) so our minimal
+   .playBadge becomes the dominant read. Two layers: filter desaturates
+   the IG icon's bright white on the IMG itself, and a radial-gradient
+   overlay div dims the center where the icon usually sits without
+   touching the play badge above it (filter applied to the parent
+   would also dim the badge). Kept conservative so the thumbnail still
+   reads as the original photo. */
+.thumbInstagramReel {
+  filter: brightness(0.86) saturate(0.92);
+}
+.tintInstagramReel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 0.32) 0%,
+    rgba(0, 0, 0, 0.10) 36%,
+    transparent 60%
+  );
+}
