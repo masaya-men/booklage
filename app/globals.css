@@ -160,6 +160,27 @@ ol {
   --folder-pink: #f06595;
   --folder-gray: #868e96;
 
+  /* Share System — accent / chrome tokens.
+     Tweak here to retheme the Share Composer + SharedView at once. */
+  --share-accent:           #ff8a3d;
+  --share-accent-hover:     #ff9a55;
+  --share-modal-bg:         #111114;
+  --share-modal-backdrop:   rgba(0, 0, 0, 0.55);
+  --share-modal-blur:       6px;
+  --share-frame-bg:         #0c0c0e;
+  --share-canvas-bg:        #08080a;
+  --share-pill-text:        rgba(255, 255, 255, 0.72);
+  --share-pill-text-active: rgba(255, 255, 255, 1.00);
+  --share-pill-fill-active: rgba(255, 255, 255, 0.12);
+  --share-pill-fill-soft:   rgba(255, 255, 255, 0.08);
+  --share-pill-fill-hover:  rgba(255, 255, 255, 0.14);
+  --share-divider:          rgba(255, 255, 255, 0.06);
+  --share-thumb-bg:         rgba(255, 255, 255, 0.04);
+  --share-thumb-placeholder: rgba(255, 255, 255, 0.6);
+  --share-fine-text:        rgba(255, 255, 255, 0.45);
+  --share-transition-fast:  140ms ease;
+  --share-transition-quick: 100ms ease;
+
   /* ── Font Families ──
      Geist は CJK 含まない (Latin only)。日本語は順に Yu Gothic UI (Win 8.1+) →
      Yu Gothic (Win 7+) → Meiryo (古い Win) → Hiragino Sans (Mac) と落としていく。
