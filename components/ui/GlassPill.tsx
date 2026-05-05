@@ -40,7 +40,7 @@ export function GlassPill({
   height = 40,
   paddingX = 18,
   fontSize = 14,
-  preset = 'lens-magnify',
+  preset = 'glass-pill',
   override,
   className,
   'aria-haspopup': ariaHasPopup,

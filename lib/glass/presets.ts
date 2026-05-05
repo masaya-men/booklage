@@ -85,8 +85,55 @@ const LENS_MAGNIFY: GlassPreset = {
   innerBottomShadeAlpha: 0,
 }
 
+/**
+ * "glass-pill" — toolbar pill preset. Added 2026-05-05.
+ *
+ * Tuned for small (~40 px tall) pill-shaped buttons containing 14 px text.
+ * Differs from lens-magnify in three deliberate ways:
+ *
+ *   1. magnifyStrength: 24 (was 80) — at 40 px tall, magnify=80 would shift
+ *      content nearly 2× the lens height, distorting it past readability.
+ *      24 px keeps the lens effect legible while preserving the refraction.
+ *   2. innerTopHighlightAlpha: 0 (was 1) — the strong inset white shadow
+ *      that gives the play disc its "lit-from-above" feel reads as a thick
+ *      tacky white rim on small pills. Replaced with a thin border below.
+ *   3. borderWidth/Alpha: 1 / 0.18 (was 0 / 0.6) — a 1 px hair-line at low
+ *      alpha gives the pill a discernible glass edge without the heavy
+ *      cap-light effect of the inset highlight.
+ *
+ * The lens-magnify preset itself is unchanged — the play button keeps
+ * exactly the same look it had before.
+ */
+const GLASS_PILL: GlassPreset = {
+  // Map A bezel — disabled, same as lens-magnify
+  strength: 0,
+  bezelPercent: 0.05,
+  profileExponent: 1,
+  refractiveIndex: 2.4,
+  // Map B magnify — pill-tuned (1/3 of lens-magnify strength)
+  magnifyStrength: 24,
+  magnifyExponent: 4,
+  // Filter chain — fully transparent trio
+  blurStdDev: 0,
+  saturate: 1,
+  // Specular — toggled on but alpha 0 (component skips when alpha=0)
+  specularEnabled: true,
+  specularMaxAlpha: 0,
+  specularBloomBlur: 0,
+  // Surface — thin hair-line border instead of inset cap-light
+  bgAlpha: 0,
+  borderAlpha: 0.18,
+  borderWidth: 1,
+  // Shadow / depth — all dormant
+  outerShadowBlur: 0,
+  outerShadowAlpha: 0.78,
+  innerTopHighlightAlpha: 0,
+  innerBottomShadeAlpha: 0,
+}
+
 export const PRESETS = {
   'lens-magnify': LENS_MAGNIFY,
+  'glass-pill': GLASS_PILL,
 } as const
 
 export type PresetName = keyof typeof PRESETS

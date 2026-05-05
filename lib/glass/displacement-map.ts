@@ -85,6 +85,54 @@ function refractionDisplacement(
   return glassThickness * Math.tan(refractedAngle)
 }
 
+/**
+ * Outward unit normal at pixel (x, y) for a rounded rectangle of size iw × ih
+ * with corner radius ibr. Defines the actual glass-surface tilt at every point —
+ * perpendicular to the nearest straight edge, or radially out from a corner-arc
+ * center inside corner zones.
+ *
+ * For a perfect circle (iw = ih = 2·ibr) every pixel is in a corner zone and
+ * the four corner-arc centers all sit within ½ px of the geometric centre, so
+ * the result collapses to the radial direction from element center — matching
+ * the original circle-only logic to within sub-pixel rounding error.
+ *
+ * For a long pill or rect this gives the CORRECT physical normal: at the right
+ * edge it points right, at the top edge it points up, at the rounded corner
+ * it sweeps smoothly between the two — instead of always pointing toward the
+ * geometric center (which is wrong for non-radially-symmetric shapes).
+ */
+function outwardNormal(
+  x: number, y: number, iw: number, ih: number, ibr: number,
+): { nx: number; ny: number } {
+  const distLeft = x
+  const distRight = iw - 1 - x
+  const distTop = y
+  const distBottom = ih - 1 - y
+
+  const inLeftCol = distLeft < ibr
+  const inRightCol = distRight < ibr
+  const inTopRow = distTop < ibr
+  const inBottomRow = distBottom < ibr
+
+  // Corner zone: within ibr of two adjacent edges.
+  if ((inLeftCol || inRightCol) && (inTopRow || inBottomRow)) {
+    const ccx = inLeftCol ? ibr : iw - 1 - ibr
+    const ccy = inTopRow ? ibr : ih - 1 - ibr
+    const dx0 = x - ccx
+    const dy0 = y - ccy
+    const len = Math.sqrt(dx0 * dx0 + dy0 * dy0)
+    if (len < 0.001) return { nx: 0, ny: 0 }
+    return { nx: dx0 / len, ny: dy0 / len }
+  }
+
+  // Flat edge zone: pick the nearest cardinal direction.
+  const minEdge = Math.min(distLeft, distRight, distTop, distBottom)
+  if (minEdge === distLeft) return { nx: -1, ny: 0 }
+  if (minEdge === distRight) return { nx: 1, ny: 0 }
+  if (minEdge === distTop) return { nx: 0, ny: -1 }
+  return { nx: 0, ny: 1 }
+}
+
 /** Specular intensity at a point. Rim lighting model (top-left light) */
 function specularIntensity(distFromEdge: number, exponent: number): number {
   const normal = surfaceNormal(distFromEdge, exponent)
@@ -144,10 +192,11 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
   // `magnifyStrength`) are CSS-pixel quantities stored verbatim in the
   // texture and rescaled by the SVG filter at use time.
   const bezelWidth = Math.min(iw, ih) * bezelPercent
-  const cx = iw / 2
-  const cy = ih / 2
-  // Lens radius for magnification — distance from center to nearest interior edge.
-  // Subtracting bezelWidth keeps the magnification "field" inside the bezel area.
+  // Lens radius for magnification — half the smaller dimension minus the
+  // bezel zone. Acts as the maximum interior depth for the magnify ramp.
+  // For a circle this is the classic "lens half-width minus rim". For a
+  // pill / rect it's still half the smaller dimension, which is the deepest
+  // a pixel can be from the nearest edge.
   const lensRadius = Math.max(1, Math.min(iw, ih) / 2 - bezelWidth)
   let globalMaxDisplacement = 0
 
@@ -172,36 +221,43 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
         minDist = Math.max(0, ibr - cornerDist)
       }
 
+      const { nx, ny } = outwardNormal(x, y, iw, ih, ibr)
+
       let dx = 0
       let dy = 0
       let spec = 0
 
-      // ── (1) Bezel refraction: only at the rim where the glass surface curves
+      // ── (1) Bezel refraction: only at the rim where the glass surface curves.
+      //     Direction = outward edge normal (perpendicular to the nearest edge,
+      //     or radial from the corner-arc center inside corners). For a circle
+      //     this collapses to radial-from-center — matching the original logic.
+      //     For a pill / rect it gives the physically correct refraction
+      //     direction along straight edges instead of bending toward geometric
+      //     center, which produced visible distortion at the long edges.
       const normalizedDist = Math.min(minDist / bezelWidth, 1)
       if (normalizedDist > 0) {
         const thickness = glassProfile(normalizedDist, profileExponent) * strength
         const normalAngle = surfaceNormal(normalizedDist, profileExponent)
         const refrAmount = refractionDisplacement(normalAngle, thickness, refractiveIndex)
-        const angleToCenter = Math.atan2(cy - y, cx - x)
-        dx += -Math.cos(angleToCenter) * refrAmount
-        dy += -Math.sin(angleToCenter) * refrAmount
+        dx += nx * refrAmount
+        dy += ny * refrAmount
         spec = specularIntensity(normalizedDist, profileExponent)
       }
 
-      // ── (2) Magnification: pull pixels inward across the whole interior so
-      //     the lens visually zooms whatever it sits over (kube.io "second
-      //     displacement map"). Vector points TOWARD center; magnitude grows
-      //     with normalized radius via configurable exponent.
+      // ── (2) Magnification: pull pixels inward across the interior so the lens
+      //     visually zooms whatever it sits over. Direction = INWARD normal
+      //     (toward the medial axis), magnitude ramps from 0 at the deepest
+      //     interior to magnifyStrength at the bezel boundary, controlled by
+      //     magnifyExponent. The minDist-based interior depth generalises the
+      //     original `r/lensRadius` ramp to non-circular shapes — for a circle
+      //     minDist = ibr − r, so this collapses to the same curve.
       if (magnifyStrength > 0 && minDist > 0) {
-        const cdx = x - cx
-        const cdy = y - cy
-        const r = Math.sqrt(cdx * cdx + cdy * cdy)
-        if (r > 0.5) {
-          const rNorm = Math.min(r / lensRadius, 1)
-          const amount = Math.pow(rNorm, magnifyExponent) * magnifyStrength
-          dx += -(cdx / r) * amount
-          dy += -(cdy / r) * amount
-        }
+        const interiorDepth = Math.max(0, minDist - bezelWidth)
+        const interiorNorm = Math.min(interiorDepth / lensRadius, 1)
+        const edgeProximity = 1 - interiorNorm
+        const amount = Math.pow(edgeProximity, magnifyExponent) * magnifyStrength
+        dx += -nx * amount
+        dy += -ny * amount
       }
 
       if (dx === 0 && dy === 0 && spec === 0) {
