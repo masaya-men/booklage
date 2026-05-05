@@ -26,6 +26,12 @@ import { BoardChrome } from './BoardChrome'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
 import { Lightbox } from './Lightbox'
+import { ShareComposer } from '@/components/share/ShareComposer'
+import { ShareActionSheet } from '@/components/share/ShareActionSheet'
+import { encodeShareData } from '@/lib/share/encode'
+import { exportFrameAsPng } from '@/lib/share/png-export'
+import { getActiveWatermark } from '@/lib/share/watermark-config'
+import type { ShareData } from '@/lib/share/types'
 import styles from './BoardRoot.module.css'
 
 // Visible breathing room above the board's first card, in CSS pixels.
@@ -53,6 +59,8 @@ export function BoardRoot() {
   // animation, the close animation does not use it.
   const [lightboxOriginRect, setLightboxOriginRect] = useState<DOMRect | null>(null)
   const [newlyAddedIds, setNewlyAddedIds] = useState<ReadonlySet<string>>(new Set())
+  const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
+  const [actionSheet, setActionSheet] = useState<{ pngDataUrl: string; shareUrl: string } | null>(null)
   // Ref points at the inner dark canvas — viewport.w/h reflect the canvas's
   // inner dimensions (window minus the outer-frame margin), so masonry layout
   // and culling all work in canvas-local coordinates.
@@ -293,6 +301,22 @@ export function BoardRoot() {
     setBookmarkletModalOpen(false)
   }, [])
 
+  const handleShareConfirm = useCallback(
+    async (data: ShareData, frameEl: HTMLElement | null): Promise<void> => {
+      if (!frameEl) return
+      const fragment = await encodeShareData(data)
+      const baseUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/share`
+          : 'https://booklage.pages.dev/share'
+      const shareUrl = `${baseUrl}#d=${fragment}`
+      const pngDataUrl = await exportFrameAsPng(frameEl, getActiveWatermark())
+      setShareComposerOpen(false)
+      setActionSheet({ pngDataUrl, shareUrl })
+    },
+    [],
+  )
+
   // Tweet thumbnail backfill via Cloudflare Pages Function proxy (the
   // syndication CDN itself is CORS-locked to platform.twitter.com, so we
   // can't call it from the browser directly — see functions/api/tweet-meta.ts).
@@ -520,7 +544,7 @@ export function BoardRoot() {
           onDisplayModeChange={handleDisplayModeChange}
           moods={moods}
           counts={sidebarCounts}
-          onShareClick={(): void => { /* TODO: open ShareComposer */ }}
+          onShareClick={(): void => setShareComposerOpen(true)}
         />
         {!loading && items.length === 0 && (
           <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
@@ -542,6 +566,31 @@ export function BoardRoot() {
         onClose={handleCloseBookmarkletModal}
         appUrl={typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? 'https://booklage.pages.dev')}
       />
+      {shareComposerOpen && (
+        <ShareComposer
+          open={shareComposerOpen}
+          onClose={(): void => setShareComposerOpen(false)}
+          items={filteredItems.map((it) => ({
+            bookmarkId: it.bookmarkId,
+            url: it.url,
+            title: it.title,
+            description: it.description ?? '',
+            thumbnail: it.thumbnail ?? '',
+            type: detectUrlType(it.url),
+            sizePreset: it.sizePreset,
+          }))}
+          positions={layout.positions}
+          viewport={viewport}
+          onConfirm={handleShareConfirm}
+        />
+      )}
+      {actionSheet && (
+        <ShareActionSheet
+          pngDataUrl={actionSheet.pngDataUrl}
+          shareUrl={actionSheet.shareUrl}
+          onClose={(): void => setActionSheet(null)}
+        />
+      )}
     </div>
   )
 }
