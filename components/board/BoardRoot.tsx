@@ -33,7 +33,7 @@ import styles from './BoardRoot.module.css'
 const BOARD_TOP_PAD_PX = 80
 
 export function BoardRoot() {
-  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect, persistThumbnail, reload } = useBoardData()
+  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistSoftDelete, reload } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
   const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
@@ -239,6 +239,16 @@ export function BoardRoot() {
     setLightboxItemId(bookmarkId)
   }, [])
 
+  // Right-click on a card → soft-delete. Pre-launch convenience: no
+  // confirmation dialog (the user wanted the fastest possible delete
+  // for solo iteration). isDeleted=true keeps the row in IndexedDB so
+  // a future "trash" UI can restore it; the masonry filter already
+  // hides anything with isDeleted=true so the card disappears from
+  // the board the moment persistSoftDelete returns.
+  const handleCardDelete = useCallback((bookmarkId: string): void => {
+    void persistSoftDelete(bookmarkId, true)
+  }, [persistSoftDelete])
+
   const handleLightboxClose = useCallback((): void => {
     setLightboxItemId(null)
     setLightboxOriginRect(null)
@@ -442,6 +452,7 @@ export function BoardRoot() {
               onCyclePreset={handleCyclePreset}
               onClick={handleCardClick}
               onDrop={handleDropOrder}
+              onDelete={handleCardDelete}
               persistMeasuredAspect={persistMeasuredAspect}
               displayMode={displayMode}
               newlyAddedIds={newlyAddedIds}

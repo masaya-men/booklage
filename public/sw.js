@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v51-2026-05-05-instagram-link-out-text-cleanup-thin-scrollbar'
+const CACHE_VERSION = 'v52-2026-05-05-tiktok-linkout-rightclick-delete'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

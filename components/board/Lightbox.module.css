@@ -136,13 +136,13 @@
   display: block;
 }
 
-/* Instagram-only overlay link (replaces the prior LiquidGlass play
-   button + iframe two-tap dance). The whole image area is one big
-   clickable link to instagram.com/p/<id>/, so any tap on the poster
-   takes the user straight where they wanted to go. The pill badge
-   centered on top is the affordance; a soft top-to-bottom darkening
-   keeps the badge legible against any thumbnail. */
-.instagramOpenLink {
+/* Shared overlay link used for Instagram and TikTok — both have embed
+   iframes that route any "play" tap to the parent site (Meta and
+   ByteDance both gate inline playback). The honest UX is therefore a
+   single big clickable poster that opens the source in a new tab; the
+   pill badge centered on top is the affordance, a soft top-to-bottom
+   darkening keeps it legible against any thumbnail. */
+.embedOpenLink {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -154,10 +154,10 @@
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-out);
 }
-.instagramOpenLink:hover {
+.embedOpenLink:hover {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.10) 0%, rgba(0, 0, 0, 0.55) 100%);
 }
-.instagramOpenBadge {
+.embedOpenBadge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -174,7 +174,7 @@
   font-family: var(--font-sans);
   white-space: nowrap;
 }
-.instagramOpenBadge svg {
+.embedOpenBadge svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;

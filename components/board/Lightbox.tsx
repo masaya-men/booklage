@@ -802,10 +802,17 @@ function YouTubeEmbed({
   )
 }
 
-/** TikTok official iframe embed — no script.js needed, works inside any CSP.
- *  TikTok blocks autoplay, so even after our overlay click the user will
- *  see TikTok's own play button inside the iframe and tap once more. The
- *  benefit of the deferred-mount is purely visual continuity during FLIP. */
+/** TikTok post — same link-out pattern as InstagramEmbed. The official
+ *  embed iframe (`tiktok.com/embed/v2/<id>`) DOES play the video inline
+ *  on first click, but it stuffs the frame with profile header, related
+ *  videos sidebar, a pink "今すぐ見る" CTA banner, and a vertical
+ *  scrollbar — none of which can be hidden via CSS because the iframe
+ *  is cross-origin. There is no public TikTok API that returns the
+ *  underlying mp4 URL (the oEmbed endpoint only echoes back the same
+ *  HTML iframe). The clean alternatives — scraping tikwm.com or
+ *  tiktok-scraper — violate ByteDance's ToS. So we apply the same
+ *  honest UX as Instagram: poster + "TikTokで開く ↗" overlay that
+ *  opens the post in a new tab, no iframe load at all. */
 function TikTokEmbed({
   videoId,
   thumbnail,
@@ -815,35 +822,26 @@ function TikTokEmbed({
   readonly thumbnail: string | undefined
   readonly title: string
 }): ReactNode {
-  const [hasInteracted, setHasInteracted] = useState<boolean>(false)
+  const postUrl = `https://www.tiktok.com/@_/video/${videoId}`
   return (
     <div className={styles.iframeWrap9x16}>
-      {hasInteracted ? (
-        <iframe
-          src={`https://www.tiktok.com/embed/v2/${videoId}`}
-          title="TikTok video"
-          className={styles.iframe}
-          allow="encrypted-media"
-          allowFullScreen
-        />
-      ) : thumbnail ? (
-        <EmbedPoster
-          thumbnail={thumbnail}
-          alt={title}
-          onClick={(): void => setHasInteracted(true)}
-        />
-      ) : (
-        // No thumbnail captured — skip the poster step and mount iframe
-        // immediately. Loses the FLIP-time visual continuity but better
-        // than showing an empty button hovering over a black square.
-        <iframe
-          src={`https://www.tiktok.com/embed/v2/${videoId}`}
-          title="TikTok video"
-          className={styles.iframe}
-          allow="encrypted-media"
-          allowFullScreen
-        />
-      )}
+      {thumbnail && <img src={thumbnail} alt={title} className={styles.embedPoster} />}
+      <a
+        className={styles.embedOpenLink}
+        href={postUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="TikTok で開く"
+      >
+        <span className={styles.embedOpenBadge}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 3h7v7" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M21 3l-9 9" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          TikTokで開く
+        </span>
+      </a>
     </div>
   )
 }
@@ -872,13 +870,13 @@ function InstagramEmbed({
     <div className={styles.iframeWrap9x16}>
       {thumbnail && <img src={thumbnail} alt={title} className={styles.embedPoster} />}
       <a
-        className={styles.instagramOpenLink}
+        className={styles.embedOpenLink}
         href={postUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Instagram で開く"
       >
-        <span className={styles.instagramOpenBadge}>
+        <span className={styles.embedOpenBadge}>
           {/* external-link icon — the upper-right arrow makes it obvious
               this leaves the app, distinguishing it from a regular play
               button which would imply inline playback. */}
