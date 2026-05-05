@@ -332,10 +332,25 @@
 .playOverlay:hover {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.28) 100%);
 }
-/* Glass surface for the play button is provided by <LiquidGlass>
-   (preset 'lens-magnify'). The triangle SVG below sits ABOVE the
-   backdrop-filter as a child, so it stays crisp even when the video
-   pixels behind the lens are heavily distorted by Map B. */
+/* Flat editorial disc — Phase A α direction (2026-05-05). LiquidGlass
+   refraction was removed because the lens effect read as too rich for
+   the destefanis-strict aesthetic; reserved for future "glass theme".
+   Pure rgba black + soft shadow gives weight without chrome. */
+.playDisc {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.4);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+              background 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.playOverlay:hover .playDisc {
+  transform: scale(1.05);
+  background: rgba(0, 0, 0, 0.65);
+}
 .playOverlayIcon {
   position: relative;
   z-index: 1;  /* sit above ::before highlight + ::after chroma */

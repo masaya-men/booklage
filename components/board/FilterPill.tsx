@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type { BoardFilter } from '@/lib/board/types'
 import type { MoodRecord } from '@/lib/storage/indexeddb'
 import { t } from '@/lib/i18n/t'
-import { GlassPill } from '@/components/ui/GlassPill'
 import styles from './FilterPill.module.css'
 
 type Props = {
@@ -42,14 +41,16 @@ export function FilterPill({ value, onChange, moods, counts }: Props): ReactElem
 
   return (
     <div ref={wrapRef} className={styles.wrap}>
-      <GlassPill
+      <button
+        type="button"
+        className={styles.pill}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
         data-testid="filter-pill"
       >
         {label(value, moods)} ▾
-      </GlassPill>
+      </button>
       {open && (
         <div className={styles.menu} role="menu">
           <button

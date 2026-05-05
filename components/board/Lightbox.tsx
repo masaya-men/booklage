@@ -6,7 +6,6 @@ import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { TikTokPlayback, TweetMeta } from '@/lib/embed/types'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import { fetchTikTokPlayback } from '@/lib/embed/tiktok-meta'
-import { LiquidGlass } from '@/components/ui/LiquidGlass'
 import { t } from '@/lib/i18n/t'
 import type { LightboxFlipSceneProps } from './LightboxFlipScene'
 import {
@@ -295,21 +294,28 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         rotateX: startRotateX,
         rotateY: startRotateY,
         // Motion blur — the lightbox content reads as smeared while
-        // travelling, sharpens as it lands. Same trick film cameras use
-        // to convey speed; reads as "rich" without any 3D library.
-        filter: 'blur(5px)',
+        // travelling, sharpens as it lands. Bumped from 5 to 7 px in
+        // 2026-05-05 α tune so the speed read survives the now-longer
+        // settle phase below.
+        filter: 'blur(7px)',
         opacity: 0,
         transformOrigin: '50% 50%',
         transformPerspective: 900,
       })
+      // Layered timing — modern satisfying-reveal pattern (Apple HIG,
+      // Linear, Vercel): backdrop envelopes slowly, opacity comes in
+      // mid-pace, motion blur dissolves over a slightly longer arc, and
+      // the transform settle takes the longest with the most aggressive
+      // deceleration. Each layer lands at its own beat so the eye reads
+      // a continuous arrival instead of a single snap.
       tl.to(el, {
         opacity: 1,
-        duration: 0.35,
-        ease: 'power2.out',
+        duration: 0.45,
+        ease: 'power3.out',
       }, 0)
       tl.to(el, {
         filter: 'blur(0px)',
-        duration: 0.45,
+        duration: 0.55,
         ease: 'power3.out',
       }, 0)
       tl.to(el, {
@@ -319,18 +325,20 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
         scaleY: 1,
         rotateX: 0,
         rotateY: 0,
-        // power4.out is sharper at the tail than power3 — the lightbox
-        // "lands and settles" with a more definitive arrival, matching
-        // the snappier feel real physical objects have when they stop.
-        duration: 0.7,
-        ease: 'power4.out',
+        // expo.out: very aggressive deceleration — most of the travel
+        // happens in the first third, then it eases dramatically into
+        // place. Reads as "weighted object arriving" rather than
+        // "element fading into position". 0.85 s gives the eye time
+        // to track the journey without dragging.
+        duration: 0.85,
+        ease: 'expo.out',
       }, 0)
       let backdropTween: gsap.core.Tween | null = null
       if (backdrop) {
         backdropTween = gsap.fromTo(
           backdrop,
           { opacity: 0 },
-          { opacity: 1, duration: 0.22, ease: 'power2.out' },
+          { opacity: 1, duration: 0.45, ease: 'power2.out' },
         )
       }
       return (): void => {
@@ -646,14 +654,14 @@ function TweetVideoPlayer({
           onClick={handleOverlayClick}
           aria-label="Play video"
         >
-          <LiquidGlass shape="circle" size={92} aria-hidden="true">
+          <span className={styles.playDisc} aria-hidden="true">
             <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
               {/* Path is bbox-centered in viewBox; CSS adds 1.5px optical
                   shift right (centroid lies left of bbox center for a
                   right-pointing triangle). */}
               <path d="M6.5 5v14l11-7z" />
             </svg>
-          </LiquidGlass>
+          </span>
         </button>
       )}
     </div>
@@ -752,11 +760,11 @@ function EmbedPoster({
         onClick={onClick}
         aria-label="Play"
       >
-        <LiquidGlass shape="circle" size={92} aria-hidden="true">
+        <span className={styles.playDisc} aria-hidden="true">
           <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
             <path d="M6.5 5v14l11-7z" />
           </svg>
-        </LiquidGlass>
+        </span>
       </button>
     </>
   )

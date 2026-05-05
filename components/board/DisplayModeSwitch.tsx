@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type { DisplayMode } from '@/lib/board/types'
 import { t } from '@/lib/i18n/t'
-import { GlassPill } from '@/components/ui/GlassPill'
 import styles from './DisplayModeSwitch.module.css'
 
 type Props = {
@@ -31,14 +30,16 @@ export function DisplayModeSwitch({ value, onChange }: Props): ReactElement {
 
   return (
     <div ref={wrapRef} className={styles.wrap}>
-      <GlassPill
+      <button
+        type="button"
+        className={styles.pill}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
         data-testid="display-mode-pill"
       >
         {t('board.display.label')}: {label(value)} ▾
-      </GlassPill>
+      </button>
       {open && (
         <div className={styles.menu} role="menu">
           {(['visual', 'editorial', 'native'] as const).map((m) => (
