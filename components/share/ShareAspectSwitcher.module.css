@@ -1,0 +1,27 @@
+/* components/share/ShareAspectSwitcher.module.css */
+.row {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.pill {
+  background: transparent;
+  border: none;
+  color: var(--share-pill-text);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color var(--share-transition-fast), background-color var(--share-transition-fast);
+}
+
+.pill:hover {
+  color: var(--share-pill-text-active);
+}
+
+.active {
+  background: var(--share-pill-fill-active);
+  color: var(--share-pill-text-active);
+}
