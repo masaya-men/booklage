@@ -1,0 +1,11 @@
+/* components/share/ShareFrame.module.css */
+.frame {
+  position: relative;
+  background: var(--share-frame-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cardWrap {
+  position: absolute;
+}
