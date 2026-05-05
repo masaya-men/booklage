@@ -1,0 +1,95 @@
+/* components/share/ShareComposer.module.css */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--share-modal-backdrop);
+  backdrop-filter: blur(var(--share-modal-blur));
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  position: relative;
+  background: var(--share-modal-bg);
+  width: min(1280px, 96vw);
+  height: min(820px, 92vh);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #fff;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--share-divider);
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0;
+  flex: 1;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--share-pill-text);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 12px;
+  transition: color var(--share-transition-fast);
+}
+
+.closeBtn:hover {
+  color: var(--share-pill-text-active);
+}
+
+.canvasArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  background: var(--share-canvas-bg);
+}
+
+.frameWrap {
+  transform-origin: center;
+}
+
+.footer {
+  padding: 14px 24px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--share-divider);
+}
+
+/* Outline-only confirm CTA per user request — destefanis flat-editorial.
+   To switch to filled later, set background + invert color in this rule only. */
+.confirmBtn {
+  background: transparent;
+  color: var(--share-accent);
+  border: 1px solid var(--share-accent);
+  padding: 9px 19px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color var(--share-transition-fast), border-color var(--share-transition-fast);
+}
+
+.confirmBtn:hover {
+  color: var(--share-accent-hover);
+  border-color: var(--share-accent-hover);
+}
