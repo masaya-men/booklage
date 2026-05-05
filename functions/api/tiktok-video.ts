@@ -75,6 +75,16 @@ export async function onRequest(context: PagesContext): Promise<Response> {
     // every byte returns 403.
     Referer: 'https://www.tiktok.com/',
     Origin: 'https://www.tiktok.com',
+    // Match the headers Chrome's <video> element sends when playing
+    // a TikTok clip directly. Without these the CDN sometimes treats
+    // the request as bot-flavored and 403s. Sec-Fetch-Dest: 'video' is
+    // the strongest signal — it's what tells TikTok "this is a
+    // browser playing media", not "this is curl".
+    Accept: '*/*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Sec-Fetch-Dest': 'video',
+    'Sec-Fetch-Mode': 'no-cors',
+    'Sec-Fetch-Site': 'cross-site',
   }
   // Cookie forwarding. TikTok's CDN binds the signed playAddr URL to the
   // session that issued it (tt_chain_token + a couple of supporting
@@ -102,9 +112,34 @@ export async function onRequest(context: PagesContext): Promise<Response> {
     })
 
     if (!upstream.ok && upstream.status !== 206) {
-      return errorResponse(
-        `upstream ${upstream.status}`,
-        upstream.status === 404 ? 404 : 502,
+      // Capture a snippet of the upstream response body for diagnostics.
+      // CDN error pages are usually short HTML or JSON ≤ 2 KB. We expose
+      // both the upstream status (in the X-Upstream-Status response
+      // header so it's visible in the browser's network tab without
+      // opening the response body) and the snippet (in the JSON body)
+      // so when the client gets 502 we can tell at a glance whether
+      // it's 403 (auth — cookie/Referer/IP problem), 410 (URL expired —
+      // need to re-scrape), or a 5xx (CDN itself is down).
+      let snippet = ''
+      try {
+        snippet = (await upstream.text()).slice(0, 1500)
+      } catch {
+        /* if body read fails, leave snippet empty */
+      }
+      return new Response(
+        JSON.stringify({
+          error: `upstream ${upstream.status}`,
+          upstreamStatus: upstream.status,
+          upstreamBody: snippet,
+        }),
+        {
+          status: upstream.status === 404 ? 404 : 502,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'X-Upstream-Status': String(upstream.status),
+          },
+        },
       )
     }
 
