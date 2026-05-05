@@ -5,7 +5,7 @@ export type ShareCardType = 'tweet' | 'youtube' | 'tiktok' | 'instagram' | 'imag
 export type ShareSize = 'S' | 'M' | 'L'
 
 /** Schema version (bumps require backward-compatible decoder). */
-export const SHARE_SCHEMA_VERSION = 1
+export const SHARE_SCHEMA_VERSION = 1 as const
 
 /** Single card embedded in a share payload. Fields are short keys to keep URL compact. */
 export type ShareCard = {
