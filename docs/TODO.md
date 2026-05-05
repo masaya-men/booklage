@@ -8,8 +8,66 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v59 反映済**
-- **Service Worker**: `v59-2026-05-05-remove-play-badges-add-mediatype-indicator`
+- **本番**: `https://booklage.pages.dev` に **v68 反映済**
+- **Service Worker**: `v68-2026-05-05-revert-noop-youtube-params`
+
+### 🎯 今セッション (v60 → v68) の到達点
+
+**広告戦略の方針シフト確定** (`docs/private/launch-plan-2026-04.md`):
+- 「広告は最大化、世界観は完璧維持」の 3 phase
+- Phase 1: board 広告ゼロ、サイトページ AdSense + 自動 affiliate
+- Phase 2: Pro サブスク導入 + board に ad-card mode (無料ユーザーのみ)
+- Phase 3: ad-card mode を Curated Ad Card (Prada 等の direct 契約) に置換
+- 詳細: `docs/private/IDEAS.md` の Curated Ad Card 構想セクション
+
+**LiquidGlass はテーマ機能扱いに格下げ** (project memory `project_liquidglass_as_theme.md`):
+- Phase A (destefanis-strict) には refraction が richful すぎてミスマッチ
+- Toolbar / Lightbox 再生ボタンから削除、コードは保管
+- 今セッションの蓄積: shape-aware refraction / glass-pill preset / rim mask / soft shadow / `<GlassPill>` wrapper / data-testid prop 追加 — すべて再利用可能で残置
+- 将来「glass theme」キーで一括 enable できる構造を Phase C 装飾フェーズで整える
+
+**flat editorial chrome (Phase A α 路線、v66)**:
+- Toolbar (FilterPill / DisplayModeSwitch): text-only pill、opacity 0.72 → 1 hover、letter-spacing 0.01em
+- Lightbox 再生ボタン: rgba(0,0,0,0.55) flat disc + 0 6px 28px shadow、hover scale 1.05
+
+**Lightbox open animation 質感アップ (v66)**:
+- Main scale tween: 0.7s power4.out → 0.85s expo.out (より aggressive な deceleration、weighted arrival)
+- Opacity: 0.35s power2.out → 0.45s power3.out
+- Motion blur: max 5 → 7 px、duration 0.45s → 0.55s
+- Backdrop: 0.22s → 0.45s power2.out (slower envelopment)
+- Apple HIG / Linear / Vercel 流の layered timing
+
+**v67 → v68 で revert** (YouTube URL params の noop 変化):
+- v67 で `rel=0&modestbranding=1&iv_load_policy=3` を試したが視覚的にほぼ変化ゼロ → v68 で削除
+- 真ん中のでかい一時停止ボタンは URL params では消せない (YouTube 側管理)
+
+### 🔥 次セッション最優先: YouTube IFrame API 化
+
+ユーザー要望: 動画再生時の YouTube chrome (中央の停止ボタン、上下バー) を真の hover-only にしたい。+ 画質を 1080p+ に request したい。
+
+**実装方針** (次セッション):
+1. `https://www.youtube.com/iframe_api` をロード → `YT.Player` インスタンス化
+2. iframe URL に `controls=0` を加えて native chrome を完全非表示化
+3. 自前の控えめなコントロール UI (再生/停止/seek/音量/全画面) を Lightbox iframe wrap に重ねて作る
+   - flat editorial 路線 (Phase A α) に揃える、控えめなオーバーレイ + hover でだけ表示
+4. `setPlaybackQuality('hd1080' or 'hd1440')` を click 時に呼ぶ (YouTube が override する場合あり、それは仕様)
+5. **コスト ゼロ、API key 不要**、Google 公式 (IFrame API は YouTube Data API v3 とは別物)
+6. 影響範囲: YouTube embed のみ、TikTok / Instagram は別問題で今回は触らない
+
+**技術メモ**:
+- IFrame API ref: https://developers.google.com/youtube/iframe_api_reference
+- 一時停止状態でも overlay 全消し可能 → Phase A α と相性◎
+- 将来の simul-view (B1 同時再生) でも自製プレイヤー基盤として再利用可能
+- TikTok / Instagram も同様の API があれば応用検討
+
+### 触らないもの (確認)
+- ✅ `lib/glass/presets.ts` (lens-magnify / glass-pill 数値保護)
+- ✅ `components/ui/LiquidGlass.tsx` (本体)
+- ✅ `components/ui/GlassPill.tsx` (auto-fit wrapper)
+- ✅ `lib/glass/displacement-map.ts` (shape-aware refraction)
+- ✅ `/glass-lab` (チューニング page)
+
+→ すべて将来の glass テーマ用に保管。デフォルト chrome からは外したが、コードは残してある。
 
 ### 🎯 今セッション (v48 → v59) の到達点
 

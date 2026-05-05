@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v67-2026-05-05-youtube-embed-overlay-cleanup'
+const CACHE_VERSION = 'v68-2026-05-05-revert-noop-youtube-params'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [
