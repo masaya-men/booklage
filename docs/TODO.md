@@ -8,51 +8,64 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v47 反映済**
-- **Service Worker**: `v47-2026-05-05-r3f-disabled-pending-cors-fallback`
+- **本番**: `https://booklage.pages.dev` に **v59 反映済**
+- **Service Worker**: `v59-2026-05-05-remove-play-badges-add-mediatype-indicator`
 
-### 🔥 次セッション最優先: Lightbox open animation の richness 深掘り (option B → A)
+### 🎯 今セッション (v48 → v59) の到達点
 
-**今セッション (v42→v47) で確定した richness 基盤**:
-- v42: `<video controls={hasInteracted}>` で初回クリック前 native chrome 一切描画させない → spinner 問題完全消滅
-- v43: Lightbox を `.canvas` 内に移動 + backdrop `position: absolute` → 黒角丸内に完全クリップ + FLIP に motion blur (5→0) + 3D tilt (perspective 900px, ±8°) + 非 uniform scale + power4.out スナップ着地
-- v44: YouTube/TikTok/Instagram にも `hasInteracted` ポスター方式適用 → FLIP 中サムネが見える視覚連続性
-- v45: `lib/glass/displacement-map.ts` を DPR スケール (max 2x) で生成 → 「PS1 ポリゴン」感解消 + reverse FLIP close (カードに吸い込まれる) 実装
+**Lightbox の richness 実験は v50 で全部捨てて v47 baseline に戻した**:
+- v48-v49 で box-shadow growth / back.out elastic / control pop / dynamic transformOrigin 等を試したが、ユーザーが「狙ったような出方じゃない / バウンドも要らない / 中身の反射も画質粗い」と判断 → v50 で v47 motion (motion blur + 3D tilt + power4.out) に revert
+- 残ったのは **`.media` の border-radius + position relative** と **backdrop の CSS transition 削除** (どちらも視覚に出ない土台のみ)
 
-**次にやる順番 (ユーザー合意済 B→A)**:
+**Lightbox UX 改善**:
+- v51: **Instagram → poster + 「Instagramで開く ↗」link-out** (Meta は embed iframe で再生不可、技術的に inline 不可能)。caption text の dedup parser、`.text` panel に thin scrollbar
+- v51: caption の OGP boilerplate (`<handle> - Instagram: "<caption>"` / `<date>, <likes> likes - <handle>: "<caption>"`) を strip して byline + caption + meta footer の 3 段表示に
+- v53: TikTok を inline iframe に戻す (v52 で性急に link-out 化したのを撤回)、右クリック削除の修正 (drag handler が button 0 以外も pointerCapture してた → contextmenu イベント奪われてた → `if (e.button > 0) return` 追加)
+- v55-v57: **TikTok を YouTube/X 並みに inline 再生**:
+  - `functions/api/tiktok-meta.ts`: 公開ページ HTML から `__UNIVERSAL_DATA_FOR_REHYDRATION__` 抽出 → playAddr 取得
+  - `functions/api/tiktok-video.ts`: mp4 を Referer + tt_chain_token cookie 付きで proxy
+  - 3-tier fallback: scrape success → clean `<video>` / scrape failure → 既存 iframe / 全ダメ → text panel の sourceLink
+  - v56 で **cookie 転送** (`headers.getSetCookie()` → `c=` query param → upstream Cookie ヘッダ) を追加して 502 解消
+  - v57 で diagnostic ヘッダ (`X-Upstream-Status`) と Sec-Fetch-* 強化 → ユーザー実機で再生成功
 
-#### 🅑 CSS で richness 深掘り (まず先にやる)
-candidates (実装前に一つ一つユーザー承認 → トライ):
-1. **box-shadow growth animation**: FLIP 中に shadow が薄→深くレイヤー化、着地で elevation 24 相当の重み感
-2. **SVG turbulence + displacement**: feTurbulence を CSS filter で適用 → 着地までに歪み収束する流体感 (GPU 重さ要計測)
-3. **light sweep**: 着地時に lightbox 表面を斜め gradient が一瞬流れる (glass の caustic 演出)
-4. **subtle elastic landing**: power4.out → back.out (1.05) → 着地後ほんの少し overshoot して落ち着く
-5. **icon/control scale-pop on land**: 着地と同時に内部の ✕ や text panel が scale 0.95→1 でぽよん
+**カード視覚言語の整理**:
+- v54: TikTok のサムネ修正 (oEmbed thumbnail を BoardRoot で backfill して IndexedDB に永続化、TikTok ロゴ → 動画フレーム)
+- v54: LiquidGlass の displacement map を **3x supersampling 強制** (was: cap 2x のみ → 1x display で blocky だった)
+- v58-v59: 全動画への play overlay 試したが「うっとおしい / ダサい」→ **全削除して、ホバー時のみ S/M/L 隣に小さい `MediaTypeIndicator` (video/photo アイコン)** に置換
+- 残った IG reel 専用 tint (`filter: brightness(0.86) saturate(0.92)` + radial dark gradient): IG が JPEG に焼き込んでる play アイコンを沈める専用 (削除しない)
 
-#### 🅐 R3F shader FLIP の本気完成 (B が物足りなければ)
-v46 で scaffolding 完了、v47 で `SCENE_ENABLED = false` に固定して凍結中。
+**データ層追加** (将来の絞込/同時再生用):
+- `BoardItem.hasVideo?: boolean` — Twitter video の判定持たせる (tweet syndication backfill が自動セット)
+- `lib/utils/url.ts` の `isInstagramReel()` helper
+- 写真/動画は `urlType + hasVideo + thumbnail` から実行時に derive (新規永続フィールド不要)
 
-**残作業**:
-- **CORS proxy** (`functions/api/img-proxy.ts`): 全 thumbnail を server-side fetch して `Access-Control-Allow-Origin: *` で relay → WebGL テクスチャに使える
-- **Safety timeout**: scene mode 起動後 1.5s 以内に onComplete 来なければ強制で frame 表示
-- **Texture pre-check**: scene 起動前に thumbnail を `<img crossorigin>` で先読みテスト → 成功時のみ scene 起動
-- **Reduced motion fallback**: `prefers-reduced-motion: reduce` 時は CSS FLIP 強制
-- 上記が揃ったら `SCENE_ENABLED = true` 復活
+**右クリック削除**:
+- v52 で実装、v53 で drag handler の pointer 奪い問題を修正 → 動作確認済
+- 確認 dialog なし (ユーザー指定: 「とり急ぎなので右クリック即削除でよい」)
+- soft delete のみ (`isDeleted` フラグ)、復元 UI は未実装
 
-**触ったファイル参考**:
-- `components/board/LightboxFlipScene.tsx` (新規、shader 込み)
-- `components/board/Lightbox.tsx` の `useLayoutEffect` 内 scene mode 分岐 + lazy-load
-- `package.json`: `three` + `@react-three/fiber` 追加済
+### 🔥 次セッション最優先: ユーザーの次の指示待ち
 
-**v46 で起きた regression (再発防止メモ)**:
-- scene mode が起動 → frame opacity 0 で固定 → R3F texture が CORS で読めず + safety timeout なし → 永久に frame 出ない「暗くなるだけ」状態になった
-- 再有効化前に必ず safety timeout を入れる
+セッションを締める段階。次の作業候補としては:
+- **絞込機能** (動画 / 写真 / テキストでフィルタ — `deriveMediaType` を流用すれば実装容易)
+- **同時再生機能** (ボード上で複数動画を同時再生 — Booklage の差別化機能、過去 memory 参照)
+- **ゴミ箱 / 復元 UI** (右クリック削除した bookmarks の復活手段)
+- **Lightbox 演出** (今回 revert したので別アプローチが必要なら再検討)
+- **B1 装飾レイヤー全般** (カード装飾、スプリング物理、3D タイル等)
 
 ### 🚧 触らないものの再確認 (絶対に弄らない)
 - ✅ `lib/glass/presets.ts` (`lens-magnify` プリセット)
 - ✅ `components/ui/LiquidGlass.tsx`
 - ✅ Glass Lab (`/glass-lab`)
-- ⚠️ `lib/glass/displacement-map.ts` は v45 で DPR スケール対応 (許可済の改修)。これ以外の改修は要相談
+- ⚠️ `lib/glass/displacement-map.ts` は v54 で 3x supersampling 強制に変更済 (ユーザー許可済)
+
+### 🅐 R3F shader FLIP (凍結継続)
+- v46 で scaffolding、v47 で `SCENE_ENABLED = false` 固定
+- ユーザーの今後判断次第で復活させる際の必須対応:
+  - CORS proxy (`functions/api/img-proxy.ts`): thumbnail を server-side fetch + relay
+  - Safety timeout: scene mode 起動後 1.5s 以内 onComplete 来なければ強制 frame 表示
+  - Texture pre-check: scene 起動前に thumbnail crossorigin で先読み
+  - Reduced motion fallback: `prefers-reduced-motion: reduce` 時 CSS FLIP 強制
 
 ### 🎯 Task 31 + UI polish 完了サマリー (2026-05-04)
 
