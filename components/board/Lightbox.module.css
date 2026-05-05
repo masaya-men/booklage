@@ -288,6 +288,19 @@
   background: black;
   object-fit: contain;
 }
+
+/* Generic inline-video styling for non-tweet sources (currently TikTok's
+   Tier-1 self-hosted playback path via /api/tiktok-video proxy). Identical
+   geometry to .tweetVideo — kept as a separate class so future per-platform
+   tweaks don't bleed across (e.g. tweet videos may want autoplay-off while
+   TikTok wants autoplay-on after click). */
+.inlineVideo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: black;
+  object-fit: contain;
+}
 /* Native chrome suppression is handled at the React level by gating the
    `controls` attribute on first interaction (see TweetVideoPlayer's
    hasInteracted state). Modern Chromium's loading panel lives in a

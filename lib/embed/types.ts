@@ -36,6 +36,18 @@ export type TikTokMeta = {
   readonly title: string
 }
 
+/** Playback metadata extracted from TikTok's __UNIVERSAL_DATA_FOR_REHYDRATION__
+ *  blob via our server-side scrape (`functions/api/tiktok-meta.ts`). Contains
+ *  the playable mp4 URL — feed it through `/api/tiktok-video?url=...` to
+ *  satisfy TikTok's CDN Referer check. */
+export type TikTokPlayback = {
+  readonly playAddr: string
+  readonly cover: string
+  readonly duration: number
+  readonly width: number
+  readonly height: number
+}
+
 /** Title typography auto-mode pick. */
 export type TitleMode = 'headline' | 'editorial' | 'index'
 
