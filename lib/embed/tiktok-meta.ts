@@ -62,6 +62,7 @@ export async function fetchTikTokPlayback(
       duration?: number
       width?: number
       height?: number
+      cookieString?: string
     }
     if (!data.playAddr) return null
     return {
@@ -70,6 +71,7 @@ export async function fetchTikTokPlayback(
       duration: data.duration ?? 0,
       width: data.width ?? 0,
       height: data.height ?? 0,
+      cookieString: data.cookieString ?? '',
     }
   } catch {
     return null

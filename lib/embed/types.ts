@@ -38,14 +38,17 @@ export type TikTokMeta = {
 
 /** Playback metadata extracted from TikTok's __UNIVERSAL_DATA_FOR_REHYDRATION__
  *  blob via our server-side scrape (`functions/api/tiktok-meta.ts`). Contains
- *  the playable mp4 URL — feed it through `/api/tiktok-video?url=...` to
- *  satisfy TikTok's CDN Referer check. */
+ *  the playable mp4 URL — feed it through `/api/tiktok-video?url=...&c=...`
+ *  to satisfy TikTok's CDN Referer + Cookie checks. `cookieString` carries
+ *  the session cookies (notably tt_chain_token) that TikTok set during the
+ *  scrape; without it the CDN returns 403 even with the right Referer. */
 export type TikTokPlayback = {
   readonly playAddr: string
   readonly cover: string
   readonly duration: number
   readonly width: number
   readonly height: number
+  readonly cookieString: string
 }
 
 /** Title typography auto-mode pick. */

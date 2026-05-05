@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v55-2026-05-05-tiktok-self-scrape-3-tier-playback'
+const CACHE_VERSION = 'v56-2026-05-05-tiktok-cookie-forwarding'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

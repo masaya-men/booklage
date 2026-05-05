@@ -902,11 +902,18 @@ function TikTokEmbed({
   }
 
   if (tier === 'video' && playback) {
+    // Build the proxy URL with the captured TikTok session cookies. The
+    // CDN binds the signed playAddr to the session that issued it, so
+    // without `c` (the cookie string from the scrape) the upstream
+    // returns 403 even with the right Referer.
+    const proxyUrl = playback.cookieString
+      ? `/api/tiktok-video?url=${encodeURIComponent(playback.playAddr)}&c=${encodeURIComponent(playback.cookieString)}`
+      : `/api/tiktok-video?url=${encodeURIComponent(playback.playAddr)}`
     return (
       <div className={styles.iframeWrap9x16}>
         <video
           className={styles.inlineVideo}
-          src={`/api/tiktok-video?url=${encodeURIComponent(playback.playAddr)}`}
+          src={proxyUrl}
           poster={playback.cover || thumbnail}
           controls
           autoPlay

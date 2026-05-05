@@ -91,6 +91,33 @@ export async function onRequest(context: PagesContext): Promise<Response> {
       return errorResponse(`upstream ${upstream.status}`, 502)
     }
 
+    // Capture Set-Cookie from the page response. TikTok issues
+    // `tt_chain_token` (and a handful of session cookies) during the
+    // page fetch; the CDN later rejects mp4 requests that don't carry
+    // those same cookies, even if the Referer is correct. We collect
+    // them all here and ship them back to the client so it can echo
+    // them when calling /api/tiktok-video. Workers with compat date
+    // ≥ 2022-03-21 expose getSetCookie() as a string[]; older runtimes
+    // only have headers.get() which join-concatenates with commas
+    // (ambiguous when a cookie value contains a comma). We try the
+    // modern API first and fall back to a single-string parse.
+    const setCookies: string[] = []
+    const headersRef = upstream.headers as unknown as {
+      getSetCookie?: () => string[]
+    }
+    if (typeof headersRef.getSetCookie === 'function') {
+      setCookies.push(...headersRef.getSetCookie())
+    } else {
+      const joined = upstream.headers.get('Set-Cookie')
+      if (joined) setCookies.push(joined)
+    }
+    const cookiePairs: string[] = []
+    for (const sc of setCookies) {
+      const head = sc.split(';')[0]?.trim()
+      if (head && head.includes('=')) cookiePairs.push(head)
+    }
+    const cookieString = cookiePairs.join('; ')
+
     const html = await upstream.text()
     const match = html.match(SCRIPT_REGEX)
     if (!match || !match[1]) {
@@ -112,9 +139,15 @@ export async function onRequest(context: PagesContext): Promise<Response> {
       return errorResponse('no playable mp4 in rehydration json', 404)
     }
 
-    return jsonResponse(result, 200, {
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-    })
+    return jsonResponse(
+      { ...result, cookieString },
+      200,
+      // Cache the JSON for an hour. The cookies bound to playAddr are
+      // session-scoped but TikTok keeps them stable for at least that
+      // long. If the cached cookies expire mid-window the client will
+      // see a 403 from the proxy and fall back to Tier 2 (iframe).
+      { 'Cache-Control': 'public, max-age=3600, s-maxage=3600' },
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     return errorResponse(message, 500)

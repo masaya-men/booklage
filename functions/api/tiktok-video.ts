@@ -76,6 +76,21 @@ export async function onRequest(context: PagesContext): Promise<Response> {
     Referer: 'https://www.tiktok.com/',
     Origin: 'https://www.tiktok.com',
   }
+  // Cookie forwarding. TikTok's CDN binds the signed playAddr URL to the
+  // session that issued it (tt_chain_token + a couple of supporting
+  // cookies). Without those cookies the CDN returns 403 even when Referer
+  // is correct. tiktok-meta.ts captured the Set-Cookie response from the
+  // page fetch and the client passes it back to us as the `c` query
+  // param; we forward it verbatim as a Cookie request header. URL-decode
+  // because the client encoded for safe transport in a query string.
+  const cookieParam = new URL(context.request.url).searchParams.get('c')
+  if (cookieParam) {
+    try {
+      upstreamHeaders.Cookie = decodeURIComponent(cookieParam)
+    } catch {
+      /* malformed encoding — proceed without cookies; CDN will likely 403 */
+    }
+  }
   const range = context.request.headers.get('range')
   if (range) upstreamHeaders.Range = range
 
