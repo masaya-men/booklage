@@ -22,6 +22,7 @@ import { ThemeLayer } from './ThemeLayer'
 import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
 import { Toolbar } from './Toolbar'
+import { BoardChrome } from './BoardChrome'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
 import { Lightbox } from './Lightbox'
@@ -450,6 +451,10 @@ export function BoardRoot() {
 
   return (
     <div className={styles.outerFrame}>
+      {/* Outer-frame chrome — wordmark (top-left) + link strip (bottom).
+          Sits in the white margin around the dark canvas, gives users a way
+          back to the marketing site without intruding on the board. */}
+      <BoardChrome />
       {/* Inner dark canvas — destefanis-style stage. The whole pan/cards/
           toolbar live inside, so cursor pan never escapes the rounded frame. */}
       <div ref={canvasRef} className={styles.canvas}>

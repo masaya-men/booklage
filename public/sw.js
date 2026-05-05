@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v70-2026-05-05-revert-iframe-api-back-to-native-controls'
+const CACHE_VERSION = 'v72-2026-05-05-site-nav-header-footer-board-chrome'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

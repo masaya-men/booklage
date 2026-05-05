@@ -16,6 +16,8 @@ export default function MarketingLayout({
       <header className="static-header">
         <Link href="/" className="static-logo">Booklage</Link>
         <nav className="static-nav">
+          <Link href="/features">Features</Link>
+          <Link href="/guide">Guide</Link>
           <Link href="/about">About</Link>
           <Link href="/faq">FAQ</Link>
           <Link href="/privacy">Privacy</Link>
