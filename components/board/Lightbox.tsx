@@ -16,7 +16,6 @@ import {
   extractYoutubeId,
   isYoutubeShorts,
 } from '@/lib/utils/url'
-import { YouTubeEmbed } from './embeds/YouTubeEmbed'
 import styles from './Lightbox.module.css'
 
 type Props = {
@@ -768,6 +767,47 @@ function EmbedPoster({
         </span>
       </button>
     </>
+  )
+}
+
+function YouTubeEmbed({
+  videoId,
+  title,
+  vertical,
+  thumbnail,
+}: {
+  readonly videoId: string
+  readonly title: string
+  readonly vertical: boolean
+  readonly thumbnail: string | undefined
+}): ReactNode {
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false)
+  // YouTube CDN poster — used only as fallback when the bookmarklet
+  // didn't capture an og:image. maxresdefault works for ~95% of videos;
+  // hqdefault is the universal fallback if max isn't available, but we
+  // only reach this code path when item.thumbnail is missing entirely.
+  const poster = thumbnail || `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
+  return (
+    <div className={vertical ? styles.iframeWrap9x16 : styles.iframeWrap16x9}>
+      {hasInteracted ? (
+        <iframe
+          // autoplay=1 starts playback immediately on the first iframe
+          // mount, which is allowed because the click on our overlay
+          // satisfies Chromium's user-gesture requirement for autoplay.
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+          title={title}
+          className={styles.iframe}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      ) : (
+        <EmbedPoster
+          thumbnail={poster}
+          alt={title}
+          onClick={(): void => setHasInteracted(true)}
+        />
+      )}
+    </div>
   )
 }
 
