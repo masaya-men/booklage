@@ -166,6 +166,7 @@ ol {
   --share-accent-hover:     #ff9a55;
   --share-modal-bg:         #111114;
   --share-modal-backdrop:   rgba(0, 0, 0, 0.55);
+  --share-sheet-backdrop:   rgba(0, 0, 0, 0.70);
   --share-modal-blur:       6px;
   --share-frame-bg:         #0c0c0e;
   --share-canvas-bg:        #08080a;

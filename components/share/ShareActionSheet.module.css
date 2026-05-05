@@ -1,0 +1,90 @@
+/* components/share/ShareActionSheet.module.css */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--share-sheet-backdrop);
+  z-index: 9100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet {
+  background: var(--share-modal-bg);
+  color: var(--share-pill-text-active);
+  width: min(440px, 92vw);
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+
+.title {
+  font-size: 14px;
+  margin: 0 0 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.preview {
+  background: var(--share-frame-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: center;
+}
+
+.preview img {
+  max-width: 100%;
+  max-height: 240px;
+  height: auto;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--share-pill-fill-soft);
+  color: var(--share-pill-text-active);
+  border: none;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--share-transition-fast);
+}
+
+.actionBtn:hover {
+  background: var(--share-pill-fill-hover);
+}
+
+.icon {
+  font-size: 15px;
+  width: 20px;
+  text-align: center;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--share-fine-text);
+  padding: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+  font-family: inherit;
+  transition: color var(--share-transition-fast);
+}
+
+.closeBtn:hover {
+  color: var(--share-pill-text);
+}
