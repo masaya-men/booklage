@@ -43,12 +43,18 @@ export type GlassPreset = {
 
 /**
  * "lens-magnify" — v1 baseline. User-confirmed 2026-05-04.
+ * Updated 2026-05-05: innerTopHighlightAlpha 1 → 0 per user feedback —
+ * the inset white cap-light read as a tacky rim on the play disc once
+ * shape-aware refraction landed. The preset is now a PURE refractive
+ * lens with no surface chrome.
  *
  * Pure Map B (magnification) drives the look. Map A (bezel Snell), specular,
- * shadow, and border are all dialled to dormant — but the values are stored
- * VERBATIM as the user set them in the Lab, so re-engaging any single field
- * (e.g. `borderWidth: 1` to wake up the 0.6 alpha border) gives the exact
- * effect the Lab preview hinted at.
+ * shadow, border, and inner highlight are all dialled to dormant — but the
+ * non-zero ratio fields (bezelPercent, refractiveIndex, borderAlpha,
+ * outerShadowAlpha) are stored VERBATIM as the user set them in the Lab,
+ * so re-engaging any single trigger field (e.g. `strength: N` to wake the
+ * bezel, `borderWidth: 1` to wake the white outline) gives the exact effect
+ * the Lab preview hinted at.
  *
  * Why extreme magnify (80 px) on small buttons is fine: any UI placed AS A
  * CHILD of <LiquidGlass> sits ABOVE the backdrop-filter, so the icon /
@@ -81,7 +87,11 @@ const LENS_MAGNIFY: GlassPreset = {
   // dark cast that gives the glass a floating-bubble feel.
   outerShadowBlur: 0,
   outerShadowAlpha: 0.78,
-  innerTopHighlightAlpha: 1,
+  // Inner highlight — DORMANT (was 1 until 2026-05-05). The cap-light effect
+  // gave the disc a "lit from above" feel that, paired with a strong magnify,
+  // crossed into kitschy. Pure lens reads cleaner. Override to 0.2-0.4 for
+  // a subtle hint, 1 to fully restore the v1 baseline look.
+  innerTopHighlightAlpha: 0,
   innerBottomShadeAlpha: 0,
 }
 
