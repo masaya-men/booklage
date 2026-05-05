@@ -29,7 +29,6 @@ import { Lightbox } from './Lightbox'
 import { ShareComposer } from '@/components/share/ShareComposer'
 import { ShareActionSheet } from '@/components/share/ShareActionSheet'
 import { encodeShareData } from '@/lib/share/encode'
-import { exportFrameAsPng } from '@/lib/share/png-export'
 import { getActiveWatermark } from '@/lib/share/watermark-config'
 import type { ShareData } from '@/lib/share/types'
 import styles from './BoardRoot.module.css'
@@ -310,6 +309,9 @@ export function BoardRoot() {
           ? `${window.location.origin}/share`
           : 'https://booklage.pages.dev/share'
       const shareUrl = `${baseUrl}#d=${fragment}`
+      // Dynamic import keeps dom-to-image-more out of SSR module graph
+      // (it reads `Node` at module evaluation time, crashing in node.js).
+      const { exportFrameAsPng } = await import('@/lib/share/png-export')
       const pngDataUrl = await exportFrameAsPng(frameEl, getActiveWatermark())
       setShareComposerOpen(false)
       setActionSheet({ pngDataUrl, shareUrl })
