@@ -1,0 +1,75 @@
+/* components/share/ShareSourceList.module.css */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 84px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid var(--share-divider);
+}
+
+.shortcuts {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.shortcutBtn {
+  background: var(--share-pill-fill-soft);
+  color: var(--share-pill-text-active);
+  border: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--share-transition-fast);
+}
+
+.shortcutBtn:hover {
+  background: var(--share-pill-fill-hover);
+}
+
+.scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: thin;
+}
+
+.thumb {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  background: var(--share-thumb-bg);
+  border: none;
+  padding: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  transition: outline var(--share-transition-quick);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  color: var(--share-thumb-placeholder);
+}
+
+.selected {
+  outline-color: var(--share-accent);
+}
