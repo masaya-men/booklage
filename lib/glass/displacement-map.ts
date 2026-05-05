@@ -148,20 +148,20 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
     magnifyStrength, magnifyExponent,
   } = config
 
-  // Aggressive supersampling — user-mandated "perfect real glass" quality
-  // (2026-05-05). v63 ran 8× baseline which was still visibly coarse on
-  // small discs: an 8-bit R/G channel encoding ±127 across magnifyStrength=80
-  // gives ~0.63 CSS px quantisation, and 8× supersample averaged only ~64
-  // texels per native pixel — leaving residual blockiness in the warp and
-  // aliased staircasing on the rim. Doubling to 16× baseline (20× on
-  // high-DPR retina) takes a 92 px disc texture from 736² to 1472²-1840²
-  // so every native pixel averages 256-400 displacement texels, dissolving
-  // the quantisation into a continuous gradient. Memory at 16× for a 92 px
-  // disc is ~8.6 MB raw / ~2 MB PNG-encoded; with 1-2 active glasses on
-  // page the total impact is single-digit MB. PNG encoding climbs to
-  // ~80-150 ms once per element resize — still invisible during interaction.
+  // Supersampling — balance smoothness vs perf. v64 tried 16× baseline
+  // which was visibly the smoothest but 4× the texture meant a 4× heavier
+  // generation loop AND 4× the GPU upload, which on dynamic-width elements
+  // (GlassPill resizing as text changes) caused noticeable hitching.
+  //
+  // v65 reverts to 8× baseline (10× on high-DPR retina) — the rim mask
+  // and outer shadow added in v64 are doing most of the smoothness work
+  // anyway (eliminating the border-radius staircasing and adding the
+  // floating-glass depth cue), so the texture density doesn't need to be
+  // pushed past the point of perceptual diminishing returns. At 8× a
+  // 92 px disc is 736² (~2 MB raw / ~500 KB PNG) and the loop runs ~540K
+  // iterations — fast enough to feel instant.
   const dpr = (typeof window !== 'undefined') ? (window.devicePixelRatio || 1) : 1
-  const scale = Math.min(20, Math.max(16, Math.ceil(dpr * 8)))
+  const scale = Math.min(10, Math.max(8, Math.ceil(dpr * 4)))
   const iw = Math.round(width * scale)
   const ih = Math.round(height * scale)
   const ibr = borderRadius * scale
