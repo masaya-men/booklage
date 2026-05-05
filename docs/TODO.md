@@ -33,8 +33,16 @@
 
 1. **【致命的】 受信側 URL「シェアデータが破損しています」バグ**
    - 送信者が生成した URL を別ブラウザ / シークレットウィンドウで開くと decode 失敗
-   - 原因不明 — decode の 4 段階（base64 / gzip / JSON / schema）どこで落ちるか要調査
-   - **次セッション開始時にユーザーに F12 console エラーまたは生成 URL サンプル提示を依頼してから着手**
+   - **2026-05-06 23 時頃の解析結果**: 実 URL を Node `zlib.gunzipSync` に通したら `unexpected end of file (Z_BUF_ERROR)` = **gzip ストリームが末尾で truncate されている**ことが確定。最後 8 バイトが gzip footer (CRC32 + ISIZE) として無効値 (ISIZE が 約 3GB の非現実値)
+   - 原因切り分け候補:
+     - **A) 受信側ブラウザの URL 長制限** — F12 console で `window.location.hash.length` を確認、送信側 `shareUrl.length - 35` と比較
+     - **B) Claude Code チャット入力で truncate された可能性** — 私が受け取った fragment は 2595 文字。本番では full 長で動いていた可能性あり
+     - **C) encode 側のバグ** — vitest round-trip テストは通っているが、jsdom と本番 Chrome で `CompressionStream` 挙動が違う可能性
+   - **明日の手順**:
+     1. SharedView に診断ログを追加（どの段階で失敗 + hash 長を画面表示）
+     2. ユーザーに新規 URL 生成依頼 → 受信側で `window.location.hash.length` を報告依頼
+     3. 送信側 `shareUrl.length` と比較して truncation の有無を判定
+     4. 原因に応じて修正（encode バグなら `pako` 等のライブラリベースに書き換え検討）
    - 既知の壊れ URL `/share#d=invalid` でのエラー画面表示は OK
 
 2. **Composer の見た目欠陥（plan §2.1 step 5 で約束していたが MVP で省略）**
