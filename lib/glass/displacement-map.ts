@@ -148,24 +148,20 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
     magnifyStrength, magnifyExponent,
   } = config
 
-  // Always supersample the displacement map to at least 3× the CSS-pixel
-  // size of the element. v45 used `Math.min(2, devicePixelRatio)` which
-  // looked great on retina (2× DPR) but on standard 1× monitors silently
-  // dropped back to 1× sampling — the bezel rim and the interior
-  // refraction still showed faint blockiness because each CSS pixel
-  // mapped 1:1 to a texture pixel with no bilinear smoothing. Forcing a
-  // floor of 3× (then capping at 4× on phones with dpr≥4 to keep memory
-  // sane) means the browser always has a denser texture to downsample
-  // from than the device can show, so the perimeter and the interior
-  // both read as crisp. Memory cost on a 1× display jumps from 92×92
-  // (~34 KB raw) to 276×276 (~300 KB) per displacement map; with 1–2
-  // active glass instances this is well under a MB. Displacement
-  // magnitudes (R/G channels) are unit-agnostic — normalised by
-  // globalMaxDisplacement and rescaled by feDisplacementMap's `scale`
-  // attribute — so supersampling affects sampling smoothness only,
-  // never the refraction strength.
+  // Aggressive supersampling — user-mandated "perfect real glass" quality
+  // (2026-05-05). v62 ran 3× baseline which was visibly coarse: an 8-bit
+  // R/G channel encoding ±127 across a magnifyStrength=80 disc gave
+  // ~0.63 CSS px quantisation, plus only 3 sub-pixels at the rim for
+  // bilinear AA → aliased halo at the lens edge. Pushing to 8× baseline
+  // (10× on high-DPR retina) takes a 92 px disc from a 276² texture to a
+  // 736² one — every CSS pixel now samples ~64 displacement texels which
+  // the browser averages with bilinear filtering, so quantisation
+  // dissolves into smooth gradients. Memory at 10× for a 92 px disc is
+  // ~3.4 MB raw (PNG-encoded smaller); with 1-2 active glasses on page
+  // the total impact stays in low single-digit MB. PNG encoding takes
+  // ~30-60 ms once per element resize — invisible during normal use.
   const dpr = (typeof window !== 'undefined') ? (window.devicePixelRatio || 1) : 1
-  const scale = Math.min(4, Math.max(3, dpr))
+  const scale = Math.min(10, Math.max(8, Math.ceil(dpr * 4)))
   const iw = Math.round(width * scale)
   const ih = Math.round(height * scale)
   const ibr = borderRadius * scale
@@ -251,11 +247,20 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
       //     magnifyExponent. The minDist-based interior depth generalises the
       //     original `r/lensRadius` ramp to non-circular shapes — for a circle
       //     minDist = ibr − r, so this collapses to the same curve.
+      //
+      //     Rim softness: the last `RIM_SOFTNESS_CSS_PX` of the boundary
+      //     tapers the amount linearly back to 0. Without it the magnify
+      //     jumps from full strength at minDist=1 to zero at minDist=0 —
+      //     a 1-pixel discontinuity that bilinear sampling renders as an
+      //     aliased halo around the disc. The taper happens entirely on
+      //     the inside of the lens; deep interior is unaffected.
       if (magnifyStrength > 0 && minDist > 0) {
         const interiorDepth = Math.max(0, minDist - bezelWidth)
         const interiorNorm = Math.min(interiorDepth / lensRadius, 1)
         const edgeProximity = 1 - interiorNorm
-        const amount = Math.pow(edgeProximity, magnifyExponent) * magnifyStrength
+        const RIM_SOFTNESS_CSS_PX = 1.5
+        const rimSoftness = Math.min(minDist / Math.max(scale * RIM_SOFTNESS_CSS_PX, 1), 1)
+        const amount = Math.pow(edgeProximity, magnifyExponent) * magnifyStrength * rimSoftness
         dx += -nx * amount
         dy += -ny * amount
       }
