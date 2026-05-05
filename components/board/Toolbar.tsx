@@ -14,15 +14,24 @@ type Props = {
   readonly onDisplayModeChange: (m: DisplayMode) => void
   readonly moods: ReadonlyArray<MoodRecord>
   readonly counts: { readonly all: number; readonly inbox: number; readonly archive: number }
+  readonly onShareClick: () => void
 }
 
 export function Toolbar({
-  activeFilter, onFilterChange, displayMode, onDisplayModeChange, moods, counts,
+  activeFilter, onFilterChange, displayMode, onDisplayModeChange, moods, counts, onShareClick,
 }: Props): ReactElement {
   return (
     <div className={styles.container} data-testid="board-toolbar">
       <FilterPill value={activeFilter} onChange={onFilterChange} moods={moods} counts={counts} />
       <DisplayModeSwitch value={displayMode} onChange={onDisplayModeChange} />
+      <button
+        type="button"
+        className={styles.sharePill}
+        onClick={onShareClick}
+        data-testid="share-pill"
+      >
+        Share ↗
+      </button>
     </div>
   )
 }

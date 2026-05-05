@@ -520,6 +520,7 @@ export function BoardRoot() {
           onDisplayModeChange={handleDisplayModeChange}
           moods={moods}
           counts={sidebarCounts}
+          onShareClick={(): void => { /* TODO: open ShareComposer */ }}
         />
         {!loading && items.length === 0 && (
           <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
