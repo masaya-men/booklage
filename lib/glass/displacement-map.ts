@@ -149,19 +149,19 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
   } = config
 
   // Aggressive supersampling — user-mandated "perfect real glass" quality
-  // (2026-05-05). v62 ran 3× baseline which was visibly coarse: an 8-bit
-  // R/G channel encoding ±127 across a magnifyStrength=80 disc gave
-  // ~0.63 CSS px quantisation, plus only 3 sub-pixels at the rim for
-  // bilinear AA → aliased halo at the lens edge. Pushing to 8× baseline
-  // (10× on high-DPR retina) takes a 92 px disc from a 276² texture to a
-  // 736² one — every CSS pixel now samples ~64 displacement texels which
-  // the browser averages with bilinear filtering, so quantisation
-  // dissolves into smooth gradients. Memory at 10× for a 92 px disc is
-  // ~3.4 MB raw (PNG-encoded smaller); with 1-2 active glasses on page
-  // the total impact stays in low single-digit MB. PNG encoding takes
-  // ~30-60 ms once per element resize — invisible during normal use.
+  // (2026-05-05). v63 ran 8× baseline which was still visibly coarse on
+  // small discs: an 8-bit R/G channel encoding ±127 across magnifyStrength=80
+  // gives ~0.63 CSS px quantisation, and 8× supersample averaged only ~64
+  // texels per native pixel — leaving residual blockiness in the warp and
+  // aliased staircasing on the rim. Doubling to 16× baseline (20× on
+  // high-DPR retina) takes a 92 px disc texture from 736² to 1472²-1840²
+  // so every native pixel averages 256-400 displacement texels, dissolving
+  // the quantisation into a continuous gradient. Memory at 16× for a 92 px
+  // disc is ~8.6 MB raw / ~2 MB PNG-encoded; with 1-2 active glasses on
+  // page the total impact is single-digit MB. PNG encoding climbs to
+  // ~80-150 ms once per element resize — still invisible during interaction.
   const dpr = (typeof window !== 'undefined') ? (window.devicePixelRatio || 1) : 1
-  const scale = Math.min(10, Math.max(8, Math.ceil(dpr * 4)))
+  const scale = Math.min(20, Math.max(16, Math.ceil(dpr * 8)))
   const iw = Math.round(width * scale)
   const ih = Math.round(height * scale)
   const ibr = borderRadius * scale
@@ -258,7 +258,7 @@ export function generateDisplacementMap(config: GlassConfig): DisplacementResult
         const interiorDepth = Math.max(0, minDist - bezelWidth)
         const interiorNorm = Math.min(interiorDepth / lensRadius, 1)
         const edgeProximity = 1 - interiorNorm
-        const RIM_SOFTNESS_CSS_PX = 1.5
+        const RIM_SOFTNESS_CSS_PX = 2.5
         const rimSoftness = Math.min(minDist / Math.max(scale * RIM_SOFTNESS_CSS_PX, 1), 1)
         const amount = Math.pow(edgeProximity, magnifyExponent) * magnifyStrength * rimSoftness
         dx += -nx * amount

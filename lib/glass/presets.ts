@@ -83,9 +83,11 @@ const LENS_MAGNIFY: GlassPreset = {
   bgAlpha: 0,
   borderAlpha: 0.6,
   borderWidth: 0,
-  // Shadow — same pattern. outerShadowBlur: 16 (override) wakes a 0.78 alpha
-  // dark cast that gives the glass a floating-bubble feel.
-  outerShadowBlur: 0,
+  // Shadow — soft outer shadow gives the disc a sense of physical thickness
+  // and "floating above the page" depth. Awakened 2026-05-05 (was 0). Pairs
+  // with the alpha 0.78 cast that was always stored at user-tuned value.
+  // Acts as the primary thickness cue now that the inner highlight is off.
+  outerShadowBlur: 16,
   outerShadowAlpha: 0.78,
   // Inner highlight — DORMANT (was 1 until 2026-05-05). The cap-light effect
   // gave the disc a "lit from above" feel that, paired with a strong magnify,

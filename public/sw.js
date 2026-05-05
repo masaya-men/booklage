@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v63-2026-05-05-glass-supersample-8x-rim-softness'
+const CACHE_VERSION = 'v64-2026-05-05-glass-16x-rim-mask-soft-shadow'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

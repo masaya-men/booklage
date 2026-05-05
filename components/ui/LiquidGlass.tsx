@@ -123,6 +123,20 @@ export const LiquidGlass = forwardRef<HTMLElement, LiquidGlassProps>(function Li
     ? `url(#${filterId})`
     : fallbackFilter
 
+  // Soft mask the rim with a 2 CSS px alpha gradient. The browser's default
+  // border-radius arc rendering applies AA at limited sub-pixel resolution,
+  // so a high-contrast lens (refraction inside vs untouched outside) shows
+  // visible staircasing on the perimeter — readable as "circle drawn in MS
+  // Paint" rather than physical glass. Bleeding the alpha to transparent
+  // over the last 2 px lets the disc dissolve smoothly into the page,
+  // matching how real glass edges have a subtle Fresnel falloff. Only
+  // applied to circle / rounded shapes where the mask gradient lines up
+  // with the visible boundary; rect pills keep their crisp clip.
+  const RIM_FADE_PX = 2
+  const rimMask = (shape === 'circle' || shape === 'rounded')
+    ? `radial-gradient(closest-side, black calc(100% - ${RIM_FADE_PX}px), transparent 100%)`
+    : undefined
+
   const glassStyle: CSSProperties = {
     width: w,
     height: h,
@@ -144,6 +158,8 @@ export const LiquidGlass = forwardRef<HTMLElement, LiquidGlassProps>(function Li
     ].filter(Boolean).join(', ') || 'none',
     backdropFilter,
     WebkitBackdropFilter: backdropFilter,
+    maskImage: rimMask,
+    WebkitMaskImage: rimMask,
     isolation: 'isolate',
     appearance: 'none',
     WebkitAppearance: 'none',
