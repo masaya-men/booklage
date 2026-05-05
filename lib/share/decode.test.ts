@@ -4,6 +4,7 @@ import { encodeShareData } from './encode'
 import { decodeShareData } from './decode'
 import { SHARE_SCHEMA_VERSION } from './types'
 import type { ShareData } from './types'
+import { sanitizeShareData } from './validate'
 
 describe('decodeShareData', () => {
   it('round-trips encoded data', async () => {
@@ -49,5 +50,25 @@ describe('decodeShareData', () => {
     const b64url = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
     const result = await decodeShareData(b64url)
     expect(result.ok).toBe(false)
+  })
+})
+
+describe('encode → decode → sanitize integration', () => {
+  it('ignores attacker-controlled ty after full pipeline', async () => {
+    const malicious = await encodeShareData({
+      v: SHARE_SCHEMA_VERSION,
+      aspect: 'free',
+      cards: [{
+        u: 'https://www.youtube.com/watch?v=abcdefghijk',
+        t: 'fake',
+        ty: 'website',
+        x: 0, y: 0, w: 0.1, h: 0.1, s: 'S',
+      }],
+    })
+    const result = await decodeShareData(malicious)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const sanitized = sanitizeShareData(result.data)
+    expect(sanitized.cards[0].ty).toBe('youtube')
   })
 })
