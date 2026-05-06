@@ -196,9 +196,12 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
       v: SHARE_SCHEMA_VERSION,
       aspect,
       cards: layout.cards,
+      fa: layout.frameSize.height > 0
+        ? layout.frameSize.width / layout.frameSize.height
+        : undefined,
     }
     onConfirm(data, frameRef.current)
-  }, [aspect, layout.cards, onConfirm])
+  }, [aspect, layout.cards, layout.frameSize.width, layout.frameSize.height, onConfirm])
 
   if (!open) return null
 

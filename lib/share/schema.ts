@@ -25,6 +25,7 @@ export const ShareDataSchema = z.object({
   aspect: ShareAspectSchema,
   cards: z.array(ShareCardSchema).max(SHARE_LIMITS.MAX_CARDS),
   bg: z.enum(['dark', 'light']).optional(),
+  fa: z.number().finite().min(0.3).max(4).optional(),
 })
 
 export type ShareCardParsed = z.infer<typeof ShareCardSchema>

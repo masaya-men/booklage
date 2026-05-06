@@ -104,7 +104,19 @@ export function SharedView(): ReactElement {
     return <ErrorView info={state.info} />
   }
 
-  const frame = computeAspectFrameSize(state.data.aspect, size.w, size.h)
+  // Honour the sender-encoded frame aspect ratio (fa) when present so the
+  // recipient reproduces the sender's exact frame proportions. Without this,
+  // 'free' aspect drifts to the receiver's viewport ratio and cards land in
+  // wrong positions (clipped at top, gaps left/right). Older share URLs
+  // without `fa` fall back to the legacy preset-based calc.
+  const frame = ((): { width: number; height: number } => {
+    const fa = state.data.fa
+    if (typeof fa === 'number' && fa > 0) {
+      const scale = Math.min(size.w / fa, size.h)
+      return { width: fa * scale, height: scale }
+    }
+    return computeAspectFrameSize(state.data.aspect, size.w, size.h)
+  })()
   const openCard = openState ? state.data.cards[openState.index] ?? null : null
 
   return (
