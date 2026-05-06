@@ -9,6 +9,7 @@ import { filterByViewport } from '@/lib/share/board-to-cards'
 import { ShareAspectSwitcher } from './ShareAspectSwitcher'
 import { ShareFrame } from './ShareFrame'
 import { ShareSourceList } from './ShareSourceList'
+import { useShareFullscreen } from './use-share-fullscreen'
 import styles from './ShareComposer.module.css'
 
 type BoardItemLite = {
@@ -51,6 +52,7 @@ function sortByBoardPosition(
 
 export function ShareComposer({ open, onClose, items, positions, viewport, onConfirm }: Props): ReactElement | null {
   const [aspect, setAspect] = useState<ShareAspect>('free')
+  const fullscreen = useShareFullscreen({ open, onCloseModal: onClose })
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => {
     const visible = filterByViewport(items, positions, viewport)
     return new Set(visible.map((i) => i.bookmarkId))
@@ -80,14 +82,6 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     ro.observe(el)
     return (): void => ro.disconnect()
   }, [open])
-
-  // Close on ESC
-  useEffect((): undefined | (() => void) => {
-    if (!open) return undefined
-    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return (): void => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
 
   // Body scroll lock
   useEffect((): undefined | (() => void) => {
@@ -146,9 +140,9 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
         sizeOverrides,
         aspect,
         viewport: frameViewport,
-        mode: 'layout', // TODO Task 3: replace with `mode` from useShareFullscreen
+        mode: fullscreen.mode,
       }),
-    [composerItems, cardOrder, sizeOverrides, aspect, frameViewport],
+    [composerItems, cardOrder, sizeOverrides, aspect, frameViewport, fullscreen.mode],
   )
 
   const cardIds = layout.cardIds
@@ -207,14 +201,43 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
       onClick={(e): void => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className={styles.modal}
+        className={`${styles.modal} ${fullscreen.mode === 'preview' ? styles.preview : ''}`}
         role="dialog"
         aria-label="Share composer"
         data-testid="share-composer"
+        data-mode={fullscreen.mode}
+        data-pin-h={fullscreen.pinned.h}
+        data-pin-s={fullscreen.pinned.s}
+        data-pin-b={fullscreen.pinned.b}
+        data-flash-side={fullscreen.flashSide ?? ''}
       >
+        {fullscreen.canUseFullscreen && (
+          <>
+            <div className={styles.zoneTop}    aria-hidden="true" />
+            <div className={styles.zoneRight}  aria-hidden="true" />
+            <div className={styles.zoneBottom} aria-hidden="true" />
+            <div className={`${styles.handle} ${styles.handleTop}    ${fullscreen.flashSide === 'h' ? styles.flash : ''}`} aria-hidden="true" />
+            <div className={`${styles.handle} ${styles.handleRight}  ${fullscreen.flashSide === 's' ? styles.flash : ''}`} aria-hidden="true" />
+            <div className={`${styles.handle} ${styles.handleBottom} ${fullscreen.flashSide === 'b' ? styles.flash : ''}`} aria-hidden="true" />
+          </>
+        )}
+
         <header className={styles.header}>
-          <h2 className={styles.title}>シェア用ボードを組む</h2>
+          <span className={styles.modeChip} aria-label={`Mode: ${fullscreen.mode}`}>
+            {fullscreen.mode === 'preview' ? 'PREVIEW' : 'LAYOUT'}
+          </span>
           <ShareAspectSwitcher value={aspect} onChange={setAspect} />
+          {fullscreen.canUseFullscreen && (
+            <button
+              type="button"
+              className={styles.fsBtn}
+              onClick={fullscreen.toggleMode}
+              aria-label={fullscreen.mode === 'preview' ? 'Exit fullscreen' : 'Enter fullscreen'}
+              data-testid="share-fullscreen-btn"
+            >
+              ⛶
+            </button>
+          )}
           <button
             type="button"
             className={styles.closeBtn}
@@ -263,6 +286,20 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
             画像 + URL でシェア →
           </button>
         </footer>
+
+        {fullscreen.helpVisible && (
+          <div className={styles.helpOverlay} role="dialog" aria-label="Keyboard shortcuts" onClick={fullscreen.closeHelp}>
+            <div className={styles.helpCard} onClick={(e): void => e.stopPropagation()}>
+              <h3 className={styles.helpTitle}>Keyboard shortcuts</h3>
+              <ul className={styles.helpList}>
+                <li><kbd>F</kbd>      Toggle preview mode</li>
+                <li><kbd>H S B</kbd>  Pin header / source / footer</li>
+                <li><kbd>Esc</kbd>    Exit preview / close</li>
+                <li><kbd>?</kbd>      Toggle this help</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
