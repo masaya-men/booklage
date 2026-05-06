@@ -1,5 +1,10 @@
 // lib/share/board-to-cards.ts
+import { SHARE_LIMITS } from './types'
 import type { ShareCard, ShareSize } from './types'
+
+function truncate(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max) : s
+}
 
 type Item = {
   readonly bookmarkId: string
@@ -46,10 +51,10 @@ export function boardItemsToShareCards(
     const p = positions[it.bookmarkId]
     if (!p) continue
     out.push({
-      u: it.url,
-      t: it.title,
-      d: it.description || undefined,
-      th: it.thumbnail || undefined,
+      u: truncate(it.url, SHARE_LIMITS.MAX_URL),
+      t: truncate(it.title, SHARE_LIMITS.MAX_TITLE),
+      d: it.description ? truncate(it.description, SHARE_LIMITS.MAX_DESCRIPTION) : undefined,
+      th: it.thumbnail ? truncate(it.thumbnail, SHARE_LIMITS.MAX_URL) : undefined,
       ty: it.type,
       x: p.x / frameSize.width,
       y: p.y / frameSize.height,

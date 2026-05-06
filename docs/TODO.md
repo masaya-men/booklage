@@ -8,7 +8,7 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v74 反映済**（ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **v75 反映済**（ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
 ### 🎯 今セッション (2026-05-06 朝, v73 → v74) の到達点
@@ -54,12 +54,14 @@
 
 **Plan A 残作業**:
 
-1. **【致命的】 受信側 URL「シェアデータが破損しています」バグ — 診断 UI 出荷済 (v74)**
-   - 2026-05-06 解析: Node `zlib.gunzipSync` で `Z_BUF_ERROR` = gzip 末尾 truncation 確定
-   - **v74 で診断 UI 出荷**: 受信側エラー画面に hash 長 / fragment 長 / 失敗ステージ / 末尾 16byte hex / raw error を表示。送信側 ActionSheet に URL 長表示
-   - **次セッション**: ユーザー実機テスト（送信側 URL 長 + 受信側スクショ）→ 真因特定 → 修正
-     - fragment 長 ≒ 送信側 URL 長 - 35（origin + /share の長さ）なら無傷 → encode/decode バグ → `pako` 等への置換検討
-     - 不一致なら受信側 truncation → ブラウザ or 共有経路の問題
+1. ~~**【致命的】 受信側 URL バグ**~~ — **v75 で根本修正完了**
+   - 2026-05-06 23 時の "gzip truncation" 仮説は**誤り** (チャット転送で fragment が途中切れただけ)
+   - v74 診断 UI で真因判明: **`cards[N].t` (title) が Zod schema の 200 文字制限を超過**
+   - 原因: tweet bookmark の title は X.com `<title>` タグ「Xユーザーの<handle>さん：「<280字 tweet>」 / X」で 200 字超
+   - **v75 修正**:
+     - `SHARE_LIMITS.MAX_TITLE` 200 → 500、`MAX_DESCRIPTION` 280 → 500 ([lib/share/types.ts](lib/share/types.ts))
+     - `boardItemsToShareCards` で encode 時に t/d/u/th を truncate ([lib/share/board-to-cards.ts](lib/share/board-to-cards.ts))
+     - 回帰テスト追加: 長 title round-trip ([lib/share/board-to-cards.test.ts](lib/share/board-to-cards.test.ts), 236 passed)
    - 既知の壊れ URL `/share#d=invalid` でのエラー画面表示は OK
 
 2. **Composer の見た目欠陥（次セッション最優先、規模大）**

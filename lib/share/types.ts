@@ -42,11 +42,13 @@ export type ShareData = {
 }
 
 // Limits — enforced in validate.ts. Single source of truth.
+// MAX_TITLE is 500 to accommodate Twitter/X bookmarks whose title is the full
+// page <title> ("Xユーザーの<handle>さん：「<280-char tweet>」 / X").
 export const SHARE_LIMITS = {
   MAX_CARDS: 100,
   MAX_DECODED_BYTES: 50 * 1024,        // 50KB JSON
   MAX_FRAGMENT_BYTES: 4 * 1024,        // 4KB base64url
   MAX_URL: 2048,
-  MAX_TITLE: 200,
-  MAX_DESCRIPTION: 280,
+  MAX_TITLE: 500,
+  MAX_DESCRIPTION: 500,
 } as const
