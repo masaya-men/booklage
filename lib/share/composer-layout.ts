@@ -82,26 +82,64 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     px[id] = { x: p.x, y: p.y, w: p.w, h: p.h }
   }
 
-  // Auto-shrink if total height exceeds frame height
-  const shrinkScale = masonry.totalHeight > frameSize.height
+  // Auto-fit: scale either DOWN (when masonry overflows) or UP (when it
+  // underfills) so cards use the full canvas. Mirrors the prior shrink-only
+  // path but adds upscaling — without this, few-card layouts hugged the
+  // middle band of the frame and left huge top/bottom gutters, which read
+  // as broken on the recipient side.
+  //
+  // We scale by the more-constraining axis: fit within frame width AND
+  // frame height. MAX_UPSCALE caps growth at 2.5× so 1-2 card layouts
+  // don't balloon. Beyond cap, we accept some gutter and center.
+  const MAX_UPSCALE = 2.5
+  let usedMaxX = 0
+  for (const id of Object.keys(px)) {
+    const right = px[id].x + px[id].w
+    if (right > usedMaxX) usedMaxX = right
+  }
+  const scaleByHeight = masonry.totalHeight > 0
     ? frameSize.height / masonry.totalHeight
     : 1
-  const didShrink = shrinkScale < 1
-  if (didShrink) {
+  const scaleByWidth = usedMaxX > 0
+    ? frameSize.width / usedMaxX
+    : 1
+  const fitScale = Math.min(MAX_UPSCALE, scaleByHeight, scaleByWidth)
+  // didShrink remains true only for the actual shrink case so existing
+  // callers/tests that read this flag keep their semantics.
+  const didShrink = fitScale < 1
+  const shrinkScale = fitScale
+  if (fitScale !== 1) {
     for (const id of Object.keys(px)) {
-      px[id].x *= shrinkScale
-      px[id].y *= shrinkScale
-      px[id].w *= shrinkScale
-      px[id].h *= shrinkScale
+      px[id].x *= fitScale
+      px[id].y *= fitScale
+      px[id].w *= fitScale
+      px[id].h *= fitScale
     }
   }
 
-  // Vertical centering: if scaled total height < frame height, push down by half the slack
-  const scaledTotalHeight = masonry.totalHeight * shrinkScale
+  // Vertical centering: if scaled total height < frame height (only
+  // happens when MAX_UPSCALE clamped us short), push down by half the slack.
+  const scaledTotalHeight = masonry.totalHeight * fitScale
   const verticalOffset = Math.max(0, (frameSize.height - scaledTotalHeight) / 2)
   if (verticalOffset > 0) {
     for (const id of Object.keys(px)) {
       px[id].y += verticalOffset
+    }
+  }
+
+  // Horizontal centering: column-masonry packs from x=0 leftward. After
+  // auto-fit, the packed area may still be narrower than the frame
+  // (e.g. when MAX_UPSCALE clamped width-fit). Push right by half the
+  // slack so the composition reads as intentional rather than left-pinned.
+  let usedWidth = 0
+  for (const id of Object.keys(px)) {
+    const right = px[id].x + px[id].w
+    if (right > usedWidth) usedWidth = right
+  }
+  const horizontalOffset = Math.max(0, (frameSize.width - usedWidth) / 2)
+  if (horizontalOffset > 0) {
+    for (const id of Object.keys(px)) {
+      px[id].x += horizontalOffset
     }
   }
 

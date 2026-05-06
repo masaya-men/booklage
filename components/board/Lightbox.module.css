@@ -569,13 +569,15 @@
   outline-offset: 2px;
 }
 
-/* ---- Nav dots (Instagram stories style) ---- */
+/* ---- Nav dots (static centered bar) ---- */
 .navDotsWrap {
   position: absolute;
   bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
-  width: 280px;
+  /* The bar itself stays anchored at screen center. Width clips at
+     viewport size so very many dots don't overflow on narrow screens. */
+  max-width: min(64vw, 800px);
   display: flex;
   justify-content: center;
   overflow: hidden;
@@ -585,7 +587,7 @@
 
 .navDots {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
   pointer-events: auto;
 }
@@ -597,10 +599,10 @@
   cursor: pointer;
   background: transparent;
   display: inline-block;
-  transition: width 180ms ease, height 180ms ease, background 180ms ease;
+  transition: background 180ms ease, transform 140ms ease;
 }
 
-.navDot:hover { transform: scale(1.08); }
+.navDot:hover { transform: scale(1.15); }
 
 .navDot::before {
   content: '';
@@ -612,35 +614,13 @@
 }
 
 .navDotActive {
-  width: 10px;
-  height: 10px;
-  color: rgba(255, 255, 255, 1);
-}
-.navDotInactive {
-  /* Used only when total === 2 — keeps the second dot visually balanced
-     against the active dot rather than shrinking it like an "adjacent". */
   width: 8px;
   height: 8px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 1);
 }
-.navDotAdjacent {
+
+.navDotInactive {
   width: 6px;
   height: 6px;
-  color: rgba(255, 255, 255, 0.65);
-}
-.navDotFar {
-  width: 4px;
-  height: 4px;
-  color: rgba(255, 255, 255, 0.40);
-}
-.navDotEdge {
-  width: 3px;
-  height: 3px;
-  color: rgba(255, 255, 255, 0.25);
-}
-.navDotHidden {
-  width: 0;
-  height: 0;
-  color: transparent;
-  pointer-events: none;
+  color: rgba(255, 255, 255, 0.45);
 }

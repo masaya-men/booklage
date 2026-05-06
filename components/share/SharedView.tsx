@@ -119,7 +119,7 @@ export function SharedView(): ReactElement {
         />
       </div>
       <Link href="/board" className={styles.cornerLink}>
-        自分も Booklage を使う ↗
+        Booklage を試す ↗
       </Link>
       <Lightbox
         item={openCard}

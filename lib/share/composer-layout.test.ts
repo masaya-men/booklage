@@ -30,8 +30,10 @@ describe('composeShareLayout', () => {
       viewport: { width: 1080, height: 720 },
     })
     expect(result.cards).toHaveLength(3)
+    // didShrink is false because masonry was upscaled or unchanged, not shrunk.
     expect(result.didShrink).toBe(false)
-    expect(result.shrinkScale).toBe(1)
+    // shrinkScale ≥ 1 — auto-fit may upscale to fill the frame vertically.
+    expect(result.shrinkScale).toBeGreaterThanOrEqual(1)
     expect(result.frameSize).toEqual({ width: 1080, height: 720 })
     for (const c of result.cards) {
       expect(c.x).toBeGreaterThanOrEqual(0)
