@@ -30,9 +30,8 @@ describe('composeShareLayout', () => {
       viewport: { width: 1080, height: 720 },
     })
     expect(result.cards).toHaveLength(3)
-    expect(result.shrinkScale).toBeGreaterThan(0)
-    expect(result.shrinkScale).toBeLessThanOrEqual(1)
-    expect(result.frameSize).toEqual({ width: 1080, height: 720 })
+    expect(result.frameSize.width).toBe(1080)
+    expect(result.frameSize.height).toBeGreaterThan(0)
     for (const c of result.cards) {
       expect(c.x).toBeGreaterThanOrEqual(0)
       expect(c.y).toBeGreaterThanOrEqual(0)
@@ -96,18 +95,20 @@ describe('composeShareLayout', () => {
     expect(sCard.s).toBe('S')
   })
 
-  it('auto-shrinks when content overflows frame; all cards fit within 0..1', () => {
+  it('free aspect: frame height grows with content (no shrink)', () => {
     const items = makeItems(50)
     const result = composeShareLayout({
       items,
       order: items.map((it) => it.bookmarkId),
       sizeOverrides: new Map(),
-      aspect: '9:16',
+      aspect: 'free',
       viewport: { width: 1080, height: 720 },
     })
-    expect(result.didShrink).toBe(true)
-    expect(result.shrinkScale).toBeLessThan(1)
-    expect(result.shrinkScale).toBeGreaterThan(0)
+    expect(result.didShrink).toBe(false)
+    expect(result.shrinkScale).toBe(1)
+    expect(result.frameSize.width).toBe(1080)
+    // 50 cards in a 1080-wide frame should produce a tall frame.
+    expect(result.frameSize.height).toBeGreaterThan(720)
     for (const c of result.cards) {
       expect(c.x).toBeGreaterThanOrEqual(0)
       expect(c.y).toBeGreaterThanOrEqual(0)
@@ -116,20 +117,20 @@ describe('composeShareLayout', () => {
     }
   })
 
-  it('vertically centers when scaled content height < frame height', () => {
-    const items = [item('only', { sizePreset: 'S', aspectRatio: 1 })]
+  it('preset aspects: frame fits the ratio inside viewport, cards may overflow', () => {
+    const items = makeItems(50)
     const result = composeShareLayout({
       items,
-      order: ['only'],
+      order: items.map((it) => it.bookmarkId),
       sizeOverrides: new Map(),
-      aspect: 'free',
+      aspect: '9:16',
       viewport: { width: 1080, height: 720 },
     })
-    const c = result.cards[0]
-    expect(c.y).toBeGreaterThan(0.2)
-    const aboveSlack = c.y
-    const belowSlack = 1 - (c.y + c.h)
-    expect(Math.abs(aboveSlack - belowSlack)).toBeLessThan(0.01)
+    // 9:16 fits to 405x720 inside 1080x720
+    expect(result.frameSize.width).toBe(405)
+    expect(result.frameSize.height).toBe(720)
+    expect(result.didShrink).toBe(false)
+    expect(result.shrinkScale).toBe(1)
   })
 
   it('emits cardIds aligned 1-to-1 with cards (handles duplicate URLs)', () => {
@@ -148,13 +149,13 @@ describe('composeShareLayout', () => {
     expect(result.cardIds).toEqual(['one', 'two'])
   })
 
-  it('content fills frame top when shrunk', () => {
-    const items = makeItems(50, 'y')
+  it('cards start at the top of the frame (no center offset)', () => {
+    const items = makeItems(5, 'y')
     const result = composeShareLayout({
       items,
       order: items.map((it) => it.bookmarkId),
       sizeOverrides: new Map(),
-      aspect: '9:16',
+      aspect: 'free',
       viewport: { width: 1080, height: 720 },
     })
     const minY = Math.min(...result.cards.map((c) => c.y))
@@ -162,15 +163,19 @@ describe('composeShareLayout', () => {
     expect(minY).toBeGreaterThanOrEqual(0)
   })
 
-  it('never upscales — fitScale is at most 1', () => {
-    const items = [item('only')]
+  it('every card carries its aspectRatio (a) for receiver re-layout', () => {
+    const items = [
+      item('a', { aspectRatio: 1.5 }),
+      item('b', { aspectRatio: 0.7 }),
+    ]
     const result = composeShareLayout({
       items,
-      order: ['only'],
+      order: ['a', 'b'],
       sizeOverrides: new Map(),
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
     })
-    expect(result.shrinkScale).toBeLessThanOrEqual(1)
+    expect(result.cards[0].a).toBe(1.5)
+    expect(result.cards[1].a).toBe(0.7)
   })
 })

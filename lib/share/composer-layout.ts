@@ -35,7 +35,6 @@ export type ComposerLayoutResult = {
 
 export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutResult {
   const { items, order, sizeOverrides, aspect, viewport } = input
-  const frameSize = computeAspectFrameSize(aspect, viewport.width, viewport.height)
 
   const orderSet = new Set(order)
   const itemMap = new Map(items.map((it) => [it.bookmarkId, it] as const))
@@ -50,8 +49,16 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
 
   const gap = COLUMN_MASONRY.GAP_PX
   const pad = BOARD_INNER.SIDE_PADDING_PX
-  const innerW = Math.max(60, frameSize.width - 2 * pad)
-  const innerH = Math.max(60, frameSize.height - 2 * pad)
+
+  // 'free' fills the viewport width and grows vertically with content
+  // (board-equivalent). Preset aspects fit into the viewport at their fixed
+  // ratio; cards may overflow vertically and get clipped by the frame's
+  // overflow:hidden — that is the intended share-image-as-fixed-frame
+  // behavior.
+  const isFree = aspect === 'free'
+  const presetSize = computeAspectFrameSize(aspect, viewport.width, viewport.height)
+  const containerW = isFree ? viewport.width : presetSize.width
+  const innerW = Math.max(60, containerW - 2 * pad)
 
   const masonryCards = ordered.map((it) => ({
     id: it.bookmarkId,
@@ -65,45 +72,14 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
   })
 
-  const px: Record<string, { x: number; y: number; w: number; h: number }> = {}
-  for (const id of Object.keys(masonry.positions)) {
-    const p = masonry.positions[id]
-    px[id] = { x: p.x, y: p.y, w: p.w, h: p.h }
-  }
-
-  let usedMaxX = 0
-  for (const id of Object.keys(px)) {
-    const right = px[id].x + px[id].w
-    if (right > usedMaxX) usedMaxX = right
-  }
-  const scaleByHeight = masonry.totalHeight > 0 ? innerH / masonry.totalHeight : 1
-  const scaleByWidth = usedMaxX > 0 ? innerW / usedMaxX : 1
-  // Shrink-only — never upscale, board-equivalent behavior.
-  const fitScale = Math.min(1, scaleByHeight, scaleByWidth)
-  const didShrink = fitScale < 1
-  const shrinkScale = fitScale
-  if (fitScale !== 1) {
-    for (const id of Object.keys(px)) {
-      px[id].x *= fitScale
-      px[id].y *= fitScale
-      px[id].w *= fitScale
-      px[id].h *= fitScale
-    }
-  }
-
-  const scaledTotalHeight = masonry.totalHeight * fitScale
-  const verticalOffset = pad + Math.max(0, (innerH - scaledTotalHeight) / 2)
-  const postFitUsedWidth = usedMaxX * fitScale
-  const horizontalOffset = pad + Math.max(0, (innerW - postFitUsedWidth) / 2)
-  for (const id of Object.keys(px)) {
-    px[id].x += horizontalOffset
-    px[id].y += verticalOffset
-  }
+  const frameW = containerW
+  const frameH = isFree ? masonry.totalHeight + 2 * pad : presetSize.height
 
   const cards: ShareCard[] = []
   const cardIds: string[] = []
   for (const it of ordered) {
-    const p = px[it.bookmarkId]
+    const p = masonry.positions[it.bookmarkId]
+    if (!p) continue
     const effectiveSize = sizeOverrides.get(it.bookmarkId) ?? it.sizePreset
     cards.push({
       u: truncate(it.url, SHARE_LIMITS.MAX_URL),
@@ -111,15 +87,21 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
       d: it.description ? truncate(it.description, SHARE_LIMITS.MAX_DESCRIPTION) : undefined,
       th: it.thumbnail ? truncate(it.thumbnail, SHARE_LIMITS.MAX_URL) : undefined,
       ty: it.type,
-      x: p.x / frameSize.width,
-      y: p.y / frameSize.height,
-      w: p.w / frameSize.width,
-      h: p.h / frameSize.height,
+      x: (p.x + pad) / frameW,
+      y: (p.y + pad) / frameH,
+      w: p.w / frameW,
+      h: p.h / frameH,
       s: effectiveSize,
       a: it.aspectRatio > 0 ? it.aspectRatio : 1,
     })
     cardIds.push(it.bookmarkId)
   }
 
-  return { cards, cardIds, frameSize, didShrink, shrinkScale }
+  return {
+    cards,
+    cardIds,
+    frameSize: { width: frameW, height: frameH },
+    didShrink: false,
+    shrinkScale: 1,
+  }
 }
