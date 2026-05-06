@@ -8,10 +8,26 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v76 反映済**（ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **v76 反映済**（v77 deploy 待ち、ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-06 朝, v73 → v74) の到達点
+### 🎯 今セッション (2026-05-06 夜, v76 → v77) の到達点
+
+**Plan A item 2 完了 — Composer reflow + 編集レイヤー shipped**:
+
+- **新規 `lib/share/composer-layout.ts`** — frame-sized column-masonry + auto-shrink + 縦中央寄せ + 0..1 normalize の純粋関数。8 unit tests
+- **新規 `components/share/use-share-reorder-drag.ts`** — Composer frame-local 座標で drag→reorder
+- **`ShareComposer` rewrite** — `cardOrder` + `sizeOverrides` state、selectedIds 同期 effect (idempotent)、composer-layout 呼び出しで board canvas 座標バグを根本解決
+- **`ShareFrame` editable mode** — drag reorder + S/M/L 循環 (`<SizePresetToggle>` 流用) + 右クリック削除。受信側は `onCardOpen` で新タブ
+- **`SharedView`** — クリックで元 URL を新タブで開く (`noopener,noreferrer`)
+- **`BoardRoot`** — ShareComposer items に `aspectRatio` 追加 (1 行)
+- **isolation 保証**: Composer 操作で board state は 1 mutation も発生しない (final review で confirmed)
+- **E2E** `tests/e2e/share-composer-edit.spec.ts` 3 件 (2 passed + 1 graceful skip on empty fixture)
+- **244 unit tests passing**, **tsc 0 errors**, **build OK**
+- 12 commits + 1 final fix (CSS hover scope)
+- Plan: [`docs/superpowers/plans/2026-05-06-composer-reflow-plan.md`](superpowers/plans/2026-05-06-composer-reflow-plan.md), Spec: [`docs/superpowers/specs/2026-05-06-composer-reflow-design.md`](superpowers/specs/2026-05-06-composer-reflow-design.md)
+
+### 🎯 前セッション (2026-05-06 朝, v73 → v74) の到達点
 
 **Plan A 部分対応 + 受信側 URL バグ診断 UI 出荷**:
 
@@ -64,15 +80,7 @@
      - 回帰テスト追加: 長 title round-trip ([lib/share/board-to-cards.test.ts](lib/share/board-to-cards.test.ts), 236 passed)
    - 既知の壊れ URL `/share#d=invalid` でのエラー画面表示は OK
 
-2. **Composer の見た目欠陥（spec 完成済、次セッション実装着手）**
-   - **spec**: [`docs/superpowers/specs/2026-05-06-composer-reflow-design.md`](superpowers/specs/2026-05-06-composer-reflow-design.md)
-   - 設計 brainstorming 完了 (2026-05-06):
-     - 根本原因 = `boardItemsToShareCards` が board canvas 座標を frame size で割って正規化（座標系違い）
-     - 解 = 新規 `lib/share/composer-layout.ts` で frame-sized masonry + auto-shrink + 縦中央寄せ
-     - drag = reorder（board と完全パリティ）、S/M/L 循環、右クリック削除
-     - **isolation 保証**: Composer 操作は board state に 1 mutation も波及しない
-     - 受信側クリックは Phase 1 では `window.open(c.u, '_blank')` 最小実装
-   - 次の手順: `superpowers:writing-plans` で実装計画作成 → `executing-plans` で着手
+2. ~~**Composer の見た目欠陥**~~ — **v77 で完了** (上の「今セッション到達点」参照)
 
 3. ~~**細かい改善 3 件**~~ — **v74 で完了**
    - ✅ 「全部入れる」ボタンを toggle 化
