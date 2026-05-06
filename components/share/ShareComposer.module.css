@@ -11,15 +11,18 @@
   justify-content: center;
 }
 
-/* Glass modal: rgba bg + heavy backdrop blur. The chrome bands (header /
-   source list row / footer) keep transparent backgrounds so the moodboard
-   behind softly shows through. canvasArea stays opaque (the white "board"
-   surface) — that's the intentional contrast with the surrounding glass. */
+/* Glass modal: an outer translucent shell with heavy blur. The actual
+   chrome bands (header / source list / footer) live INSIDE a single
+   scrollContainer below and use sticky positioning + their own backdrop
+   blur so the share board scrolls UNDER them, visible through the glass.
+   --footer-h is consumed by ShareSourceList.module.css to anchor its
+   sticky bottom above the footer. */
 .modal {
+  --footer-h: 64px;
   position: relative;
   background: var(--share-modal-bg);
-  backdrop-filter: blur(var(--share-modal-blur));
-  -webkit-backdrop-filter: blur(var(--share-modal-blur));
+  backdrop-filter: blur(var(--share-modal-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--share-modal-blur)) saturate(150%);
   width: min(1800px, 98vw);
   height: min(1100px, 96vh);
   border-radius: 16px;
@@ -29,13 +32,34 @@
   color: var(--share-pill-text-active);
 }
 
+/* The single scroll context inside the modal. Header / canvasArea /
+   source list / footer are stacked here in flex flow. Chrome bands are
+   sticky so they stay pinned to the viewport edges while the canvas
+   scrolls past them — the glass on each chrome band then shows the
+   blurred frame content sliding underneath. */
+.scrollContainer {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sticky glass header. Aggressive transparency + heavy blur + saturate
+   so colors of the cards passing under it stay vivid. */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 16px 24px;
+  background: var(--share-chrome-bg);
+  backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   border-bottom: 1px solid var(--share-divider);
-  background: transparent;
 }
 
 .title {
@@ -60,20 +84,16 @@
   color: var(--share-pill-text-active);
 }
 
-/* board と同じ「白フチ + 黒キャンバス」を共有モーダルの中で再現する。
-   canvasArea は board の outerFrame (白フチ) に相当、frameWrap は board の
-   黒キャンバスに相当。
-   - free 時: frameWrap は board の長さで縦に伸びる → canvasArea が縦スクロール
-   - 1:1 / 9:16 / 16:9 時: frameWrap は viewport にフィット → 中央に配置
-   `align-items: safe center` は overflow 時に center を flex-start に倒すため、
-   tall frame でも先頭から見え、scroll で残りを辿れる (modern CSS)。 */
+/* canvasArea: white "paper" matting the frame sits on. flex: 1 0 auto
+   lets it grow with content (so a tall frame extends the scrollContainer
+   and triggers vertical scroll), while still filling available space
+   when content is small (preset / few-card cases). */
 .canvasArea {
-  flex: 1;
+  flex: 1 0 auto;
   display: flex;
   align-items: safe center;
   justify-content: safe center;
   padding: 16px;
-  overflow: auto;
   background: var(--bg-outer, #fafafa);
   min-height: 0;
 }
@@ -86,12 +106,20 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
+/* Sticky glass footer. Same chrome formula as header — transparent dark
+   tint + blur + saturate. The source list (sticky bottom: var(--footer-h))
+   stacks just above this band. */
 .footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   padding: 14px 24px;
   display: flex;
   justify-content: flex-end;
+  background: var(--share-chrome-bg);
+  backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   border-top: 1px solid var(--share-divider);
-  background: transparent;
 }
 
 /* Outline-only confirm CTA per user request — destefanis flat-editorial.

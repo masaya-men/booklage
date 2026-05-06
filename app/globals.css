@@ -164,12 +164,18 @@ ol {
      Tweak here to retheme the Share Composer + SharedView at once. */
   --share-accent:           #ff8a3d;
   --share-accent-hover:     #ff9a55;
-  /* Glass modal: near-max transparency + heavy blur (`--share-modal-blur`).
-     Used as background fill for the share modal so the moodboard behind it
-     shows through softly. Fade gradients on the source list also reference
-     this token, so endpoints fade to a matching glass tone. */
-  --share-modal-bg:         rgba(17, 17, 20, 0.50);
+  /* Glass system for the Share Composer.
+     - `--share-modal-bg` / `--share-modal-blur` = outer modal shell. Tints
+       the entire modal area, blurs the page (moodboard) behind it.
+     - `--share-chrome-bg` / `--share-chrome-blur` = sticky chrome bands
+       (header / source list / footer). They sit ON TOP of the canvas and
+       blur the share board scrolling underneath. Aggressive transparency
+       so cards visibly pass under the chrome.
+     - `--share-backdrop-blur` = the dim shroud behind the modal itself. */
+  --share-modal-bg:         rgba(17, 17, 20, 0.40);
   --share-modal-blur:       36px;
+  --share-chrome-bg:        rgba(15, 15, 18, 0.36);
+  --share-chrome-blur:      24px;
   --share-modal-backdrop:   rgba(0, 0, 0, 0.45);
   --share-backdrop-blur:    8px;
   --share-sheet-backdrop:   rgba(0, 0, 0, 0.70);

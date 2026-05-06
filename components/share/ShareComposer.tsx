@@ -211,55 +211,61 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
         aria-label="Share composer"
         data-testid="share-composer"
       >
-        <header className={styles.header}>
-          <h2 className={styles.title}>シェア用ボードを組む</h2>
-          <ShareAspectSwitcher value={aspect} onChange={setAspect} />
-          <button
-            type="button"
-            className={styles.closeBtn}
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </header>
+        {/* scrollContainer wraps chrome + canvas so chrome can be sticky-
+            positioned. When the canvas is tall (free mode, many cards),
+            this scrolls vertically and frame content slides UNDER the
+            sticky glass header / source list / footer. */}
+        <div className={styles.scrollContainer}>
+          <header className={styles.header}>
+            <h2 className={styles.title}>シェア用ボードを組む</h2>
+            <ShareAspectSwitcher value={aspect} onChange={setAspect} />
+            <button
+              type="button"
+              className={styles.closeBtn}
+              onClick={onClose}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </header>
 
-        <div ref={canvasAreaRef} className={styles.canvasArea}>
-          <div
-            ref={frameRef}
-            className={styles.frameWrap}
-            style={{
-              width: layout.frameSize.width,
-              height: layout.frameSize.height,
-            }}
-          >
-            <ShareFrame
-              cards={layout.cards}
-              cardIds={cardIds}
-              width={layout.frameSize.width}
-              height={layout.frameSize.height}
-              editable={true}
-              onReorder={handleReorder}
-              onCycleSize={handleCycleSize}
-              onDelete={handleDelete}
-            />
+          <div ref={canvasAreaRef} className={styles.canvasArea}>
+            <div
+              ref={frameRef}
+              className={styles.frameWrap}
+              style={{
+                width: layout.frameSize.width,
+                height: layout.frameSize.height,
+              }}
+            >
+              <ShareFrame
+                cards={layout.cards}
+                cardIds={cardIds}
+                width={layout.frameSize.width}
+                height={layout.frameSize.height}
+                editable={true}
+                onReorder={handleReorder}
+                onCycleSize={handleCycleSize}
+                onDelete={handleDelete}
+              />
+            </div>
           </div>
+
+          <ShareSourceList
+            items={items.map((i) => ({ bookmarkId: i.bookmarkId, thumbnail: i.thumbnail, title: i.title }))}
+            selectedIds={selectedIds}
+            onToggle={onToggle}
+            onAddAll={onAddAll}
+            onClearAll={onClearAll}
+            onAddVisible={onAddVisible}
+          />
+
+          <footer className={styles.footer}>
+            <button type="button" className={styles.confirmBtn} onClick={onConfirmClick}>
+              画像 + URL でシェア →
+            </button>
+          </footer>
         </div>
-
-        <ShareSourceList
-          items={items.map((i) => ({ bookmarkId: i.bookmarkId, thumbnail: i.thumbnail, title: i.title }))}
-          selectedIds={selectedIds}
-          onToggle={onToggle}
-          onAddAll={onAddAll}
-          onClearAll={onClearAll}
-          onAddVisible={onAddVisible}
-        />
-
-        <footer className={styles.footer}>
-          <button type="button" className={styles.confirmBtn} onClick={onConfirmClick}>
-            画像 + URL でシェア →
-          </button>
-        </footer>
       </div>
     </div>
   )

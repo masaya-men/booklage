@@ -1,13 +1,20 @@
 /* components/share/ShareSourceList.module.css */
-/* Source list row: transparent so the modal glass shows through. The
-   border-top hairline keeps a soft separation from the canvas above. */
+/* Sticky glass source list. Pinned just above the footer (uses
+   `--footer-h` set on .modal in ShareComposer.module.css). The chrome
+   formula matches the header / footer so frame cards scrolling under
+   this band get the same blurred-vivid look. */
 .row {
+  position: sticky;
+  bottom: var(--footer-h, 64px);
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 12px;
   height: 84px;
   padding: 0 16px;
-  background: transparent;
+  background: var(--share-chrome-bg);
+  backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   border-top: 1px solid var(--share-divider);
 }
 
@@ -126,10 +133,10 @@
 
 .fadeLeft {
   left: 0;
-  background: linear-gradient(to right, var(--share-modal-bg), rgba(17, 17, 20, 0));
+  background: linear-gradient(to right, var(--share-chrome-bg), transparent);
 }
 
 .fadeRight {
   right: 0;
-  background: linear-gradient(to left, var(--share-modal-bg), rgba(17, 17, 20, 0));
+  background: linear-gradient(to left, var(--share-chrome-bg), transparent);
 }
