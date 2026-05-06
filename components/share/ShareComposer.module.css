@@ -139,3 +139,226 @@
   background: var(--share-accent);
   border-color: var(--share-accent);
 }
+
+/* === Preview (immersive) mode ============================================ */
+
+/* Step 1: Modal morph — layout (current) → preview (viewport 100%, no radius/shadow). */
+.modal {
+  transition:
+    width 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 360ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal.preview {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* In preview, the body stays as-is (canvasArea fills). The source panel is
+   moved out of the grid via its own .module.css rule (Task 5). */
+.modal.preview .body {
+  grid-template-columns: 1fr;
+}
+
+/* Step 2: Hover-zones (transparent, proximity sensors). */
+.zoneTop, .zoneRight, .zoneBottom {
+  position: absolute;
+  background: transparent;
+  pointer-events: none;
+  z-index: 2;
+}
+.zoneTop    { top: 0;    left: 0;  right: 0;  height: 80px; }
+.zoneBottom { bottom: 0; left: 0;  right: 0;  height: 80px; }
+.zoneRight  { top: 0;    right: 0; bottom: 0; width:  80px; }
+
+/* Zones only listen in preview mode. */
+.modal.preview .zoneTop,
+.modal.preview .zoneRight,
+.modal.preview .zoneBottom { pointer-events: auto; }
+
+/* Step 3: Handle base + variants (top / right / bottom). */
+.handle {
+  position: absolute;
+  background: rgba(255, 255, 255, 0);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3;
+  transition:
+    background 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 200ms ease-out;
+}
+.modal.preview .handle { opacity: 1; }
+
+.handleTop, .handleBottom {
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 5px;
+}
+.handleTop    { top: 0;    border-radius: 0 0 3px 3px; }
+.handleBottom { bottom: 0; border-radius: 3px 3px 0 0; }
+.handleRight {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 56px;
+  border-radius: 3px 0 0 3px;
+}
+
+/* Proximity hover → handle visible (semi-transparent). */
+.modal.preview .zoneTop:hover    ~ .handleTop    { background: rgba(255, 255, 255, 0.42); }
+.modal.preview .zoneRight:hover  ~ .handleRight  { background: rgba(255, 255, 255, 0.42); }
+.modal.preview .zoneBottom:hover ~ .handleBottom { background: rgba(255, 255, 255, 0.42); }
+
+/* Pinned → handle blue, always visible. */
+.modal.preview[data-pin-h="true"] .handleTop    { background: rgba(79, 158, 255, 0.85); }
+.modal.preview[data-pin-s="true"] .handleRight  { background: rgba(79, 158, 255, 0.85); }
+.modal.preview[data-pin-b="true"] .handleBottom { background: rgba(79, 158, 255, 0.85); }
+
+/* Step 4: Chrome auto-hide with 150ms hover-out delay. */
+
+/* Position the chrome panels absolute in preview so they slide over the canvas. */
+.modal.preview .header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 4;
+  transform: translateY(-100%);
+  transition: transform 210ms cubic-bezier(0.16, 1, 0.3, 1) 150ms; /* hide: 150ms delay */
+}
+.modal.preview .footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 4;
+  transform: translateY(100%);
+  transition: transform 210ms cubic-bezier(0.16, 1, 0.3, 1) 150ms;
+}
+
+/* Hover (zone OR chrome itself) → reveal, no delay, faster duration. */
+.modal.preview .zoneTop:hover ~ .header,
+.modal.preview .header:hover {
+  transform: translateY(0);
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1) 0ms;
+}
+.modal.preview .zoneBottom:hover ~ .footer,
+.modal.preview .footer:hover {
+  transform: translateY(0);
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1) 0ms;
+}
+
+/* Pinned overrides reveal — instant, no delay either side. */
+.modal.preview[data-pin-h="true"] .header { transform: translateY(0); transition-delay: 0ms; }
+.modal.preview[data-pin-b="true"] .footer { transform: translateY(0); transition-delay: 0ms; }
+
+/* When body grid switches to 1fr in preview, give the canvasArea full bleed. */
+.modal.preview .canvasArea {
+  padding: 0;
+  background: var(--bg-dark, #0a0a0a);
+}
+.modal.preview .frameWrap {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Step 5: Flash keyframes. */
+@keyframes handle-flash-h {
+  0%   { background: rgba(255, 255, 255, 0.4);  width: 56px; height: 5px; }
+  20%  { background: rgba(255, 255, 255, 1.0);  width: 84px; height: 9px; }
+  100% { background: rgba(255, 255, 255, 0.4);  width: 56px; height: 5px; }
+}
+@keyframes handle-flash-v {
+  0%   { background: rgba(255, 255, 255, 0.4);  width: 5px;  height: 56px; }
+  20%  { background: rgba(255, 255, 255, 1.0);  width: 9px;  height: 84px; }
+  100% { background: rgba(255, 255, 255, 0.4);  width: 5px;  height: 56px; }
+}
+
+.modal.preview .handle.flash.handleTop,
+.modal.preview .handle.flash.handleBottom {
+  animation: handle-flash-h 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal.preview .handle.flash.handleRight {
+  animation: handle-flash-v 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Step 6: Mode chip + ⛶ button styles. */
+.modeChip {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.04);
+  flex: 0 0 auto;
+}
+
+.fsBtn {
+  background: transparent;
+  border: none;
+  color: var(--share-pill-text);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 10px;
+  transition: color var(--share-transition-fast);
+}
+.fsBtn:hover {
+  color: var(--share-pill-text-active);
+}
+
+/* Step 7: Help overlay styles. */
+.helpOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  animation: helpFade 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes helpFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.helpCard {
+  background: var(--share-modal-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 24px 32px;
+  min-width: 280px;
+  color: var(--share-pill-text-active);
+}
+
+.helpTitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.helpList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 2;
+}
+.helpList kbd {
+  display: inline-block;
+  padding: 2px 7px;
+  margin-right: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+}
