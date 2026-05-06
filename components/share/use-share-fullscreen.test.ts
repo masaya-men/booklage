@@ -72,4 +72,35 @@ describe('useShareFullscreen', () => {
     act(() => { result.current.toggleMode() })
     expect(result.current.mode).toBe('layout') // touch fallback: toggleMode is no-op
   })
+
+  it('toggleHelp flips helpVisible', () => {
+    const { result } = renderHook(() => useShareFullscreen({ open: true, onCloseModal: noop }))
+    expect(result.current.helpVisible).toBe(false)
+    act(() => { result.current.toggleHelp() })
+    expect(result.current.helpVisible).toBe(true)
+    act(() => { result.current.toggleHelp() })
+    expect(result.current.helpVisible).toBe(false)
+  })
+
+  it('closeHelp sets helpVisible to false regardless of state', () => {
+    const { result } = renderHook(() => useShareFullscreen({ open: true, onCloseModal: noop }))
+    act(() => { result.current.toggleHelp() })
+    expect(result.current.helpVisible).toBe(true)
+    act(() => { result.current.closeHelp() })
+    expect(result.current.helpVisible).toBe(false)
+    // closeHelp on already-closed help is safe.
+    act(() => { result.current.closeHelp() })
+    expect(result.current.helpVisible).toBe(false)
+  })
+
+  it('exitPreview from preview+help open closes both', () => {
+    const { result } = renderHook(() => useShareFullscreen({ open: true, onCloseModal: noop }))
+    act(() => { result.current.toggleMode() })   // → preview
+    act(() => { result.current.toggleHelp() })   // → help open
+    expect(result.current.mode).toBe('preview')
+    expect(result.current.helpVisible).toBe(true)
+    act(() => { result.current.exitPreview() })
+    expect(result.current.mode).toBe('layout')
+    expect(result.current.helpVisible).toBe(false)
+  })
 })

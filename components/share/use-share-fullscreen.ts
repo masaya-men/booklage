@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
 import type { ShareMode } from '@/lib/share/composer-layout'
 
 export type PinnedSides = {
@@ -49,14 +49,14 @@ const INIT: State = {
 function reducer(s: State, a: Action): State {
   switch (a.type) {
     case 'toggle-mode':
-      return { ...s, mode: s.mode === 'layout' ? 'preview' : 'layout', pinned: INIT.pinned }
+      return { ...s, mode: s.mode === 'layout' ? 'preview' : 'layout', pinned: INIT.pinned, helpVisible: false }
     case 'toggle-pin': {
       if (s.mode !== 'preview') return s
       const next = { ...s.pinned, [a.side]: !s.pinned[a.side] }
       return { ...s, pinned: next, flashSide: a.side, flashId: s.flashId + 1 }
     }
     case 'exit-preview':
-      return { ...s, mode: 'layout', pinned: INIT.pinned }
+      return { ...s, mode: 'layout', pinned: INIT.pinned, helpVisible: false }
     case 'toggle-help':
       return { ...s, helpVisible: !s.helpVisible }
     case 'close-help':
@@ -72,8 +72,9 @@ export function useShareFullscreen(opts: {
   readonly open: boolean
   readonly onCloseModal: () => void
 }): ShareFullscreenAPI {
+  const { open, onCloseModal } = opts
   const [state, dispatch] = useReducer(reducer, INIT)
-  const [canUseFullscreen, setCanUse] = useState<boolean>(true)
+  const [canUseFullscreen, setCanUse] = useState<boolean>(false)
 
   // Touch detection: evaluate once on mount.
   useEffect((): void => {
@@ -105,18 +106,16 @@ export function useShareFullscreen(opts: {
   }, [])
 
   // Flash auto-clear: 440ms after each pin toggle, clear flashSide.
-  const lastFlashId = useRef<number>(0)
   useEffect((): undefined | (() => void) => {
     if (state.flashSide == null) return undefined
     const id = state.flashId
-    lastFlashId.current = id
     const timer = setTimeout(() => dispatch({ type: 'clear-flash', id }), 440)
     return (): void => clearTimeout(timer)
   }, [state.flashSide, state.flashId])
 
   // Keyboard listener: only mount when modal open + non-touch.
   useEffect((): undefined | (() => void) => {
-    if (!opts.open || !canUseFullscreen) return undefined
+    if (!open || !canUseFullscreen) return undefined
 
     const onKey = (e: KeyboardEvent): void => {
       const target = e.target as HTMLElement | null
@@ -131,7 +130,7 @@ export function useShareFullscreen(opts: {
         e.preventDefault()
         if (state.helpVisible) { dispatch({ type: 'close-help' }); return }
         if (state.mode === 'preview') { dispatch({ type: 'exit-preview' }); return }
-        opts.onCloseModal()
+        onCloseModal()
         return
       }
       if (state.mode !== 'preview') return
@@ -143,7 +142,7 @@ export function useShareFullscreen(opts: {
 
     document.addEventListener('keydown', onKey)
     return (): void => document.removeEventListener('keydown', onKey)
-  }, [opts, canUseFullscreen, state.mode, state.helpVisible])
+  }, [open, onCloseModal, canUseFullscreen, state.mode, state.helpVisible])
 
   return {
     mode: canUseFullscreen ? state.mode : 'layout',
