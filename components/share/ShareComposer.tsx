@@ -222,7 +222,6 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
         data-pin-h={fullscreen.pinned.h}
         data-pin-s={fullscreen.pinned.s}
         data-pin-b={fullscreen.pinned.b}
-        data-flash-side={fullscreen.flashSide ?? ''}
       >
         {fullscreen.canUseFullscreen && (
           <>

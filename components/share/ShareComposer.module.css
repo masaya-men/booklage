@@ -59,13 +59,6 @@
   border-bottom: 1px solid var(--share-divider);
 }
 
-.title {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  margin: 0;
-  flex: 1;
-}
 
 .closeBtn {
   background: transparent;
@@ -255,10 +248,19 @@
 .modal.preview[data-pin-h="true"] .header { transform: translateY(0); transition-delay: 0ms; }
 .modal.preview[data-pin-b="true"] .footer { transform: translateY(0); transition-delay: 0ms; }
 
-/* When body grid switches to 1fr in preview, give the canvasArea full bleed. */
+/* When body grid switches to 1fr in preview, give the canvasArea full bleed.
+   overflow-y: auto + align-items: flex-start: free-aspect boards taller than
+   the viewport are scrollable (flex-center + overflow:hidden clips the bottom). */
 .modal.preview .canvasArea {
   padding: 0;
   background: var(--bg-dark, #0a0a0a);
+  overflow-y: auto;
+  align-items: flex-start;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.modal.preview .canvasArea::-webkit-scrollbar {
+  display: none;
 }
 .modal.preview .frameWrap {
   border-radius: 0;

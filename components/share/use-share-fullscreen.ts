@@ -109,6 +109,14 @@ export function useShareFullscreen(opts: {
     return (): void => clearTimeout(timer)
   }, [state.flashSide, state.flashId])
 
+  // Reset help + preview when modal closes (backdrop click etc.).
+  useEffect((): void => {
+    if (!open) {
+      dispatch({ type: 'close-help' })
+      dispatch({ type: 'exit-preview' })
+    }
+  }, [open])
+
   // Keyboard listener: only mount when modal open + non-touch.
   useEffect((): undefined | (() => void) => {
     if (!open || !canUseFullscreen) return undefined
