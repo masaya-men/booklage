@@ -580,7 +580,7 @@
   outline-offset: 2px;
 }
 
-/* ---- Nav meter (HUD waveform ruler with live mouse readouts) ---- */
+/* ---- Nav meter (HUD-style Gaussian waveform + animated counter) ---- */
 .meterWrap {
   position: absolute;
   bottom: 24px;
@@ -588,7 +588,6 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 22px;
   z-index: 2;
   pointer-events: none;
   user-select: none;
@@ -602,31 +601,10 @@
   gap: 6px;
 }
 
-/* Mouse coordinate readouts at either end. Continuously rewritten by an
-   rAF loop in LightboxNavMeter — the digits track the cursor in real
-   time, anchoring the HUD aesthetic to actual system state. */
-.meterReadout {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.55);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  text-shadow: 0 0 6px rgba(255, 255, 255, 0.08);
-}
-
-/* "X" / "Y" axis prefix — slightly dimmer than the digits, like a label. */
-.meterAxisLabel {
-  color: rgba(255, 255, 255, 0.32);
-  font-weight: 500;
-}
-
-/* Central card counter "[ 0027 / 0130 ]". Smaller than the side readouts
-   and dimmer — present but not loud, since the meter waveform below is
-   the visual focus. */
+/* Card counter "[ 0002.XXXX / 0024.0000 ]". The integer part is stable;
+   the decimal part scrambles for ~600ms after each card change then
+   settles to .0000. tabular-nums + monospace + zero-padding keep every
+   character at a fixed slot, so the text never reflows even mid-animation. */
 .meterCounter {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 10px;

@@ -10,112 +10,105 @@ type Props = {
   readonly cardKey: string
 }
 
-/** Number of tick marks rendered on the ruler. Decoupled from `total` —
- *  the meter is now pure visual ornament (a flowing waveform) rather than
- *  a per-card position indicator. Current card position is shown in the
- *  central counter above the ruler. */
-const TICK_COUNT = 150
-
 function pad4(n: number): string {
   return Math.max(0, Math.min(9999, Math.floor(n))).toString().padStart(4, '0')
 }
 
-/** Format a coordinate as IIII.D (4 integer digits + 1 decimal),
- *  zero-padded. Used for mouse X/Y readouts. */
-function formatCoord(value: number): string {
-  const v = Math.max(0, Math.min(9999.9, value))
-  const intPart = Math.floor(v).toString().padStart(4, '0')
-  const decPart = Math.floor((v - Math.floor(v)) * 10).toString()
-  return `${intPart}.${decPart}`
-}
+/** Counter slot-machine animation duration on card change. */
+const COUNTER_ANIM_MS = 600
 
 export function LightboxNavMeter({ current, total }: Props): ReactElement | null {
   const trackRef = useRef<HTMLDivElement>(null)
   const tickRefs = useRef<HTMLDivElement[]>([])
-  const xReadoutRef = useRef<HTMLSpanElement>(null)
-  const yReadoutRef = useRef<HTMLSpanElement>(null)
-  const mouseRef = useRef({ x: 0, y: 0 })
+  const counterRef = useRef<HTMLSpanElement>(null)
 
-  // Capture mouse coordinates globally — the meter shows them as live
-  // readouts so the user sees a number that's actually wired to something
-  // (their cursor) rather than ornamental noise.
+  // Refs that the rAF loop reads each frame. Using refs (rather than state)
+  // means coordinate / counter updates never trigger React re-renders, so
+  // layout stays perfectly stable — no jitter from text reflow.
+  const currentRef = useRef<number>(current)
+  const totalRef = useRef<number>(total)
+  const animUntilRef = useRef<number>(0)
+
+  // On card change: kick off the counter slot-machine animation.
   useEffect(() => {
-    const onMove = (e: MouseEvent): void => {
-      mouseRef.current.x = e.clientX
-      mouseRef.current.y = e.clientY
-    }
-    window.addEventListener('mousemove', onMove)
-    return (): void => window.removeEventListener('mousemove', onMove)
-  }, [])
+    currentRef.current = current
+    totalRef.current = total
+    animUntilRef.current = performance.now() + COUNTER_ANIM_MS
+  }, [current, total])
 
-  // rAF loop: drives both the waveform tick heights and the coord readouts.
-  // Tick heights are a sum of three sinusoids at different frequencies,
-  // phase-shifted by tick index so neighboring ticks differ in height —
-  // produces a flowing audio-waveform-like ribbon that's never static.
+  // Single rAF loop drives both the waveform tick heights and the counter
+  // text. Per-frame work is bounded (≤ ~150 elements + 1 text node), well
+  // under the budget of a 60fps frame even on low-end devices.
   useEffect(() => {
     let raf = 0
-    const tick = (): void => {
+    const loop = (): void => {
       const t = performance.now() / 1000
-      // Per-tick height: base + sum of 3 sinusoids (low / mid / high freq).
-      // Coefficients tuned so peaks land 14-18px and troughs 2-3px.
-      for (let i = 0; i < TICK_COUNT; i++) {
+      const now = performance.now()
+      const cur = currentRef.current
+      const tot = totalRef.current
+
+      // --- Tick heights: Gaussian centered on `current` + small jitter ---
+      // sigma controls the bell width. Scales gently with total so few-card
+      // boards have a punchy peak and many-card boards keep the bell visible.
+      const sigma = Math.max(1.6, tot / 6)
+      const peakH = 16
+      const baseH = 2
+      for (let i = 0; i < tot; i++) {
         const el = tickRefs.current[i]
         if (!el) continue
-        const w1 = Math.sin(t * 0.6 + i * 0.08) * 0.45      // long swell
-        const w2 = Math.sin(t * 1.7 + i * 0.31) * 0.30      // mid
-        const w3 = Math.sin(t * 4.2 + i * 0.93) * 0.15      // shimmer
-        const norm = (w1 + w2 + w3 + 0.9) / 1.8 // → 0..1-ish
-        const h = 2 + norm * 14 // px, 2..16
-        el.style.height = `${h.toFixed(1)}px`
+        const dist = i - cur
+        const bell = Math.exp(-(dist * dist) / (2 * sigma * sigma))
+        // Per-tick jitter — sum of two phase-shifted sinusoids, scaled
+        // small (±1 px) so the bell shape stays legible while the meter
+        // still feels alive.
+        const jitter =
+          Math.sin(t * 1.3 + i * 0.31) * 0.6 +
+          Math.sin(t * 3.1 + i * 0.93) * 0.4
+        const h = baseH + (peakH - baseH) * bell + jitter
+        el.style.height = `${Math.max(1, h).toFixed(1)}px`
       }
-      // Mouse readouts.
-      if (xReadoutRef.current) {
-        xReadoutRef.current.textContent = formatCoord(mouseRef.current.x)
+
+      // --- Counter text: integer part stable, decimal part scrambles
+      //     during the 600ms post-change window then settles to .0000 ---
+      if (counterRef.current) {
+        const isAnimating = now < animUntilRef.current
+        const intPart = pad4(cur + 1)
+        const decPart = isAnimating
+          ? Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+          : '0000'
+        const totalStr = pad4(tot)
+        counterRef.current.textContent = `${intPart}.${decPart} / ${totalStr}.0000`
       }
-      if (yReadoutRef.current) {
-        yReadoutRef.current.textContent = formatCoord(mouseRef.current.y)
-      }
-      raf = requestAnimationFrame(tick)
+      raf = requestAnimationFrame(loop)
     }
-    raf = requestAnimationFrame(tick)
+    raf = requestAnimationFrame(loop)
     return (): void => cancelAnimationFrame(raf)
   }, [])
 
   if (total <= 1) return null
 
-  // Current/total counter (1-indexed for human readability).
-  const counter = `${pad4(current + 1)} / ${pad4(total)}`
-
   return (
     <div className={styles.meterWrap} aria-hidden="true">
-      <span className={styles.meterReadout}>
-        <span className={styles.meterAxisLabel}>X</span>
-        <span ref={xReadoutRef}>0000.0</span>
-      </span>
       <div className={styles.meterStack}>
         <div className={styles.meterCounter}>
           <span className={styles.meterBracket}>[</span>
           {' '}
-          {counter}
+          <span ref={counterRef}>0001.0000 / 0001.0000</span>
           {' '}
           <span className={styles.meterBracket}>]</span>
         </div>
         <div className={styles.meterTrack} ref={trackRef}>
           <div className={styles.meterTrackLine} />
-          {Array.from({ length: TICK_COUNT }, (_, i) => (
+          {Array.from({ length: total }, (_, i) => (
             <div
               key={i}
               ref={(el) => { if (el) tickRefs.current[i] = el }}
               className={styles.meterTick}
-              style={{ left: `${(i / (TICK_COUNT - 1)) * 100}%` }}
+              style={{ left: `${total > 1 ? (i / (total - 1)) * 100 : 50}%` }}
             />
           ))}
         </div>
       </div>
-      <span className={styles.meterReadout}>
-        <span className={styles.meterAxisLabel}>Y</span>
-        <span ref={yReadoutRef}>0000.0</span>
-      </span>
     </div>
   )
 }
