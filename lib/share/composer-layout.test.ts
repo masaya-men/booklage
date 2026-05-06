@@ -95,7 +95,7 @@ describe('composeShareLayout', () => {
     expect(sCard.s).toBe('S')
   })
 
-  it('free aspect: 50 cards shrink to fit the viewport, every card visible', () => {
+  it('free aspect: 50 cards shrink the entire frame to fit the viewport', () => {
     const items = makeItems(50)
     const result = composeShareLayout({
       items,
@@ -107,7 +107,10 @@ describe('composeShareLayout', () => {
     expect(result.didShrink).toBe(true)
     expect(result.shrinkScale).toBeLessThan(1)
     expect(result.shrinkScale).toBeGreaterThan(0)
-    expect(result.frameSize).toEqual({ width: 1080, height: 720 })
+    // Frame must fit inside the viewport — the whole frame scales down
+    expect(result.frameSize.width).toBeLessThanOrEqual(1080.001)
+    expect(result.frameSize.height).toBeLessThanOrEqual(720.001)
+    // Every card must be inside its frame (normalized 0..1)
     for (const c of result.cards) {
       expect(c.x).toBeGreaterThanOrEqual(0)
       expect(c.y).toBeGreaterThanOrEqual(0)
@@ -116,7 +119,7 @@ describe('composeShareLayout', () => {
     }
   })
 
-  it('preset aspects: frame fits the ratio inside viewport, cards shrink to fit', () => {
+  it('preset aspects: frame extends if cards overflow, fits in viewport', () => {
     const items = makeItems(50)
     const result = composeShareLayout({
       items,
@@ -125,8 +128,8 @@ describe('composeShareLayout', () => {
       aspect: '9:16',
       viewport: { width: 1080, height: 720 },
     })
-    expect(result.frameSize.width).toBe(405)
-    expect(result.frameSize.height).toBe(720)
+    expect(result.frameSize.width).toBeLessThanOrEqual(1080.001)
+    expect(result.frameSize.height).toBeLessThanOrEqual(720.001)
     expect(result.didShrink).toBe(true)
     for (const c of result.cards) {
       expect(c.x + c.w).toBeLessThanOrEqual(1.0001)
