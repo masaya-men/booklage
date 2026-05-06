@@ -20,6 +20,11 @@
      no visible effect because there's no perspective to project against. */
   perspective: 1400px;
   perspective-origin: 50% 50%;
+  /* Clip the page-flip travel — entering / departing cards translate
+     out to ±60vw, so without clipping they'd overlap the page chrome
+     outside the lightbox. Combined with the parent .canvas's own
+     overflow:hidden, this keeps everything contained. */
+  overflow: hidden;
 }
 .backdrop.open {
   /* opacity intentionally NOT set here — GSAP drives the fade in/out
@@ -607,8 +612,8 @@
 
 .meterTrack {
   position: relative;
-  width: 280px;
-  height: 16px; /* tall enough to host the active dot above the line */
+  width: 320px;
+  height: 18px; /* tall enough for tall ticks to extend above/below the line */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -625,29 +630,25 @@
   transform: translateY(-0.5px);
 }
 
-/* Progress mark slides along the track based on current/total. */
-.meterTrackMark {
+/* Inactive ticks — short vertical lines straddling the ruler line.
+   `transform-origin: center` keeps any GSAP scaleY centered. */
+.meterTick {
   position: absolute;
   top: 50%;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.85);
+  width: 1px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.30);
   transform: translate(-50%, -50%);
-  transition: left 240ms cubic-bezier(0.33, 1, 0.68, 1);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
+  transform-origin: center;
+  pointer-events: none;
+  transition: background 240ms ease;
 }
 
-/* Active dot — fixed at the horizontal center of the track regardless of
-   which card is open. Pulses on card change (GSAP). */
-.meterActiveDot {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+/* Active tick — taller, thicker, full white. The pulse is driven by GSAP
+   (scaleY 1 → 1.6 → 1) on card change so it feels physical. */
+.meterTickActive {
+  width: 2px;
+  height: 14px;
   background: rgba(255, 255, 255, 1);
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
 }

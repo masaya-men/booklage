@@ -495,12 +495,18 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     backdrop.appendChild(snapshot)
 
     // --- 3D slide constants ---
-    const ENTER_DIST = 240   // px the new card slides in from
-    const ENTER_DEPTH = -380 // px the new card starts behind the screen
-    const LEAVE_DIST = 220   // px the old card slides away to
-    const LEAVE_DEPTH = -280 // px the old card recedes behind to
-    const ROTATE_Y = 14      // deg of yaw for both
-    const DUR = 0.6
+    // Distance is sized to viewport so cards travel from one edge to the
+    // other rather than nudging a few inches — reads as a real
+    // page-flip rather than a polite shuffle. 60% of the viewport width
+    // gives plenty of travel without making the entering card feel
+    // launched from outer space.
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
+    const ENTER_DIST = Math.round(vw * 0.6)
+    const ENTER_DEPTH = -380
+    const LEAVE_DIST = Math.round(vw * 0.6)
+    const LEAVE_DEPTH = -280
+    const ROTATE_Y = 14
+    const DUR = 0.7
 
     // Departing animation on the cloned snapshot.
     gsap.fromTo(

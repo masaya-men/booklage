@@ -22,7 +22,6 @@ function hash01(s: string): number {
     h = ((h << 5) + h) + s.charCodeAt(i)
     h = h | 0
   }
-  // Map to 0..1 via abs % 1e6
   const n = Math.abs(h) % 1000000
   return n / 1000000
 }
@@ -37,9 +36,30 @@ function formatNumber(value: number): string {
   return `${intPart}.${decPart}`
 }
 
+/** Cap on how many tick marks we actually render. With > MAX_TICKS cards,
+ *  we sample evenly so the meter stays readable regardless of total. */
+const MAX_TICKS = 50
+
+/** Build the list of card-indices to render as tick marks. When `total`
+ *  is at or below the cap, this is just [0..total-1]. Above the cap,
+ *  it's an evenly sampled subset that ALWAYS includes the active index
+ *  and the two endpoints, so the user always sees themselves on the meter. */
+function buildTickIndices(total: number, current: number): number[] {
+  if (total <= MAX_TICKS) {
+    return Array.from({ length: total }, (_, i) => i)
+  }
+  const sampled = new Set<number>()
+  for (let i = 0; i < MAX_TICKS; i++) {
+    sampled.add(Math.round((i / (MAX_TICKS - 1)) * (total - 1)))
+  }
+  sampled.add(0)
+  sampled.add(total - 1)
+  sampled.add(current)
+  return Array.from(sampled).sort((a, b) => a - b)
+}
+
 export function LightboxNavMeter({ current, total, cardKey }: Props): ReactElement | null {
-  const trackProgressRef = useRef<HTMLDivElement>(null)
-  const dotRef = useRef<HTMLDivElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
   const leftRef = useRef<HTMLSpanElement>(null)
   const rightRef = useRef<HTMLSpanElement>(null)
   const prevCurrentRef = useRef<number>(current)
@@ -55,29 +75,32 @@ export function LightboxNavMeter({ current, total, cardKey }: Props): ReactEleme
   // into the same 0..10000 space so it visually matches right-side scale.
   const leftBase = total > 0 ? ((current + 1) / total) * 10000 : 0
 
-  // Pulse the active dot on card change.
+  // Pulse the active tick on card change. Selector targets the tick whose
+  // data attribute matches `current`.
   useEffect(() => {
     if (prevCurrentRef.current === current) return
     prevCurrentRef.current = current
-    if (dotRef.current) {
+    const track = trackRef.current
+    if (!track) return
+    const activeTick = track.querySelector<HTMLDivElement>(
+      `[data-tick-index="${current}"]`,
+    )
+    if (activeTick) {
       gsap.fromTo(
-        dotRef.current,
-        { scale: 1.0 },
-        { scale: 1.4, duration: 0.22, ease: 'back.out(2)', yoyo: true, repeat: 1 },
+        activeTick,
+        { scaleY: 1.0 },
+        { scaleY: 1.6, duration: 0.22, ease: 'back.out(2)', yoyo: true, repeat: 1 },
       )
     }
   }, [current])
 
   // Idle micro-animation: nudge the readouts every animation frame so the
-  // last 1-2 decimal digits constantly shimmer. Keeps the meter feeling
-  // alive even when the user isn't navigating.
+  // last decimal digit constantly shimmers. Keeps the meter feeling alive
+  // even when the user isn't navigating.
   useEffect(() => {
     let raf = 0
     const tick = (): void => {
       const t = performance.now() / 1000
-      // Two independent sinusoidal walks (different freqs) so left/right
-      // never feel synchronized. ±0.012 swing keeps it under 1 decimal place
-      // of noticeable jitter.
       const noiseL = Math.sin(t * 0.83) * 0.006 + Math.sin(t * 2.1) * 0.004
       const noiseR = Math.sin(t * 1.17) * 0.005 + Math.sin(t * 0.43) * 0.005
       if (leftRef.current) leftRef.current.textContent = formatNumber(leftBase + noiseL)
@@ -90,25 +113,27 @@ export function LightboxNavMeter({ current, total, cardKey }: Props): ReactEleme
 
   if (total <= 1) return null
 
-  // Progress marker position on the track: (current / (total - 1)) of full width
-  const progress = total > 1 ? current / (total - 1) : 0
+  const tickIndices = buildTickIndices(total, current)
 
   return (
     <div className={styles.meterWrap} aria-hidden="true">
       <span ref={leftRef} className={styles.meterReadout}>
         {formatNumber(leftBase)}
       </span>
-      <div className={styles.meterTrack}>
+      <div className={styles.meterTrack} ref={trackRef}>
         <div className={styles.meterTrackLine} />
-        <div
-          ref={trackProgressRef}
-          className={styles.meterTrackMark}
-          style={{ left: `${progress * 100}%` }}
-        />
-        <div
-          ref={dotRef}
-          className={styles.meterActiveDot}
-        />
+        {tickIndices.map((i) => {
+          const pos = total > 1 ? (i / (total - 1)) * 100 : 50
+          const isActive = i === current
+          return (
+            <div
+              key={i}
+              data-tick-index={i}
+              className={`${styles.meterTick} ${isActive ? styles.meterTickActive : ''}`}
+              style={{ left: `${pos}%` }}
+            />
+          )
+        })}
       </div>
       <span ref={rightRef} className={styles.meterReadout}>
         {formatNumber(rightBase)}
