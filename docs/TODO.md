@@ -64,11 +64,15 @@
      - 回帰テスト追加: 長 title round-trip ([lib/share/board-to-cards.test.ts](lib/share/board-to-cards.test.ts), 236 passed)
    - 既知の壊れ URL `/share#d=invalid` でのエラー画面表示は OK
 
-2. **Composer の見た目欠陥（次セッション最優先、規模大）**
-   - **カードが枠から切れる / スクロールしない** → アスペクト切替時に column-masonry を **枠サイズ基準で再計算** して reflow させる必要あり
-   - **カード並び替え・サイズ変更不可** → ShareFrame に編集 layer 追加 (board の InteractionLayer 簡易版、drag / S/M/L / 削除)
-   - 「シェア時の見た目に直結する」とユーザーから明言、シェア体験の質に直結するので必須
-   - brainstorming → plan → 実装 で 1 セッション丸ごと使う規模
+2. **Composer の見た目欠陥（spec 完成済、次セッション実装着手）**
+   - **spec**: [`docs/superpowers/specs/2026-05-06-composer-reflow-design.md`](superpowers/specs/2026-05-06-composer-reflow-design.md)
+   - 設計 brainstorming 完了 (2026-05-06):
+     - 根本原因 = `boardItemsToShareCards` が board canvas 座標を frame size で割って正規化（座標系違い）
+     - 解 = 新規 `lib/share/composer-layout.ts` で frame-sized masonry + auto-shrink + 縦中央寄せ
+     - drag = reorder（board と完全パリティ）、S/M/L 循環、右クリック削除
+     - **isolation 保証**: Composer 操作は board state に 1 mutation も波及しない
+     - 受信側クリックは Phase 1 では `window.open(c.u, '_blank')` 最小実装
+   - 次の手順: `superpowers:writing-plans` で実装計画作成 → `executing-plans` で着手
 
 3. ~~**細かい改善 3 件**~~ — **v74 で完了**
    - ✅ 「全部入れる」ボタンを toggle 化
@@ -77,8 +81,18 @@
 
 ### 🆕 別タスクとして登録（後回し OK、Plan A の後）
 
+- **Phase 2: 受信側 Lightbox + 矢印 nav（Composer reflow 完了直後の次セッション）**
+  - 受信側でカードクリック → board の Lightbox を read-only 流用
+  - **board / 受信側両方に左右矢印 + キーボード ←/→ nav 追加** (UX 候補: hover で chevron フェード、サムネ条なし、`3/12` のドット or テキスト indicator のみ)
+  - 「Booklage で表現する」文言改名（候補: 「Booklage で集める」「ボードに取り込む」等、別 brainstorming）
+  - 規模: 1 セッション、独立 brainstorming 必要（Lightbox の依存先 = tweet/youtube/tiktok/instagram 全部 read-only 動作確認）
+- **Phase 3: import フロー（Phase 2 の後）**
+  - 受信側 Lightbox に「このカードを取り込む」単体ボタン
+  - Lightbox 外で全カード bulk import + matching-app 風タグ付け (deferred Task 4.1, 4.2)
+  - 重複検出、タグ付け UX 設計が必要、規模大
+- **複数 PNG 分割出力** — カード多数のとき 1 枚に詰めず複数 PNG にする希望。Plan A 完了後の polish タスク
 - **AdSense / Amazon Associates 申請** — マーケページ + Share 機能が揃った。`docs/private/launch-plan-2026-04.md` 参照
-- **受信者側 import フロー** — ユーザー曰く「matching-app 風振り分け」UX を希望。`superpowers:brainstorming` で UX 詰めてから実装。`lib/share/import.ts` (Task 4.1) と `<ImportConfirmModal>` (Task 4.2) は未実装、deferred
+- **受信者側 import フロー** — Phase 3 と同じ。`lib/share/import.ts` (Task 4.1) と `<ImportConfirmModal>` (Task 4.2) は未実装、deferred
 - **i18n プロジェクト全体の多言語化** — share だけでなく Toolbar / Lightbox 等すべて日本語ハードコード。15 言語対応のため別タスクで一括 messages/*.json 化が必要（spec 上 next-intl / i18next 想定）
 - **Source list のタグ絞り込み / タグ単位シェア** — タグ機能 (mood) がボードで成熟してから検討、post-launch
 - **サービス名再考** — Booklage で OK か別 brainstorming で確認したい
