@@ -14,6 +14,11 @@ function pad4(n: number): string {
   return Math.max(0, Math.min(9999, Math.floor(n))).toString().padStart(4, '0')
 }
 
+/** Number of tick marks rendered on the ruler. Decoupled from `total` —
+ *  the meter is a pure visual waveform, with current-card position shown
+ *  as a localized amplitude swell on top of the global flow. */
+const TICK_COUNT = 150
+
 /** Counter slot-machine animation duration on card change. */
 const COUNTER_ANIM_MS = 600
 
@@ -22,23 +27,21 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
   const tickRefs = useRef<HTMLDivElement[]>([])
   const counterRef = useRef<HTMLSpanElement>(null)
 
-  // Refs that the rAF loop reads each frame. Using refs (rather than state)
-  // means coordinate / counter updates never trigger React re-renders, so
-  // layout stays perfectly stable — no jitter from text reflow.
+  // Refs that the rAF loop reads each frame. Updates here never trigger
+  // React re-renders, so layout stays perfectly stable.
   const currentRef = useRef<number>(current)
   const totalRef = useRef<number>(total)
   const animUntilRef = useRef<number>(0)
 
-  // On card change: kick off the counter slot-machine animation.
+  // On card change: kick off the counter slot-machine animation and
+  // update the position the meter swell tracks.
   useEffect(() => {
     currentRef.current = current
     totalRef.current = total
     animUntilRef.current = performance.now() + COUNTER_ANIM_MS
   }, [current, total])
 
-  // Single rAF loop drives both the waveform tick heights and the counter
-  // text. Per-frame work is bounded (≤ ~150 elements + 1 text node), well
-  // under the budget of a 60fps frame even on low-end devices.
+  // Single rAF loop drives both the waveform and the counter text.
   useEffect(() => {
     let raf = 0
     const loop = (): void => {
@@ -47,29 +50,37 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
       const cur = currentRef.current
       const tot = totalRef.current
 
-      // --- Tick heights: Gaussian centered on `current` + small jitter ---
-      // sigma controls the bell width. Scales gently with total so few-card
-      // boards have a punchy peak and many-card boards keep the bell visible.
-      const sigma = Math.max(1.6, tot / 6)
-      const peakH = 16
-      const baseH = 2
-      for (let i = 0; i < tot; i++) {
+      // --- Tick heights: flowing sinusoid waveform (the "音の波形" the
+      //     user liked) + a localized amplitude swell at current position.
+      //     Centered on the tick index that maps to the active card —
+      //     reads as if the meter is alive and "noticing" itself there. ---
+      const centerTickIdx = tot > 1 ? (cur / (tot - 1)) * (TICK_COUNT - 1) : TICK_COUNT / 2
+      const swellSigma = TICK_COUNT / 14   // narrow swell — feels like a heartbeat zone
+      const swellGain = 2.6                // peak multiplier on top of base waveform
+
+      for (let i = 0; i < TICK_COUNT; i++) {
         const el = tickRefs.current[i]
         if (!el) continue
-        const dist = i - cur
-        const bell = Math.exp(-(dist * dist) / (2 * sigma * sigma))
-        // Per-tick jitter — sum of two phase-shifted sinusoids, scaled
-        // small (±1 px) so the bell shape stays legible while the meter
-        // still feels alive.
-        const jitter =
-          Math.sin(t * 1.3 + i * 0.31) * 0.6 +
-          Math.sin(t * 3.1 + i * 0.93) * 0.4
-        const h = baseH + (peakH - baseH) * bell + jitter
+
+        // Base flowing waveform — three superposed sinusoids (low / mid /
+        // high freq) phase-shifted per tick give an audio-waveform feel.
+        const w1 = Math.sin(t * 0.6 + i * 0.08) * 0.45
+        const w2 = Math.sin(t * 1.7 + i * 0.31) * 0.30
+        const w3 = Math.sin(t * 4.2 + i * 0.93) * 0.15
+        const norm = (w1 + w2 + w3 + 0.9) / 1.8 // → 0..1-ish
+        const baseH = 2 + norm * 8 // slightly tamed base so swell can stand out
+
+        // Amplitude swell centered on current card position. Gaussian
+        // bell scales tick height by up to (1 + swellGain)x at the peak.
+        const dist = i - centerTickIdx
+        const swell = 1 + swellGain * Math.exp(-(dist * dist) / (2 * swellSigma * swellSigma))
+
+        const h = baseH * swell
         el.style.height = `${Math.max(1, h).toFixed(1)}px`
       }
 
       // --- Counter text: integer part stable, decimal part scrambles
-      //     during the 600ms post-change window then settles to .0000 ---
+      //     during the post-change window then settles to .0000 ---
       if (counterRef.current) {
         const isAnimating = now < animUntilRef.current
         const intPart = pad4(cur + 1)
@@ -99,12 +110,12 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
         </div>
         <div className={styles.meterTrack} ref={trackRef}>
           <div className={styles.meterTrackLine} />
-          {Array.from({ length: total }, (_, i) => (
+          {Array.from({ length: TICK_COUNT }, (_, i) => (
             <div
               key={i}
               ref={(el) => { if (el) tickRefs.current[i] = el }}
               className={styles.meterTick}
-              style={{ left: `${total > 1 ? (i / (total - 1)) * 100 : 50}%` }}
+              style={{ left: `${(i / (TICK_COUNT - 1)) * 100}%` }}
             />
           ))}
         </div>
