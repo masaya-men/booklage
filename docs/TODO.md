@@ -8,12 +8,19 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v77 反映済**（v78 deploy 待ち、ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **v79 反映済**（ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-06 深夜, v77 → v78) の到達点
+### 🎯 今セッション (2026-05-06 深夜, v77 → v79) の到達点
 
-**Phase 2 完了 — 受信側 Lightbox + 矢印 nav shipped**:
+**Phase 2 + smoke fix shipped**:
+
+**追加 polish (v79)** — production smoke で発見した 3 件を即修正:
+- **Lightbox dot bar**: strip translateX 廃止、bar 幅 max(64vw, 800px)、active dot は位置不変・スタイルだけ変化。screen 中央に anchored、カード切替で dot が動かない (active のみ pulse)
+- **Composer layout**: auto-shrink → auto-fit に拡張。few-card 時に最大 2.5x scale-up で frame を埋める。width/height 両軸 fit、制約強い側採用。「黒い箱の上下が大きく余る」UX 破綻を解決
+- **SharedView 文言**: 「自分も Booklage を使う ↗」→「Booklage を試す ↗」(SaaS CTA pattern、短く・ブランド見えやすい)
+
+**Phase 2 完了 — 受信側 Lightbox + 矢印 nav shipped (v78)**:
 
 - **新規 `lib/share/lightbox-item.ts`** — `BoardItem | ShareCard` を `LightboxItem` に正規化する純粋関数。5 unit tests
 - **新規 `components/board/LightboxNavChevron.tsx`** — hover-fade 左右 chevron (48px 円、blur bg、140ms power2.out)
@@ -108,6 +115,11 @@
 ### 🆕 別タスクとして登録（後回し OK、Plan A の後）
 
 - ~~**Phase 2: 受信側 Lightbox + 矢印 nav**~~ — **v78 で完了** (上の「今セッション到達点」参照)
+- **Phase 2.5: ページめくりモーション (motionin.design 風)** ← brainstorming 必要
+  - https://www.motionin.design/gallery/folio が参考
+  - 受信側 Lightbox の左右 nav に適用 → カードが「めくれる」感じの 3D transition
+  - board Lightbox にも同等を検討
+  - 現状の slide horizontal + cross-fade を upgrade する形
 - **Phase 3: import フロー（Phase 2 の後）← 次セッション最優先候補**
   - 受信側 Lightbox に「このカードを取り込む」単体ボタン
   - Lightbox 外で全カード bulk import + matching-app 風タグ付け (deferred Task 4.1, 4.2)
