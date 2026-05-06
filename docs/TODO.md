@@ -8,10 +8,28 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v76 反映済**（v77 deploy 待ち、ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **v77 反映済**（v78 deploy 待ち、ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-06 夜, v76 → v77) の到達点
+### 🎯 今セッション (2026-05-06 深夜, v77 → v78) の到達点
+
+**Phase 2 完了 — 受信側 Lightbox + 矢印 nav shipped**:
+
+- **新規 `lib/share/lightbox-item.ts`** — `BoardItem | ShareCard` を `LightboxItem` に正規化する純粋関数。5 unit tests
+- **新規 `components/board/LightboxNavChevron.tsx`** — hover-fade 左右 chevron (48px 円、blur bg、140ms power2.out)
+- **新規 `components/board/LightboxNavDots.tsx`** — Instagram stories 風 dynamic dot indicator (active 10px → edge 3px、active pulse、translateX strip-shift で active 中央寄せ)
+- **`Lightbox.tsx` rewrite** — Props `BoardItem | ShareCard` union、内部 `view: LightboxItem` 化、`bookmarkId` → `identity` リネーム、`nav?` prop 追加、←/→ keydown handler、nav 切替時の slide + cross-fade animation (280ms power3.out、wrap-around 対応)
+- **`BoardRoot.tsx`** — `lightboxIndex` を filteredItems base で算出、Lightbox に nav 渡す。filtered items を nav scope にしたので、フィルタ中の nav が他カテゴリに飛ばない (UX 改善)
+- **`ShareFrame.tsx`** — `onCardOpen: (i, rect) => void` シグネチャ拡張、`data-testid="share-frame-card-N"` 追加
+- **`SharedView.tsx`** — `openState` で Lightbox 配置、左下リンクを「自分も Booklage を使う ↗」に改名
+- **新 E2E** `tests/e2e/share-receive-lightbox.spec.ts` 5 件全 pass、`tests/e2e/board-lightbox-nav.spec.ts` 3 件 (graceful skip on empty board)
+- **249 unit tests passing**, **tsc 0 errors**, **build OK**
+- 14 commits
+- Plan: [`docs/superpowers/plans/2026-05-06-receive-side-lightbox-plan.md`](superpowers/plans/2026-05-06-receive-side-lightbox-plan.md), Spec: [`docs/superpowers/specs/2026-05-06-receive-side-lightbox-design.md`](superpowers/specs/2026-05-06-receive-side-lightbox-design.md)
+
+**注意**: 既存 E2E 4 件が事前から失敗 (lightbox-flow / board-b-embeds × 2 / triage-flow)。Phase 2 開始前 commit 81bfe82 でも同じ失敗 → 私の変更が原因ではない、別タスクで対応。
+
+### 🎯 前セッション (2026-05-06 夜, v76 → v77) の到達点
 
 **Plan A item 2 完了 — Composer reflow + 編集レイヤー shipped**:
 
@@ -89,12 +107,8 @@
 
 ### 🆕 別タスクとして登録（後回し OK、Plan A の後）
 
-- **Phase 2: 受信側 Lightbox + 矢印 nav（Composer reflow 完了直後の次セッション）**
-  - 受信側でカードクリック → board の Lightbox を read-only 流用
-  - **board / 受信側両方に左右矢印 + キーボード ←/→ nav 追加** (UX 候補: hover で chevron フェード、サムネ条なし、`3/12` のドット or テキスト indicator のみ)
-  - 「Booklage で表現する」文言改名（候補: 「Booklage で集める」「ボードに取り込む」等、別 brainstorming）
-  - 規模: 1 セッション、独立 brainstorming 必要（Lightbox の依存先 = tweet/youtube/tiktok/instagram 全部 read-only 動作確認）
-- **Phase 3: import フロー（Phase 2 の後）**
+- ~~**Phase 2: 受信側 Lightbox + 矢印 nav**~~ — **v78 で完了** (上の「今セッション到達点」参照)
+- **Phase 3: import フロー（Phase 2 の後）← 次セッション最優先候補**
   - 受信側 Lightbox に「このカードを取り込む」単体ボタン
   - Lightbox 外で全カード bulk import + matching-app 風タグ付け (deferred Task 4.1, 4.2)
   - 重複検出、タグ付け UX 設計が必要、規模大
