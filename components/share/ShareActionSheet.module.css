@@ -72,6 +72,15 @@
   text-align: center;
 }
 
+.urlMeta {
+  font-size: 11px;
+  color: var(--share-fine-text);
+  letter-spacing: 0.02em;
+  text-align: center;
+  margin: 4px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
 .closeBtn {
   background: transparent;
   border: none;

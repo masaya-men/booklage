@@ -15,15 +15,22 @@ type Props = {
   readonly selectedIds: ReadonlySet<string>
   readonly onToggle: (id: string) => void
   readonly onAddAll: () => void
+  readonly onClearAll: () => void
   readonly onAddVisible: () => void
 }
 
-export function ShareSourceList({ items, selectedIds, onToggle, onAddAll, onAddVisible }: Props): ReactElement {
+export function ShareSourceList({ items, selectedIds, onToggle, onAddAll, onClearAll, onAddVisible }: Props): ReactElement {
+  const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.bookmarkId))
   return (
     <div className={styles.row} data-testid="share-source-list">
       <div className={styles.shortcuts}>
-        <button type="button" className={styles.shortcutBtn} onClick={onAddAll}>
-          全部入れる
+        <button
+          type="button"
+          className={styles.shortcutBtn}
+          onClick={allSelected ? onClearAll : onAddAll}
+          data-testid="share-add-all-toggle"
+        >
+          {allSelected ? '全部外す' : '全部入れる'}
         </button>
         <button type="button" className={styles.shortcutBtn} onClick={onAddVisible}>
           表示中のみ

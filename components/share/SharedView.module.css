@@ -53,3 +53,57 @@
 .cornerLink:hover {
   color: var(--share-accent);
 }
+
+.errorTitle {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.diagBox {
+  margin: 4px 0 2px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(560px, 92vw);
+  width: 100%;
+}
+
+.diagRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.diagLabel {
+  flex: 0 0 110px;
+  color: var(--share-fine-text);
+  letter-spacing: 0.02em;
+}
+
+.diagValue {
+  color: var(--share-pill-text-active);
+  font-variant-numeric: tabular-nums;
+}
+
+.diagValueMono {
+  color: var(--share-pill-text-active);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 11px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.diagHint {
+  font-size: 11px;
+  color: var(--share-fine-text);
+  margin: 0;
+  letter-spacing: 0.02em;
+}

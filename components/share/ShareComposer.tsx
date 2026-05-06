@@ -84,6 +84,10 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     setSelectedIds(new Set(items.map((i) => i.bookmarkId)))
   }, [items])
 
+  const onClearAll = useCallback((): void => {
+    setSelectedIds(new Set())
+  }, [])
+
   const onAddVisible = useCallback((): void => {
     const v = filterByViewport(items, positions, viewport)
     setSelectedIds(new Set(v.map((i) => i.bookmarkId)))
@@ -135,6 +139,7 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
           selectedIds={selectedIds}
           onToggle={onToggle}
           onAddAll={onAddAll}
+          onClearAll={onClearAll}
           onAddVisible={onAddVisible}
         />
 

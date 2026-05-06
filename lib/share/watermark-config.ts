@@ -26,16 +26,16 @@ const COMMON = {
   textColor: 'rgba(255,255,255,0.85)',
   secondaryColor: 'rgba(255,255,255,0.55)',
   bg: 'rgba(0,0,0,0.55)',
-  paddingX: 9,
-  paddingY: 4,
-  borderRadius: 4,
-  margin: 12,
+  paddingX: 11,
+  paddingY: 5,
+  borderRadius: 5,
+  margin: 14,
 } as const
 
 export const WATERMARK_VARIANT_A: WatermarkSpec = {
   ...COMMON,
   variant: 'A',
-  primaryFontSize: 11,
+  primaryFontSize: 14,
   secondary: undefined,
   secondaryFontSize: 0,
 }
@@ -43,9 +43,9 @@ export const WATERMARK_VARIANT_A: WatermarkSpec = {
 export const WATERMARK_VARIANT_B: WatermarkSpec = {
   ...COMMON,
   variant: 'B',
-  primaryFontSize: 11,
+  primaryFontSize: 14,
   secondary: 'booklage.com',
-  secondaryFontSize: 8.5,
+  secondaryFontSize: 10,
 }
 
 /**

@@ -1,7 +1,7 @@
 // components/share/ShareActionSheet.tsx
 'use client'
 
-import { useCallback, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { buildXIntent } from '@/lib/share/x-intent'
 import styles from './ShareActionSheet.module.css'
 
@@ -13,6 +13,13 @@ type Props = {
 
 export function ShareActionSheet({ pngDataUrl, shareUrl, onClose }: Props): ReactElement {
   const [copied, setCopied] = useState<boolean>(false)
+
+  // Close on ESC (matches Composer behavior)
+  useEffect((): (() => void) => {
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return (): void => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const onDownload = useCallback((): void => {
     const a = document.createElement('a')
@@ -59,6 +66,9 @@ export function ShareActionSheet({ pngDataUrl, shareUrl, onClose }: Props): Reac
             <span>X で投稿</span>
           </button>
         </div>
+        <p className={styles.urlMeta} data-testid="share-url-length">
+          URL 長: {shareUrl.length} 文字
+        </p>
         <button type="button" className={styles.closeBtn} onClick={onClose}>閉じる</button>
       </div>
     </div>

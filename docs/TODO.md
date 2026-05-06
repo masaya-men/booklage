@@ -8,10 +8,33 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v73 反映済**（ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **v74 反映済**（ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-06, v72 → v73) の到達点
+### 🎯 今セッション (2026-05-06 朝, v73 → v74) の到達点
+
+**Plan A 部分対応 + 受信側 URL バグ診断 UI 出荷**:
+
+- **SharedView エラー画面に診断 UI を追加** ([components/share/SharedView.tsx](components/share/SharedView.tsx)) — 失敗ステージ / hash 長 / fragment 長 / decode 後 bytes / 先頭 4byte / 末尾 16byte / 解凍後 bytes / JSON 先頭 / raw error をすべて画面表示。受信者がスクショ送るだけで原因特定可能
+- **decode.ts に詳細診断情報を返す DecodeDiagnostics 型を追加** ([lib/share/decode.ts](lib/share/decode.ts)) — 既存テストは `result.ok` のみ確認なので互換維持
+- **ShareActionSheet に URL 長表示 + ESC 閉じ** ([components/share/ShareActionSheet.tsx](components/share/ShareActionSheet.tsx)) — 「URL 長: NNNN 文字」を表示し送受信側で比較可能、ESC は Composer と統一
+- **「全部入れる」を toggle 化** ([components/share/ShareSourceList.tsx](components/share/ShareSourceList.tsx)) — 100% selected で「全部外す」に切替、`onClearAll` を ShareComposer に追加
+- **Watermark 11px → 14px** ([lib/share/watermark-config.ts](lib/share/watermark-config.ts)) — paddingX 9→11, paddingY 4→5, borderRadius 4→5, margin 12→14, secondary 8.5→10 で全体スケール
+
+### 🚨 次セッション最優先: 受信側 URL バグの診断手順
+
+ユーザーに依頼:
+
+1. ボードで普段通り Share → Composer → 「画像 + URL でシェア →」
+2. ActionSheet に表示される **「URL 長: NNNN 文字」** を memo
+3. 「URL をコピー」 → **別ブラウザ / シークレットウィンドウ** で開く
+4. エラー画面が出たら、画面の **診断ボックスをスクショで送付**
+5. 比較ポイント:
+   - **fragment 長 + 3 ≒ 送信側 URL 長 - (origin + /share の長さ)** なら URL は無傷で届いている → encode/decode バグ確定
+   - 不一致なら受信ブラウザ or クリップボード or 共有経路で truncation
+   - 末尾 16byte の hex の最後 8byte が gzip footer (CRC32 + ISIZE)、ISIZE 値が小さければ正常 truncation 無し
+
+### 🎯 前セッション (2026-05-06, v72 → v73) の到達点
 
 **Share System sender flow 出荷 + ユーザー実機テストでバグ・改善項目発見**：22 commits / 235 tests / 本番 deploy 済み。
 
@@ -27,34 +50,28 @@
 
 **実装プラン**: `docs/superpowers/plans/2026-05-06-share-system.md` （Phase 1-6, 26 タスク、うち 21 完了）
 
-### 🚨 緊急バグ（次セッション最優先で修正）
+### 🚨 緊急バグ（次セッション継続）
 
-**Plan A 継続作業**（ユーザーが「明日やる」で寝た）：
+**Plan A 残作業**:
 
-1. **【致命的】 受信側 URL「シェアデータが破損しています」バグ**
-   - 送信者が生成した URL を別ブラウザ / シークレットウィンドウで開くと decode 失敗
-   - **2026-05-06 23 時頃の解析結果**: 実 URL を Node `zlib.gunzipSync` に通したら `unexpected end of file (Z_BUF_ERROR)` = **gzip ストリームが末尾で truncate されている**ことが確定。最後 8 バイトが gzip footer (CRC32 + ISIZE) として無効値 (ISIZE が 約 3GB の非現実値)
-   - 原因切り分け候補:
-     - **A) 受信側ブラウザの URL 長制限** — F12 console で `window.location.hash.length` を確認、送信側 `shareUrl.length - 35` と比較
-     - **B) Claude Code チャット入力で truncate された可能性** — 私が受け取った fragment は 2595 文字。本番では full 長で動いていた可能性あり
-     - **C) encode 側のバグ** — vitest round-trip テストは通っているが、jsdom と本番 Chrome で `CompressionStream` 挙動が違う可能性
-   - **明日の手順**:
-     1. SharedView に診断ログを追加（どの段階で失敗 + hash 長を画面表示）
-     2. ユーザーに新規 URL 生成依頼 → 受信側で `window.location.hash.length` を報告依頼
-     3. 送信側 `shareUrl.length` と比較して truncation の有無を判定
-     4. 原因に応じて修正（encode バグなら `pako` 等のライブラリベースに書き換え検討）
+1. **【致命的】 受信側 URL「シェアデータが破損しています」バグ — 診断 UI 出荷済 (v74)**
+   - 2026-05-06 解析: Node `zlib.gunzipSync` で `Z_BUF_ERROR` = gzip 末尾 truncation 確定
+   - **v74 で診断 UI 出荷**: 受信側エラー画面に hash 長 / fragment 長 / 失敗ステージ / 末尾 16byte hex / raw error を表示。送信側 ActionSheet に URL 長表示
+   - **次セッション**: ユーザー実機テスト（送信側 URL 長 + 受信側スクショ）→ 真因特定 → 修正
+     - fragment 長 ≒ 送信側 URL 長 - 35（origin + /share の長さ）なら無傷 → encode/decode バグ → `pako` 等への置換検討
+     - 不一致なら受信側 truncation → ブラウザ or 共有経路の問題
    - 既知の壊れ URL `/share#d=invalid` でのエラー画面表示は OK
 
-2. **Composer の見た目欠陥（plan §2.1 step 5 で約束していたが MVP で省略）**
+2. **Composer の見た目欠陥（次セッション最優先、規模大）**
    - **カードが枠から切れる / スクロールしない** → アスペクト切替時に column-masonry を **枠サイズ基準で再計算** して reflow させる必要あり
    - **カード並び替え・サイズ変更不可** → ShareFrame に編集 layer 追加 (board の InteractionLayer 簡易版、drag / S/M/L / 削除)
    - 「シェア時の見た目に直結する」とユーザーから明言、シェア体験の質に直結するので必須
+   - brainstorming → plan → 実装 で 1 セッション丸ごと使う規模
 
-3. **細かい改善 4 つ（1 commit でまとめて対応可能）**
-   - 「全部入れる」ボタンを toggle 化（選択中 100% なら「全部外す」に切替）
-   - ウォーターマーク 11px → 14-16px に上げる（ユーザー: 「小さすぎる」）
-   - ShareActionSheet で **ESC キー閉じる** 効くようにする（Composer の handler 流用）
-   - 修正方針はすべて `--share-*` トークン経由 / コンポーネント内完結なので影響範囲は局所的
+3. ~~**細かい改善 3 件**~~ — **v74 で完了**
+   - ✅ 「全部入れる」ボタンを toggle 化
+   - ✅ ウォーターマーク 11px → 14px
+   - ✅ ShareActionSheet ESC キー閉じる
 
 ### 🆕 別タスクとして登録（後回し OK、Plan A の後）
 
