@@ -91,6 +91,18 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     return (): void => { document.body.style.overflow = prev }
   }, [open])
 
+  // Touch fallback: the hook's keyboard listener only mounts on
+  // (hover: hover) and (pointer: fine) devices. On touch, mount a minimal
+  // Esc-to-close so iPad+bluetooth-keyboard users can still dismiss the modal.
+  useEffect((): undefined | (() => void) => {
+    if (!open || fullscreen.canUseFullscreen) return undefined
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return (): void => window.removeEventListener('keydown', onKey)
+  }, [open, fullscreen.canUseFullscreen, onClose])
+
   // Keep cardOrder in sync with selectedIds: drop removed, append new at tail.
   useEffect(() => {
     setCardOrder((prev) => {
