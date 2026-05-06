@@ -400,6 +400,54 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identity])
 
+  // Slide animation on nav transition. Distinct from the FLIP open
+  // animation: this only fires when identity changes WHILE the lightbox
+  // is already open (not on first mount). Direction inferred from the
+  // nav.currentIndex delta. Wrap-around (last → 0 or 0 → last) is
+  // detected via abs(delta) > total/2 and treated as the "natural"
+  // forward/back direction so the slide reads as continuous.
+  const prevIdentityRef = useRef<string | null>(null)
+  const prevNavIndexRef = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (!identity) {
+      prevIdentityRef.current = null
+      prevNavIndexRef.current = null
+      return
+    }
+    const prevIdentity = prevIdentityRef.current
+    const prevNavIndex = prevNavIndexRef.current
+    prevIdentityRef.current = identity
+    prevNavIndexRef.current = nav?.currentIndex ?? null
+
+    // First mount of this identity — let the FLIP open effect handle it.
+    if (prevIdentity === null) return
+    // Same identity (nav did not change anything) — no-op.
+    if (prevIdentity === identity) return
+    // Nav prop missing — can't infer direction.
+    if (!nav || prevNavIndex === null) return
+
+    const el = frameRef.current
+    if (!el) return
+
+    const delta = nav.currentIndex - prevNavIndex
+    let dir: 1 | -1
+    if (Math.abs(delta) > nav.total / 2) {
+      // Wrap-around: large negative delta means we wrapped forward (e.g.
+      // last → 0), so visually it's still "forward" (slide in from right).
+      dir = delta > 0 ? -1 : 1
+    } else {
+      dir = delta > 0 ? 1 : -1
+    }
+
+    const SLIDE_DIST = 40
+    gsap.killTweensOf(el)
+    gsap.fromTo(
+      el,
+      { x: dir * SLIDE_DIST, opacity: 0 },
+      { x: 0, opacity: 1, duration: 0.28, ease: 'power3.out' },
+    )
+  }, [identity, nav])
+
   // No programmatic auto-focus on open — the bare ✕ button rendered with
   // a default browser focus ring reads as an unwanted "selected" rectangle
   // around the corner. Esc still closes via the window keydown listener
