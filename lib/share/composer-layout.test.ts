@@ -28,6 +28,7 @@ describe('composeShareLayout', () => {
       sizeOverrides: new Map(),
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     expect(result.cards).toHaveLength(3)
     expect(result.frameSize.width).toBe(1080)
@@ -48,6 +49,7 @@ describe('composeShareLayout', () => {
       sizeOverrides: new Map(),
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     expect(r1.cards.map((c) => c.u)).toEqual([
       'https://example.com/c',
@@ -64,6 +66,7 @@ describe('composeShareLayout', () => {
       sizeOverrides: new Map(),
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     expect(r2.cards.map((c) => c.u)).toEqual([
       'https://example.com/b',
@@ -84,6 +87,7 @@ describe('composeShareLayout', () => {
       sizeOverrides: overrides,
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     const sCard = result.cards.find((c) => c.u.endsWith('/s'))
     const lCard = result.cards.find((c) => c.u.endsWith('/l'))
@@ -103,6 +107,7 @@ describe('composeShareLayout', () => {
       sizeOverrides: new Map(),
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     // Composer preview = always-fit: the whole frame scales down to fit
     // the viewport so the user sees the full board overview.
@@ -128,6 +133,7 @@ describe('composeShareLayout', () => {
       sizeOverrides: new Map(),
       aspect: '9:16',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     // Preset frame ratio is preserved (9:16 → ~0.5625)
     const ratio = result.frameSize.width / result.frameSize.height
@@ -154,6 +160,7 @@ describe('composeShareLayout', () => {
       sizeOverrides: new Map(),
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     expect(result.cards).toHaveLength(2)
     expect(result.cardIds).toEqual(['one', 'two'])
@@ -167,6 +174,7 @@ describe('composeShareLayout', () => {
       sizeOverrides: new Map(),
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     const minY = Math.min(...result.cards.map((c) => c.y))
     expect(minY).toBeLessThan(0.05)
@@ -184,8 +192,86 @@ describe('composeShareLayout', () => {
       sizeOverrides: new Map(),
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
+      mode: 'layout',
     })
     expect(result.cards[0].a).toBe(1.5)
     expect(result.cards[1].a).toBe(0.7)
+  })
+})
+
+describe('composeShareLayout — preview mode', () => {
+  it('preview + free: no fitScale, frame height equals natural masonry height', () => {
+    const items = makeItems(50)
+    const order = items.map((i) => i.bookmarkId)
+    const result = composeShareLayout({
+      items,
+      order,
+      sizeOverrides: new Map(),
+      aspect: 'free',
+      viewport: { width: 1440, height: 900 },
+      mode: 'preview',
+    })
+    expect(result.didShrink).toBe(false)
+    expect(result.shrinkScale).toBe(1)
+    expect(result.frameSize.width).toBe(1440)
+    expect(result.frameSize.height).toBeGreaterThan(900)
+  })
+
+  it('preview + 1:1: frame fills viewport min dimension, normalized coords inside frame', () => {
+    const items = makeItems(8)
+    const result = composeShareLayout({
+      items,
+      order: items.map((i) => i.bookmarkId),
+      sizeOverrides: new Map(),
+      aspect: '1:1',
+      viewport: { width: 1920, height: 1080 },
+      mode: 'preview',
+    })
+    expect(result.frameSize.width).toBe(1080)
+    expect(result.frameSize.height).toBe(1080)
+    for (const c of result.cards) {
+      expect(c.x + c.w).toBeLessThanOrEqual(1.0001)
+      expect(c.y + c.h).toBeLessThanOrEqual(1.0001)
+    }
+  })
+
+  it('preview + 9:16: 9/16 ratio at viewport-fit', () => {
+    const r = composeShareLayout({
+      items: makeItems(6),
+      order: makeItems(6).map((i) => i.bookmarkId),
+      sizeOverrides: new Map(),
+      aspect: '9:16',
+      viewport: { width: 1920, height: 1080 },
+      mode: 'preview',
+    })
+    expect(r.frameSize.height).toBeCloseTo(1080, 0)
+    expect(r.frameSize.width).toBeCloseTo(1080 * 9 / 16, 0)
+  })
+
+  it('preview + 16:9: width fills viewport, height matches ratio', () => {
+    const r = composeShareLayout({
+      items: makeItems(6),
+      order: makeItems(6).map((i) => i.bookmarkId),
+      sizeOverrides: new Map(),
+      aspect: '16:9',
+      viewport: { width: 1920, height: 1080 },
+      mode: 'preview',
+    })
+    expect(r.frameSize.width).toBeCloseTo(1920, 0)
+    expect(r.frameSize.height).toBeCloseTo(1080, 0)
+  })
+
+  it('layout mode is unchanged: same input matches existing free-mode behavior', () => {
+    const items = makeItems(5)
+    const inputBase = {
+      items,
+      order: items.map((i) => i.bookmarkId),
+      sizeOverrides: new Map(),
+      aspect: 'free' as const,
+      viewport: { width: 800, height: 600 },
+    }
+    const r = composeShareLayout({ ...inputBase, mode: 'layout' })
+    expect(r.frameSize.width).toBeLessThanOrEqual(800)
+    expect(r.frameSize.height).toBeLessThanOrEqual(600)
   })
 })

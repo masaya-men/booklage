@@ -146,6 +146,7 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
         sizeOverrides,
         aspect,
         viewport: frameViewport,
+        mode: 'layout', // TODO Task 3: replace with `mode` from useShareFullscreen
       }),
     [composerItems, cardOrder, sizeOverrides, aspect, frameViewport],
   )

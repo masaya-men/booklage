@@ -17,12 +17,15 @@ export type ComposerItem = {
   readonly aspectRatio: number
 }
 
+export type ShareMode = 'layout' | 'preview'
+
 export type ComposerLayoutInput = {
   readonly items: ReadonlyArray<ComposerItem>
   readonly order: ReadonlyArray<string>
   readonly sizeOverrides: ReadonlyMap<string, ShareSize>
   readonly aspect: ShareAspect
   readonly viewport: { readonly width: number; readonly height: number }
+  readonly mode: ShareMode
 }
 
 export type ComposerLayoutResult = {
@@ -76,7 +79,7 @@ function findFitMasonry(
 }
 
 export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutResult {
-  const { items, order, sizeOverrides, aspect, viewport } = input
+  const { items, order, sizeOverrides, aspect, viewport, mode } = input
 
   const orderSet = new Set(order)
   const itemMap = new Map(items.map((it) => [it.bookmarkId, it] as const))
@@ -126,17 +129,21 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     logicalH = presetSize.height
   }
 
-  // The composer is a PREVIEW: the entire frame is always scaled to fit
-  // the viewport so the user sees the full board overview at all times.
-  // Detail editing happens on the main board; here the goal is "is the
-  // composition right?". Uniform scale on both axes cancels out in the
-  // 0..1 per-card normalization, so the encoded share data is unchanged
-  // — the receiver re-runs masonry on its own viewport via relay-layout.
-  const fitScale = Math.min(
-    viewport.width / logicalW,
-    viewport.height / logicalH,
-    1,
-  )
+  // Mode branch:
+  //   layout  — fit-to-viewport overview: the whole frame scales down so
+  //             the user sees the full board at all times (existing behavior).
+  //   preview — natural size: free aspect grows taller than the viewport
+  //             (caller scrolls); preset aspects fill the viewport with no
+  //             chrome subtraction because chrome auto-hides.
+  // Uniform scale on both axes cancels out in the 0..1 per-card normalization,
+  // so the encoded share data is identical regardless of mode.
+  const fitScale = mode === 'preview'
+    ? 1
+    : Math.min(
+        viewport.width / logicalW,
+        viewport.height / logicalH,
+        1,
+      )
   const frameW = logicalW * fitScale
   const frameH = logicalH * fitScale
   const didShrink = fitScale < 1
