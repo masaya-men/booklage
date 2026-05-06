@@ -20,6 +20,16 @@ import {
 } from '@/lib/utils/url'
 import styles from './Lightbox.module.css'
 
+/** Optional nav controls — when provided, chevron + dots + arrow-key
+ *  nav become available. Caller (BoardRoot or SharedView) owns the
+ *  index state and loop logic; Lightbox just forwards user gestures. */
+type LightboxNav = {
+  readonly currentIndex: number
+  readonly total: number
+  readonly onNav: (dir: -1 | 1) => void
+  readonly onJump: (index: number) => void
+}
+
 type Props = {
   /** Either a BoardItem (my own board) or a ShareCard (received share view).
    *  Internal `view = normalizeItem(item)` collapses both into LightboxItem
@@ -30,9 +40,10 @@ type Props = {
    *  from where the card actually was, instead of the viewport center. */
   readonly originRect: DOMRect | null
   readonly onClose: () => void
+  readonly nav?: LightboxNav
 }
 
-export function Lightbox({ item, originRect, onClose }: Props): ReactElement | null {
+export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   // closeButtonRef intentionally absent — see "No programmatic auto-focus"
@@ -199,6 +210,23 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
     window.addEventListener('keydown', onKey)
     return (): void => window.removeEventListener('keydown', onKey)
   }, [identity, requestClose])
+
+  // Arrow nav. Skip when an INPUT/TEXTAREA/SELECT has focus to avoid
+  // hijacking text editing within an embed. Esc handler intentionally
+  // does NOT skip on input focus — close should always work.
+  useEffect(() => {
+    if (!identity || !nav) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      const ae = document.activeElement
+      const tag = ae?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      e.stopPropagation()
+      nav.onNav(e.key === 'ArrowLeft' ? -1 : 1)
+    }
+    window.addEventListener('keydown', onKey)
+    return (): void => window.removeEventListener('keydown', onKey)
+  }, [identity, nav])
 
   // Reset closingRef when item changes (= a new lightbox session opens
   // after a previous close completed). identity is the stable string
