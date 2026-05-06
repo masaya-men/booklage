@@ -34,4 +34,109 @@ describe('composeShareLayout', () => {
       expect(c.y + c.h).toBeLessThanOrEqual(1.0001)
     }
   })
+
+  it('respects given cardOrder; missing items in order are appended at tail', () => {
+    const items = [item('a'), item('b'), item('c')]
+    const r1 = composeShareLayout({
+      items,
+      order: ['c', 'a', 'b'],
+      sizeOverrides: new Map(),
+      aspect: 'free',
+      viewport: { width: 1080, height: 720 },
+    })
+    expect(r1.cards.map((c) => c.u)).toEqual([
+      'https://example.com/c',
+      'https://example.com/a',
+      'https://example.com/b',
+    ])
+
+    // order references unknown id 'zzz' — items missing from order are appended
+    const r2 = composeShareLayout({
+      items,
+      order: ['zzz', 'b'],
+      sizeOverrides: new Map(),
+      aspect: 'free',
+      viewport: { width: 1080, height: 720 },
+    })
+    expect(r2.cards.map((c) => c.u)).toEqual([
+      'https://example.com/b',
+      'https://example.com/a',
+      'https://example.com/c',
+    ])
+  })
+
+  it('applies sizeOverrides — L spans more columns than S', () => {
+    const items = [
+      item('s', { sizePreset: 'S' }),
+      item('l', { sizePreset: 'S' }), // base S, but override to L
+    ]
+    const overrides = new Map<string, 'S' | 'M' | 'L'>([['l', 'L']])
+    const result = composeShareLayout({
+      items,
+      order: ['s', 'l'],
+      sizeOverrides: overrides,
+      aspect: 'free',
+      viewport: { width: 1080, height: 720 },
+    })
+    const sCard = result.cards.find((c) => c.u.endsWith('/s'))!
+    const lCard = result.cards.find((c) => c.u.endsWith('/l'))!
+    expect(lCard.w).toBeGreaterThan(sCard.w)
+    expect(lCard.s).toBe('L')   // echoed
+    expect(sCard.s).toBe('S')
+  })
+
+  it('auto-shrinks when content overflows frame height; all cards fit within 0..1', () => {
+    const items: ReturnType<typeof item>[] = []
+    for (let i = 0; i < 50; i++) items.push(item(`x${i}`))
+    const result = composeShareLayout({
+      items,
+      order: items.map((it) => it.bookmarkId),
+      sizeOverrides: new Map(),
+      aspect: '9:16',
+      viewport: { width: 1080, height: 720 },
+    })
+    expect(result.didShrink).toBe(true)
+    expect(result.shrinkScale).toBeLessThan(1)
+    expect(result.shrinkScale).toBeGreaterThan(0)
+    for (const c of result.cards) {
+      expect(c.x).toBeGreaterThanOrEqual(0)
+      expect(c.y).toBeGreaterThanOrEqual(0)
+      expect(c.x + c.w).toBeLessThanOrEqual(1.0001)
+      expect(c.y + c.h).toBeLessThanOrEqual(1.0001)
+    }
+  })
+
+  it('vertically centers when scaled content height < frame height', () => {
+    const items = [item('only', { sizePreset: 'S', aspectRatio: 1 })]
+    const result = composeShareLayout({
+      items,
+      order: ['only'],
+      sizeOverrides: new Map(),
+      aspect: 'free',
+      viewport: { width: 1080, height: 720 },
+    })
+    const c = result.cards[0]
+    // The card should sit roughly in vertical middle (top y > 0.2 since the
+    // card itself is small relative to the 720px frame).
+    expect(c.y).toBeGreaterThan(0.2)
+    // And there should be roughly equal slack above and below.
+    const aboveSlack = c.y
+    const belowSlack = 1 - (c.y + c.h)
+    expect(Math.abs(aboveSlack - belowSlack)).toBeLessThan(0.01)
+  })
+
+  it('does not over-center when content already fills the frame', () => {
+    const items: ReturnType<typeof item>[] = []
+    for (let i = 0; i < 50; i++) items.push(item(`y${i}`))
+    const result = composeShareLayout({
+      items,
+      order: items.map((it) => it.bookmarkId),
+      sizeOverrides: new Map(),
+      aspect: '9:16',
+      viewport: { width: 1080, height: 720 },
+    })
+    // After auto-shrink content fills the frame; first card top should be ~0.
+    const minY = Math.min(...result.cards.map((c) => c.y))
+    expect(minY).toBeLessThan(0.01)
+  })
 })
