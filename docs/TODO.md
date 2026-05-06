@@ -8,7 +8,7 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v75 反映済**（ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **v76 反映済**（ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
 ### 🎯 今セッション (2026-05-06 朝, v73 → v74) の到達点

@@ -46,7 +46,11 @@ export function ShareFrame({ cards, width, height, editable, onCardSelect, onCar
             title={c.t}
             thumbnailUrl={c.th}
             rotation={c.r}
-          />
+          >
+            {c.th
+              ? <img className={styles.thumbOnly} src={c.th} alt="" draggable={false} />
+              : <div className={styles.thumbPlaceholder}>{c.t.slice(0, 24)}</div>}
+          </CardNode>
         </div>
       ))}
     </div>
