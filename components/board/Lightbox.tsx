@@ -10,6 +10,7 @@ import { t } from '@/lib/i18n/t'
 import { normalizeItem, type LightboxItem } from '@/lib/share/lightbox-item'
 import type { ShareCard } from '@/lib/share/types'
 import { LightboxNavChevron } from './LightboxNavChevron'
+import { LightboxNavDots } from './LightboxNavDots'
 import type { LightboxFlipSceneProps } from './LightboxFlipScene'
 import {
   detectUrlType,
@@ -444,6 +445,11 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
         <>
           <LightboxNavChevron dir="prev" onClick={() => nav.onNav(-1)} />
           <LightboxNavChevron dir="next" onClick={() => nav.onNav(1)} />
+          <LightboxNavDots
+            current={nav.currentIndex}
+            total={nav.total}
+            onJump={nav.onJump}
+          />
         </>
       )}
       <div ref={frameRef} className={styles.frame}>
