@@ -165,15 +165,15 @@ ol {
   --share-accent:           #ff8a3d;
   --share-accent-hover:     #ff9a55;
   /* Glass system for the Share Composer.
-     - `--share-modal-bg` / `--share-modal-blur` = outer modal shell. Tints
-       the entire modal area, blurs the page (moodboard) behind it.
+     - `--share-modal-bg` = the modal itself is SOLID. Glass only happens
+       on the sticky chrome bands inside; the modal shell is not meant
+       to show the page behind it.
      - `--share-chrome-bg` / `--share-chrome-blur` = sticky chrome bands
        (header / source list / footer). They sit ON TOP of the canvas and
        blur the share board scrolling underneath. Aggressive transparency
        so cards visibly pass under the chrome.
      - `--share-backdrop-blur` = the dim shroud behind the modal itself. */
-  --share-modal-bg:         rgba(17, 17, 20, 0.40);
-  --share-modal-blur:       36px;
+  --share-modal-bg:         #111114;
   --share-chrome-bg:        rgba(15, 15, 18, 0.36);
   --share-chrome-blur:      24px;
   --share-modal-backdrop:   rgba(0, 0, 0, 0.45);

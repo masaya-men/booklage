@@ -11,18 +11,15 @@
   justify-content: center;
 }
 
-/* Glass modal: an outer translucent shell with heavy blur. The actual
-   chrome bands (header / source list / footer) live INSIDE a single
-   scrollContainer below and use sticky positioning + their own backdrop
-   blur so the share board scrolls UNDER them, visible through the glass.
+/* The modal shell is solid — only the sticky chrome bands inside are
+   glass. We deliberately don't blur the page behind the modal here;
+   the dim shroud comes from the .backdrop layer above.
    --footer-h is consumed by ShareSourceList.module.css to anchor its
    sticky bottom above the footer. */
 .modal {
   --footer-h: 64px;
   position: relative;
   background: var(--share-modal-bg);
-  backdrop-filter: blur(var(--share-modal-blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--share-modal-blur)) saturate(150%);
   width: min(1800px, 98vw);
   height: min(1100px, 96vh);
   border-radius: 16px;
@@ -36,7 +33,9 @@
    source list / footer are stacked here in flex flow. Chrome bands are
    sticky so they stay pinned to the viewport edges while the canvas
    scrolls past them — the glass on each chrome band then shows the
-   blurred frame content sliding underneath. */
+   blurred frame content sliding underneath.
+   Project rule: no plain scrollbars in Booklage — the sticky glass
+   chrome IS the scroll affordance (cards visibly slide under it). */
 .scrollContainer {
   flex: 1;
   min-height: 0;
@@ -44,6 +43,11 @@
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge / IE */
+}
+.scrollContainer::-webkit-scrollbar {
+  display: none;                  /* WebKit */
 }
 
 /* Sticky glass header. Aggressive transparency + heavy blur + saturate
