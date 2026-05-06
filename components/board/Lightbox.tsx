@@ -7,6 +7,7 @@ import type { TikTokPlayback, TweetMeta } from '@/lib/embed/types'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import { fetchTikTokPlayback } from '@/lib/embed/tiktok-meta'
 import { t } from '@/lib/i18n/t'
+import { normalizeItem, type LightboxItem } from '@/lib/share/lightbox-item'
 import type { LightboxFlipSceneProps } from './LightboxFlipScene'
 import {
   detectUrlType,
@@ -33,12 +34,19 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
   // closeButtonRef intentionally absent — see "No programmatic auto-focus"
   // comment near the keyboard handler below.
 
-  const isTweet = item ? detectUrlType(item.url) === 'tweet' : false
-  const tweetId = isTweet && item ? extractTweetId(item.url) : null
+  // Normalize once to a slim shape. Lets Lightbox accept either a
+  // BoardItem (my own board) or a ShareCard (received share view) and
+  // exposes a single field set (url/title/description/thumbnail/kind)
+  // to all internal sub-components.
+  const view: LightboxItem | null = item ? normalizeItem(item) : null
+  const isTweet = view ? detectUrlType(view.url) === 'tweet' : false
+  const tweetId = isTweet && view ? extractTweetId(view.url) : null
   // Stable string ref for effect deps — using item (object) directly causes
   // the open animation to restart whenever an unrelated state update gives
   // BoardRoot's items a new array reference (e.g. thumbnail backfill).
-  const bookmarkId = item?.bookmarkId
+  // identity is `${kind}:${url}` so the same hook fires for both BoardItem
+  // (board side) and ShareCard (receive side) at distinct cards.
+  const identity = view ? `${view.kind}:${view.url}` : null
 
   // Lazy-load tweet metadata when a tweet lightbox opens. Same /api/tweet-meta
   // endpoint that BoardRoot's bulk backfill hits, so the response is typically
@@ -177,7 +185,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
 
   // Escape key closes
   useEffect(() => {
-    if (!bookmarkId) return
+    if (!identity) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.stopPropagation()
@@ -186,11 +194,11 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
     }
     window.addEventListener('keydown', onKey)
     return (): void => window.removeEventListener('keydown', onKey)
-  }, [bookmarkId, requestClose])
+  }, [identity, requestClose])
 
   // Reset closingRef when item changes (= a new lightbox session opens
-  // after a previous close completed). bookmarkId is the stable string
-  // identity, so this only fires when the user opens a different card.
+  // after a previous close completed). identity is the stable string
+  // ref, so this only fires when the user opens a different card.
   useEffect(() => {
     closingRef.current = false
     // Also reset scene state on each new open so we don't carry over
@@ -199,7 +207,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
     sceneActiveRef.current = false
     setSceneActive(false)
     setTargetRectState(null)
-  }, [bookmarkId])
+  }, [identity])
 
   // Fired by the R3F scene when the open tween reaches progress=1.
   // We unmount the scene (setSceneActive false) and reveal the actual
@@ -228,7 +236,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
   // first paint. .frame's CSS opacity:0 + will-change keeps the GPU
   // layer warm before the tween fires.
   useLayoutEffect(() => {
-    if (!bookmarkId || !frameRef.current) return
+    if (!identity || !frameRef.current) return
     const el = frameRef.current
     const backdrop = backdropRef.current
 
@@ -353,10 +361,10 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       { scale: 1, opacity: 1, duration: 0.42, ease: 'power3.out' },
     )
     return (): void => { tween.kill() }
-    // originRect is intentionally read once at mount via the bookmarkId dep —
+    // originRect is intentionally read once at mount via the identity dep —
     // a later rect change should not retrigger the open animation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookmarkId])
+  }, [identity])
 
   // No programmatic auto-focus on open — the bare ✕ button rendered with
   // a default browser focus ring reads as an unwanted "selected" rectangle
@@ -365,10 +373,10 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
   // focusable element inside the lightbox, with the standard focus ring
   // shown only for that genuine keyboard nav (CSS :focus-visible).
 
-  if (!item) return null
+  if (!view) return null
 
   const host = (() => {
-    try { return new URL(item.url).hostname.replace(/^www\./, '') }
+    try { return new URL(view.url).hostname.replace(/^www\./, '') }
     catch { return '' }
   })()
 
@@ -382,11 +390,11 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
           is a fixed-position viewport-level overlay that does its own
           tween in WebGL, then signals onComplete which fades in the
           actual lightbox content below. */}
-      {sceneActive && SceneComp && originRect && targetRectState && item.thumbnail && (
+      {sceneActive && SceneComp && originRect && targetRectState && view.thumbnail && (
         <SceneComp
           originRect={originRect}
           targetRect={targetRectState}
-          thumbnail={item.thumbnail}
+          thumbnail={view.thumbnail}
           onComplete={handleSceneComplete}
         />
       )}
@@ -402,15 +410,15 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
       <div ref={frameRef} className={styles.frame}>
         <div className={styles.media}>
           {tweetId
-            ? <TweetMedia item={item} meta={tweetMeta} />
-            : <LightboxMedia item={item} />}
+            ? <TweetMedia item={view} meta={tweetMeta} />
+            : <LightboxMedia item={view} />}
         </div>
         <div className={styles.text}>
           {tweetId
-            ? <TweetText item={item} meta={tweetMeta} />
-            : <DefaultText item={item} host={host} />}
+            ? <TweetText item={view} meta={tweetMeta} />
+            : <DefaultText item={view} host={host} />}
           <a
-            href={item.url}
+            href={view.url}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.sourceLink}
@@ -444,7 +452,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
  *  stats line, the surrounding quotes) so the caption renders once,
  *  with date + stats demoted to a small meta footer. Falls back to
  *  the raw strings on parse failure so we never show NOTHING. */
-function cleanInstagramText(item: BoardItem): {
+function cleanInstagramText(item: LightboxItem): {
   byline: string | null
   caption: string
   meta: string | null
@@ -494,7 +502,7 @@ function DefaultText({
   item,
   host,
 }: {
-  readonly item: BoardItem
+  readonly item: LightboxItem
   readonly host: string
 }): ReactElement {
   const isInstagram = detectUrlType(item.url) === 'instagram'
@@ -534,7 +542,7 @@ function TweetMedia({
   item,
   meta,
 }: {
-  readonly item: BoardItem
+  readonly item: LightboxItem
   readonly meta: TweetMeta | null
 }): ReactNode {
   if (meta?.videoUrl) {
@@ -563,7 +571,7 @@ function TweetVideoPlayer({
   item,
   meta,
 }: {
-  readonly item: BoardItem
+  readonly item: LightboxItem
   readonly meta: TweetMeta
 }): ReactNode {
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
@@ -590,7 +598,7 @@ function TweetVideoPlayer({
         target="_blank"
         rel="noopener noreferrer"
       >
-        <img src={meta.videoPosterUrl ?? item.thumbnail} alt={item.title} />
+        <img src={meta.videoPosterUrl ?? item.thumbnail ?? undefined} alt={item.title} />
         <span className={styles.tweetWatchOnXBadge}>Watch on X →</span>
       </a>
     )
@@ -622,7 +630,7 @@ function TweetVideoPlayer({
         ref={videoRef}
         className={styles.tweetVideo}
         src={proxiedSrc}
-        poster={meta.videoPosterUrl ?? item.thumbnail}
+        poster={meta.videoPosterUrl ?? item.thumbnail ?? undefined}
         // controls is gated on first interaction (see hasInteracted comment
         // above). Before first click: no native chrome at all → no native
         // loading spinner can appear under our LiquidGlass disc. After
@@ -675,7 +683,7 @@ function TweetText({
   item,
   meta,
 }: {
-  readonly item: BoardItem
+  readonly item: LightboxItem
   readonly meta: TweetMeta | null
 }): ReactNode {
   const authorName = meta?.authorName ?? ''
@@ -703,8 +711,13 @@ function TweetText({
   )
 }
 
-function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
+function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
   const urlType = detectUrlType(item.url)
+
+  // Embed components were typed against BoardItem's `string | undefined`
+  // thumbnail. LightboxItem normalizes to `string | null`, so we coerce
+  // here at the call sites rather than weakening the embeds' prop types.
+  const thumb = item.thumbnail ?? undefined
 
   if (urlType === 'youtube') {
     const videoId = extractYoutubeId(item.url)
@@ -714,7 +727,7 @@ function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
           videoId={videoId}
           title={item.title}
           vertical={isYoutubeShorts(item.url)}
-          thumbnail={item.thumbnail}
+          thumbnail={thumb}
         />
       )
     }
@@ -722,12 +735,12 @@ function LightboxMedia({ item }: { readonly item: BoardItem }): ReactNode {
 
   if (urlType === 'tiktok') {
     const videoId = extractTikTokVideoId(item.url)
-    if (videoId) return <TikTokEmbed videoId={videoId} url={item.url} thumbnail={item.thumbnail} title={item.title} />
+    if (videoId) return <TikTokEmbed videoId={videoId} url={item.url} thumbnail={thumb} title={item.title} />
   }
 
   if (urlType === 'instagram') {
     const shortcode = extractInstagramShortcode(item.url)
-    if (shortcode) return <InstagramEmbed shortcode={shortcode} thumbnail={item.thumbnail} title={item.title} />
+    if (shortcode) return <InstagramEmbed shortcode={shortcode} thumbnail={thumb} title={item.title} />
   }
 
   // image / website / fallbacks
