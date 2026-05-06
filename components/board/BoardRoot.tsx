@@ -263,10 +263,28 @@ export function BoardRoot() {
     setLightboxOriginRect(null)
   }, [])
 
-  const lightboxItem = useMemo(
-    () => items.find((it) => it.bookmarkId === lightboxItemId) ?? null,
-    [items, lightboxItemId],
+  // Nav scope = filteredItems (what's currently visible on canvas).
+  // Items found only in `items` (e.g. archived, filtered-out) are not
+  // nav-reachable from the lightbox — that matches the user's mental
+  // model: "I'm browsing what I see".
+  const lightboxIndex = useMemo(
+    () => filteredItems.findIndex((it) => it.bookmarkId === lightboxItemId),
+    [filteredItems, lightboxItemId],
   )
+  const lightboxItem = lightboxIndex >= 0 ? filteredItems[lightboxIndex] : null
+
+  const handleLightboxNav = useCallback((dir: -1 | 1): void => {
+    if (filteredItems.length === 0 || lightboxIndex < 0) return
+    const next = ((lightboxIndex + dir) % filteredItems.length + filteredItems.length) % filteredItems.length
+    setLightboxItemId(filteredItems[next]?.bookmarkId ?? null)
+    setLightboxOriginRect(null)
+  }, [filteredItems, lightboxIndex])
+
+  const handleLightboxJump = useCallback((index: number): void => {
+    if (index < 0 || index >= filteredItems.length) return
+    setLightboxItemId(filteredItems[index]?.bookmarkId ?? null)
+    setLightboxOriginRect(null)
+  }, [filteredItems])
 
   const handleDropOrder = useCallback(
     (orderedBookmarkIds: readonly string[]): void => {
@@ -559,6 +577,12 @@ export function BoardRoot() {
           item={lightboxItem}
           originRect={lightboxOriginRect}
           onClose={handleLightboxClose}
+          nav={lightboxItem ? {
+            currentIndex: lightboxIndex,
+            total: filteredItems.length,
+            onNav: handleLightboxNav,
+            onJump: handleLightboxJump,
+          } : undefined}
         />
       </div>
       {/* Modals stay viewport-level so they cover everything including
