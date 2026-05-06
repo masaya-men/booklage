@@ -27,10 +27,10 @@ type LightboxOpenState = {
   readonly rect: DOMRect | null
 }
 
-const VIEWPORT_PADDING_X = 64
-const VIEWPORT_PADDING_Y = 200
-const VIEWPORT_MAX_W = 1280
-const VIEWPORT_MAX_H = 820
+const VIEWPORT_PADDING_X = 32
+const VIEWPORT_PADDING_Y = 80
+const VIEWPORT_MAX_W = 1800
+const VIEWPORT_MAX_H = 1100
 const VIEWPORT_FALLBACK = { w: 1080, h: 720 } as const
 
 export function SharedView(): ReactElement {

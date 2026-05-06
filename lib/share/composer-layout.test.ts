@@ -82,9 +82,11 @@ describe('composeShareLayout', () => {
   it('applies sizeOverrides — L spans more columns than S', () => {
     const items = [
       item('s', { sizePreset: 'S' }),
-      item('l', { sizePreset: 'S' }), // base S, but override to L
+      item('l', { sizePreset: 'S' }),
     ]
-    const overrides = new Map<string, 'S' | 'M' | 'L'>([['l', 'L']])
+    // Both cards must be explicitly overridden — without an entry, sizes
+    // come from the seeded-random bucket, not from sizePreset.
+    const overrides = new Map<string, 'S' | 'M' | 'L'>([['s', 'S'], ['l', 'L']])
     const result = composeShareLayout({
       items,
       order: ['s', 'l'],
@@ -167,8 +169,9 @@ describe('composeShareLayout', () => {
       aspect: '9:16',
       viewport: { width: 1080, height: 720 },
     })
-    // After auto-shrink content fills the frame; first card top should be ~0.
+    // After auto-shrink the content fills the inner area; the topmost card
+    // sits at ≈ OUTER_PADDING / frameHeight, not at 0. (16/720 ≈ 0.022)
     const minY = Math.min(...result.cards.map((c) => c.y))
-    expect(minY).toBeLessThan(0.01)
+    expect(minY).toBeLessThan(0.05)
   })
 })
