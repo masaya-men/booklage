@@ -55,8 +55,8 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
       //     Centered on the tick index that maps to the active card —
       //     reads as if the meter is alive and "noticing" itself there. ---
       const centerTickIdx = tot > 1 ? (cur / (tot - 1)) * (TICK_COUNT - 1) : TICK_COUNT / 2
-      const swellSigma = TICK_COUNT / 14   // narrow swell — feels like a heartbeat zone
-      const swellGain = 2.6                // peak multiplier on top of base waveform
+      const swellSigma = TICK_COUNT / 32   // sharp narrow swell — needle / spike profile
+      const swellGain = 3.4                // taller peak compensates for narrower base
 
       for (let i = 0; i < TICK_COUNT; i++) {
         const el = tickRefs.current[i]
