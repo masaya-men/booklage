@@ -164,19 +164,12 @@ ol {
      Tweak here to retheme the Share Composer + SharedView at once. */
   --share-accent:           #ff8a3d;
   --share-accent-hover:     #ff9a55;
-  /* Glass system for the Share Composer.
-     - `--share-modal-bg` = the modal itself is SOLID. Glass only happens
-       on the sticky chrome bands inside; the modal shell is not meant
-       to show the page behind it.
-     - `--share-chrome-bg` / `--share-chrome-blur` = sticky chrome bands
-       (header / source list / footer). They sit ON TOP of the canvas and
-       blur the share board scrolling underneath. Aggressive transparency
-       so cards visibly pass under the chrome.
-     - `--share-backdrop-blur` = the dim shroud behind the modal itself. */
+  /* Share Composer chrome tokens. The modal itself is solid; the shroud
+     behind it is provided by `.backdrop` (var(--share-modal-backdrop)) +
+     a light backdrop blur (var(--share-backdrop-blur)). No glass on the
+     modal interior — chrome bands are flat solid surfaces. */
   --share-modal-bg:         #111114;
-  --share-chrome-bg:        rgba(15, 15, 18, 0.36);
-  --share-chrome-blur:      24px;
-  --share-modal-backdrop:   rgba(0, 0, 0, 0.45);
+  --share-modal-backdrop:   rgba(0, 0, 0, 0.55);
   --share-backdrop-blur:    8px;
   --share-sheet-backdrop:   rgba(0, 0, 0, 0.70);
   --share-frame-bg:         #0c0c0e;

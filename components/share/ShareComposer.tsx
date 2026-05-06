@@ -211,24 +211,20 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
         aria-label="Share composer"
         data-testid="share-composer"
       >
-        {/* scrollContainer wraps chrome + canvas so chrome can be sticky-
-            positioned. When the canvas is tall (free mode, many cards),
-            this scrolls vertically and frame content slides UNDER the
-            sticky glass header / source list / footer. */}
-        <div className={styles.scrollContainer}>
-          <header className={styles.header}>
-            <h2 className={styles.title}>シェア用ボードを組む</h2>
-            <ShareAspectSwitcher value={aspect} onChange={setAspect} />
-            <button
-              type="button"
-              className={styles.closeBtn}
-              onClick={onClose}
-              aria-label="Close"
-            >
-              ×
-            </button>
-          </header>
+        <header className={styles.header}>
+          <h2 className={styles.title}>シェア用ボードを組む</h2>
+          <ShareAspectSwitcher value={aspect} onChange={setAspect} />
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </header>
 
+        <div className={styles.body}>
           <div ref={canvasAreaRef} className={styles.canvasArea}>
             <div
               ref={frameRef}
@@ -259,13 +255,13 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
             onClearAll={onClearAll}
             onAddVisible={onAddVisible}
           />
-
-          <footer className={styles.footer}>
-            <button type="button" className={styles.confirmBtn} onClick={onConfirmClick}>
-              画像 + URL でシェア →
-            </button>
-          </footer>
         </div>
+
+        <footer className={styles.footer}>
+          <button type="button" className={styles.confirmBtn} onClick={onConfirmClick}>
+            画像 + URL でシェア →
+          </button>
+        </footer>
       </div>
     </div>
   )

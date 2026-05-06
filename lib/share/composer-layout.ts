@@ -126,14 +126,17 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     logicalH = presetSize.height
   }
 
-  // Free aspect = "infinite board" — frame grows naturally with content and
-  // the parent container scrolls vertically when the frame exceeds the
-  // viewport. Preset aspect = fixed ratio that always fits the viewport, so
-  // the entire frame is scaled to fit (uniform on both axes; cancels out in
-  // the 0..1 per-card normalization).
-  const fitScale = isFree
-    ? 1
-    : Math.min(viewport.width / logicalW, viewport.height / logicalH, 1)
+  // The composer is a PREVIEW: the entire frame is always scaled to fit
+  // the viewport so the user sees the full board overview at all times.
+  // Detail editing happens on the main board; here the goal is "is the
+  // composition right?". Uniform scale on both axes cancels out in the
+  // 0..1 per-card normalization, so the encoded share data is unchanged
+  // — the receiver re-runs masonry on its own viewport via relay-layout.
+  const fitScale = Math.min(
+    viewport.width / logicalW,
+    viewport.height / logicalH,
+    1,
+  )
   const frameW = logicalW * fitScale
   const frameH = logicalH * fitScale
   const didShrink = fitScale < 1

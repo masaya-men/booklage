@@ -11,26 +11,54 @@
 - **本番**: `https://booklage.pages.dev` に **共有モーダル/受信側を board 等価ロジックに乗せ換えた状態**を反映済（ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-06 〜 翌朝) の到達点
+### 🎯 今セッション (2026-05-07) の到達点 — 共有モーダル Foundation 再設計
 
-**共有モーダル / 受信側の挙動を board 本体と完全一致させる大改修** — 数字を独自に弄り倒す試行錯誤を経て、最終的に board のコードを直接流用する形に落ち着いた。
+**glass / sticky / scrollContainer を全部捨てて、シンプル & 全体像が見える構造に作り直した**。前々セッションで「無限ボードとして縦スクロール OK」と判断 → 使ってみたら **「全体像が把握しづらい」のが composer の致命傷** と判明 → 方針反転。
 
-- **`composer-layout.ts` 全面書き換え**: free aspect は board 等価 (column-masonry on viewport.width)、preset aspect は **column 幅を二分法で縮める** ことで比率を厳守しつつ全カードを枠内に収める。frame 全体に scale を適用して viewport にフィット (cards だけ縮小して左に偏る前回バグを根絶)
-- **`ShareCard.a` (aspectRatio) 追加**: 受信側で画面サイズに合わせて column-masonry を再実行できるようスキーマ拡張。`relay-layout.ts` 新規
-- **`ShareFrame` を board の `useCardReorderDrag` + `computeVirtualOrder` に乗り換え**: drag 中の preview reflow、8px throttle、click/drag の時間ベース判定 — board と完全パリティ
-- **`ShareComposer` シンプル化**: FRAME_LONG_SIDE / dynamicViewport / scale-fit 等の独自概念を全削除。canvasArea サイズをそのまま frame として渡すだけ
-- **chrome 統一**: 共有モーダル + 受信側 SharedView 両方に「白フチ + 黒キャンバス」追加 (board と統一感)
-- **stagger entrance** (受信側 only): カードが順番に出る動き
-- **256 tests passing**, tsc 0 errors, build OK
-- 約 10 commits、本番 deploy 済み
+**確定した方針**:
+- 共有モーダルは **構成 + プレビュー専用**、細かい編集は main board に任せる
+- 受信側は受信者の viewport で `relay-layout.ts` 再 masonry → composer 表示と最終結果は別物 OK
+
+**実装内容**:
+- `composer-layout.ts` の free 分岐: fitScale を**復活** (= board 全体を viewport に縮小して常に全部見える) + テスト復元
+- `ShareComposer.tsx` 構造: `scrollContainer` 廃止 → header / [canvasArea | source panel] / footer のシンプル grid 3 段
+- `ShareSourceList.tsx` 全面書き換え: **右サイド panel・縦並びサムネ** (200px 幅, 2 列 grid)、上下 fade + native vertical scroll、wheel handler 不要
+- chrome は **solid 黒**, glass / sticky / backdrop-filter / will-change 全廃 → jitter 完全消滅
+- `--share-chrome-bg` / `--share-chrome-blur` トークンも削除
+- entrance animation: backdrop fade 220ms + modal scale-up 280ms (`cubic-bezier(0.16, 1, 0.3, 1)`)
+- 256 tests passing, tsc 0 errors, build OK
 
 **変更ファイル**:
-- `lib/share/composer-layout.ts` (全面書き換え)
-- `lib/share/relay-layout.ts` (新規) + `relay-layout.test.ts`
-- `lib/share/types.ts` / `schema.ts` / `validate.ts` (a 対応)
-- `components/share/ShareComposer.tsx` / `.module.css`
-- `components/share/ShareFrame.tsx` / `.module.css`
-- `components/share/SharedView.tsx` / `.module.css`
+- `lib/share/composer-layout.ts` + `composer-layout.test.ts` (fitScale 復活)
+- `components/share/ShareComposer.tsx` / `.module.css` (構造書き換え)
+- `components/share/ShareSourceList.tsx` / `.module.css` (右パネル化)
+- `app/globals.css` (glass token 削除)
+
+### 🚨 次セッション最優先: フルスクリーンモード + 突起ホバー UX
+
+ユーザー要望:
+- **フルスクリーンモード追加**: ⛶ ボタンでモーダルが viewport 全画面に拡張 → board を main board と同じ 1:1 で表示
+- **3 辺の "突起 → ホバー → スライド" UX**: ヘッダー / サイド (source list) / フッター すべて auto-hide。各辺中央に小さい "突起" → ホバーで一時的にスライドイン
+- **超デザイン性**: Linear / Apple / Vercel など best-in-class サイトのパターンを学んで本気模倣
+
+設計の出発点:
+- ⛶ ボタン位置: ヘッダー右 (× の左隣)
+- 拡大遷移: 280-360ms cubic-bezier、modal が viewport 100% に滑らかに広がる
+- 1:1 board: free モードでも fit せず本来サイズで scrollable
+- preset aspect (1:1 / 16:9 / 9:16): 中央に「できるだけ大きい frame」を配置
+- 突起のサイズ: 36-48px 横長のラウンド形状、各辺中央
+- ホバー反応: 突起がふわっと膨らむ / chrome が滑らかに引き出される
+
+参考:
+- Linear のコマンドパレット
+- Apple Music の Now Playing カード expand
+- Vercel ダッシュボードの subtle hover affordances
+- Figma の collapsible panels
+
+**実装に入る前のチェックリスト**:
+1. デザイン参考を 3-4 サイト精査 (突起 + auto-hide パターン特化)
+2. アニメーションの easing / duration を decide
+3. 突起 / chrome / アニメ の各 component を分けて段階的に組む
 
 ### 🎯 今セッション (2026-05-06 翌朝, polish #2) の到達点
 

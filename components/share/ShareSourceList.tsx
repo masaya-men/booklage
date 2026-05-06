@@ -19,23 +19,22 @@ type Props = {
   readonly onAddVisible: () => void
 }
 
-type FadeState = { left: boolean; right: boolean }
+type FadeState = { top: boolean; bottom: boolean }
 
 export function ShareSourceList({ items, selectedIds, onToggle, onAddAll, onClearAll, onAddVisible }: Props): ReactElement {
   const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.bookmarkId))
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [fade, setFade] = useState<FadeState>({ left: false, right: false })
+  const [fade, setFade] = useState<FadeState>({ top: false, bottom: false })
 
   const recomputeFade = useCallback((): void => {
     const el = scrollRef.current
     if (!el) return
-    const { scrollLeft, scrollWidth, clientWidth } = el
-    const left = scrollLeft > 1
-    const right = scrollLeft + clientWidth < scrollWidth - 1
-    setFade((prev) => (prev.left === left && prev.right === right ? prev : { left, right }))
+    const { scrollTop, scrollHeight, clientHeight } = el
+    const top = scrollTop > 1
+    const bottom = scrollTop + clientHeight < scrollHeight - 1
+    setFade((prev) => (prev.top === top && prev.bottom === bottom ? prev : { top, bottom }))
   }, [])
 
-  // Recompute on size changes (modal resize, items change)
   useEffect((): undefined | (() => void) => {
     const el = scrollRef.current
     if (!el) return undefined
@@ -45,49 +44,8 @@ export function ShareSourceList({ items, selectedIds, onToggle, onAddAll, onClea
     return (): void => ro.disconnect()
   }, [recomputeFade, items.length])
 
-  // Wheel: vertical wheel deltaY → horizontal scroll, but only when the
-  // user *intentionally* targets this strip. Attached natively because
-  // React's onWheel is passive by default and can't preventDefault.
-  //
-  // Two guards prevent the modal's vertical scroll from getting "eaten"
-  // when the cursor briefly crosses the source list:
-  //   1. Hover-delay: 150ms dwell required before intercept — a cursor
-  //      that's just passing through during fast vertical scroll won't
-  //      grab the wheel.
-  //   2. Edge-aware: if the strip is already at the left/right edge and
-  //      the wheel would push it past that edge, defer to the parent
-  //      scroll (so the modal can keep scrolling vertically).
-  useEffect((): undefined | (() => void) => {
-    const el = scrollRef.current
-    if (!el) return undefined
-    let hoverStart = 0
-    const onEnter = (): void => { hoverStart = Date.now() }
-    const onLeave = (): void => { hoverStart = 0 }
-    const onWheel = (e: WheelEvent): void => {
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
-      if (hoverStart === 0 || Date.now() - hoverStart < 150) return
-      const canScrollH = el.scrollWidth > el.clientWidth
-      if (!canScrollH) return
-      const goingRight = e.deltaY > 0
-      const atRightEdge = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1
-      const atLeftEdge = el.scrollLeft <= 1
-      if (goingRight && atRightEdge) return
-      if (!goingRight && atLeftEdge) return
-      e.preventDefault()
-      el.scrollLeft += e.deltaY
-    }
-    el.addEventListener('mouseenter', onEnter)
-    el.addEventListener('mouseleave', onLeave)
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return (): void => {
-      el.removeEventListener('mouseenter', onEnter)
-      el.removeEventListener('mouseleave', onLeave)
-      el.removeEventListener('wheel', onWheel)
-    }
-  }, [])
-
   return (
-    <div className={styles.row} data-testid="share-source-list">
+    <aside className={styles.panel} data-testid="share-source-list">
       <div className={styles.shortcuts}>
         <button
           type="button"
@@ -126,16 +84,16 @@ export function ShareSourceList({ items, selectedIds, onToggle, onAddAll, onClea
           })}
         </div>
         <div
-          className={`${styles.fade} ${styles.fadeLeft}`}
+          className={`${styles.fade} ${styles.fadeTop}`}
           aria-hidden="true"
-          data-visible={fade.left ? 'true' : 'false'}
+          data-visible={fade.top ? 'true' : 'false'}
         />
         <div
-          className={`${styles.fade} ${styles.fadeRight}`}
+          className={`${styles.fade} ${styles.fadeBottom}`}
           aria-hidden="true"
-          data-visible={fade.right ? 'true' : 'false'}
+          data-visible={fade.bottom ? 'true' : 'false'}
         />
       </div>
-    </div>
+    </aside>
   )
 }

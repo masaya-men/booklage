@@ -95,7 +95,7 @@ describe('composeShareLayout', () => {
     expect(sCard.s).toBe('S')
   })
 
-  it('free aspect: frame grows naturally beyond viewport (board-equivalent, parent scrolls)', () => {
+  it('free aspect: 50 cards shrink the entire frame to fit the viewport', () => {
     const items = makeItems(50)
     const result = composeShareLayout({
       items,
@@ -104,13 +104,14 @@ describe('composeShareLayout', () => {
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
     })
-    // No shrink — free is an "infinite board". Width matches viewport,
-    // height grows with content and may exceed the viewport.
-    expect(result.didShrink).toBe(false)
-    expect(result.shrinkScale).toBe(1)
-    expect(result.frameSize.width).toBe(1080)
-    expect(result.frameSize.height).toBeGreaterThan(720)
-    // Every card must still be inside the frame (normalized 0..1).
+    // Composer preview = always-fit: the whole frame scales down to fit
+    // the viewport so the user sees the full board overview.
+    expect(result.didShrink).toBe(true)
+    expect(result.shrinkScale).toBeLessThan(1)
+    expect(result.shrinkScale).toBeGreaterThan(0)
+    expect(result.frameSize.width).toBeLessThanOrEqual(1080.001)
+    expect(result.frameSize.height).toBeLessThanOrEqual(720.001)
+    // Every card must be inside its frame (normalized 0..1)
     for (const c of result.cards) {
       expect(c.x).toBeGreaterThanOrEqual(0)
       expect(c.y).toBeGreaterThanOrEqual(0)

@@ -1,4 +1,9 @@
-/* components/share/ShareComposer.module.css */
+/* components/share/ShareComposer.module.css
+   Layout: header (top) / body [canvas | source panel] / footer (bottom).
+   No glass, no sticky, no internal scroll. The board is always scaled
+   to fit the canvas — the composer's job is preview + composition, not
+   detail editing. */
+
 .backdrop {
   position: fixed;
   inset: 0;
@@ -9,65 +14,44 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: backdropIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* The modal shell is solid — only the sticky chrome bands inside are
-   glass. We deliberately don't blur the page behind the modal here;
-   the dim shroud comes from the .backdrop layer above.
-   --footer-h is consumed by ShareSourceList.module.css to anchor its
-   sticky bottom above the footer. */
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Solid modal shell. Chrome bands are flat-flow children — no sticky,
+   no glass, no jitter. */
 .modal {
-  --footer-h: 64px;
   position: relative;
   background: var(--share-modal-bg);
   width: min(1800px, 98vw);
   height: min(1100px, 96vh);
   border-radius: 16px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   overflow: hidden;
   color: var(--share-pill-text-active);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 24px 60px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: modalIn 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* The single scroll context inside the modal. Header / canvasArea /
-   source list / footer are stacked here in flex flow. Chrome bands are
-   sticky so they stay pinned to the viewport edges while the canvas
-   scrolls past them — the glass on each chrome band then shows the
-   blurred frame content sliding underneath.
-   Project rule: no plain scrollbars in Booklage — the sticky glass
-   chrome IS the scroll affordance (cards visibly slide under it). */
-.scrollContainer {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  scrollbar-width: none;          /* Firefox */
-  -ms-overflow-style: none;       /* legacy Edge / IE */
-}
-.scrollContainer::-webkit-scrollbar {
-  display: none;                  /* WebKit */
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Sticky glass header. Aggressive transparency + heavy blur + saturate
-   so colors of the cards passing under it stay vivid.
-   `will-change: transform` promotes the band to its own compositor layer
-   so sticky position + backdrop-filter stay sub-pixel-aligned during
-   scroll (defensive against Chromium jitter). */
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 16px 24px;
-  background: var(--share-chrome-bg);
-  backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   border-bottom: 1px solid var(--share-divider);
-  will-change: transform;
 }
 
 .title {
@@ -92,18 +76,28 @@
   color: var(--share-pill-text-active);
 }
 
-/* canvasArea: white "paper" matting the frame sits on. flex: 1 0 auto
-   lets it grow with content (so a tall frame extends the scrollContainer
-   and triggers vertical scroll), while still filling available space
-   when content is small (preset / few-card cases). */
+/* Body: two-column grid — canvas takes remaining space, source panel
+   has a fixed width on the right. min-height: 0 lets children honor
+   the grid track height. */
+.body {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  min-height: 0;
+}
+
+/* Canvas area: white "paper" matting. The frame is centered both axes.
+   The frame's inline width/height come from `composeShareLayout` (always
+   fits the canvasArea contentRect). No internal scroll — content always
+   fits. */
 .canvasArea {
-  flex: 1 0 auto;
   display: flex;
-  align-items: safe center;
-  justify-content: safe center;
+  align-items: center;
+  justify-content: center;
   padding: 16px;
   background: var(--bg-outer, #fafafa);
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .frameWrap {
@@ -111,24 +105,14 @@
   background: var(--bg-dark, #0a0a0a);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
 }
 
-/* Sticky glass footer. Same chrome formula as header — transparent dark
-   tint + blur + saturate. The source list (sticky bottom: var(--footer-h))
-   stacks just above this band. */
 .footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
   padding: 14px 24px;
   display: flex;
   justify-content: flex-end;
-  background: var(--share-chrome-bg);
-  backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   border-top: 1px solid var(--share-divider);
-  will-change: transform;
 }
 
 /* Outline-only confirm CTA per user request — destefanis flat-editorial.
@@ -144,10 +128,14 @@
   letter-spacing: 0.02em;
   cursor: pointer;
   font-family: inherit;
-  transition: color var(--share-transition-fast), border-color var(--share-transition-fast);
+  transition:
+    color var(--share-transition-fast),
+    border-color var(--share-transition-fast),
+    background-color var(--share-transition-fast);
 }
 
 .confirmBtn:hover {
-  color: var(--share-accent-hover);
-  border-color: var(--share-accent-hover);
+  color: #fff;
+  background: var(--share-accent);
+  border-color: var(--share-accent);
 }
