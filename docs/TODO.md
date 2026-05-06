@@ -8,10 +8,41 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **v79 反映済**（ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **共有モーダル/受信側を board 等価ロジックに乗せ換えた状態**を反映済（ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-06 深夜, v77 → v79) の到達点
+### 🎯 今セッション (2026-05-06 〜 翌朝) の到達点
+
+**共有モーダル / 受信側の挙動を board 本体と完全一致させる大改修** — 数字を独自に弄り倒す試行錯誤を経て、最終的に board のコードを直接流用する形に落ち着いた。
+
+- **`composer-layout.ts` 全面書き換え**: free aspect は board 等価 (column-masonry on viewport.width)、preset aspect は **column 幅を二分法で縮める** ことで比率を厳守しつつ全カードを枠内に収める。frame 全体に scale を適用して viewport にフィット (cards だけ縮小して左に偏る前回バグを根絶)
+- **`ShareCard.a` (aspectRatio) 追加**: 受信側で画面サイズに合わせて column-masonry を再実行できるようスキーマ拡張。`relay-layout.ts` 新規
+- **`ShareFrame` を board の `useCardReorderDrag` + `computeVirtualOrder` に乗り換え**: drag 中の preview reflow、8px throttle、click/drag の時間ベース判定 — board と完全パリティ
+- **`ShareComposer` シンプル化**: FRAME_LONG_SIDE / dynamicViewport / scale-fit 等の独自概念を全削除。canvasArea サイズをそのまま frame として渡すだけ
+- **chrome 統一**: 共有モーダル + 受信側 SharedView 両方に「白フチ + 黒キャンバス」追加 (board と統一感)
+- **stagger entrance** (受信側 only): カードが順番に出る動き
+- **256 tests passing**, tsc 0 errors, build OK
+- 約 10 commits、本番 deploy 済み
+
+**変更ファイル**:
+- `lib/share/composer-layout.ts` (全面書き換え)
+- `lib/share/relay-layout.ts` (新規) + `relay-layout.test.ts`
+- `lib/share/types.ts` / `schema.ts` / `validate.ts` (a 対応)
+- `components/share/ShareComposer.tsx` / `.module.css`
+- `components/share/ShareFrame.tsx` / `.module.css`
+- `components/share/SharedView.tsx` / `.module.css`
+
+### 🚨 次セッション最優先タスク
+
+ユーザーから「共有モーダルでまだ直したい点がある」と申し送りあり (2026-05-06 セッション末尾)。**詳細は次セッション冒頭で聞く**。
+
+実装に入る前のチェックリスト:
+1. ユーザーから直したい点を聞く
+2. **board のコードをそのまま流用できないか先に検討する** (今回の最大の学び)
+3. メリデメ + 推奨を平易な日本語で提示してユーザー承認を得てから着手 (大きい実装は特に)
+4. 数字や独自概念を増やす前に必ず立ち止まる
+
+### 🎯 前々セッション (2026-05-06 深夜, v77 → v79) の到達点
 
 **Phase 2 + smoke fix shipped**:
 
