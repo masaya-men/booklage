@@ -54,11 +54,14 @@
 
 /* board と同じ「白フチ + 黒キャンバス」を共有モーダルの中で再現する。
    canvasArea は board の outerFrame (白フチ) に相当、frameWrap は board の
-   canvas (黒キャンバス) に相当。frameWrap のサイズ = canvasArea の中身そのまま、
-   masonry が canvasArea 幅で動くため board と同じ展開になる。 */
+   canvas (黒キャンバス) に相当。frameWrap のサイズは inline style で渡される
+   (free 時 = canvasArea いっぱい、1:1/9:16/16:9 時 = preset で fit 後)。
+   1:1 等で frameWrap が canvasArea より小さいときは中央に配置される。 */
 .canvasArea {
   flex: 1;
   display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 16px;
   overflow: hidden;
   background: var(--bg-outer, #fafafa);
@@ -71,7 +74,6 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  flex: 1;
 }
 
 .footer {
