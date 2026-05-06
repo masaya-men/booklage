@@ -8,6 +8,7 @@ import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import { fetchTikTokPlayback } from '@/lib/embed/tiktok-meta'
 import { t } from '@/lib/i18n/t'
 import { normalizeItem, type LightboxItem } from '@/lib/share/lightbox-item'
+import type { ShareCard } from '@/lib/share/types'
 import type { LightboxFlipSceneProps } from './LightboxFlipScene'
 import {
   detectUrlType,
@@ -20,7 +21,10 @@ import {
 import styles from './Lightbox.module.css'
 
 type Props = {
-  readonly item: BoardItem | null
+  /** Either a BoardItem (my own board) or a ShareCard (received share view).
+   *  Internal `view = normalizeItem(item)` collapses both into LightboxItem
+   *  so all sub-components see one shape. */
+  readonly item: BoardItem | ShareCard | null
   /** Clicked card's screen rect at the moment of pointer-up. Used to seed
    *  the FLIP (First-Last-Invert-Play) open animation so the lightbox grows
    *  from where the card actually was, instead of the viewport center. */
@@ -247,7 +251,7 @@ export function Lightbox({ item, originRect, onClose }: Props): ReactElement | n
     // and ready; flip the SCENE_ENABLED flag below to re-enable
     // once we've added a load timeout + texture fallback path.
     const SCENE_ENABLED = false
-    if (SCENE_ENABLED && originRect && SceneComp && item?.thumbnail) {
+    if (SCENE_ENABLED && originRect && SceneComp && view?.thumbnail) {
       const targetRect = el.getBoundingClientRect()
       setTargetRectState(targetRect)
       sceneActiveRef.current = true
