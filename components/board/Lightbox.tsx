@@ -10,7 +10,7 @@ import { t } from '@/lib/i18n/t'
 import { normalizeItem, type LightboxItem } from '@/lib/share/lightbox-item'
 import type { ShareCard } from '@/lib/share/types'
 import { LightboxNavChevron } from './LightboxNavChevron'
-import { LightboxNavDots } from './LightboxNavDots'
+import { LightboxNavMeter } from './LightboxNavMeter'
 import type { LightboxFlipSceneProps } from './LightboxFlipScene'
 import {
   detectUrlType,
@@ -230,6 +230,29 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     return (): void => window.removeEventListener('keydown', onKey)
   }, [identity, nav])
 
+  // Mouse wheel nav. Both vertical (deltaY) and horizontal (deltaX) are
+  // accepted — trackpad two-finger swipe and traditional wheel both work.
+  // 280ms debounce prevents a single inertial flick from skipping multiple
+  // cards. Threshold (>= 18) suppresses accidental tiny scrolls.
+  const wheelLockUntilRef = useRef<number>(0)
+  useEffect(() => {
+    if (!identity || !nav) return
+    const onWheel = (e: WheelEvent): void => {
+      const dx = e.deltaX
+      const dy = e.deltaY
+      const dominant = Math.abs(dx) > Math.abs(dy) ? dx : dy
+      if (Math.abs(dominant) < 18) return
+      const now = performance.now()
+      if (now < wheelLockUntilRef.current) return
+      wheelLockUntilRef.current = now + 280
+      e.preventDefault()
+      nav.onNav(dominant > 0 ? 1 : -1)
+    }
+    // passive:false because we preventDefault to suppress backdrop scroll
+    window.addEventListener('wheel', onWheel, { passive: false })
+    return (): void => window.removeEventListener('wheel', onWheel)
+  }, [identity, nav])
+
   // Reset closingRef when item changes (= a new lightbox session opens
   // after a previous close completed). identity is the stable string
   // ref, so this only fires when the user opens a different card.
@@ -400,12 +423,18 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identity])
 
-  // Slide animation on nav transition. Distinct from the FLIP open
+  // 3D physical slide on nav transition. Distinct from the FLIP open
   // animation: this only fires when identity changes WHILE the lightbox
   // is already open (not on first mount). Direction inferred from the
   // nav.currentIndex delta. Wrap-around (last → 0 or 0 → last) is
   // detected via abs(delta) > total/2 and treated as the "natural"
   // forward/back direction so the slide reads as continuous.
+  //
+  // The departing card is preserved as a DOM clone overlaid on the
+  // backdrop, so the user sees BOTH the old card receding into the depth
+  // and the new card emerging from the depth simultaneously — without
+  // this clone trick, React's unmount would erase the old DOM the moment
+  // identity changes, and only the entering animation would be visible.
   const prevIdentityRef = useRef<string | null>(null)
   const prevNavIndexRef = useRef<number | null>(null)
   useLayoutEffect(() => {
@@ -427,24 +456,86 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     if (!nav || prevNavIndex === null) return
 
     const el = frameRef.current
-    if (!el) return
+    const backdrop = backdropRef.current
+    if (!el || !backdrop) return
 
     const delta = nav.currentIndex - prevNavIndex
     let dir: 1 | -1
     if (Math.abs(delta) > nav.total / 2) {
       // Wrap-around: large negative delta means we wrapped forward (e.g.
-      // last → 0), so visually it's still "forward" (slide in from right).
+      // last → 0), so visually it's still "forward" (entering from right).
       dir = delta > 0 ? -1 : 1
     } else {
       dir = delta > 0 ? 1 : -1
     }
 
-    const SLIDE_DIST = 40
+    // --- Clone the OLD frame so it can recede while React mounts the new one. ---
+    // We snapshot what the user is currently seeing, kill its iframes /
+    // videos so playback doesn't ghost, then animate it backward + sideways.
+    // The clone lives directly on the backdrop in the same screen rect as
+    // the real frame so the visual transition is seamless.
+    const snapshot = el.cloneNode(true) as HTMLElement
+    snapshot.removeAttribute('id')
+    snapshot.style.position = 'absolute'
+    const rect = el.getBoundingClientRect()
+    const backdropRect = backdrop.getBoundingClientRect()
+    snapshot.style.left = `${rect.left - backdropRect.left}px`
+    snapshot.style.top = `${rect.top - backdropRect.top}px`
+    snapshot.style.width = `${rect.width}px`
+    snapshot.style.height = `${rect.height}px`
+    snapshot.style.margin = '0'
+    snapshot.style.pointerEvents = 'none'
+    snapshot.style.zIndex = '1'
+    snapshot.style.willChange = 'transform, opacity'
+    // Stop any iframe / video so the clone doesn't double-play audio.
+    snapshot.querySelectorAll('iframe').forEach((f) => { (f as HTMLIFrameElement).src = 'about:blank' })
+    snapshot.querySelectorAll('video').forEach((v) => {
+      try { (v as HTMLVideoElement).pause() } catch { /* noop */ }
+    })
+    backdrop.appendChild(snapshot)
+
+    // --- 3D slide constants ---
+    const ENTER_DIST = 240   // px the new card slides in from
+    const ENTER_DEPTH = -380 // px the new card starts behind the screen
+    const LEAVE_DIST = 220   // px the old card slides away to
+    const LEAVE_DEPTH = -280 // px the old card recedes behind to
+    const ROTATE_Y = 14      // deg of yaw for both
+    const DUR = 0.6
+
+    // Departing animation on the cloned snapshot.
+    gsap.fromTo(
+      snapshot,
+      { x: 0, z: 0, rotateY: 0, opacity: 1, transformOrigin: '50% 50%' },
+      {
+        x: -dir * LEAVE_DIST,
+        z: LEAVE_DEPTH,
+        rotateY: -dir * ROTATE_Y,
+        opacity: 0,
+        duration: DUR,
+        ease: 'power4.out',
+        onComplete: () => { snapshot.remove() },
+      },
+    )
+
+    // Entering animation on the real (newly mounted) frame.
     gsap.killTweensOf(el)
     gsap.fromTo(
       el,
-      { x: dir * SLIDE_DIST, opacity: 0 },
-      { x: 0, opacity: 1, duration: 0.28, ease: 'power3.out' },
+      {
+        x: dir * ENTER_DIST,
+        z: ENTER_DEPTH,
+        rotateY: dir * ROTATE_Y,
+        opacity: 0,
+        transformOrigin: '50% 50%',
+      },
+      {
+        x: 0,
+        z: 0,
+        rotateY: 0,
+        opacity: 1,
+        duration: DUR,
+        ease: 'power4.out',
+      },
     )
   }, [identity, nav])
 
@@ -493,10 +584,10 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
         <>
           <LightboxNavChevron dir="prev" onClick={() => nav.onNav(-1)} />
           <LightboxNavChevron dir="next" onClick={() => nav.onNav(1)} />
-          <LightboxNavDots
+          <LightboxNavMeter
             current={nav.currentIndex}
             total={nav.total}
-            onJump={nav.onJump}
+            cardKey={identity ?? ''}
           />
         </>
       )}
