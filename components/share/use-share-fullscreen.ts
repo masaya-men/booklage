@@ -74,14 +74,10 @@ export function useShareFullscreen(opts: {
 }): ShareFullscreenAPI {
   const { open, onCloseModal } = opts
   const [state, dispatch] = useReducer(reducer, INIT)
-  const [canUseFullscreen, setCanUse] = useState<boolean>(false)
-
-  // Touch detection: evaluate once on mount.
-  useEffect((): void => {
-    if (typeof window === 'undefined') return
-    const mql = window.matchMedia('(hover: hover) and (pointer: fine)')
-    setCanUse(mql.matches)
-  }, [])
+  const [canUseFullscreen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  })
 
   const toggleMode = useCallback((): void => {
     if (!canUseFullscreen) return

@@ -215,6 +215,7 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
       <div
         className={`${styles.modal} ${fullscreen.mode === 'preview' ? styles.preview : ''}`}
         role="dialog"
+        aria-modal="true"
         aria-label="Share composer"
         data-testid="share-composer"
         data-mode={fullscreen.mode}
@@ -300,7 +301,7 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
         </footer>
 
         {fullscreen.helpVisible && (
-          <div className={styles.helpOverlay} role="dialog" aria-label="Keyboard shortcuts" onClick={fullscreen.closeHelp}>
+          <div className={styles.helpOverlay} role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onClick={fullscreen.closeHelp}>
             <div className={styles.helpCard} onClick={(e): void => e.stopPropagation()}>
               <h3 className={styles.helpTitle}>Keyboard shortcuts</h3>
               <ul className={styles.helpList}>
