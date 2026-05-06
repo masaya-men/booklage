@@ -580,6 +580,7 @@ export function BoardRoot() {
             thumbnail: it.thumbnail ?? '',
             type: detectUrlType(it.url),
             sizePreset: it.sizePreset,
+            aspectRatio: it.aspectRatio,
           }))}
           positions={layout.positions}
           viewport={viewport}

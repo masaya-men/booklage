@@ -2,10 +2,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import type { ShareAspect, ShareCard, ShareData } from '@/lib/share/types'
+import type { ShareAspect, ShareCard, ShareData, ShareSize } from '@/lib/share/types'
 import { SHARE_SCHEMA_VERSION } from '@/lib/share/types'
-import { computeAspectFrameSize } from '@/lib/share/aspect-presets'
-import { boardItemsToShareCards, filterByViewport } from '@/lib/share/board-to-cards'
+import { composeShareLayout, type ComposerItem } from '@/lib/share/composer-layout'
+import { filterByViewport } from '@/lib/share/board-to-cards'
 import { ShareAspectSwitcher } from './ShareAspectSwitcher'
 import { ShareFrame } from './ShareFrame'
 import { ShareSourceList } from './ShareSourceList'
@@ -18,7 +18,8 @@ type BoardItemLite = {
   readonly description?: string
   readonly thumbnail: string
   readonly type: ShareCard['ty']
-  readonly sizePreset: 'S' | 'M' | 'L'
+  readonly sizePreset: ShareSize
+  readonly aspectRatio: number
 }
 
 type Pos = { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
@@ -35,12 +36,30 @@ type Props = {
 
 const FRAME_VIEWPORT = { width: 1080, height: 720 } as const
 
+function sortByBoardPosition(
+  ids: ReadonlyArray<string>,
+  positions: Readonly<Record<string, Pos>>,
+): string[] {
+  return ids.slice().sort((a, b) => {
+    const pa = positions[a]
+    const pb = positions[b]
+    if (!pa || !pb) return 0
+    if (pa.y !== pb.y) return pa.y - pb.y
+    return pa.x - pb.x
+  })
+}
+
 export function ShareComposer({ open, onClose, items, positions, viewport, onConfirm }: Props): ReactElement | null {
   const [aspect, setAspect] = useState<ShareAspect>('free')
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => {
     const visible = filterByViewport(items, positions, viewport)
     return new Set(visible.map((i) => i.bookmarkId))
   })
+  const [cardOrder, setCardOrder] = useState<readonly string[]>(() => {
+    const visible = filterByViewport(items, positions, viewport)
+    return sortByBoardPosition(visible.map((i) => i.bookmarkId), positions)
+  })
+  const [sizeOverrides, setSizeOverrides] = useState<ReadonlyMap<string, ShareSize>>(new Map())
 
   const frameRef = useRef<HTMLDivElement>(null)
 
@@ -60,17 +79,54 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     return (): void => { document.body.style.overflow = prev }
   }, [open])
 
-  const frameSize = computeAspectFrameSize(aspect, FRAME_VIEWPORT.width, FRAME_VIEWPORT.height)
+  // Keep cardOrder in sync with selectedIds: drop removed, append new at tail.
+  useEffect(() => {
+    setCardOrder((prev) => {
+      const filtered = prev.filter((id) => selectedIds.has(id))
+      const prevSet = new Set(filtered)
+      const additions: string[] = []
+      for (const id of selectedIds) if (!prevSet.has(id)) additions.push(id)
+      // Sort additions by board position so newly-added items land in a sane place
+      const sortedAdditions = sortByBoardPosition(additions, positions)
+      return [...filtered, ...sortedAdditions]
+    })
+  }, [selectedIds, positions])
 
-  const selectedItems = useMemo(
-    () => items.filter((i) => selectedIds.has(i.bookmarkId)),
+  const composerItems = useMemo<ComposerItem[]>(
+    () =>
+      items
+        .filter((i) => selectedIds.has(i.bookmarkId))
+        .map((i) => ({
+          bookmarkId: i.bookmarkId,
+          url: i.url,
+          title: i.title,
+          description: i.description,
+          thumbnail: i.thumbnail,
+          type: i.type,
+          sizePreset: i.sizePreset,
+          aspectRatio: i.aspectRatio,
+        })),
     [items, selectedIds],
   )
 
-  const cards = useMemo<ShareCard[]>(
-    () => boardItemsToShareCards(selectedItems, positions, frameSize),
-    [selectedItems, positions, frameSize],
+  const layout = useMemo(
+    () =>
+      composeShareLayout({
+        items: composerItems,
+        order: cardOrder,
+        sizeOverrides,
+        aspect,
+        viewport: FRAME_VIEWPORT,
+      }),
+    [composerItems, cardOrder, sizeOverrides, aspect],
   )
+
+  // cardIds = order of cards as they appear in `layout.cards`.
+  // Maps each card's URL back to its bookmarkId via composerItems.
+  const cardIds = useMemo<string[]>(() => {
+    const idByUrl = new Map(composerItems.map((it) => [it.url, it.bookmarkId] as const))
+    return layout.cards.map((c) => idByUrl.get(c.u) ?? '')
+  }, [layout.cards, composerItems])
 
   const onToggle = useCallback((id: string): void => {
     setSelectedIds((prev) => {
@@ -93,14 +149,30 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     setSelectedIds(new Set(v.map((i) => i.bookmarkId)))
   }, [items, positions, viewport])
 
+  const handleReorder = useCallback((orderedIds: readonly string[]): void => {
+    setCardOrder(orderedIds)
+  }, [])
+
+  const handleCycleSize = useCallback((id: string, next: ShareSize): void => {
+    setSizeOverrides((prev) => {
+      const m = new Map(prev)
+      m.set(id, next)
+      return m
+    })
+  }, [])
+
+  const handleDelete = useCallback((id: string): void => {
+    onToggle(id)
+  }, [onToggle])
+
   const onConfirmClick = useCallback((): void => {
     const data: ShareData = {
       v: SHARE_SCHEMA_VERSION,
       aspect,
-      cards,
+      cards: layout.cards,
     }
     onConfirm(data, frameRef.current)
-  }, [aspect, cards, onConfirm])
+  }, [aspect, layout.cards, onConfirm])
 
   if (!open) return null
 
@@ -130,7 +202,16 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
 
         <div className={styles.canvasArea}>
           <div ref={frameRef} className={styles.frameWrap}>
-            <ShareFrame cards={cards} width={frameSize.width} height={frameSize.height} editable={true} />
+            <ShareFrame
+              cards={layout.cards}
+              cardIds={cardIds}
+              width={layout.frameSize.width}
+              height={layout.frameSize.height}
+              editable={true}
+              onReorder={handleReorder}
+              onCycleSize={handleCycleSize}
+              onDelete={handleDelete}
+            />
           </div>
         </div>
 
