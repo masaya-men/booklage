@@ -45,20 +45,45 @@ export function ShareSourceList({ items, selectedIds, onToggle, onAddAll, onClea
     return (): void => ro.disconnect()
   }, [recomputeFade, items.length])
 
-  // Wheel: vertical wheel deltaY → horizontal scroll. Attached natively
-  // because React's onWheel is passive by default and can't preventDefault.
+  // Wheel: vertical wheel deltaY → horizontal scroll, but only when the
+  // user *intentionally* targets this strip. Attached natively because
+  // React's onWheel is passive by default and can't preventDefault.
+  //
+  // Two guards prevent the modal's vertical scroll from getting "eaten"
+  // when the cursor briefly crosses the source list:
+  //   1. Hover-delay: 150ms dwell required before intercept — a cursor
+  //      that's just passing through during fast vertical scroll won't
+  //      grab the wheel.
+  //   2. Edge-aware: if the strip is already at the left/right edge and
+  //      the wheel would push it past that edge, defer to the parent
+  //      scroll (so the modal can keep scrolling vertically).
   useEffect((): undefined | (() => void) => {
     const el = scrollRef.current
     if (!el) return undefined
+    let hoverStart = 0
+    const onEnter = (): void => { hoverStart = Date.now() }
+    const onLeave = (): void => { hoverStart = 0 }
     const onWheel = (e: WheelEvent): void => {
       if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      if (hoverStart === 0 || Date.now() - hoverStart < 150) return
       const canScrollH = el.scrollWidth > el.clientWidth
       if (!canScrollH) return
+      const goingRight = e.deltaY > 0
+      const atRightEdge = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1
+      const atLeftEdge = el.scrollLeft <= 1
+      if (goingRight && atRightEdge) return
+      if (!goingRight && atLeftEdge) return
       e.preventDefault()
       el.scrollLeft += e.deltaY
     }
+    el.addEventListener('mouseenter', onEnter)
+    el.addEventListener('mouseleave', onLeave)
     el.addEventListener('wheel', onWheel, { passive: false })
-    return (): void => el.removeEventListener('wheel', onWheel)
+    return (): void => {
+      el.removeEventListener('mouseenter', onEnter)
+      el.removeEventListener('mouseleave', onLeave)
+      el.removeEventListener('wheel', onWheel)
+    }
   }, [])
 
   return (

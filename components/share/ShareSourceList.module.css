@@ -2,7 +2,9 @@
 /* Sticky glass source list. Pinned just above the footer (uses
    `--footer-h` set on .modal in ShareComposer.module.css). The chrome
    formula matches the header / footer so frame cards scrolling under
-   this band get the same blurred-vivid look. */
+   this band get the same blurred-vivid look.
+   `will-change: transform` keeps sticky + backdrop-filter sub-pixel-
+   aligned during scroll (defensive against Chromium jitter). */
 .row {
   position: sticky;
   bottom: var(--footer-h, 64px);
@@ -16,6 +18,7 @@
   backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   border-top: 1px solid var(--share-divider);
+  will-change: transform;
 }
 
 .shortcuts {

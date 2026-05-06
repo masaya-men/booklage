@@ -51,7 +51,10 @@
 }
 
 /* Sticky glass header. Aggressive transparency + heavy blur + saturate
-   so colors of the cards passing under it stay vivid. */
+   so colors of the cards passing under it stay vivid.
+   `will-change: transform` promotes the band to its own compositor layer
+   so sticky position + backdrop-filter stay sub-pixel-aligned during
+   scroll (defensive against Chromium jitter). */
 .header {
   position: sticky;
   top: 0;
@@ -64,6 +67,7 @@
   backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   border-bottom: 1px solid var(--share-divider);
+  will-change: transform;
 }
 
 .title {
@@ -124,6 +128,7 @@
   backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--share-chrome-blur)) saturate(180%);
   border-top: 1px solid var(--share-divider);
+  will-change: transform;
 }
 
 /* Outline-only confirm CTA per user request — destefanis flat-editorial.
