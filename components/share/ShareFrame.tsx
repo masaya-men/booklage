@@ -58,6 +58,7 @@ export function ShareFrame({
       className={styles.frame}
       style={{ width, height }}
       data-testid="share-frame"
+      data-editable={editable || undefined}
     >
       {cards.map((c, i) => {
         const id = cardIds?.[i] ?? `share-${i}`

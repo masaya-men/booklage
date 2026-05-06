@@ -16,8 +16,9 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-/* Receiving-side hover affordance: subtle scale-up, cursor pointer set inline. */
-.cardWrap:not([data-dragging]):hover {
+/* Receiving-side hover affordance: subtle scale-up, cursor pointer set inline.
+   Scoped to non-editable frame so the editor side doesn't scale on hover. */
+.frame:not([data-editable]) .cardWrap:not([data-dragging]):hover {
   transform: scale(1.02);
 }
 
