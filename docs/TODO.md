@@ -8,7 +8,7 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **共有モーダル/受信側を board 等価ロジックに乗せ換えた状態**を反映済（ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **PREVIEW モード搭載済み**（ハードリロードで確認）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
 
 ### 🎯 今セッション (2026-05-07) の到達点 — 共有モーダル Foundation 再設計
@@ -34,31 +34,26 @@
 - `components/share/ShareSourceList.tsx` / `.module.css` (右パネル化)
 - `app/globals.css` (glass token 削除)
 
-### 🚨 次セッション最優先: フルスクリーンモード + 突起ホバー UX
+### 🎯 今セッション (2026-05-07 続き) の到達点 — Fullscreen Immersive Mode
 
-ユーザー要望:
-- **フルスクリーンモード追加**: ⛶ ボタンでモーダルが viewport 全画面に拡張 → board を main board と同じ 1:1 で表示
-- **3 辺の "突起 → ホバー → スライド" UX**: ヘッダー / サイド (source list) / フッター すべて auto-hide。各辺中央に小さい "突起" → ホバーで一時的にスライドイン
-- **超デザイン性**: Linear / Apple / Vercel など best-in-class サイトのパターンを学んで本気模倣
+⛶ ボタン or F キーで PREVIEW モードに切替、3 辺 chrome を proximity progressive で auto-hide。
 
-設計の出発点:
-- ⛶ ボタン位置: ヘッダー右 (× の左隣)
-- 拡大遷移: 280-360ms cubic-bezier、modal が viewport 100% に滑らかに広がる
-- 1:1 board: free モードでも fit せず本来サイズで scrollable
-- preset aspect (1:1 / 16:9 / 9:16): 中央に「できるだけ大きい frame」を配置
-- 突起のサイズ: 36-48px 横長のラウンド形状、各辺中央
-- ホバー反応: 突起がふわっと膨らむ / chrome が滑らかに引き出される
+**実装内容**:
+- composer-layout.ts に mode: 'layout' | 'preview' 追加 (preview + free は fitScale 無効、preset は viewport-fit)
+- useShareFullscreen hook 新設 (mode/pin state、F/H/S/B/Esc/? keyboard、touch detection)
+- ShareComposer に ⛶ ボタン + LAYOUT/PREVIEW chip + 3 辺 hover-zone + handle + help overlay
+- Modal 360ms scale + 角丸 morph、chrome 150ms hover-out delay、handle 420ms flash
+- ShareSourceList が preview 中 overlay 化 (240px、shadow、絶対配置)
+- touch (`@media (hover: hover) and (pointer: fine)` false) 環境では ⛶ 非表示、F 無効
+- E2E spec 追加 (10 ケース、9 pass + 1 skip)
 
-参考:
-- Linear のコマンドパレット
-- Apple Music の Now Playing カード expand
-- Vercel ダッシュボードの subtle hover affordances
-- Figma の collapsible panels
-
-**実装に入る前のチェックリスト**:
-1. デザイン参考を 3-4 サイト精査 (突起 + auto-hide パターン特化)
-2. アニメーションの easing / duration を decide
-3. 突起 / chrome / アニメ の各 component を分けて段階的に組む
+**変更ファイル**:
+- lib/share/composer-layout.ts + composer-layout.test.ts (preview 分岐)
+- components/share/use-share-fullscreen.ts + .test.ts (新規 hook)
+- components/share/ShareComposer.tsx (state wiring + chip + ⛶ + handle/zone DOM)
+- components/share/ShareComposer.module.css (preview スタイル全部)
+- components/share/ShareSourceList.module.css (overlay)
+- tests/e2e/share-fullscreen.spec.ts (新規 10 spec)
 
 ### 🎯 今セッション (2026-05-06 翌朝, polish #2) の到達点
 
