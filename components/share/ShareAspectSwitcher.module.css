@@ -13,7 +13,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--share-pill-text);
@@ -26,6 +26,13 @@
     color var(--share-transition-fast),
     background-color var(--share-transition-fast),
     border-color var(--share-transition-fast);
+}
+
+/* SNS preset tiles: icon-only, square. The use-case name lives on the
+   hover tooltip / aria-label so the header stays visually quiet. */
+.tileIconOnly {
+  min-width: 44px;
+  padding: 6px 8px;
 }
 
 .tile:hover {
@@ -59,17 +66,6 @@
   font-weight: 500;
   letter-spacing: 0.02em;
   line-height: 1;
-}
-
-.tileSublabel {
-  font-size: 10px;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  color: var(--share-fine-text);
-}
-
-.tileActive .tileSublabel {
-  color: var(--share-pill-text);
 }
 
 /* Vertical hairline separating ボード全体 from the SNS preset group.

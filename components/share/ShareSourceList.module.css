@@ -1,11 +1,13 @@
 /* components/share/ShareSourceList.module.css */
+/* Source list row: transparent so the modal glass shows through. The
+   border-top hairline keeps a soft separation from the canvas above. */
 .row {
   display: flex;
   align-items: center;
   gap: 12px;
   height: 84px;
   padding: 0 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: transparent;
   border-top: 1px solid var(--share-divider);
 }
 
@@ -58,6 +60,7 @@
 }
 
 .thumb {
+  position: relative;
   flex-shrink: 0;
   width: 64px;
   height: 64px;
@@ -67,8 +70,6 @@
   border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
-  outline: 2px solid transparent;
-  transition: outline var(--share-transition-quick);
 }
 
 .thumb img {
@@ -87,8 +88,21 @@
   color: var(--share-thumb-placeholder);
 }
 
-.selected {
-  outline-color: var(--share-accent);
+/* Selection ring lives INSIDE the thumb via ::after so the orange edge
+   never gets clipped by the horizontal scroll viewport — replaces the
+   old `outline` (which extended outside the element box). */
+.thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 0 var(--share-accent);
+  pointer-events: none;
+  transition: box-shadow var(--share-transition-quick);
+}
+
+.selected::after {
+  box-shadow: inset 0 0 0 2px var(--share-accent);
 }
 
 /* Edge fades: 40px wide gradients that fade thumbnails out toward the

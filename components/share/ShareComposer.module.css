@@ -3,16 +3,23 @@
   position: fixed;
   inset: 0;
   background: var(--share-modal-backdrop);
-  backdrop-filter: blur(var(--share-modal-blur));
+  backdrop-filter: blur(var(--share-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--share-backdrop-blur));
   z-index: 9000;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* Glass modal: rgba bg + heavy backdrop blur. The chrome bands (header /
+   source list row / footer) keep transparent backgrounds so the moodboard
+   behind softly shows through. canvasArea stays opaque (the white "board"
+   surface) — that's the intentional contrast with the surrounding glass. */
 .modal {
   position: relative;
   background: var(--share-modal-bg);
+  backdrop-filter: blur(var(--share-modal-blur));
+  -webkit-backdrop-filter: blur(var(--share-modal-blur));
   width: min(1800px, 98vw);
   height: min(1100px, 96vh);
   border-radius: 16px;
@@ -28,6 +35,7 @@
   gap: 16px;
   padding: 16px 24px;
   border-bottom: 1px solid var(--share-divider);
+  background: transparent;
 }
 
 .title {
@@ -83,6 +91,7 @@
   display: flex;
   justify-content: flex-end;
   border-top: 1px solid var(--share-divider);
+  background: transparent;
 }
 
 /* Outline-only confirm CTA per user request — destefanis flat-editorial.

@@ -12,8 +12,10 @@ type Props = {
 
 type PresetTile = {
   readonly id: ShareAspect
+  /** Visible label. Empty string for icon-only tiles. */
   readonly label: string
-  readonly sublabel: string
+  /** Hover tooltip + screen-reader name (use case, e.g. "Instagram"). */
+  readonly tooltip: string
   readonly icon: ReactElement
 }
 
@@ -62,14 +64,17 @@ function BoardIcon(): ReactElement {
 const FREE_TILE: PresetTile = {
   id: 'free',
   label: 'ボード全体',
-  sublabel: 'そのまま',
+  tooltip: 'ボード全体',
   icon: <BoardIcon />,
 }
 
+// SNS preset tiles: icon-only. The label is the use case (Instagram /
+// YouTube / Stories) so tooltip + aria-label communicate intent without
+// adding visual weight to the header.
 const PRESET_TILES: ReadonlyArray<PresetTile> = [
-  { id: '1:1',  label: '1:1',  sublabel: 'Instagram', icon: <SquareIcon /> },
-  { id: '16:9', label: '16:9', sublabel: 'YouTube',   icon: <WideIcon /> },
-  { id: '9:16', label: '9:16', sublabel: 'Stories',   icon: <TallIcon /> },
+  { id: '1:1',  label: '', tooltip: 'Instagram (1:1)', icon: <SquareIcon /> },
+  { id: '16:9', label: '', tooltip: 'YouTube (16:9)',  icon: <WideIcon /> },
+  { id: '9:16', label: '', tooltip: 'Stories (9:16)',  icon: <TallIcon /> },
 ]
 
 type TileButtonProps = {
@@ -79,18 +84,25 @@ type TileButtonProps = {
 }
 
 function TileButton({ tile, active, onClick }: TileButtonProps): ReactElement {
+  const isIconOnly = tile.label === ''
+  const className = [
+    styles.tile,
+    isIconOnly ? styles.tileIconOnly : '',
+    active ? styles.tileActive : '',
+  ].filter(Boolean).join(' ')
   return (
     <button
       type="button"
       role="radio"
       aria-checked={active}
-      className={active ? `${styles.tile} ${styles.tileActive}` : styles.tile}
+      aria-label={tile.tooltip}
+      title={tile.tooltip}
+      className={className}
       onClick={onClick}
       data-aspect={tile.id}
     >
       <span className={styles.tileIcon}>{tile.icon}</span>
-      <span className={styles.tileLabel}>{tile.label}</span>
-      <span className={styles.tileSublabel}>{tile.sublabel}</span>
+      {tile.label && <span className={styles.tileLabel}>{tile.label}</span>}
     </button>
   )
 }

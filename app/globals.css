@@ -164,10 +164,15 @@ ol {
      Tweak here to retheme the Share Composer + SharedView at once. */
   --share-accent:           #ff8a3d;
   --share-accent-hover:     #ff9a55;
-  --share-modal-bg:         #111114;
-  --share-modal-backdrop:   rgba(0, 0, 0, 0.55);
+  /* Glass modal: near-max transparency + heavy blur (`--share-modal-blur`).
+     Used as background fill for the share modal so the moodboard behind it
+     shows through softly. Fade gradients on the source list also reference
+     this token, so endpoints fade to a matching glass tone. */
+  --share-modal-bg:         rgba(17, 17, 20, 0.50);
+  --share-modal-blur:       36px;
+  --share-modal-backdrop:   rgba(0, 0, 0, 0.45);
+  --share-backdrop-blur:    8px;
   --share-sheet-backdrop:   rgba(0, 0, 0, 0.70);
-  --share-modal-blur:       6px;
   --share-frame-bg:         #0c0c0e;
   --share-canvas-bg:        #08080a;
   --share-pill-text:        rgba(255, 255, 255, 0.72);
