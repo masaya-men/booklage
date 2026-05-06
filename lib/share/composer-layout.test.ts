@@ -109,7 +109,7 @@ describe('composeShareLayout', () => {
       viewport: { width: 1080, height: 720 },
       mode: 'layout',
     })
-    // Composer preview = always-fit: the whole frame scales down to fit
+    // layout mode = always-fit: the whole frame scales down to fit
     // the viewport so the user sees the full board overview.
     expect(result.didShrink).toBe(true)
     expect(result.shrinkScale).toBeLessThan(1)
@@ -236,9 +236,10 @@ describe('composeShareLayout — preview mode', () => {
   })
 
   it('preview + 9:16: 9/16 ratio at viewport-fit', () => {
+    const items = makeItems(6)
     const r = composeShareLayout({
-      items: makeItems(6),
-      order: makeItems(6).map((i) => i.bookmarkId),
+      items,
+      order: items.map((i) => i.bookmarkId),
       sizeOverrides: new Map(),
       aspect: '9:16',
       viewport: { width: 1920, height: 1080 },
@@ -249,9 +250,10 @@ describe('composeShareLayout — preview mode', () => {
   })
 
   it('preview + 16:9: width fills viewport, height matches ratio', () => {
+    const items = makeItems(6)
     const r = composeShareLayout({
-      items: makeItems(6),
-      order: makeItems(6).map((i) => i.bookmarkId),
+      items,
+      order: items.map((i) => i.bookmarkId),
       sizeOverrides: new Map(),
       aspect: '16:9',
       viewport: { width: 1920, height: 1080 },
