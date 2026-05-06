@@ -18,8 +18,9 @@ type Props = {
   readonly onReorder?: (orderedIds: readonly string[]) => void
   readonly onCycleSize?: (id: string, next: ShareSize) => void
   readonly onDelete?: (id: string) => void
-  /** Receiving-side click target: opens c.u in a new tab. */
-  readonly onCardOpen?: (i: number) => void
+  /** Receiving-side click target. rect is the clicked card's screen
+   *  position so the parent can seed the Lightbox FLIP open animation. */
+  readonly onCardOpen?: (i: number, rect: DOMRect | null) => void
 }
 
 export function ShareFrame({
@@ -83,7 +84,12 @@ export function ShareFrame({
             onPointerDown={(e): void => {
               if (editable && cardIds) handleCardPointerDown(e, id)
             }}
-            onClick={(): void => { if (!editable && onCardOpen) onCardOpen(i) }}
+            onClick={(e): void => {
+              if (editable || !onCardOpen) return
+              const rect = e.currentTarget.getBoundingClientRect()
+              onCardOpen(i, rect)
+            }}
+            data-testid={`share-frame-card-${i}`}
             onContextMenu={(e): void => {
               if (!editable) return
               e.preventDefault()

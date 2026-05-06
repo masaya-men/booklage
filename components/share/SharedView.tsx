@@ -85,7 +85,7 @@ export function SharedView(): ReactElement {
           width={frame.width}
           height={frame.height}
           editable={false}
-          onCardOpen={(i): void => {
+          onCardOpen={(i, _rect): void => {
             const url = state.data.cards[i]?.u
             if (!url) return
             window.open(url, '_blank', 'noopener,noreferrer')
