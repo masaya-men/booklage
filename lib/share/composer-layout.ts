@@ -1,5 +1,5 @@
 // lib/share/composer-layout.ts
-import { computeColumnMasonry } from '@/lib/board/column-masonry'
+import { computeColumnMasonry, type MasonryCard, type MasonryResult } from '@/lib/board/column-masonry'
 import { COLUMN_MASONRY, BOARD_INNER, SIZE_PRESET_SPAN } from '@/lib/board/constants'
 import { computeAspectFrameSize } from './aspect-presets'
 import { SHARE_LIMITS } from './types'
@@ -33,6 +33,48 @@ export type ComposerLayoutResult = {
   readonly shrinkScale: number
 }
 
+/**
+ * Bisect the column unit so the masonry totalHeight fits inside `innerH`.
+ * Smaller column unit → more columns → smaller individual cards → shorter
+ * total height. Used for preset aspects where the frame ratio is fixed and
+ * we need cards to fit into a given height without overflowing.
+ */
+function findFitMasonry(
+  masonryCards: readonly MasonryCard[],
+  innerW: number,
+  innerH: number,
+  gap: number,
+  baseUnit: number,
+): MasonryResult {
+  const initial = computeColumnMasonry({
+    cards: masonryCards,
+    containerWidth: innerW,
+    gap,
+    targetColumnUnit: baseUnit,
+  })
+  if (initial.totalHeight <= innerH) return initial
+
+  let lo = 40
+  let hi = baseUnit
+  let best = initial
+  for (let i = 0; i < 14; i++) {
+    const mid = (lo + hi) / 2
+    const test = computeColumnMasonry({
+      cards: masonryCards,
+      containerWidth: innerW,
+      gap,
+      targetColumnUnit: mid,
+    })
+    if (test.totalHeight <= innerH) {
+      best = test
+      lo = mid
+    } else {
+      hi = mid
+    }
+  }
+  return best
+}
+
 export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutResult {
   const { items, order, sizeOverrides, aspect, viewport } = input
 
@@ -50,41 +92,44 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
   const gap = COLUMN_MASONRY.GAP_PX
   const pad = BOARD_INNER.SIDE_PADDING_PX
 
-  // Logical frame size — what the board would naturally produce. For 'free'
-  // we run masonry on the viewport width and let height grow with content.
-  // For preset aspects, we fit the ratio inside the viewport and run masonry
-  // on the resulting (typically narrower) frame width.
   const isFree = aspect === 'free'
   const presetSize = computeAspectFrameSize(aspect, viewport.width, viewport.height)
   const logicalW = isFree ? viewport.width : presetSize.width
   const innerW = Math.max(60, logicalW - 2 * pad)
 
-  const masonryCards = ordered.map((it) => ({
+  const masonryCards: MasonryCard[] = ordered.map((it) => ({
     id: it.bookmarkId,
     aspectRatio: it.aspectRatio > 0 ? it.aspectRatio : 1,
     columnSpan: SIZE_PRESET_SPAN[sizeOverrides.get(it.bookmarkId) ?? it.sizePreset],
   }))
-  const masonry = computeColumnMasonry({
-    cards: masonryCards,
-    containerWidth: innerW,
-    gap,
-    targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
-  })
 
-  // Logical frame height. For free, height grows with content. For preset
-  // aspects, we use the preset height as a *floor* but extend if content
-  // overflows — keeping all cards visible is more important than preserving
-  // the exact preset ratio in the editor preview. (The PNG export will use
-  // this same frame, so the shared image gets the same treatment.)
-  const contentH = masonry.totalHeight + 2 * pad
-  const logicalH = isFree
-    ? contentH
-    : Math.max(presetSize.height, contentH)
+  let masonry: MasonryResult
+  let logicalH: number
 
-  // Shrink the entire frame (not just the cards) so it fits inside the
-  // viewport. Cards stay laid out as if at full size — the whole frame
-  // scales together. This is the "shrink to fit" semantics: zooming out,
-  // not squashing.
+  if (isFree) {
+    // Free: board-equivalent. Use the standard column unit and let height
+    // grow naturally with content. The whole frame will be scaled down to
+    // the viewport in the final fitScale step.
+    masonry = computeColumnMasonry({
+      cards: masonryCards,
+      containerWidth: innerW,
+      gap,
+      targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+    })
+    logicalH = masonry.totalHeight + 2 * pad
+  } else {
+    // Preset: keep the preset ratio strictly. Shrink the column unit until
+    // all cards fit inside the preset height. This way the frame stays
+    // exactly preset-shaped and every card is visible.
+    const innerH = Math.max(60, presetSize.height - 2 * pad)
+    masonry = findFitMasonry(masonryCards, innerW, innerH, gap, COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX)
+    logicalH = presetSize.height
+  }
+
+  // Final fit-to-viewport: scale the entire logical frame so the user always
+  // sees the whole collage without scrolling. The scale applies uniformly to
+  // both axes and cancels out in the per-card 0..1 normalization (so cards
+  // keep their relative positions inside the frame).
   const fitScale = Math.min(
     viewport.width / logicalW,
     viewport.height / logicalH,
@@ -94,9 +139,6 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
   const frameH = logicalH * fitScale
   const didShrink = fitScale < 1
 
-  // Card positions are normalized against the LOGICAL frame, then rendered
-  // against the SCALED frame size. Both ratios cancel mathematically, so
-  // cards land at the right relative position with the right relative size.
   const cards: ShareCard[] = []
   const cardIds: string[] = []
   for (const it of ordered) {

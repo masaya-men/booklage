@@ -119,7 +119,7 @@ describe('composeShareLayout', () => {
     }
   })
 
-  it('preset aspects: frame extends if cards overflow, fits in viewport', () => {
+  it('preset aspects: column unit shrinks so every card fits inside the preset frame', () => {
     const items = makeItems(50)
     const result = composeShareLayout({
       items,
@@ -128,10 +128,15 @@ describe('composeShareLayout', () => {
       aspect: '9:16',
       viewport: { width: 1080, height: 720 },
     })
+    // Preset frame ratio is preserved (9:16 → ~0.5625)
+    const ratio = result.frameSize.width / result.frameSize.height
+    expect(ratio).toBeCloseTo(9 / 16, 2)
     expect(result.frameSize.width).toBeLessThanOrEqual(1080.001)
     expect(result.frameSize.height).toBeLessThanOrEqual(720.001)
-    expect(result.didShrink).toBe(true)
+    // Every card must be inside the frame (normalized 0..1)
     for (const c of result.cards) {
+      expect(c.x).toBeGreaterThanOrEqual(0)
+      expect(c.y).toBeGreaterThanOrEqual(0)
       expect(c.x + c.w).toBeLessThanOrEqual(1.0001)
       expect(c.y + c.h).toBeLessThanOrEqual(1.0001)
     }
