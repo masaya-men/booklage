@@ -9,6 +9,7 @@ import { fetchTikTokPlayback } from '@/lib/embed/tiktok-meta'
 import { t } from '@/lib/i18n/t'
 import { normalizeItem, type LightboxItem } from '@/lib/share/lightbox-item'
 import type { ShareCard } from '@/lib/share/types'
+import { LightboxNavChevron } from './LightboxNavChevron'
 import type { LightboxFlipSceneProps } from './LightboxFlipScene'
 import {
   detectUrlType,
@@ -439,6 +440,12 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
         onClick={(e) => { if (e.target === backdropRef.current) requestClose() }}
         data-testid="lightbox"
       >
+      {nav && nav.total > 1 && (
+        <>
+          <LightboxNavChevron dir="prev" onClick={() => nav.onNav(-1)} />
+          <LightboxNavChevron dir="next" onClick={() => nav.onNav(1)} />
+        </>
+      )}
       <div ref={frameRef} className={styles.frame}>
         <div className={styles.media}>
           {tweetId
