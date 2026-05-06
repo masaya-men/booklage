@@ -135,6 +135,23 @@ describe('composeShareLayout', () => {
     expect(Math.abs(aboveSlack - belowSlack)).toBeLessThan(0.01)
   })
 
+  it('emits cardIds aligned 1-to-1 with cards (handles duplicate URLs)', () => {
+    // Two distinct bookmarks share the same URL.
+    const items = [
+      { ...item('one'), url: 'https://shared.example.com' },
+      { ...item('two'), url: 'https://shared.example.com' },
+    ]
+    const result = composeShareLayout({
+      items,
+      order: ['one', 'two'],
+      sizeOverrides: new Map(),
+      aspect: 'free',
+      viewport: { width: 1080, height: 720 },
+    })
+    expect(result.cards).toHaveLength(2)
+    expect(result.cardIds).toEqual(['one', 'two'])
+  })
+
   it('does not over-center when content already fills the frame', () => {
     const items = makeItems(50, 'y')
     const result = composeShareLayout({

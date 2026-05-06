@@ -86,7 +86,10 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
       const prevSet = new Set(filtered)
       const additions: string[] = []
       for (const id of selectedIds) if (!prevSet.has(id)) additions.push(id)
-      // Sort additions by board position so newly-added items land in a sane place
+      // Idempotent: if filtered already covers selectedIds and there are no
+      // additions, the order is unchanged — return prev to avoid a needless
+      // re-render and any cascade through composerItems / layout.
+      if (additions.length === 0 && filtered.length === prev.length) return prev
       const sortedAdditions = sortByBoardPosition(additions, positions)
       return [...filtered, ...sortedAdditions]
     })
@@ -121,12 +124,7 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     [composerItems, cardOrder, sizeOverrides, aspect],
   )
 
-  // cardIds = order of cards as they appear in `layout.cards`.
-  // Maps each card's URL back to its bookmarkId via composerItems.
-  const cardIds = useMemo<string[]>(() => {
-    const idByUrl = new Map(composerItems.map((it) => [it.url, it.bookmarkId] as const))
-    return layout.cards.map((c) => idByUrl.get(c.u) ?? '')
-  }, [layout.cards, composerItems])
+  const cardIds = layout.cardIds
 
   const onToggle = useCallback((id: string): void => {
     setSelectedIds((prev) => {

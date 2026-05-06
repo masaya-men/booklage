@@ -27,6 +27,9 @@ export type ComposerLayoutInput = {
 
 export type ComposerLayoutResult = {
   readonly cards: readonly ShareCard[]
+  /** bookmarkIds aligned 1-to-1 with `cards`. Required by ShareFrame
+   *  edit-mode to map cards back to source bookmarks for drag/delete. */
+  readonly cardIds: readonly string[]
   readonly frameSize: { readonly width: number; readonly height: number }
   readonly didShrink: boolean
   readonly shrinkScale: number
@@ -102,11 +105,13 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     }
   }
 
-  // Build ShareCard[] in `ordered` sequence with normalized coords
-  const cards: ShareCard[] = ordered.map((it) => {
+  // Build ShareCard[] and cardIds[] in `ordered` sequence with normalized coords
+  const cards: ShareCard[] = []
+  const cardIds: string[] = []
+  for (const it of ordered) {
     const p = px[it.bookmarkId]
     const effectiveSize = sizeOverrides.get(it.bookmarkId) ?? it.sizePreset
-    return {
+    cards.push({
       u: truncate(it.url, SHARE_LIMITS.MAX_URL),
       t: truncate(it.title, SHARE_LIMITS.MAX_TITLE),
       d: it.description ? truncate(it.description, SHARE_LIMITS.MAX_DESCRIPTION) : undefined,
@@ -117,8 +122,9 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
       w: p.w / frameSize.width,
       h: p.h / frameSize.height,
       s: effectiveSize,
-    }
-  })
+    })
+    cardIds.push(it.bookmarkId)
+  }
 
-  return { cards, frameSize, didShrink, shrinkScale }
+  return { cards, cardIds, frameSize, didShrink, shrinkScale }
 }
