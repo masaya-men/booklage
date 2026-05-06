@@ -32,12 +32,29 @@
   background: var(--share-pill-fill-hover);
 }
 
+/* scrollWrap is the positioning context for the fade overlays. */
+.scrollWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
 .scroll {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  flex: 1;
-  scrollbar-width: thin;
+  width: 100%;
+  /* Hide scrollbar entirely — fade overlays signal scrollability instead. */
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge / IE */
+  /* Vertical room so the selected thumb's outline isn't clipped. */
+  padding: 4px 0;
+}
+.scroll::-webkit-scrollbar {
+  display: none;                  /* WebKit */
 }
 
 .thumb {
@@ -72,4 +89,33 @@
 
 .selected {
   outline-color: var(--share-accent);
+}
+
+/* Edge fades: 40px wide gradients that fade thumbnails out toward the
+   row background (modal bg with row tint). data-visible toggles via
+   onScroll handler so each side disappears when there's nothing more
+   to scroll in that direction. */
+.fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--share-transition-fast);
+  z-index: 1;
+}
+
+.fade[data-visible='true'] {
+  opacity: 1;
+}
+
+.fadeLeft {
+  left: 0;
+  background: linear-gradient(to right, var(--share-modal-bg), rgba(17, 17, 20, 0));
+}
+
+.fadeRight {
+  right: 0;
+  background: linear-gradient(to left, var(--share-modal-bg), rgba(17, 17, 20, 0));
 }

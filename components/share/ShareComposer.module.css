@@ -54,16 +54,18 @@
 
 /* board と同じ「白フチ + 黒キャンバス」を共有モーダルの中で再現する。
    canvasArea は board の outerFrame (白フチ) に相当、frameWrap は board の
-   canvas (黒キャンバス) に相当。frameWrap のサイズは inline style で渡される
-   (free 時 = canvasArea いっぱい、1:1/9:16/16:9 時 = preset で fit 後)。
-   1:1 等で frameWrap が canvasArea より小さいときは中央に配置される。 */
+   黒キャンバスに相当。
+   - free 時: frameWrap は board の長さで縦に伸びる → canvasArea が縦スクロール
+   - 1:1 / 9:16 / 16:9 時: frameWrap は viewport にフィット → 中央に配置
+   `align-items: safe center` は overflow 時に center を flex-start に倒すため、
+   tall frame でも先頭から見え、scroll で残りを辿れる (modern CSS)。 */
 .canvasArea {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: safe center;
+  justify-content: safe center;
   padding: 16px;
-  overflow: hidden;
+  overflow: auto;
   background: var(--bg-outer, #fafafa);
   min-height: 0;
 }

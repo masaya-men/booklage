@@ -2,7 +2,6 @@
 'use client'
 
 import type { ReactElement } from 'react'
-import { ASPECT_PRESETS } from '@/lib/share/aspect-presets'
 import type { ShareAspect } from '@/lib/share/types'
 import styles from './ShareAspectSwitcher.module.css'
 
@@ -11,20 +10,107 @@ type Props = {
   readonly onChange: (next: ShareAspect) => void
 }
 
+type PresetTile = {
+  readonly id: ShareAspect
+  readonly label: string
+  readonly sublabel: string
+  readonly icon: ReactElement
+}
+
+// Mini-rect icons drawn at the actual aspect ratio so the proportion is
+// readable at a glance (1:1 square, 16:9 wide, 9:16 tall). All inscribed
+// in a 32x32 viewBox so visual weight stays balanced across tiles.
+const ICON_STROKE = 1.6
+const ICON_RADIUS = 2
+
+function SquareIcon(): ReactElement {
+  return (
+    <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+      <rect x="9" y="9" width="14" height="14" rx={ICON_RADIUS} fill="none" stroke="currentColor" strokeWidth={ICON_STROKE} />
+    </svg>
+  )
+}
+
+function WideIcon(): ReactElement {
+  return (
+    <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+      <rect x="4" y="11" width="24" height="13.5" rx={ICON_RADIUS} fill="none" stroke="currentColor" strokeWidth={ICON_STROKE} />
+    </svg>
+  )
+}
+
+function TallIcon(): ReactElement {
+  return (
+    <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+      <rect x="9.25" y="4" width="13.5" height="24" rx={ICON_RADIUS} fill="none" stroke="currentColor" strokeWidth={ICON_STROKE} />
+    </svg>
+  )
+}
+
+// Free mode: stacked / scattered rectangles to evoke "collage on an
+// infinite board". 3 overlapping rects of varied size and rotation.
+function BoardIcon(): ReactElement {
+  return (
+    <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+      <rect x="6" y="6" width="11" height="9" rx={ICON_RADIUS} fill="none" stroke="currentColor" strokeWidth={ICON_STROKE} />
+      <rect x="15" y="11" width="13" height="10" rx={ICON_RADIUS} fill="none" stroke="currentColor" strokeWidth={ICON_STROKE} />
+      <rect x="9" y="18" width="10" height="9" rx={ICON_RADIUS} fill="none" stroke="currentColor" strokeWidth={ICON_STROKE} />
+    </svg>
+  )
+}
+
+const FREE_TILE: PresetTile = {
+  id: 'free',
+  label: 'ボード全体',
+  sublabel: 'そのまま',
+  icon: <BoardIcon />,
+}
+
+const PRESET_TILES: ReadonlyArray<PresetTile> = [
+  { id: '1:1',  label: '1:1',  sublabel: 'Instagram', icon: <SquareIcon /> },
+  { id: '16:9', label: '16:9', sublabel: 'YouTube',   icon: <WideIcon /> },
+  { id: '9:16', label: '9:16', sublabel: 'Stories',   icon: <TallIcon /> },
+]
+
+type TileButtonProps = {
+  readonly tile: PresetTile
+  readonly active: boolean
+  readonly onClick: () => void
+}
+
+function TileButton({ tile, active, onClick }: TileButtonProps): ReactElement {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      className={active ? `${styles.tile} ${styles.tileActive}` : styles.tile}
+      onClick={onClick}
+      data-aspect={tile.id}
+    >
+      <span className={styles.tileIcon}>{tile.icon}</span>
+      <span className={styles.tileLabel}>{tile.label}</span>
+      <span className={styles.tileSublabel}>{tile.sublabel}</span>
+    </button>
+  )
+}
+
 export function ShareAspectSwitcher({ value, onChange }: Props): ReactElement {
   return (
     <div className={styles.row} role="radiogroup" aria-label="Aspect ratio">
-      {ASPECT_PRESETS.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          role="radio"
-          aria-checked={value === p.id}
-          className={value === p.id ? `${styles.pill} ${styles.active}` : styles.pill}
-          onClick={(): void => onChange(p.id)}
-        >
-          {p.label}
-        </button>
+      <TileButton
+        tile={FREE_TILE}
+        active={value === 'free'}
+        onClick={(): void => onChange('free')}
+      />
+      <span className={styles.divider} aria-hidden="true" />
+      {PRESET_TILES.map((t) => (
+        <TileButton
+          key={t.id}
+          tile={t}
+          active={value === t.id}
+          onClick={(): void => onChange(t.id)}
+        />
       ))}
     </div>
   )

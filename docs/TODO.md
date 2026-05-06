@@ -32,15 +32,38 @@
 - `components/share/ShareFrame.tsx` / `.module.css`
 - `components/share/SharedView.tsx` / `.module.css`
 
-### 🚨 次セッション最優先タスク
+### 🎯 今セッション (2026-05-06 翌朝, polish #2) の到達点
 
-ユーザーから「共有モーダルでまだ直したい点がある」と申し送りあり (2026-05-06 セッション末尾)。**詳細は次セッション冒頭で聞く**。
+ユーザーとの相談ベースで共有モーダル UX 4 件を polish + ship。**全て案を提示 → メリデメ → ユーザー承認 → 実装、の流れを徹底**。
 
-実装に入る前のチェックリスト:
-1. ユーザーから直したい点を聞く
-2. **board のコードをそのまま流用できないか先に検討する** (今回の最大の学び)
-3. メリデメ + 推奨を平易な日本語で提示してユーザー承認を得てから着手 (大きい実装は特に)
-4. 数字や独自概念を増やす前に必ず立ち止まる
+- **アスペクトバー UI 全面再設計**: 「全体」と「1:1 / 9:16 / 16:9」を視覚的に分離。`ボード全体` タイル + 縦罫線 + SNS 用 3 タイル。各タイルは比率そのまま描いた SVG icon + 用途名 (Instagram / YouTube / Stories)。`ShareAspectSwitcher` 全面書き換え
+- **「全体」モードを真の無限ボード化**: `composer-layout.ts` の free 分岐から `fitScale` を削除。frame は board と同じ自然な高さで伸び、`canvasArea` が縦スクロール (`align-items: safe center` で fit 時は中央・overflow 時は top-anchored)
+- **ソースリスト下段 polish**:
+  - スクロール位置に応じて左右フェード ON/OFF (40px 幅、おしゃれ)
+  - スクロールバー完全非表示 (`scrollbar-width: none` + `::-webkit-scrollbar { display: none }`)
+  - **マウスホイール deltaY → 横 scrollLeft 変換** (`{ passive: false }` で native addEventListener)
+- **256 tests passing**, tsc 0 errors, build OK
+
+**変更ファイル**:
+- `lib/share/composer-layout.ts` + `composer-layout.test.ts` (free 分岐 fitScale 削除 + テスト更新)
+- `components/share/ShareAspectSwitcher.tsx` / `.module.css` (全面再設計)
+- `components/share/ShareComposer.module.css` (canvasArea overflow + safe center)
+- `components/share/ShareSourceList.tsx` / `.module.css` (fade + hide scrollbar + wheel)
+
+### 学びの定着 (前回 + 今回)
+
+1. board のコードをそのまま流用できないかを **数字を独自に弄る前に** 必ず先に検討する (前回の最大の学び)
+2. 大きい実装に入る前に「現状 → 変更案 → メリデメ + 推奨」を平易な日本語で提示してユーザー承認を得る
+3. 「ベストプラクティスを調べて最適に」とユーザーが言ったら根拠ある数字を選ぶ (例: thumb 64px に対し fade 40px は 0.6x、定番のサムネ 0.5〜1x 範囲)
+
+### 🎯 前セッション (2026-05-06 〜 翌朝) の到達点
+
+**共有モーダル / 受信側の挙動を board 本体と完全一致させる大改修** — 数字を独自に弄り倒す試行錯誤を経て、最終的に board のコードを直接流用する形に落ち着いた。
+
+- **`composer-layout.ts` 全面書き換え**: free aspect は board 等価、preset aspect は column 幅を二分法で縮めて比率厳守
+- **`ShareCard.a` (aspectRatio) 追加** + `relay-layout.ts` 新規 (受信側で再 masonry)
+- **`ShareFrame` を board の `useCardReorderDrag` + `computeVirtualOrder` に乗り換え**
+- 約 10 commits、本番 deploy 済み
 
 ### 🎯 前々セッション (2026-05-06 深夜, v77 → v79) の到達点
 

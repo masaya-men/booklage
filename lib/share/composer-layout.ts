@@ -126,15 +126,14 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     logicalH = presetSize.height
   }
 
-  // Final fit-to-viewport: scale the entire logical frame so the user always
-  // sees the whole collage without scrolling. The scale applies uniformly to
-  // both axes and cancels out in the per-card 0..1 normalization (so cards
-  // keep their relative positions inside the frame).
-  const fitScale = Math.min(
-    viewport.width / logicalW,
-    viewport.height / logicalH,
-    1,
-  )
+  // Free aspect = "infinite board" — frame grows naturally with content and
+  // the parent container scrolls vertically when the frame exceeds the
+  // viewport. Preset aspect = fixed ratio that always fits the viewport, so
+  // the entire frame is scaled to fit (uniform on both axes; cancels out in
+  // the 0..1 per-card normalization).
+  const fitScale = isFree
+    ? 1
+    : Math.min(viewport.width / logicalW, viewport.height / logicalH, 1)
   const frameW = logicalW * fitScale
   const frameH = logicalH * fitScale
   const didShrink = fitScale < 1

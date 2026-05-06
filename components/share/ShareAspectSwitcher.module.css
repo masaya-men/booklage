@@ -1,27 +1,84 @@
-/* components/share/ShareAspectSwitcher.module.css */
+/* components/share/ShareAspectSwitcher.module.css
+   Tile-based aspect switcher: ボード全体 (left) | divider | 1:1 / 16:9 / 9:16.
+   Each tile carries an icon drawn at the actual aspect ratio plus a short
+   sublabel stating the use case. Center-aligned in the modal header. */
 .row {
   display: inline-flex;
-  gap: 8px;
+  align-items: stretch;
+  gap: 6px;
 }
 
-.pill {
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--share-pill-text);
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 6px 12px 5px;
   font-family: inherit;
-  letter-spacing: 0.01em;
-  border-radius: 999px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: color var(--share-transition-fast), background-color var(--share-transition-fast);
+  min-width: 64px;
+  transition:
+    color var(--share-transition-fast),
+    background-color var(--share-transition-fast),
+    border-color var(--share-transition-fast);
 }
 
-.pill:hover {
+.tile:hover {
   color: var(--share-pill-text-active);
+  background: var(--share-pill-fill-soft);
 }
 
-.active {
+.tileActive {
+  color: var(--share-pill-text-active);
   background: var(--share-pill-fill-active);
-  color: var(--share-pill-text-active);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  /* Icons inherit color via stroke="currentColor", so they fade with text. */
+  color: inherit;
+  opacity: 0.85;
+}
+
+.tileActive .tileIcon {
+  opacity: 1;
+}
+
+.tileLabel {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.tileSublabel {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--share-fine-text);
+}
+
+.tileActive .tileSublabel {
+  color: var(--share-pill-text);
+}
+
+/* Vertical hairline separating ボード全体 from the SNS preset group.
+   Visually communicates "two different intents" — one tap for board-as-is,
+   the rest for fixed-ratio SNS export. */
+.divider {
+  width: 1px;
+  align-self: center;
+  height: 36px;
+  margin: 0 4px;
+  background: var(--share-divider);
 }
