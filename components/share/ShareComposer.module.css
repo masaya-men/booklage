@@ -39,6 +39,11 @@
     0 24px 60px rgba(0, 0, 0, 0.5),
     0 4px 12px rgba(0, 0, 0, 0.3);
   animation: modalIn 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition:
+    width 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 360ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes modalIn {
@@ -142,20 +147,16 @@
 
 /* === Preview (immersive) mode ============================================ */
 
-/* Step 1: Modal morph — layout (current) → preview (viewport 100%, no radius/shadow). */
-.modal {
-  transition:
-    width 360ms cubic-bezier(0.16, 1, 0.3, 1),
-    height 360ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-radius 360ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 360ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
+/* Step 1: Modal morph — layout (current) → preview (viewport 100%, no radius/shadow).
+   overflow:visible lets absolute header/footer slide-in from outside the border-box.
+   animation:none prevents modalIn re-fire on Safari when .preview is added. */
 .modal.preview {
   width: 100vw;
   height: 100vh;
   border-radius: 0;
   box-shadow: none;
+  overflow: visible;
+  animation: none;
 }
 
 /* In preview, the body stays as-is (canvasArea fills). The source panel is
@@ -295,6 +296,8 @@
   color: rgba(255, 255, 255, 0.7);
   background: rgba(255, 255, 255, 0.04);
   flex: 0 0 auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .fsBtn {
@@ -316,6 +319,7 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
