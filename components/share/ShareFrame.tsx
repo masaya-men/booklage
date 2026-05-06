@@ -22,12 +22,6 @@ type Props = {
   readonly onCardOpen?: (i: number) => void
 }
 
-const NEXT_PRESET: Readonly<Record<ShareSize, ShareSize>> = {
-  S: 'M',
-  M: 'L',
-  L: 'S',
-}
-
 export function ShareFrame({
   cards,
   cardIds,
@@ -72,7 +66,7 @@ export function ShareFrame({
         const dragOffsetY = isDragging ? (dragState?.currentY ?? 0) : 0
         return (
           <div
-            key={`${id}-${i}`}
+            key={id}
             className={styles.cardWrap}
             data-card-id={id}
             data-dragging={isDragging || undefined}
@@ -111,8 +105,8 @@ export function ShareFrame({
               <SizePresetToggle
                 preset={c.s}
                 visible={hoveredId === id}
-                onCycle={(): void => {
-                  if (onCycleSize) onCycleSize(id, NEXT_PRESET[c.s])
+                onCycle={(next): void => {
+                  if (onCycleSize) onCycleSize(id, next)
                 }}
               />
             )}
