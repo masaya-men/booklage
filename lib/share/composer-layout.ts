@@ -48,7 +48,7 @@ export const COMPOSER_MASONRY = {
 
 export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutResult {
   const { items, order, sizeOverrides, aspect, viewport } = input
-  const frameSize = computeAspectFrameSize(aspect, viewport.width, viewport.height)
+  let frameSize = computeAspectFrameSize(aspect, viewport.width, viewport.height)
 
   // Build ordered items: order first (filtering missing), then any items missing from order at the tail
   const orderSet = new Set(order)
@@ -68,11 +68,45 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     aspectRatio: it.aspectRatio > 0 ? it.aspectRatio : 1,
     columnSpan: SIZE_PRESET_SPAN[sizeOverrides.get(it.bookmarkId) ?? it.sizePreset],
   }))
+
+  // For the 'free' preset, derive frame aspect from the card-set average so
+  // it visibly differs from the fixed presets (1:1 / 9:16 / 16:9). A bag of
+  // tall reels gets a tall frame, horizontal thumbs get a wide frame, mixed
+  // sets land somewhere in between. Clamped so a single extreme card doesn't
+  // produce an absurd frame.
+  if (aspect === 'free' && masonryCards.length > 0) {
+    const avgAR = masonryCards.reduce(
+      (s, c) => s + Math.max(0.4, c.aspectRatio),
+      0,
+    ) / masonryCards.length
+    const clampedAR = Math.max(0.7, Math.min(1.9, avgAR))
+    const baseWidth = 1080
+    frameSize = { width: baseWidth, height: Math.round(baseWidth / clampedAR) }
+  }
+
+  // Dynamic column unit: pick a unit so the cards' total area roughly equals
+  // frame_area × TARGET_FILL. This makes the initial composition fill the
+  // frame instead of leaving big top/bottom gutters. The user still controls
+  // density via S/M/L toggles afterward.
+  //
+  // Derivation: each card's rendered area ≈ (span × unit)² / aspectRatio.
+  // Sum over cards and solve for unit so Σ ≈ frame_area × TARGET_FILL.
+  const TARGET_FILL = 0.95
+  const totalSpanArea = masonryCards.reduce(
+    (acc, c) => acc + (c.columnSpan * c.columnSpan) / Math.max(0.5, c.aspectRatio),
+    0,
+  )
+  const dynamicUnit = totalSpanArea > 0
+    ? Math.sqrt((frameSize.width * frameSize.height * TARGET_FILL) / totalSpanArea)
+    : COMPOSER_MASONRY.TARGET_COLUMN_UNIT_PX
+  // Clamp so 1-2 card layouts don't balloon and 50+ card layouts stay legible.
+  const clampedUnit = Math.max(80, Math.min(420, dynamicUnit))
+
   const masonry = computeColumnMasonry({
     cards: masonryCards,
     containerWidth: frameSize.width,
     gap: COMPOSER_MASONRY.GAP_PX,
-    targetColumnUnit: COMPOSER_MASONRY.TARGET_COLUMN_UNIT_PX,
+    targetColumnUnit: clampedUnit,
   })
 
   // Pixel-space positions (will scale + center, then normalize)

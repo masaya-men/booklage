@@ -34,7 +34,11 @@ describe('composeShareLayout', () => {
     expect(result.didShrink).toBe(false)
     // shrinkScale ≥ 1 — auto-fit may upscale to fill the frame vertically.
     expect(result.shrinkScale).toBeGreaterThanOrEqual(1)
-    expect(result.frameSize).toEqual({ width: 1080, height: 720 })
+    // 'free' aspect now derives frame ratio from card-set average AR
+    // (square cards → square-ish frame), so we don't assert the legacy
+    // 1080x720 size. We just verify the frame is well-formed.
+    expect(result.frameSize.width).toBeGreaterThan(0)
+    expect(result.frameSize.height).toBeGreaterThan(0)
     for (const c of result.cards) {
       expect(c.x).toBeGreaterThanOrEqual(0)
       expect(c.y).toBeGreaterThanOrEqual(0)
@@ -119,19 +123,19 @@ describe('composeShareLayout', () => {
   })
 
   it('vertically centers when scaled content height < frame height', () => {
-    const items = [item('only', { sizePreset: 'S', aspectRatio: 1 })]
+    // Single wide card in a tall (9:16) frame — width-bound, so the scaled
+    // content height stays well below the frame height and vertical centering
+    // logic must distribute the slack.
+    const items = [item('only', { sizePreset: 'S', aspectRatio: 2 })]
     const result = composeShareLayout({
       items,
       order: ['only'],
       sizeOverrides: new Map(),
-      aspect: 'free',
+      aspect: '9:16',
       viewport: { width: 1080, height: 720 },
     })
     const c = result.cards[0]
-    // The card should sit roughly in vertical middle (top y > 0.2 since the
-    // card itself is small relative to the 720px frame).
     expect(c.y).toBeGreaterThan(0.2)
-    // And there should be roughly equal slack above and below.
     const aboveSlack = c.y
     const belowSlack = 1 - (c.y + c.h)
     expect(Math.abs(aboveSlack - belowSlack)).toBeLessThan(0.01)
