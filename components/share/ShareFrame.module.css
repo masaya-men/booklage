@@ -2,7 +2,7 @@
 .frame {
   position: relative;
   background: var(--share-frame-bg);
-  border-radius: 8px;
+  border-radius: var(--canvas-radius);
   overflow: hidden;
 }
 

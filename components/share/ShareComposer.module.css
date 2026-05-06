@@ -57,13 +57,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  overflow: auto;
+  padding: var(--canvas-margin);
+  overflow: hidden;
   background: var(--share-canvas-bg);
 }
 
 .frameWrap {
-  transform-origin: center;
+  position: relative;
+  flex: none;
+}
+
+.frameInner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
 }
 
 .footer {
