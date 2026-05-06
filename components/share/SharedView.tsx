@@ -1,13 +1,14 @@
 // components/share/SharedView.tsx
 'use client'
 
-import { useEffect, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import Link from 'next/link'
 import { decodeShareData, type DecodeDiagnostics } from '@/lib/share/decode'
 import { sanitizeShareData } from '@/lib/share/validate'
 import { computeAspectFrameSize } from '@/lib/share/aspect-presets'
 import type { ShareData } from '@/lib/share/types'
 import { ShareFrame } from './ShareFrame'
+import { Lightbox } from '@/components/board/Lightbox'
 import styles from './SharedView.module.css'
 
 type ErrorInfo = {
@@ -21,6 +22,11 @@ type LoadState =
   | { readonly kind: 'error'; readonly info: ErrorInfo }
   | { readonly kind: 'ready'; readonly data: ShareData }
 
+type LightboxOpenState = {
+  readonly index: number
+  readonly rect: DOMRect | null
+}
+
 const VIEWPORT_PADDING_X = 64
 const VIEWPORT_PADDING_Y = 200
 const VIEWPORT_MAX_W = 1280
@@ -30,6 +36,7 @@ const VIEWPORT_FALLBACK = { w: 1080, h: 720 } as const
 export function SharedView(): ReactElement {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
   const [size, setSize] = useState<{ w: number; h: number }>(VIEWPORT_FALLBACK)
+  const [openState, setOpenState] = useState<LightboxOpenState | null>(null)
 
   useEffect((): (() => void) => {
     const onResize = (): void => {
@@ -68,6 +75,28 @@ export function SharedView(): ReactElement {
     })()
   }, [])
 
+  // Nav handlers depend on cards.length only (not the cards array itself)
+  // to keep callback identity stable across re-renders.
+  const cardsLen = state.kind === 'ready' ? state.data.cards.length : 0
+
+  const handleClose = useCallback((): void => {
+    setOpenState(null)
+  }, [])
+
+  const handleNav = useCallback((dir: -1 | 1): void => {
+    if (cardsLen === 0) return
+    setOpenState((s) => {
+      if (!s) return s
+      const next = ((s.index + dir) % cardsLen + cardsLen) % cardsLen
+      return { index: next, rect: null }
+    })
+  }, [cardsLen])
+
+  const handleJump = useCallback((index: number): void => {
+    if (index < 0 || index >= cardsLen) return
+    setOpenState({ index, rect: null })
+  }, [cardsLen])
+
   if (state.kind === 'loading') {
     return <div className={styles.center}>読み込み中…</div>
   }
@@ -76,6 +105,7 @@ export function SharedView(): ReactElement {
   }
 
   const frame = computeAspectFrameSize(state.data.aspect, size.w, size.h)
+  const openCard = openState ? state.data.cards[openState.index] ?? null : null
 
   return (
     <div className={styles.page}>
@@ -85,16 +115,23 @@ export function SharedView(): ReactElement {
           width={frame.width}
           height={frame.height}
           editable={false}
-          onCardOpen={(i, _rect): void => {
-            const url = state.data.cards[i]?.u
-            if (!url) return
-            window.open(url, '_blank', 'noopener,noreferrer')
-          }}
+          onCardOpen={(i, rect): void => setOpenState({ index: i, rect })}
         />
       </div>
       <Link href="/board" className={styles.cornerLink}>
-        Booklage で表現する ↗
+        自分も Booklage を使う ↗
       </Link>
+      <Lightbox
+        item={openCard}
+        originRect={openState?.rect ?? null}
+        onClose={handleClose}
+        nav={openCard && openState ? {
+          currentIndex: openState.index,
+          total: state.data.cards.length,
+          onNav: handleNav,
+          onJump: handleJump,
+        } : undefined}
+      />
     </div>
   )
 }
