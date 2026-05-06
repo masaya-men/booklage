@@ -13,6 +13,12 @@ const item = (id: string, opts: Partial<{ aspectRatio: number; sizePreset: 'S' |
   aspectRatio: opts.aspectRatio ?? 1,
 })
 
+const makeItems = (n: number, prefix = 'x'): ReturnType<typeof item>[] => {
+  const out: ReturnType<typeof item>[] = []
+  for (let i = 0; i < n; i++) out.push(item(`${prefix}${i}`))
+  return out
+}
+
 describe('composeShareLayout', () => {
   it('produces normalized 0..1 coords for 3 simple cards in free aspect', () => {
     const items = [item('a'), item('b'), item('c')]
@@ -35,7 +41,7 @@ describe('composeShareLayout', () => {
     }
   })
 
-  it('respects given cardOrder; missing items in order are appended at tail', () => {
+  it('respects given cardOrder when all ids are known', () => {
     const items = [item('a'), item('b'), item('c')]
     const r1 = composeShareLayout({
       items,
@@ -49,8 +55,10 @@ describe('composeShareLayout', () => {
       'https://example.com/a',
       'https://example.com/b',
     ])
+  })
 
-    // order references unknown id 'zzz' — items missing from order are appended
+  it('drops unknown ids in order and appends missing items at tail in original sequence', () => {
+    const items = [item('a'), item('b'), item('c')]
     const r2 = composeShareLayout({
       items,
       order: ['zzz', 'b'],
@@ -78,16 +86,18 @@ describe('composeShareLayout', () => {
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
     })
-    const sCard = result.cards.find((c) => c.u.endsWith('/s'))!
-    const lCard = result.cards.find((c) => c.u.endsWith('/l'))!
+    const sCard = result.cards.find((c) => c.u.endsWith('/s'))
+    const lCard = result.cards.find((c) => c.u.endsWith('/l'))
+    expect(sCard).toBeDefined()
+    expect(lCard).toBeDefined()
+    if (!sCard || !lCard) return
     expect(lCard.w).toBeGreaterThan(sCard.w)
     expect(lCard.s).toBe('L')   // echoed
     expect(sCard.s).toBe('S')
   })
 
   it('auto-shrinks when content overflows frame height; all cards fit within 0..1', () => {
-    const items: ReturnType<typeof item>[] = []
-    for (let i = 0; i < 50; i++) items.push(item(`x${i}`))
+    const items = makeItems(50)
     const result = composeShareLayout({
       items,
       order: items.map((it) => it.bookmarkId),
@@ -126,8 +136,7 @@ describe('composeShareLayout', () => {
   })
 
   it('does not over-center when content already fills the frame', () => {
-    const items: ReturnType<typeof item>[] = []
-    for (let i = 0; i < 50; i++) items.push(item(`y${i}`))
+    const items = makeItems(50, 'y')
     const result = composeShareLayout({
       items,
       order: items.map((it) => it.bookmarkId),
