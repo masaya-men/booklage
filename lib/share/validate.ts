@@ -55,5 +55,12 @@ export function sanitizeShareData(data: ShareData): ShareData {
     cleaned.push(card)
     if (cleaned.length >= SHARE_LIMITS.MAX_CARDS) break
   }
-  return { ...data, cards: cleaned }
+  // Clamp fa to a sane range — accept anything from very tall (9:16 ≈ 0.5625)
+  // to very wide (16:9 ≈ 1.78) plus a margin for free-aspect drift.
+  const fa = data.fa
+  const cleanedFa =
+    typeof fa === 'number' && Number.isFinite(fa) && fa > 0
+      ? Math.max(0.25, Math.min(4, fa))
+      : undefined
+  return { ...data, cards: cleaned, fa: cleanedFa }
 }

@@ -27,10 +27,10 @@ type LightboxOpenState = {
   readonly rect: DOMRect | null
 }
 
-const VIEWPORT_PADDING_X = 64
-const VIEWPORT_PADDING_Y = 200
-const VIEWPORT_MAX_W = 1280
-const VIEWPORT_MAX_H = 820
+const VIEWPORT_PADDING_X = 32
+const VIEWPORT_PADDING_Y = 80
+const VIEWPORT_MAX_W = 1800
+const VIEWPORT_MAX_H = 1100
 const VIEWPORT_FALLBACK = { w: 1080, h: 720 } as const
 
 export function SharedView(): ReactElement {
@@ -104,7 +104,19 @@ export function SharedView(): ReactElement {
     return <ErrorView info={state.info} />
   }
 
-  const frame = computeAspectFrameSize(state.data.aspect, size.w, size.h)
+  // Honour the sender-encoded frame aspect ratio (fa) when present so the
+  // recipient reproduces the sender's exact frame proportions. Without this,
+  // 'free' aspect drifts to the receiver's viewport ratio and cards land in
+  // wrong positions. Older share URLs without `fa` fall back to the legacy
+  // preset-based calc.
+  const frame = ((): { width: number; height: number } => {
+    const fa = state.data.fa
+    if (typeof fa === 'number' && fa > 0) {
+      const scale = Math.min(size.w / fa, size.h)
+      return { width: fa * scale, height: scale }
+    }
+    return computeAspectFrameSize(state.data.aspect, size.w, size.h)
+  })()
   const openCard = openState ? state.data.cards[openState.index] ?? null : null
 
   return (

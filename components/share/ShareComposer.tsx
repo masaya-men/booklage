@@ -62,6 +62,25 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
   const [sizeOverrides, setSizeOverrides] = useState<ReadonlyMap<string, ShareSize>>(new Map())
 
   const frameRef = useRef<HTMLDivElement>(null)
+  const canvasAreaRef = useRef<HTMLDivElement>(null)
+  const [canvasSize, setCanvasSize] = useState<{ w: number; h: number } | null>(null)
+
+  // Observe canvas area size to scale-fit the frame inside it on small
+  // screens. Without this, frame overflows the modal on narrow viewports
+  // and the user can't see the whole share preview at a glance.
+  useEffect((): undefined | (() => void) => {
+    if (!open) return undefined
+    const el = canvasAreaRef.current
+    if (!el) return undefined
+    const ro = new ResizeObserver((entries) => {
+      const e = entries[0]
+      if (!e) return
+      const { width, height } = e.contentRect
+      setCanvasSize({ w: width, h: height })
+    })
+    ro.observe(el)
+    return (): void => ro.disconnect()
+  }, [open])
 
   // Close on ESC
   useEffect((): undefined | (() => void) => {
@@ -126,6 +145,15 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
 
   const cardIds = layout.cardIds
 
+  // Scale-fit the frame so it fully fits inside canvasArea. Capped at 1.0
+  // so the preview never upscales beyond source resolution (would blur).
+  const fitScale = useMemo((): number => {
+    if (!canvasSize) return 1
+    const sx = canvasSize.w / layout.frameSize.width
+    const sy = canvasSize.h / layout.frameSize.height
+    return Math.min(sx, sy, 1)
+  }, [canvasSize, layout.frameSize.width, layout.frameSize.height])
+
   const onToggle = useCallback((id: string): void => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -168,9 +196,12 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
       v: SHARE_SCHEMA_VERSION,
       aspect,
       cards: layout.cards,
+      fa: layout.frameSize.height > 0
+        ? layout.frameSize.width / layout.frameSize.height
+        : undefined,
     }
     onConfirm(data, frameRef.current)
-  }, [aspect, layout.cards, onConfirm])
+  }, [aspect, layout.cards, layout.frameSize.width, layout.frameSize.height, onConfirm])
 
   if (!open) return null
 
@@ -198,18 +229,34 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
           </button>
         </header>
 
-        <div className={styles.canvasArea}>
-          <div ref={frameRef} className={styles.frameWrap}>
-            <ShareFrame
-              cards={layout.cards}
-              cardIds={cardIds}
-              width={layout.frameSize.width}
-              height={layout.frameSize.height}
-              editable={true}
-              onReorder={handleReorder}
-              onCycleSize={handleCycleSize}
-              onDelete={handleDelete}
-            />
+        <div ref={canvasAreaRef} className={styles.canvasArea}>
+          <div
+            className={styles.frameWrap}
+            style={{
+              width: layout.frameSize.width * fitScale,
+              height: layout.frameSize.height * fitScale,
+            }}
+          >
+            <div
+              ref={frameRef}
+              className={styles.frameInner}
+              style={{
+                width: layout.frameSize.width,
+                height: layout.frameSize.height,
+                transform: `scale(${fitScale})`,
+              }}
+            >
+              <ShareFrame
+                cards={layout.cards}
+                cardIds={cardIds}
+                width={layout.frameSize.width}
+                height={layout.frameSize.height}
+                editable={true}
+                onReorder={handleReorder}
+                onCycleSize={handleCycleSize}
+                onDelete={handleDelete}
+              />
+            </div>
           </div>
         </div>
 

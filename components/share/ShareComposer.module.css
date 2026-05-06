@@ -52,18 +52,32 @@
   color: var(--share-pill-text-active);
 }
 
+/* board と同じ「白フチ + 黒キャンバス」を共有モーダルの中で再現する。
+   canvasArea は board の outerFrame に相当、frameWrap は canvas に相当。 */
 .canvasArea {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  overflow: auto;
-  background: var(--share-canvas-bg);
+  padding: 16px;
+  overflow: hidden;
+  background: var(--bg-outer, #fafafa);
+  min-height: 0;
 }
 
 .frameWrap {
-  transform-origin: center;
+  position: relative;
+  background: var(--bg-dark, #0a0a0a);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.frameInner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
 }
 
 .footer {

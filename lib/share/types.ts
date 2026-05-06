@@ -39,6 +39,10 @@ export type ShareData = {
   readonly cards: ReadonlyArray<ShareCard>
   /** future theme hint — recipient-side optional */
   readonly bg?: 'dark' | 'light'
+  /** Sender frame aspect ratio (width / height). Receiver reproduces the
+   *  exact frame proportions from this; without it, 'free' aspect drifts
+   *  to the receiver's viewport ratio and cards land in wrong places. */
+  readonly fa?: number
 }
 
 // Limits — enforced in validate.ts. Single source of truth.
