@@ -34,7 +34,13 @@ type Props = {
   readonly onConfirm: (data: ShareData, frameRef: HTMLElement | null) => void
 }
 
-const FRAME_VIEWPORT = { width: 1080, height: 720 } as const
+// Long edge of the share frame in CSS pixels. The frame's actual aspect
+// ratio is derived from the canvas area at render time so 'free' fills
+// the modal — see `dynamicViewport` below. PNG export uses these
+// dimensions as resolution, so we keep the long edge at 1440 to ship
+// roughly 1440px-wide images regardless of the user's screen size.
+const FRAME_LONG_SIDE = 1440
+const FRAME_FALLBACK = { width: 1440, height: 900 } as const
 
 function sortByBoardPosition(
   ids: ReadonlyArray<string>,
@@ -131,6 +137,20 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     [items, selectedIds],
   )
 
+  // Derive the share frame viewport from the modal's canvas area so
+  // 'free' aspect always fills the visible space (= board-equivalent UX).
+  // Long edge is normalized to FRAME_LONG_SIDE so the exported PNG is
+  // a consistent resolution across screen sizes. Other aspects (1:1,
+  // 9:16, 16:9) fit inside this viewport as before.
+  const dynamicViewport = useMemo((): { width: number; height: number } => {
+    if (!canvasSize || canvasSize.w <= 0 || canvasSize.h <= 0) return FRAME_FALLBACK
+    const ratio = canvasSize.w / canvasSize.h
+    if (ratio >= 1) {
+      return { width: FRAME_LONG_SIDE, height: Math.round(FRAME_LONG_SIDE / ratio) }
+    }
+    return { width: Math.round(FRAME_LONG_SIDE * ratio), height: FRAME_LONG_SIDE }
+  }, [canvasSize])
+
   const layout = useMemo(
     () =>
       composeShareLayout({
@@ -138,9 +158,9 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
         order: cardOrder,
         sizeOverrides,
         aspect,
-        viewport: FRAME_VIEWPORT,
+        viewport: dynamicViewport,
       }),
-    [composerItems, cardOrder, sizeOverrides, aspect],
+    [composerItems, cardOrder, sizeOverrides, aspect, dynamicViewport],
   )
 
   const cardIds = layout.cardIds

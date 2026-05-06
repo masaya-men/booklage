@@ -13,8 +13,8 @@
 .modal {
   position: relative;
   background: var(--share-modal-bg);
-  width: min(1280px, 96vw);
-  height: min(820px, 92vh);
+  width: min(1800px, 98vw);
+  height: min(1100px, 96vh);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
