@@ -95,7 +95,7 @@ describe('composeShareLayout', () => {
     expect(sCard.s).toBe('S')
   })
 
-  it('free aspect: frame height grows with content (no shrink)', () => {
+  it('free aspect: 50 cards shrink to fit the viewport, every card visible', () => {
     const items = makeItems(50)
     const result = composeShareLayout({
       items,
@@ -104,11 +104,10 @@ describe('composeShareLayout', () => {
       aspect: 'free',
       viewport: { width: 1080, height: 720 },
     })
-    expect(result.didShrink).toBe(false)
-    expect(result.shrinkScale).toBe(1)
-    expect(result.frameSize.width).toBe(1080)
-    // 50 cards in a 1080-wide frame should produce a tall frame.
-    expect(result.frameSize.height).toBeGreaterThan(720)
+    expect(result.didShrink).toBe(true)
+    expect(result.shrinkScale).toBeLessThan(1)
+    expect(result.shrinkScale).toBeGreaterThan(0)
+    expect(result.frameSize).toEqual({ width: 1080, height: 720 })
     for (const c of result.cards) {
       expect(c.x).toBeGreaterThanOrEqual(0)
       expect(c.y).toBeGreaterThanOrEqual(0)
@@ -117,7 +116,7 @@ describe('composeShareLayout', () => {
     }
   })
 
-  it('preset aspects: frame fits the ratio inside viewport, cards may overflow', () => {
+  it('preset aspects: frame fits the ratio inside viewport, cards shrink to fit', () => {
     const items = makeItems(50)
     const result = composeShareLayout({
       items,
@@ -126,11 +125,13 @@ describe('composeShareLayout', () => {
       aspect: '9:16',
       viewport: { width: 1080, height: 720 },
     })
-    // 9:16 fits to 405x720 inside 1080x720
     expect(result.frameSize.width).toBe(405)
     expect(result.frameSize.height).toBe(720)
-    expect(result.didShrink).toBe(false)
-    expect(result.shrinkScale).toBe(1)
+    expect(result.didShrink).toBe(true)
+    for (const c of result.cards) {
+      expect(c.x + c.w).toBeLessThanOrEqual(1.0001)
+      expect(c.y + c.h).toBeLessThanOrEqual(1.0001)
+    }
   })
 
   it('emits cardIds aligned 1-to-1 with cards (handles duplicate URLs)', () => {

@@ -60,10 +60,10 @@
 .canvasArea {
   flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 16px;
-  overflow: auto;
+  overflow: hidden;
   background: var(--bg-outer, #fafafa);
   min-height: 0;
 }

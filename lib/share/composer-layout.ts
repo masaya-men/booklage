@@ -50,15 +50,15 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
   const gap = COLUMN_MASONRY.GAP_PX
   const pad = BOARD_INNER.SIDE_PADDING_PX
 
-  // 'free' fills the viewport width and grows vertically with content
-  // (board-equivalent). Preset aspects fit into the viewport at their fixed
-  // ratio; cards may overflow vertically and get clipped by the frame's
-  // overflow:hidden — that is the intended share-image-as-fixed-frame
-  // behavior.
+  // Frame size matches the modal's canvas area (free) or the preset ratio
+  // fitted into it. Either way the frame stays within the viewport so the
+  // user always sees the entire collage without scrolling.
   const isFree = aspect === 'free'
   const presetSize = computeAspectFrameSize(aspect, viewport.width, viewport.height)
-  const containerW = isFree ? viewport.width : presetSize.width
-  const innerW = Math.max(60, containerW - 2 * pad)
+  const frameW = isFree ? viewport.width : presetSize.width
+  const frameH = isFree ? viewport.height : presetSize.height
+  const innerW = Math.max(60, frameW - 2 * pad)
+  const innerH = Math.max(60, frameH - 2 * pad)
 
   const masonryCards = ordered.map((it) => ({
     id: it.bookmarkId,
@@ -72,8 +72,14 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
   })
 
-  const frameW = containerW
-  const frameH = isFree ? masonry.totalHeight + 2 * pad : presetSize.height
+  // Shrink to fit so the user always sees every card without scrolling.
+  // Cards stay left-aligned — no horizontal centering, no vertical centering
+  // (centering caused the "cards bunched in the middle" UX bug previously).
+  const fitScale =
+    masonry.totalHeight > innerH && masonry.totalHeight > 0
+      ? innerH / masonry.totalHeight
+      : 1
+  const didShrink = fitScale < 1
 
   const cards: ShareCard[] = []
   const cardIds: string[] = []
@@ -81,16 +87,20 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     const p = masonry.positions[it.bookmarkId]
     if (!p) continue
     const effectiveSize = sizeOverrides.get(it.bookmarkId) ?? it.sizePreset
+    const x = p.x * fitScale + pad
+    const y = p.y * fitScale + pad
+    const w = p.w * fitScale
+    const h = p.h * fitScale
     cards.push({
       u: truncate(it.url, SHARE_LIMITS.MAX_URL),
       t: truncate(it.title, SHARE_LIMITS.MAX_TITLE),
       d: it.description ? truncate(it.description, SHARE_LIMITS.MAX_DESCRIPTION) : undefined,
       th: it.thumbnail ? truncate(it.thumbnail, SHARE_LIMITS.MAX_URL) : undefined,
       ty: it.type,
-      x: (p.x + pad) / frameW,
-      y: (p.y + pad) / frameH,
-      w: p.w / frameW,
-      h: p.h / frameH,
+      x: x / frameW,
+      y: y / frameH,
+      w: w / frameW,
+      h: h / frameH,
       s: effectiveSize,
       a: it.aspectRatio > 0 ? it.aspectRatio : 1,
     })
@@ -101,7 +111,7 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     cards,
     cardIds,
     frameSize: { width: frameW, height: frameH },
-    didShrink: false,
-    shrinkScale: 1,
+    didShrink,
+    shrinkScale: fitScale,
   }
 }
