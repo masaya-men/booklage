@@ -4,6 +4,7 @@ import { SIZE_PRESET_SPAN } from '@/lib/board/constants'
 import { computeAspectFrameSize } from './aspect-presets'
 import { SHARE_LIMITS } from './types'
 import type { ShareAspect, ShareCard, ShareSize } from './types'
+import { truncate } from './board-to-cards'
 
 export type ComposerItem = {
   readonly bookmarkId: string
@@ -25,20 +26,22 @@ export type ComposerLayoutInput = {
 }
 
 export type ComposerLayoutResult = {
-  readonly cards: ShareCard[]
+  readonly cards: readonly ShareCard[]
   readonly frameSize: { readonly width: number; readonly height: number }
   readonly didShrink: boolean
   readonly shrinkScale: number
 }
 
+/**
+ * Masonry tuning for the share frame. Smaller than `COLUMN_MASONRY` (board)
+ * because the frame is narrow (~1080px) — we want more columns and tighter
+ * gaps so the composition reads as a coherent collage rather than a sparse
+ * board excerpt.
+ */
 export const COMPOSER_MASONRY = {
   GAP_PX: 8,
   TARGET_COLUMN_UNIT_PX: 140,
 } as const
-
-function truncate(s: string, max: number): string {
-  return s.length > max ? s.slice(0, max) : s
-}
 
 export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutResult {
   const { items, order, sizeOverrides, aspect, viewport } = input
