@@ -51,6 +51,10 @@ export function sanitizeShareData(data: ShareData): ShareData {
       h: clampPositive(c.h),
       s: c.s,
       r: c.r !== undefined ? Math.max(-30, Math.min(30, c.r)) : undefined,
+      a:
+        typeof c.a === 'number' && Number.isFinite(c.a) && c.a > 0
+          ? Math.max(0.1, Math.min(10, c.a))
+          : undefined,
     }
     cleaned.push(card)
     if (cleaned.length >= SHARE_LIMITS.MAX_CARDS) break

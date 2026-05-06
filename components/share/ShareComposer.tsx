@@ -34,13 +34,7 @@ type Props = {
   readonly onConfirm: (data: ShareData, frameRef: HTMLElement | null) => void
 }
 
-// Long edge of the share frame in CSS pixels. The frame's actual aspect
-// ratio is derived from the canvas area at render time so 'free' fills
-// the modal — see `dynamicViewport` below. PNG export uses these
-// dimensions as resolution, so we keep the long edge at 1440 to ship
-// roughly 1440px-wide images regardless of the user's screen size.
-const FRAME_LONG_SIDE = 1440
-const FRAME_FALLBACK = { width: 1440, height: 900 } as const
+const FALLBACK_FRAME_SIZE = { w: 1440, h: 900 } as const
 
 function sortByBoardPosition(
   ids: ReadonlyArray<string>,
@@ -71,9 +65,8 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
   const canvasAreaRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number } | null>(null)
 
-  // Observe canvas area size to scale-fit the frame inside it on small
-  // screens. Without this, frame overflows the modal on narrow viewports
-  // and the user can't see the whole share preview at a glance.
+  // Track the canvas area's actual rendered size — the share frame matches
+  // it 1:1 so masonry uses the live width (board-equivalent behavior).
   useEffect((): undefined | (() => void) => {
     if (!open) return undefined
     const el = canvasAreaRef.current
@@ -111,9 +104,6 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
       const prevSet = new Set(filtered)
       const additions: string[] = []
       for (const id of selectedIds) if (!prevSet.has(id)) additions.push(id)
-      // Idempotent: if filtered already covers selectedIds and there are no
-      // additions, the order is unchanged — return prev to avoid a needless
-      // re-render and any cascade through composerItems / layout.
       if (additions.length === 0 && filtered.length === prev.length) return prev
       const sortedAdditions = sortByBoardPosition(additions, positions)
       return [...filtered, ...sortedAdditions]
@@ -137,18 +127,15 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     [items, selectedIds],
   )
 
-  // Derive the share frame viewport from the modal's canvas area so
-  // 'free' aspect always fills the visible space (= board-equivalent UX).
-  // Long edge is normalized to FRAME_LONG_SIDE so the exported PNG is
-  // a consistent resolution across screen sizes. Other aspects (1:1,
-  // 9:16, 16:9) fit inside this viewport as before.
-  const dynamicViewport = useMemo((): { width: number; height: number } => {
-    if (!canvasSize || canvasSize.w <= 0 || canvasSize.h <= 0) return FRAME_FALLBACK
-    const ratio = canvasSize.w / canvasSize.h
-    if (ratio >= 1) {
-      return { width: FRAME_LONG_SIDE, height: Math.round(FRAME_LONG_SIDE / ratio) }
+  // The frame size IS the canvas area size — masonry runs on the live
+  // canvas width, mirroring the board's behavior. PNG export captures
+  // the frame at this CSS-pixel size; dom-to-image's `scale: 2` upgrades
+  // resolution at export time.
+  const frameViewport = useMemo((): { width: number; height: number } => {
+    if (!canvasSize || canvasSize.w <= 0 || canvasSize.h <= 0) {
+      return { width: FALLBACK_FRAME_SIZE.w, height: FALLBACK_FRAME_SIZE.h }
     }
-    return { width: Math.round(FRAME_LONG_SIDE * ratio), height: FRAME_LONG_SIDE }
+    return { width: canvasSize.w, height: canvasSize.h }
   }, [canvasSize])
 
   const layout = useMemo(
@@ -158,21 +145,12 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
         order: cardOrder,
         sizeOverrides,
         aspect,
-        viewport: dynamicViewport,
+        viewport: frameViewport,
       }),
-    [composerItems, cardOrder, sizeOverrides, aspect, dynamicViewport],
+    [composerItems, cardOrder, sizeOverrides, aspect, frameViewport],
   )
 
   const cardIds = layout.cardIds
-
-  // Scale-fit the frame so it fully fits inside canvasArea. Capped at 1.0
-  // so the preview never upscales beyond source resolution (would blur).
-  const fitScale = useMemo((): number => {
-    if (!canvasSize) return 1
-    const sx = canvasSize.w / layout.frameSize.width
-    const sy = canvasSize.h / layout.frameSize.height
-    return Math.min(sx, sy, 1)
-  }, [canvasSize, layout.frameSize.width, layout.frameSize.height])
 
   const onToggle = useCallback((id: string): void => {
     setSelectedIds((prev) => {
@@ -216,12 +194,9 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
       v: SHARE_SCHEMA_VERSION,
       aspect,
       cards: layout.cards,
-      fa: layout.frameSize.height > 0
-        ? layout.frameSize.width / layout.frameSize.height
-        : undefined,
     }
     onConfirm(data, frameRef.current)
-  }, [aspect, layout.cards, layout.frameSize.width, layout.frameSize.height, onConfirm])
+  }, [aspect, layout.cards, onConfirm])
 
   if (!open) return null
 
@@ -251,32 +226,23 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
 
         <div ref={canvasAreaRef} className={styles.canvasArea}>
           <div
+            ref={frameRef}
             className={styles.frameWrap}
             style={{
-              width: layout.frameSize.width * fitScale,
-              height: layout.frameSize.height * fitScale,
+              width: layout.frameSize.width,
+              height: layout.frameSize.height,
             }}
           >
-            <div
-              ref={frameRef}
-              className={styles.frameInner}
-              style={{
-                width: layout.frameSize.width,
-                height: layout.frameSize.height,
-                transform: `scale(${fitScale})`,
-              }}
-            >
-              <ShareFrame
-                cards={layout.cards}
-                cardIds={cardIds}
-                width={layout.frameSize.width}
-                height={layout.frameSize.height}
-                editable={true}
-                onReorder={handleReorder}
-                onCycleSize={handleCycleSize}
-                onDelete={handleDelete}
-              />
-            </div>
+            <ShareFrame
+              cards={layout.cards}
+              cardIds={cardIds}
+              width={layout.frameSize.width}
+              height={layout.frameSize.height}
+              editable={true}
+              onReorder={handleReorder}
+              onCycleSize={handleCycleSize}
+              onDelete={handleDelete}
+            />
           </div>
         </div>
 

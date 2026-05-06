@@ -116,6 +116,7 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
       w: p.w / frameSize.width,
       h: p.h / frameSize.height,
       s: effectiveSize,
+      a: it.aspectRatio > 0 ? it.aspectRatio : 1,
     })
     cardIds.push(it.bookmarkId)
   }

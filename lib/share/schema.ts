@@ -18,6 +18,7 @@ export const ShareCardSchema = z.object({
   h: z.number().finite().positive(),
   s: ShareSizeSchema,
   r: z.number().finite().min(-30).max(30).optional(),
+  a: z.number().finite().positive().optional(),
 })
 
 export const ShareDataSchema = z.object({

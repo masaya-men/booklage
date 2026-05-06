@@ -31,6 +31,11 @@ export type ShareCard = {
   readonly s: ShareSize
   /** rotation degrees (-3..3) */
   readonly r?: number
+  /** Physical aspect ratio (width / height). When present, the receiver
+   *  re-runs the board's column-masonry against its own viewport using
+   *  this ratio + size preset, mirroring how the sender's board lays out.
+   *  Older URLs without `a` fall back to the encoded x/y/w/h positions. */
+  readonly a?: number
 }
 
 export type ShareData = {

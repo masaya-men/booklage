@@ -53,12 +53,12 @@
 }
 
 /* board と同じ「白フチ + 黒キャンバス」を共有モーダルの中で再現する。
-   canvasArea は board の outerFrame に相当、frameWrap は canvas に相当。 */
+   canvasArea は board の outerFrame (白フチ) に相当、frameWrap は board の
+   canvas (黒キャンバス) に相当。frameWrap のサイズ = canvasArea の中身そのまま、
+   masonry が canvasArea 幅で動くため board と同じ展開になる。 */
 .canvasArea {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 16px;
   overflow: hidden;
   background: var(--bg-outer, #fafafa);
@@ -71,13 +71,7 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-}
-
-.frameInner {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform-origin: top left;
+  flex: 1;
 }
 
 .footer {

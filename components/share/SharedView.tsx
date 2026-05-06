@@ -1,11 +1,11 @@
 // components/share/SharedView.tsx
 'use client'
 
-import { useCallback, useEffect, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import Link from 'next/link'
 import { decodeShareData, type DecodeDiagnostics } from '@/lib/share/decode'
 import { sanitizeShareData } from '@/lib/share/validate'
-import { computeAspectFrameSize } from '@/lib/share/aspect-presets'
+import { relayShareLayout } from '@/lib/share/relay-layout'
 import type { ShareData } from '@/lib/share/types'
 import { ShareFrame } from './ShareFrame'
 import { Lightbox } from '@/components/board/Lightbox'
@@ -27,23 +27,17 @@ type LightboxOpenState = {
   readonly rect: DOMRect | null
 }
 
-const VIEWPORT_PADDING_X = 32
-const VIEWPORT_PADDING_Y = 80
-const VIEWPORT_MAX_W = 1800
-const VIEWPORT_MAX_H = 1100
-const VIEWPORT_FALLBACK = { w: 1080, h: 720 } as const
+const PAGE_PADDING_X = 16
+const PAGE_PADDING_Y = 24
 
 export function SharedView(): ReactElement {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
-  const [size, setSize] = useState<{ w: number; h: number }>(VIEWPORT_FALLBACK)
+  const [innerWidth, setInnerWidth] = useState<number>(1080)
   const [openState, setOpenState] = useState<LightboxOpenState | null>(null)
 
   useEffect((): (() => void) => {
     const onResize = (): void => {
-      setSize({
-        w: Math.min(window.innerWidth - VIEWPORT_PADDING_X, VIEWPORT_MAX_W),
-        h: Math.min(window.innerHeight - VIEWPORT_PADDING_Y, VIEWPORT_MAX_H),
-      })
+      setInnerWidth(Math.max(320, window.innerWidth - 2 * PAGE_PADDING_X))
     }
     onResize()
     window.addEventListener('resize', onResize)
@@ -75,9 +69,18 @@ export function SharedView(): ReactElement {
     })()
   }, [])
 
-  // Nav handlers depend on cards.length only (not the cards array itself)
-  // to keep callback identity stable across re-renders.
-  const cardsLen = state.kind === 'ready' ? state.data.cards.length : 0
+  // Re-run the board's masonry against the receiver's viewport width so the
+  // shared collage fills the screen the same way the sender's board does.
+  // Older URLs without per-card `a` fall through unchanged inside relay.
+  const relayed = useMemo(() => {
+    if (state.kind !== 'ready') return null
+    return relayShareLayout({
+      cards: state.data.cards,
+      viewport: { width: innerWidth, height: 0 },
+    })
+  }, [state, innerWidth])
+
+  const cardsLen = relayed ? relayed.cards.length : 0
 
   const handleClose = useCallback((): void => {
     setOpenState(null)
@@ -104,26 +107,17 @@ export function SharedView(): ReactElement {
     return <ErrorView info={state.info} />
   }
 
-  // Honour the sender-encoded frame aspect ratio (fa) when present so the
-  // recipient reproduces the sender's exact frame proportions. Without this,
-  // 'free' aspect drifts to the receiver's viewport ratio and cards land in
-  // wrong positions. Older share URLs without `fa` fall back to the legacy
-  // preset-based calc.
-  const frame = ((): { width: number; height: number } => {
-    const fa = state.data.fa
-    if (typeof fa === 'number' && fa > 0) {
-      const scale = Math.min(size.w / fa, size.h)
-      return { width: fa * scale, height: scale }
-    }
-    return computeAspectFrameSize(state.data.aspect, size.w, size.h)
-  })()
-  const openCard = openState ? state.data.cards[openState.index] ?? null : null
+  if (!relayed) return <div className={styles.center}>読み込み中…</div>
+
+  const frame = relayed.frameSize
+  const cards = relayed.cards
+  const openCard = openState ? cards[openState.index] ?? null : null
 
   return (
-    <div className={styles.page}>
-      <div className={styles.frameHost}>
+    <div className={styles.page} style={{ padding: `${PAGE_PADDING_Y}px ${PAGE_PADDING_X}px` }}>
+      <div className={styles.frameHost} style={{ width: frame.width, height: frame.height }}>
         <ShareFrame
-          cards={state.data.cards}
+          cards={cards}
           width={frame.width}
           height={frame.height}
           editable={false}
@@ -139,7 +133,7 @@ export function SharedView(): ReactElement {
         onClose={handleClose}
         nav={openCard && openState ? {
           currentIndex: openState.index,
-          total: state.data.cards.length,
+          total: cards.length,
           onNav: handleNav,
           onJump: handleJump,
         } : undefined}
