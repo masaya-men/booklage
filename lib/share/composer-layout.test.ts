@@ -34,11 +34,7 @@ describe('composeShareLayout', () => {
     expect(result.didShrink).toBe(false)
     // shrinkScale ≥ 1 — auto-fit may upscale to fill the frame vertically.
     expect(result.shrinkScale).toBeGreaterThanOrEqual(1)
-    // 'free' aspect now derives frame ratio from card-set average AR
-    // (square cards → square-ish frame), so we don't assert the legacy
-    // 1080x720 size. We just verify the frame is well-formed.
-    expect(result.frameSize.width).toBeGreaterThan(0)
-    expect(result.frameSize.height).toBeGreaterThan(0)
+    expect(result.frameSize).toEqual({ width: 1080, height: 720 })
     for (const c of result.cards) {
       expect(c.x).toBeGreaterThanOrEqual(0)
       expect(c.y).toBeGreaterThanOrEqual(0)
@@ -82,11 +78,9 @@ describe('composeShareLayout', () => {
   it('applies sizeOverrides — L spans more columns than S', () => {
     const items = [
       item('s', { sizePreset: 'S' }),
-      item('l', { sizePreset: 'S' }),
+      item('l', { sizePreset: 'S' }), // base S, but override to L
     ]
-    // Both cards must be explicitly overridden — without an entry, sizes
-    // come from the seeded-random bucket, not from sizePreset.
-    const overrides = new Map<string, 'S' | 'M' | 'L'>([['s', 'S'], ['l', 'L']])
+    const overrides = new Map<string, 'S' | 'M' | 'L'>([['l', 'L']])
     const result = composeShareLayout({
       items,
       order: ['s', 'l'],
@@ -125,19 +119,19 @@ describe('composeShareLayout', () => {
   })
 
   it('vertically centers when scaled content height < frame height', () => {
-    // Single wide card in a tall (9:16) frame — width-bound, so the scaled
-    // content height stays well below the frame height and vertical centering
-    // logic must distribute the slack.
-    const items = [item('only', { sizePreset: 'S', aspectRatio: 2 })]
+    const items = [item('only', { sizePreset: 'S', aspectRatio: 1 })]
     const result = composeShareLayout({
       items,
       order: ['only'],
       sizeOverrides: new Map(),
-      aspect: '9:16',
+      aspect: 'free',
       viewport: { width: 1080, height: 720 },
     })
     const c = result.cards[0]
+    // The card should sit roughly in vertical middle (top y > 0.2 since the
+    // card itself is small relative to the 720px frame).
     expect(c.y).toBeGreaterThan(0.2)
+    // And there should be roughly equal slack above and below.
     const aboveSlack = c.y
     const belowSlack = 1 - (c.y + c.h)
     expect(Math.abs(aboveSlack - belowSlack)).toBeLessThan(0.01)
@@ -169,9 +163,8 @@ describe('composeShareLayout', () => {
       aspect: '9:16',
       viewport: { width: 1080, height: 720 },
     })
-    // After auto-shrink the content fills the inner area; the topmost card
-    // sits at ≈ OUTER_PADDING / frameHeight, not at 0. (16/720 ≈ 0.022)
+    // After auto-shrink content fills the frame; first card top should be ~0.
     const minY = Math.min(...result.cards.map((c) => c.y))
-    expect(minY).toBeLessThan(0.05)
+    expect(minY).toBeLessThan(0.01)
   })
 })

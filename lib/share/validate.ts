@@ -55,9 +55,5 @@ export function sanitizeShareData(data: ShareData): ShareData {
     cleaned.push(card)
     if (cleaned.length >= SHARE_LIMITS.MAX_CARDS) break
   }
-  // Clamp fa defensively even though the schema already restricts to [0.3, 4].
-  const fa = typeof data.fa === 'number' && Number.isFinite(data.fa)
-    ? Math.max(0.3, Math.min(4, data.fa))
-    : undefined
-  return { ...data, cards: cleaned, fa }
+  return { ...data, cards: cleaned }
 }

@@ -1,7 +1,7 @@
 // components/share/ShareFrame.tsx
 'use client'
 
-import { useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react'
+import { useMemo, useRef, useState, type ReactElement } from 'react'
 import type { ShareCard, ShareSize } from '@/lib/share/types'
 import { CardNode } from '@/components/board/CardNode'
 import { SizePresetToggle } from '@/components/board/SizePresetToggle'
@@ -80,9 +80,7 @@ export function ShareFrame({
               transform: isDragging ? `translate(${dragOffsetX}px, ${dragOffsetY}px)` : undefined,
               cursor: editable ? 'grab' : (onCardOpen ? 'pointer' : 'default'),
               zIndex: isDragging ? 50 : undefined,
-              // Drives the receiving-side stagger entrance animation in CSS.
-              ['--card-index' as string]: i,
-            } as CSSProperties}
+            }}
             onPointerDown={(e): void => {
               if (editable && cardIds) handleCardPointerDown(e, id)
             }}

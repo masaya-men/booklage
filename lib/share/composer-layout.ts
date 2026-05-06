@@ -27,50 +27,28 @@ export type ComposerLayoutInput = {
 
 export type ComposerLayoutResult = {
   readonly cards: readonly ShareCard[]
+  /** bookmarkIds aligned 1-to-1 with `cards`. Required by ShareFrame
+   *  edit-mode to map cards back to source bookmarks for drag/delete. */
   readonly cardIds: readonly string[]
   readonly frameSize: { readonly width: number; readonly height: number }
   readonly didShrink: boolean
   readonly shrinkScale: number
 }
 
+/**
+ * Masonry tuning for the share frame. Smaller than `COLUMN_MASONRY` (board)
+ * because the frame is narrow (~1080px) — we want more columns and tighter
+ * gaps so the composition reads as a coherent collage rather than a sparse
+ * board excerpt.
+ */
 export const COMPOSER_MASONRY = {
-  GAP_PX: 16,
+  GAP_PX: 8,
   TARGET_COLUMN_UNIT_PX: 140,
 } as const
 
-/** Outer padding equals the inner gap so the rhythm inside and outside the
- *  card cluster reads as the same breathing room — matches the board's
- *  side-padding-equals-half-gap convention scaled up to a full gap so the
- *  share frame doesn't feel cramped. */
-const OUTER_PADDING = COMPOSER_MASONRY.GAP_PX
-
-/** xfnv1a-style fold: deterministic 0..1 hash of a string. Used to assign
- *  size buckets so the same bookmark always lands in the same bucket across
- *  re-renders and across encode/decode cycles. */
-function seededFraction(seed: string): number {
-  let h = 2166136261
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  h ^= h >>> 13
-  h = Math.imul(h, 2654435761)
-  h ^= h >>> 16
-  return ((h >>> 0) % 100000) / 100000
-}
-
-/** S 20% / M 50% / L 30% — biased toward big so the frame fills with
- *  Pinterest-style mosaic variety even when every source card was M. */
-function pickRandomSize(seed: string): ShareSize {
-  const f = seededFraction(seed)
-  if (f < 0.2) return 'S'
-  if (f < 0.7) return 'M'
-  return 'L'
-}
-
 export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutResult {
   const { items, order, sizeOverrides, aspect, viewport } = input
-  let frameSize = computeAspectFrameSize(aspect, viewport.width, viewport.height)
+  const frameSize = computeAspectFrameSize(aspect, viewport.width, viewport.height)
 
   // Build ordered items: order first (filtering missing), then any items missing from order at the tail
   const orderSet = new Set(order)
@@ -84,69 +62,16 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     if (!orderSet.has(it.bookmarkId)) ordered.push(it)
   }
 
-  // Resolve effective sizes: explicit user override wins, otherwise the
-  // seeded-random bucket. The board's own sizePreset is intentionally
-  // ignored — share is a fresh composition, not a transcription.
-  const effectiveSize = (it: ComposerItem): ShareSize =>
-    sizeOverrides.get(it.bookmarkId) ?? pickRandomSize(it.bookmarkId)
-
+  // Run column-masonry sized to the frame width
   const masonryCards = ordered.map((it) => ({
     id: it.bookmarkId,
     aspectRatio: it.aspectRatio > 0 ? it.aspectRatio : 1,
-    columnSpan: SIZE_PRESET_SPAN[effectiveSize(it)],
+    columnSpan: SIZE_PRESET_SPAN[sizeOverrides.get(it.bookmarkId) ?? it.sizePreset],
   }))
-
-  // 'free' preset: derive frame aspect from the card-set average so it
-  // visibly differs from the fixed presets and tracks the bookmark mix.
-  if (aspect === 'free' && masonryCards.length > 0) {
-    const avgAR = masonryCards.reduce(
-      (s, c) => s + Math.max(0.4, c.aspectRatio),
-      0,
-    ) / masonryCards.length
-    const clampedAR = Math.max(0.7, Math.min(1.9, avgAR))
-    const baseWidth = 1080
-    frameSize = { width: baseWidth, height: Math.round(baseWidth / clampedAR) }
-  }
-
-  const innerW = Math.max(60, frameSize.width - 2 * OUTER_PADDING)
-  const innerH = Math.max(60, frameSize.height - 2 * OUTER_PADDING)
-  const gap = COMPOSER_MASONRY.GAP_PX
-
-  // Bisect over column counts 2..6 and pick the one whose pre-clamp fitScale
-  // is largest (= layout closest to filling the inner area without aggressive
-  // shrink). This avoids the previous bug where a single fixed column unit
-  // would leave the rightmost column empty for span-2-only layouts.
-  let best: {
-    masonry: ReturnType<typeof computeColumnMasonry>
-    score: number
-  } | null = null
-  for (let cc = 2; cc <= 6; cc++) {
-    const unit = (innerW - (cc - 1) * gap) / cc
-    if (unit < 60) continue
-    const m = computeColumnMasonry({
-      cards: masonryCards,
-      containerWidth: innerW,
-      gap,
-      targetColumnUnit: unit,
-    })
-    let usedMaxX = 0
-    for (const id of Object.keys(m.positions)) {
-      const r = m.positions[id].x + m.positions[id].w
-      if (r > usedMaxX) usedMaxX = r
-    }
-    const scaleByH = m.totalHeight > 0 ? innerH / m.totalHeight : 1
-    const scaleByW = usedMaxX > 0 ? innerW / usedMaxX : 1
-    // Cap upscale at 1.5 in scoring so a single big card doesn't dominate.
-    const score = Math.min(Math.min(scaleByH, scaleByW), 1.5)
-    if (best === null || score > best.score) {
-      best = { masonry: m, score }
-    }
-  }
-
-  const masonry = best?.masonry ?? computeColumnMasonry({
+  const masonry = computeColumnMasonry({
     cards: masonryCards,
-    containerWidth: innerW,
-    gap,
+    containerWidth: frameSize.width,
+    gap: COMPOSER_MASONRY.GAP_PX,
     targetColumnUnit: COMPOSER_MASONRY.TARGET_COLUMN_UNIT_PX,
   })
 
@@ -157,16 +82,30 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     px[id] = { x: p.x, y: p.y, w: p.w, h: p.h }
   }
 
-  // Auto-fit to the inner area. MAX_UPSCALE caps the rare 1-card-balloon case.
+  // Auto-fit: scale either DOWN (when masonry overflows) or UP (when it
+  // underfills) so cards use the full canvas. Mirrors the prior shrink-only
+  // path but adds upscaling — without this, few-card layouts hugged the
+  // middle band of the frame and left huge top/bottom gutters, which read
+  // as broken on the recipient side.
+  //
+  // We scale by the more-constraining axis: fit within frame width AND
+  // frame height. MAX_UPSCALE caps growth at 2.5× so 1-2 card layouts
+  // don't balloon. Beyond cap, we accept some gutter and center.
   const MAX_UPSCALE = 2.5
   let usedMaxX = 0
   for (const id of Object.keys(px)) {
     const right = px[id].x + px[id].w
     if (right > usedMaxX) usedMaxX = right
   }
-  const scaleByHeight = masonry.totalHeight > 0 ? innerH / masonry.totalHeight : 1
-  const scaleByWidth = usedMaxX > 0 ? innerW / usedMaxX : 1
+  const scaleByHeight = masonry.totalHeight > 0
+    ? frameSize.height / masonry.totalHeight
+    : 1
+  const scaleByWidth = usedMaxX > 0
+    ? frameSize.width / usedMaxX
+    : 1
   const fitScale = Math.min(MAX_UPSCALE, scaleByHeight, scaleByWidth)
+  // didShrink remains true only for the actual shrink case so existing
+  // callers/tests that read this flag keep their semantics.
   const didShrink = fitScale < 1
   const shrinkScale = fitScale
   if (fitScale !== 1) {
@@ -178,16 +117,30 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
     }
   }
 
-  // Center within the inner area, then offset by OUTER_PADDING so the cluster
-  // sits with a `gap` of breathing room on all four sides — same rhythm
-  // inside and outside the card cluster.
+  // Vertical centering: if scaled total height < frame height (only
+  // happens when MAX_UPSCALE clamped us short), push down by half the slack.
   const scaledTotalHeight = masonry.totalHeight * fitScale
-  const verticalOffset = OUTER_PADDING + Math.max(0, (innerH - scaledTotalHeight) / 2)
-  const postFitUsedWidth = usedMaxX * fitScale
-  const horizontalOffset = OUTER_PADDING + Math.max(0, (innerW - postFitUsedWidth) / 2)
+  const verticalOffset = Math.max(0, (frameSize.height - scaledTotalHeight) / 2)
+  if (verticalOffset > 0) {
+    for (const id of Object.keys(px)) {
+      px[id].y += verticalOffset
+    }
+  }
+
+  // Horizontal centering: column-masonry packs from x=0 leftward. After
+  // auto-fit, the packed area may still be narrower than the frame
+  // (e.g. when MAX_UPSCALE clamped width-fit). Push right by half the
+  // slack so the composition reads as intentional rather than left-pinned.
+  let usedWidth = 0
   for (const id of Object.keys(px)) {
-    px[id].x += horizontalOffset
-    px[id].y += verticalOffset
+    const right = px[id].x + px[id].w
+    if (right > usedWidth) usedWidth = right
+  }
+  const horizontalOffset = Math.max(0, (frameSize.width - usedWidth) / 2)
+  if (horizontalOffset > 0) {
+    for (const id of Object.keys(px)) {
+      px[id].x += horizontalOffset
+    }
   }
 
   // Build ShareCard[] and cardIds[] in `ordered` sequence with normalized coords
@@ -195,7 +148,7 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
   const cardIds: string[] = []
   for (const it of ordered) {
     const p = px[it.bookmarkId]
-    const size = effectiveSize(it)
+    const effectiveSize = sizeOverrides.get(it.bookmarkId) ?? it.sizePreset
     cards.push({
       u: truncate(it.url, SHARE_LIMITS.MAX_URL),
       t: truncate(it.title, SHARE_LIMITS.MAX_TITLE),
@@ -206,7 +159,7 @@ export function composeShareLayout(input: ComposerLayoutInput): ComposerLayoutRe
       y: p.y / frameSize.height,
       w: p.w / frameSize.width,
       h: p.h / frameSize.height,
-      s: size,
+      s: effectiveSize,
     })
     cardIds.push(it.bookmarkId)
   }
