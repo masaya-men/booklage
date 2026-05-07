@@ -192,14 +192,14 @@ function Handle({ corner, cardWidth, cardHeight, maxCardWidth, onResize, onResiz
 }
 
 /** 1/4-circle arc rendered as its own SVG sibling. 40×40 viewBox with
- *  the card corner at box-local (20, 20), arc r=12 — that leaves 8px
+ *  the card corner at box-local (20, 20), arc r=10 — that leaves 10px
  *  of padding around the curve so the 2.25px stroke AND the 5px
  *  drop-shadow blur both bloom freely without being clipped at the
  *  SVG bounds (an earlier 24×24 viewBox had the arc touching the
  *  edge, which hard-clipped the soft halo and made the curve read as
  *  brittle). SVG sweep=1 = clockwise visually, sweep=0 = ccw. */
 function ArcSvg({ corner }: { corner: ResizeCorner }): ReactElement {
-  const r = 12
+  const r = 10
   const cx = 20
   const cy = 20
   let p1x: number
