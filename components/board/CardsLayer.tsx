@@ -411,6 +411,7 @@ export function CardsLayer({
               zIndex: dragState?.bookmarkId === it.bookmarkId ? 1000 : undefined,
               opacity: newlyAddedIds.has(it.bookmarkId) ? 0 : 1,
               animation: newlyAddedIds.has(it.bookmarkId) ? 'booklage-entrance-a 400ms ease-out forwards' : undefined,
+              ['--card-radius' as string]: `${Math.min(24, Math.min(p.w, p.h) * 0.075)}px`,
             }}
           >
             <CardNode
