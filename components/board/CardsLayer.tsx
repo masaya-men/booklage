@@ -67,6 +67,7 @@ type CardsLayerProps = {
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly displayMode: DisplayMode
   readonly newlyAddedIds: ReadonlySet<string>
+  readonly globalCardWidth: number
 }
 
 export function CardsLayer({
@@ -82,6 +83,7 @@ export function CardsLayer({
   persistMeasuredAspect,
   displayMode,
   newlyAddedIds,
+  globalCardWidth,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -121,9 +123,9 @@ export function CardsLayer({
         cards: masonryCards,
         containerWidth: viewportWidth,
         gap: COLUMN_MASONRY.GAP_PX,
-        targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+        targetColumnUnit: globalCardWidth,
       }),
-    [masonryCards, viewportWidth],
+    [masonryCards, viewportWidth, globalCardWidth],
   )
 
   // Stage 2: preview masonry computed from the live virtual order.
@@ -146,9 +148,9 @@ export function CardsLayer({
       cards: orderedCards,
       containerWidth: viewportWidth,
       gap: COLUMN_MASONRY.GAP_PX,
-      targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+      targetColumnUnit: globalCardWidth,
     })
-  }, [virtualOrderedIds, items, viewportWidth, intrinsicHeights])
+  }, [virtualOrderedIds, items, viewportWidth, intrinsicHeights, globalCardWidth])
 
   // During drag, use preview positions for non-dragged cards.
   // During drop/idle, use real masonry positions.
@@ -255,7 +257,7 @@ export function CardsLayer({
           cardWorldY,
           containerWidth: viewportWidth,
           gap: COLUMN_MASONRY.GAP_PX,
-          targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+          targetColumnUnit: globalCardWidth,
         })
 
         // Only update state if order actually changed — avoids re-render storms.
@@ -268,7 +270,7 @@ export function CardsLayer({
           return prev
         })
       },
-      [items, viewportWidth],
+      [items, viewportWidth, globalCardWidth],
     ),
     onDrop: useCallback(
       (_orderedIds: readonly string[]): void => {
@@ -302,7 +304,7 @@ export function CardsLayer({
           cards: finalCards,
           containerWidth: viewportWidth,
           gap: COLUMN_MASONRY.GAP_PX,
-          targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+          targetColumnUnit: globalCardWidth,
         })
 
         // Snap all non-dragged cards to their FINAL masonry positions + scale 1,
@@ -342,7 +344,7 @@ export function CardsLayer({
         onDrop(finalOrder)
         setVirtualOrderedIds(null)
       },
-      [onDrop, virtualOrderedIds, items, viewportWidth, intrinsicHeights],
+      [onDrop, virtualOrderedIds, items, viewportWidth, intrinsicHeights, globalCardWidth],
     ),
   })
 

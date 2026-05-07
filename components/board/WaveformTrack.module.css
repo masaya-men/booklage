@@ -12,9 +12,21 @@
   background: rgba(255, 255, 255, 0.18);
   border-radius: 1px;
   min-width: 1px;
+  transform-origin: center;
   transition: background 120ms ease-out;
+  animation: waveformPulse 1400ms ease-in-out infinite alternate;
+  animation-delay: calc(var(--bar-i, 0) * -70ms);
 }
 
 .bar[data-active="true"] {
   background: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes waveformPulse {
+  0%   { transform: scaleY(0.55); }
+  100% { transform: scaleY(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar { animation: none; }
 }

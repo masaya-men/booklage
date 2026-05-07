@@ -192,9 +192,9 @@ export function BoardRoot() {
         cards: masonryCards,
         containerWidth: effectiveLayoutWidth,
         gap: COLUMN_MASONRY.GAP_PX,
-        targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+        targetColumnUnit: globalCardWidth,
       }),
-    [masonryCards, effectiveLayoutWidth],
+    [masonryCards, effectiveLayoutWidth, globalCardWidth],
   )
 
   // Actual content bounds — tracks the furthest right/bottom any card reaches,
@@ -573,6 +573,7 @@ export function BoardRoot() {
                 persistMeasuredAspect={persistMeasuredAspect}
                 displayMode={displayMode}
                 newlyAddedIds={newlyAddedIds}
+                globalCardWidth={globalCardWidth}
               />
             </div>
           </InteractionLayer>

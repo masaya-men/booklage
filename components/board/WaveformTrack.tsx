@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, type ReactElement } from 'react'
+import { useMemo, type CSSProperties, type ReactElement } from 'react'
 import styles from './WaveformTrack.module.css'
 
 type Props = {
@@ -32,13 +32,17 @@ export function WaveformTrack({ barCount, progress, seed = 1 }: Props): ReactEle
       {heights.map((h, i) => {
         const fillFrac = i / Math.max(1, barCount - 1)
         const active = fillFrac <= progress
+        const style: CSSProperties = {
+          height: `${(h * 100).toFixed(1)}%`,
+          ['--bar-i' as string]: i,
+        }
         return (
           <span
             key={i}
             data-bar
             data-active={active}
             className={styles.bar}
-            style={{ height: `${(h * 100).toFixed(1)}%` }}
+            style={style}
           />
         )
       })}
