@@ -12,6 +12,7 @@ function mk(partial: Partial<BoardItem> & { bookmarkId: string; tags?: string[] 
     gridIndex: 0,
     orderIndex: 0,
     cardWidth: 240,
+    customCardWidth: false,
     isRead: partial.isRead ?? false,
     isDeleted: partial.isDeleted ?? false,
     tags: partial.tags ?? [],

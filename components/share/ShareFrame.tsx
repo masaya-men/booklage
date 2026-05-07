@@ -48,6 +48,7 @@ function buildAdapterItems(
     gridIndex: i,
     orderIndex: i,
     cardWidth: presetToCardWidth(c.s),
+    customCardWidth: false,
     isRead: false,
     isDeleted: false,
     tags: [] as readonly string[],

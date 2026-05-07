@@ -47,8 +47,16 @@ export interface BookmarkRecord {
   orderIndex?: number
   /** @deprecated post-v10 — use cardWidth. Kept for migration read-back only. */
   sizePreset?: 'S' | 'M' | 'L'
-  /** Continuous card width in CSS pixels. Replaces sizePreset post-v10. */
+  /** Continuous card width in CSS pixels. Replaces sizePreset post-v10.
+   *  Stored value is only treated as a user-defined override when the
+   *  companion `customCardWidth` flag is true; otherwise the board
+   *  computes width from the active SizePicker level. */
   cardWidth?: number
+  /** v11: when true, the user has manually resized this card via the
+   *  corner ResizeHandle and `cardWidth` should be honored as the
+   *  card's persistent width. The header Size 1-5 picker no longer
+   *  affects this card. undefined / false = follow SizePicker default. */
+  customCardWidth?: boolean
   /** v9: mood id array. Empty = Inbox. */
   tags: string[]
   /** v9: null = follow global displayMode (BoardConfig). */
@@ -462,6 +470,12 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
           })
         })
       }
+
+      // ── v10 → v11: introduce customCardWidth flag (no-op rewrite).
+      // Existing rows have `customCardWidth: undefined`, which the read
+      // path treats as `false` — no cursor sweep needed. Bumping the
+      // schema version still serves as a tripwire so future migrations
+      // can assume the field exists when oldVersion >= 11.
     },
   })
 }
@@ -654,6 +668,66 @@ export async function updateBookmarkOgp(
   if (!existing) return
   const updated: BookmarkRecord = { ...existing, ...ogpData }
   await db.put('bookmarks', updated)
+}
+
+/**
+ * Persist a user-defined card width and flip the `customCardWidth` flag
+ * to true so the header Size picker no longer touches this card. Called
+ * from ResizeHandle pointerup.
+ */
+export async function persistCustomCardWidth(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  width: number,
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  await db.put('bookmarks', {
+    ...existing,
+    cardWidth: clampCardWidth(width),
+    customCardWidth: true,
+  })
+}
+
+/**
+ * Clear the `customCardWidth` flag for a single bookmark. The stored
+ * `cardWidth` is left intact (cheap, harmless) — it just stops being
+ * honored once the flag is false. Used by the per-card "reset size"
+ * affordance.
+ */
+export async function clearCustomCardWidth(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  if (existing.customCardWidth !== true) return
+  await db.put('bookmarks', { ...existing, customCardWidth: false })
+}
+
+/**
+ * Bulk reset every bookmark whose `customCardWidth` flag is true.
+ * Used by the header "Reset all" button.
+ * @returns The bookmark ids that were actually reset (so callers can
+ *   prune their in-memory override map without diffing the whole list).
+ */
+export async function clearAllCustomCardWidths(
+  db: IDBPDatabase<BooklageDB>,
+): Promise<readonly string[]> {
+  const tx = db.transaction('bookmarks', 'readwrite')
+  const store = tx.objectStore('bookmarks')
+  const cleared: string[] = []
+  let cursor = await store.openCursor()
+  while (cursor) {
+    const rec = cursor.value
+    if (rec.customCardWidth === true) {
+      await cursor.update({ ...rec, customCardWidth: false })
+      cleared.push(rec.id)
+    }
+    cursor = await cursor.continue()
+  }
+  await tx.done
+  return cleared
 }
 
 /**

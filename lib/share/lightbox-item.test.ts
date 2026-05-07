@@ -16,6 +16,7 @@ describe('normalizeItem', () => {
       gridIndex: 0,
       orderIndex: 0,
       cardWidth: 240,
+      customCardWidth: false,
       isRead: false,
       isDeleted: false,
       tags: [],
@@ -40,6 +41,7 @@ describe('normalizeItem', () => {
       gridIndex: 0,
       orderIndex: 0,
       cardWidth: 240,
+      customCardWidth: false,
       isRead: false,
       isDeleted: false,
       tags: [],
@@ -92,6 +94,7 @@ describe('normalizeItem', () => {
     const board = normalizeItem({
       bookmarkId: 'b', cardId: 'c', title: 't', url: 'https://e/x',
       aspectRatio: 1, gridIndex: 0, orderIndex: 0, cardWidth: 240,
+      customCardWidth: false,
       isRead: false, isDeleted: false, tags: [], displayMode: null,
     } as BoardItem)
     const share = normalizeItem({

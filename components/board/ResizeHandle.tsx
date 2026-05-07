@@ -137,7 +137,14 @@ function Handle({ corner, cardWidth, cardHeight, maxCardWidth, onResize, onResiz
         el.removeEventListener('pointermove', move)
         el.removeEventListener('pointerup', end)
         el.removeEventListener('pointercancel', end)
-        if (el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId)
+        // Match the setPointerCapture guard above — jsdom doesn't
+        // implement these methods, so calling them in the unit-test
+        // env throws and aborts the listener cleanup midway.
+        try {
+          if (el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId)
+        } catch {
+          // ignore — capture release isn't critical for the drag itself
+        }
         setResizing(false)
         if (dragStarted) onResizeEnd?.(latestWidthRef.current)
       }

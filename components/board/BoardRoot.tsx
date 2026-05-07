@@ -29,6 +29,7 @@ import { InteractionLayer } from './InteractionLayer'
 import { TopHeader } from './TopHeader'
 import { FilterPill } from './FilterPill'
 import { SizePicker } from './SizePicker'
+import { ResetAllButton } from './ResetAllButton'
 import { ScrollMeter } from './ScrollMeter'
 import { BoardChrome } from './BoardChrome'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
@@ -49,7 +50,19 @@ import styles from './BoardRoot.module.css'
 const BOARD_TOP_PAD_PX = 80
 
 export function BoardRoot() {
-  const { items, loading, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistVideoFlag, persistSoftDelete, reload } = useBoardData()
+  const {
+    items,
+    loading,
+    persistOrderBatch,
+    persistMeasuredAspect,
+    persistThumbnail,
+    persistVideoFlag,
+    persistSoftDelete,
+    persistCustomWidth,
+    resetCustomWidth,
+    resetAllCustomWidths,
+    reload,
+  } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
   const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
@@ -70,18 +83,81 @@ export function BoardRoot() {
   const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
   const [actionSheet, setActionSheet] = useState<{ pngDataUrl: string; shareUrl: string } | null>(null)
   const [sizeLevel, setSizeLevel] = useState<SizeLevel>(DEFAULT_SIZE_LEVEL)
-  // Session-2 per-card resize overrides — populated by the ResizeHandle
-  // on the cards layer. Lives at the BoardRoot level so both the cards
-  // layout and the BoardRoot's scroll-bounds calculation see the same
-  // widths. Cleared on reload (no IDB persistence yet — session 3 adds
-  // the v11 schema migration + customCardWidth flag).
+  // Per-card resize overrides — hydrated from items[customCardWidth=true]
+  // on every items change, then mutated locally during in-flight drags
+  // for instant feedback. ResizeHandle pointerup persists the final
+  // width to IDB via `persistCustomWidth`, which then updates `items`
+  // on the next tick — the effect below picks it up and writes the
+  // settled value back into customWidths so the two stay coherent.
   const [customWidths, setCustomWidths] = useState<Readonly<Record<string, number>>>({})
+  useEffect(() => {
+    setCustomWidths((prev) => {
+      const next: Record<string, number> = {}
+      for (const it of items) {
+        if (it.customCardWidth) next[it.bookmarkId] = it.cardWidth
+      }
+      // Cheap shallow equality so non-resize items changes (e.g. tag
+      // edits, thumbnail backfill) don't re-render every card.
+      const prevKeys = Object.keys(prev)
+      const nextKeys = Object.keys(next)
+      if (prevKeys.length === nextKeys.length) {
+        let same = true
+        for (const k of nextKeys) {
+          if (prev[k] !== next[k]) { same = false; break }
+        }
+        if (same) return prev
+      }
+      return next
+    })
+  }, [items])
+
+  // In-flight resize drag → update local override immediately so the
+  // skyline reflows under the cursor. No IDB write yet; that happens on
+  // pointerup via handleCardResizeEnd.
   const handleCardResize = useCallback((bookmarkId: string, nextWidth: number): void => {
     setCustomWidths((prev) => {
       if (prev[bookmarkId] === nextWidth) return prev
       return { ...prev, [bookmarkId]: nextWidth }
     })
   }, [])
+
+  // Resize drag finished → persist to IDB. The hook does optimistic
+  // updates on `items` so customCardWidth=true takes effect immediately
+  // (without waiting for the IDB round-trip), and the hydration effect
+  // above keeps customWidths in sync.
+  const handleCardResizeEnd = useCallback(
+    (bookmarkId: string, finalWidth: number): void => {
+      void persistCustomWidth(bookmarkId, finalWidth)
+    },
+    [persistCustomWidth],
+  )
+
+  // Per-card "reset size" affordance → clear the IDB flag and drop the
+  // override from local state in the same tick so the card snaps back
+  // to the SizePicker default without waiting for the round-trip.
+  const handleCardResetSize = useCallback(
+    (bookmarkId: string): void => {
+      setCustomWidths((prev) => {
+        if (!(bookmarkId in prev)) return prev
+        const next = { ...prev }
+        delete next[bookmarkId]
+        return next
+      })
+      void resetCustomWidth(bookmarkId)
+    },
+    [resetCustomWidth],
+  )
+
+  // Header "Reset all" → clear every custom override at once.
+  const handleResetAllCustomWidths = useCallback((): void => {
+    setCustomWidths({})
+    void resetAllCustomWidths()
+  }, [resetAllCustomWidths])
+
+  const customWidthCount = useMemo(
+    () => items.reduce((n, it) => (it.customCardWidth ? n + 1 : n), 0),
+    [items],
+  )
   // Ref points at the inner dark canvas — viewport.w/h reflect the canvas's
   // inner dimensions (window minus the outer-frame margin), so masonry layout
   // and culling all work in canvas-local coordinates.
@@ -585,6 +661,10 @@ export function BoardRoot() {
           actions={
             <>
               <SizePicker value={sizeLevel} onChange={setSizeLevel} />
+              <ResetAllButton
+                count={customWidthCount}
+                onClick={handleResetAllCustomWidths}
+              />
               <button
                 type="button"
                 className={styles.sharePill}
@@ -648,6 +728,8 @@ export function BoardRoot() {
                 defaultCardWidth={defaultCardWidth}
                 customWidths={customWidths}
                 onCardResize={handleCardResize}
+                onCardResizeEnd={handleCardResizeEnd}
+                onCardResetSize={handleCardResetSize}
               />
             </div>
           </InteractionLayer>

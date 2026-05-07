@@ -8,14 +8,33 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **自由サイジング機能セッション 2 完了 (4 角ハンドル + arc hint + 倍率 2.0 ドラッグ)** 反映済（ハードリロードで確認）
-- **次セッション最優先**: 自由サイジング機能セッション 3 — 永続化 + 単体リセット + 全リセットボタン
-  - IDB v10 → v11 マイグレーション (`customCardWidth: boolean` フラグ追加)
-  - ResizeHandle pointerup で IDB に persist、SizePicker batch update を `customCardWidth !== true` に限定
-  - リサイズ済みカードに 「リセット」アイコン (or 右クリックメニュー)
-  - 左下に「すべてリセット」ボタン
-- **セッション 4 (Session 3 後)**: 矩形選択 marquee で範囲内カードのみリセット
+- **本番**: `https://booklage.pages.dev` に **自由サイジング機能セッション 3 完了 (永続化 + 単体/全リセット UI)** 反映済（ハードリロードで確認）
+- **次セッション最優先**: 自由サイジング機能セッション 4 — 矩形選択 marquee で範囲内カードのみリセット
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
+
+### 🎯 今セッション (2026-05-08 続き) の到達点 — 自由サイジング機能セッション 3: 永続化 + リセット UI
+
+skyline + 4 角ハンドルの上に **IDB v11 永続化 + カード × / ↺ アクション + ヘッダー RESET ピル** を実装。リロード後もリサイズが残り、単体/全リセットの導線が揃った。
+
+**主要変更**:
+- IDB **v10 → v11**: `BookmarkRecord.customCardWidth?: boolean` フィールド追加。マイグレーションは no-op (undefined → false 扱い、cursor sweep 不要)
+- `persistCustomCardWidth` / `clearCustomCardWidth` / `clearAllCustomCardWidths` を indexeddb.ts に追加。clamp は `MAX_CARD_WIDTH=480` で守る
+- `BoardItem.customCardWidth: boolean` 必須化。`use-board-data` hook に `persistCustomWidth` / `resetCustomWidth` / `resetAllCustomWidths` を追加 (全て optimistic local update + IDB write-through)
+- `BoardRoot.tsx`: `customWidths` を items の `customCardWidth=true` から hydrate (shallow-equality check で再レンダ抑制)、ResizeHandle `onResizeEnd` で persist、単体リセットは local state delete + IDB clear、全リセットは setCustomWidths({}) + clearAll、`customWidthCount = useMemo` でヘッダー pill 表示判定
+- 新規 `CardCornerActions.tsx` — カード右上 × (削除) + 左下 ↺ (サイズリセット、custom 時のみ表示)。32×32 透明 hit zone + 内側 24px disc で大きいマウスポインタにも対応、ホバー時 `data-visible="true"` でフェードイン、`pointerdown`/`mousedown` で `stopPropagation` し reorder drag と非干渉
+- 新規 `ResetAllButton.tsx` — TopHeader actions の Share 左に配置、`count=0` で null 返却、count badge と SVG ↺ アイコン、220ms フェードイン entrance アニメ
+- `ResizeHandle.tsx`: `hasPointerCapture` を try/catch でガード (jsdom 互換、既存 unhandled error 解消)
+- 既存 fixture (`cards/index.test.ts`、`lightbox-item.test.ts`、`filter.test.ts`、`ShareFrame.tsx`) に `customCardWidth: false` 追加
+
+**変更ファイル**:
+- 新規: `components/board/CardCornerActions.{tsx,module.css,test.tsx}` (7 tests)、`components/board/ResetAllButton.{tsx,module.css,test.tsx}` (4 tests)、`tests/lib/idb-v11-custom-card-width.test.ts` (6 tests)
+- 編集: `lib/constants.ts` (DB v11)、`lib/storage/indexeddb.ts`、`lib/storage/use-board-data.ts`、`components/board/BoardRoot.tsx`、`CardsLayer.tsx`、`ResizeHandle.tsx`、`components/share/ShareFrame.tsx`、3 つの test fixture
+
+**検証**: tsc 0 errors、329/329 unit tests pass (前 312 + 新規 17)、`pnpm build` 成功
+
+**気になる残課題 (セッション 4 で対応)**:
+- 矩形選択 marquee で範囲リセット (board 全体じゃなく一部だけ戻したい時の導線)
+- × ボタンの位置/デザインがうるさく感じたら微調整 (ユーザー本番確認後判断)
 
 ### 🎯 今セッション (2026-05-08) の到達点 — 自由サイジング機能セッション 2: ResizeHandle 実装
 

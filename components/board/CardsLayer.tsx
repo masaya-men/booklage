@@ -23,6 +23,7 @@ import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
 import { CardNode } from './CardNode'
 import { MediaTypeIndicator, type MediaType } from './MediaTypeIndicator'
 import { ResizeHandle } from './ResizeHandle'
+import { CardCornerActions } from './CardCornerActions'
 import { useCardReorderDrag, computeVirtualOrder, makeSkylineSimulator } from './use-card-reorder-drag'
 import { pickCard } from './cards'
 
@@ -78,6 +79,12 @@ type CardsLayerProps = {
   readonly customWidths: Readonly<Record<string, number>>
   /** Notify the parent of a per-card width update during a resize drag. */
   readonly onCardResize: (bookmarkId: string, nextWidth: number) => void
+  /** Fired once the user releases the resize handle. The parent persists
+   *  the final width to IDB and flips `customCardWidth` to true. */
+  readonly onCardResizeEnd: (bookmarkId: string, finalWidth: number) => void
+  /** Fired when the user clicks the per-card "reset size" affordance.
+   *  The parent clears the IDB flag for this bookmark. */
+  readonly onCardResetSize: (bookmarkId: string) => void
 }
 
 export function CardsLayer({
@@ -96,6 +103,8 @@ export function CardsLayer({
   defaultCardWidth,
   customWidths,
   onCardResize,
+  onCardResizeEnd,
+  onCardResetSize,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -464,6 +473,13 @@ export function CardsLayer({
               cardHeight={p.h}
               maxCardWidth={viewportWidth}
               onResize={(nextW: number): void => onCardResize(it.bookmarkId, nextW)}
+              onResizeEnd={(finalW: number): void => onCardResizeEnd(it.bookmarkId, finalW)}
+            />
+            <CardCornerActions
+              hovered={hoveredBookmarkId === it.bookmarkId}
+              hasCustomWidth={it.customCardWidth}
+              onDelete={(): void => onDelete(it.bookmarkId)}
+              onResetSize={(): void => onCardResetSize(it.bookmarkId)}
             />
           </div>
         )

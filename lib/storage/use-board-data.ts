@@ -11,6 +11,9 @@ import {
   updateCard,
   updateBookmarkOrderIndex,
   updateBookmarkOrderBatch,
+  persistCustomCardWidth,
+  clearCustomCardWidth,
+  clearAllCustomCardWidths,
   type BookmarkRecord,
   type CardRecord,
 } from './indexeddb'
@@ -27,6 +30,10 @@ export type BoardItem = {
   readonly gridIndex: number
   readonly orderIndex: number
   readonly cardWidth: number
+  /** v11: true when the user has manually resized this card via the
+   *  corner ResizeHandle. The header SizePicker no longer affects it,
+   *  and a "reset size" affordance is shown on the card. */
+  readonly customCardWidth: boolean
   readonly freePos?: FreePosition
   readonly userOverridePos?: CardPosition  // legacy compat: same data as freePos for grid-side consumers
   readonly isRead: boolean
@@ -95,6 +102,7 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     gridIndex: c?.gridIndex ?? 0,
     orderIndex: b.orderIndex ?? 0,
     cardWidth: typeof b.cardWidth === 'number' ? b.cardWidth : presetToCardWidth(b.sizePreset),
+    customCardWidth: b.customCardWidth === true,
     freePos,
     userOverridePos: hasPlacement ? { x: c.x, y: c.y, w, h } : undefined,
     isRead: b.isRead ?? false,
@@ -132,6 +140,17 @@ export function useBoardData(): {
   persistTags: (bookmarkId: string, tags: readonly string[]) => Promise<void>
   persistDisplayMode: (bookmarkId: string, displayMode: BoardItem['displayMode']) => Promise<void>
   reload: () => Promise<void>
+  /** Write a manual resize: stores the new width AND flips
+   *  `customCardWidth` to true so the header SizePicker stops touching
+   *  this card. Called from ResizeHandle pointerup. */
+  persistCustomWidth: (bookmarkId: string, width: number) => Promise<void>
+  /** Drop a single bookmark's `customCardWidth` flag back to false.
+   *  The card immediately follows the global SizePicker again. */
+  resetCustomWidth: (bookmarkId: string) => Promise<void>
+  /** Bulk drop the `customCardWidth` flag on every bookmark that had
+   *  it set. Returns the ids that were actually reset so callers can
+   *  prune their in-memory override map cheaply. */
+  resetAllCustomWidths: () => Promise<readonly string[]>
   /** @deprecated Use persistFreePosition instead. Will be removed after full pivot. */
   persistCardPosition: (cardId: string, pos: CardPosition) => Promise<void>
 } {
@@ -378,6 +397,56 @@ export function useBoardData(): {
     setItems(all)
   }, [])
 
+  const persistCustomWidth = useCallback(
+    async (bookmarkId: string, width: number): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      // Optimistic local update first — keeps the resize handle's
+      // pointerup feel snappy even before the IDB round-trip lands.
+      setItems((prev) =>
+        prev.map((it) =>
+          it.bookmarkId === bookmarkId
+            ? { ...it, cardWidth: width, customCardWidth: true }
+            : it,
+        ),
+      )
+      await persistCustomCardWidth(
+        db as Parameters<typeof persistCustomCardWidth>[0],
+        bookmarkId,
+        width,
+      )
+    },
+    [],
+  )
+
+  const resetCustomWidth = useCallback(
+    async (bookmarkId: string): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      setItems((prev) =>
+        prev.map((it) =>
+          it.bookmarkId === bookmarkId ? { ...it, customCardWidth: false } : it,
+        ),
+      )
+      await clearCustomCardWidth(
+        db as Parameters<typeof clearCustomCardWidth>[0],
+        bookmarkId,
+      )
+    },
+    [],
+  )
+
+  const resetAllCustomWidths = useCallback(async (): Promise<readonly string[]> => {
+    const db = dbRef.current
+    if (!db) return []
+    setItems((prev) =>
+      prev.map((it) => (it.customCardWidth ? { ...it, customCardWidth: false } : it)),
+    )
+    return clearAllCustomCardWidths(
+      db as Parameters<typeof clearAllCustomCardWidths>[0],
+    )
+  }, [])
+
   // Temporary shim, removed in Task 13 (updates BoardRoot.tsx callsites at lines ~109 and ~142).
   // Maps CardPosition to FreePosition defaults so BoardRoot keeps compiling.
   const persistCardPosition = useCallback(
@@ -412,6 +481,9 @@ export function useBoardData(): {
     persistTags,
     persistDisplayMode,
     reload,
+    persistCustomWidth,
+    resetCustomWidth,
+    resetAllCustomWidths,
     persistCardPosition,
   }
 }
