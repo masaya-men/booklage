@@ -4,7 +4,7 @@
 .indicator {
   position: absolute;
   bottom: 8px;
-  right: 64px;
+  right: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
