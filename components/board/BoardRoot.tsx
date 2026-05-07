@@ -70,6 +70,18 @@ export function BoardRoot() {
   const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
   const [actionSheet, setActionSheet] = useState<{ pngDataUrl: string; shareUrl: string } | null>(null)
   const [sizeLevel, setSizeLevel] = useState<SizeLevel>(DEFAULT_SIZE_LEVEL)
+  // Session-2 per-card resize overrides — populated by the ResizeHandle
+  // on the cards layer. Lives at the BoardRoot level so both the cards
+  // layout and the BoardRoot's scroll-bounds calculation see the same
+  // widths. Cleared on reload (no IDB persistence yet — session 3 adds
+  // the v11 schema migration + customCardWidth flag).
+  const [customWidths, setCustomWidths] = useState<Readonly<Record<string, number>>>({})
+  const handleCardResize = useCallback((bookmarkId: string, nextWidth: number): void => {
+    setCustomWidths((prev) => {
+      if (prev[bookmarkId] === nextWidth) return prev
+      return { ...prev, [bookmarkId]: nextWidth }
+    })
+  }, [])
   // Ref points at the inner dark canvas — viewport.w/h reflect the canvas's
   // inner dimensions (window minus the outer-frame margin), so masonry layout
   // and culling all work in canvas-local coordinates.
@@ -197,11 +209,11 @@ export function BoardRoot() {
   const skylineCards = useMemo<SkylineCard[]>(
     () =>
       filteredItems.map((it) => {
-        const w = defaultCardWidth
+        const w = customWidths[it.bookmarkId] ?? defaultCardWidth
         const h = it.aspectRatio > 0 ? w / it.aspectRatio : w
         return { id: it.bookmarkId, width: w, height: h }
       }),
-    [filteredItems, defaultCardWidth],
+    [filteredItems, defaultCardWidth, customWidths],
   )
 
   const layout = useMemo(
@@ -634,6 +646,8 @@ export function BoardRoot() {
                 displayMode={displayMode}
                 newlyAddedIds={newlyAddedIds}
                 defaultCardWidth={defaultCardWidth}
+                customWidths={customWidths}
+                onCardResize={handleCardResize}
               />
             </div>
           </InteractionLayer>

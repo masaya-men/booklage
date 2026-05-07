@@ -22,6 +22,7 @@ import type { BoardItem } from '@/lib/storage/use-board-data'
 import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
 import { CardNode } from './CardNode'
 import { MediaTypeIndicator, type MediaType } from './MediaTypeIndicator'
+import { ResizeHandle } from './ResizeHandle'
 import { useCardReorderDrag, computeVirtualOrder, makeSkylineSimulator } from './use-card-reorder-drag'
 import { pickCard } from './cards'
 
@@ -69,9 +70,14 @@ type CardsLayerProps = {
   readonly newlyAddedIds: ReadonlySet<string>
   /** Default per-card width for cards with no custom width — derived from
    *  the active SizePicker level so the board still distributes evenly
-   *  across N columns. Skyline layout uses this directly as each card's
-   *  width input. */
+   *  across N columns. Skyline layout uses this for every card whose id
+   *  is NOT in the resize override map. */
   readonly defaultCardWidth: number
+  /** In-memory per-card resize overrides (lifted to BoardRoot so the
+   *  scroll-range calculation there sees the same widths). */
+  readonly customWidths: Readonly<Record<string, number>>
+  /** Notify the parent of a per-card width update during a resize drag. */
+  readonly onCardResize: (bookmarkId: string, nextWidth: number) => void
 }
 
 export function CardsLayer({
@@ -88,6 +94,8 @@ export function CardsLayer({
   displayMode,
   newlyAddedIds,
   defaultCardWidth,
+  customWidths,
+  onCardResize,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -109,15 +117,23 @@ export function CardsLayer({
     })
   }, [])
 
+  // Session-2 per-card resize overrides — lifted to BoardRoot so the
+  // scroll-range calculation there sees the same widths as the cards
+  // layer's render layout.
+  const resolveCardWidth = useCallback(
+    (bookmarkId: string): number => customWidths[bookmarkId] ?? defaultCardWidth,
+    [customWidths, defaultCardWidth],
+  )
+
   // Resolve each card's render width + height for the skyline engine.
-  // Session 1: every card uses defaultCardWidth (= columnUnit equivalent
-  // from the SizePicker) so the visual output matches the previous
-  // column-masonry behavior. Session 2 will introduce per-card custom
-  // widths via the corner-resize handle.
+  // Width comes from `customWidths` if the card has been resized in
+  // this session, otherwise from `defaultCardWidth` (= the SizePicker
+  // level's auto-distribute width). Height is intrinsic for text cards
+  // or `width / aspectRatio` for image/video cards.
   const buildSkylineCard = useCallback(
     (it: BoardItem): SkylineCard => {
       const intrinsic = intrinsicHeights[it.bookmarkId]
-      const w = defaultCardWidth
+      const w = resolveCardWidth(it.bookmarkId)
       const h =
         intrinsic && intrinsic > 0
           ? intrinsic
@@ -126,8 +142,9 @@ export function CardsLayer({
             : w
       return { id: it.bookmarkId, width: w, height: h }
     },
-    [defaultCardWidth, intrinsicHeights],
+    [resolveCardWidth, intrinsicHeights],
   )
+
 
   const skylineCards = useMemo<SkylineCard[]>(
     () => items.map(buildSkylineCard),
@@ -267,7 +284,7 @@ export function CardsLayer({
           simulateLayout: makeSkylineSimulator({
             containerWidth: viewportWidth,
             gap: COLUMN_MASONRY.GAP_PX,
-            defaultCardWidth,
+            resolveWidth: resolveCardWidth,
             intrinsicHeights,
           }),
         })
@@ -282,7 +299,7 @@ export function CardsLayer({
           return prev
         })
       },
-      [items, viewportWidth, defaultCardWidth, intrinsicHeights],
+      [items, viewportWidth, resolveCardWidth, intrinsicHeights],
     ),
     onDrop: useCallback(
       (_orderedIds: readonly string[]): void => {
@@ -441,6 +458,12 @@ export function CardsLayer({
             <MediaTypeIndicator
               type={deriveMediaType(it)}
               visible={hoveredBookmarkId === it.bookmarkId}
+            />
+            <ResizeHandle
+              cardWidth={p.w}
+              cardHeight={p.h}
+              maxCardWidth={viewportWidth}
+              onResize={(nextW: number): void => onCardResize(it.bookmarkId, nextW)}
             />
           </div>
         )

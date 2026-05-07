@@ -149,19 +149,20 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
 // --------------------------------------------------------------------------
 
 /**
- * Build skyline input cards from ordered items. Width is the resolved
- * default (= columnUnit equivalent from the SizePicker); height comes
- * from the per-card intrinsic height when present (text cards) or from
- * `defaultWidth / aspectRatio` otherwise (image / video cards).
+ * Build skyline input cards from ordered items. Width is resolved by the
+ * caller-supplied lookup so the simulator honours per-card resize
+ * overrides; height comes from the per-card intrinsic height when
+ * present (text cards) or from `width / aspectRatio` otherwise (image /
+ * video cards).
  */
 function buildSkylineCards(
   items: ReadonlyArray<BoardItem>,
-  defaultWidth: number,
+  resolveWidth: (bookmarkId: string) => number,
   intrinsicHeights: Readonly<Record<string, number>>,
 ): SkylineCard[] {
   return items.map((it) => {
     const intrinsic = intrinsicHeights[it.bookmarkId]
-    const w = defaultWidth
+    const w = resolveWidth(it.bookmarkId)
     const h =
       intrinsic && intrinsic > 0
         ? intrinsic
@@ -248,17 +249,20 @@ export function computeVirtualOrder(params: {
 
 /**
  * Convenience helper that builds a `SimulateLayout` callback wired to the
- * skyline engine — the board's standard configuration.
+ * skyline engine — the board's standard configuration. `resolveWidth`
+ * returns the desired width for a given bookmarkId so the simulator
+ * stays consistent with whatever per-card override the caller is
+ * tracking (e.g. resize-handle local state).
  */
 export function makeSkylineSimulator(params: {
   containerWidth: number
   gap: number
-  defaultCardWidth: number
+  resolveWidth: (bookmarkId: string) => number
   intrinsicHeights: Readonly<Record<string, number>>
 }): SimulateLayout {
-  const { containerWidth, gap, defaultCardWidth, intrinsicHeights } = params
+  const { containerWidth, gap, resolveWidth, intrinsicHeights } = params
   return (orderedItems): Readonly<Record<string, CardPosition>> => {
-    const cards = buildSkylineCards(orderedItems, defaultCardWidth, intrinsicHeights)
+    const cards = buildSkylineCards(orderedItems, resolveWidth, intrinsicHeights)
     return computeSkylineLayout({ cards, containerWidth, gap }).positions
   }
 }

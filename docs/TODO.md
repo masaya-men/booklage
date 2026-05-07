@@ -8,11 +8,42 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **Phase 1B 完成 + chrome polish (SizePicker / ScrollMeter / smooth wheel / lightbox 拡張) 反映済**（ハードリロードで確認）
-- **次セッション最優先**: 自由サイジング機能セッション 2 — カード 4 角リサイズハンドル + 角接近時 arc hint の実装。エンジン (`lib/board/skyline-layout.ts`) は導入済、UI 待ち。
+- **本番**: `https://booklage.pages.dev` に **自由サイジング機能セッション 2 完了 (4 角ハンドル + arc hint + 倍率 2.0 ドラッグ)** 反映済（ハードリロードで確認）
+- **次セッション最優先**: 自由サイジング機能セッション 3 — 永続化 + 単体リセット + 全リセットボタン
+  - IDB v10 → v11 マイグレーション (`customCardWidth: boolean` フラグ追加)
+  - ResizeHandle pointerup で IDB に persist、SizePicker batch update を `customCardWidth !== true` に限定
+  - リサイズ済みカードに 「リセット」アイコン (or 右クリックメニュー)
+  - 左下に「すべてリセット」ボタン
+- **セッション 4 (Session 3 後)**: 矩形選択 marquee で範囲内カードのみリセット
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-07 末尾) の到達点 — 自由サイジング機能セッション 1: skyline エンジン導入
+### 🎯 今セッション (2026-05-08) の到達点 — 自由サイジング機能セッション 2: ResizeHandle 実装
+
+skyline エンジンの上に **4 角リサイズハンドル + 角周辺 arc hint + 2x 感度ドラッグ** を実装。永続化はセッション 3 へ繰り越し (in-memory のみ; リロードで全カードがデフォルトに戻る、設計通り)。
+
+**主要変更**:
+- 新規 `components/board/ResizeHandle.{tsx,module.css,test.tsx}` — 4 角の 56x56 hot zone + 1/4 円 arc hint。各角の周辺だけで反応、孤立した「ブラケット」感
+  - arc は 14px outward / 42px inward の box でカード端から少しはみ出す配置
+  - `:hover` で 160ms フェードイン、resizing 中も visible
+  - sweep flag を 4 角分正しく設定 (TL: cw, TR: ccw, BL: ccw, BR: cw)
+  - リサイズドラッグは **絶対位置追従ではなく相対デルタ + 倍率 2.0** — 100px ポインタ移動 = 200px サイズ変化、Figma の transform と同じ感覚
+  - 縦軸ドラッグも aspect ratio で width に変換、優位軸を採用 (横/縦どっちでも効く)
+  - clamp は MIN_CARD_WIDTH=80 / max=`viewportWidth` (ボード端まで拡げ可)
+  - pointerdown で stopPropagation → 既存 reorder drag と非干渉
+- `components/board/CardsLayer.tsx` — `customWidths` props 受信、`resolveCardWidth = customWidths[id] ?? defaultCardWidth`、ResizeHandle に props 渡す
+- `components/board/BoardRoot.tsx` — `customWidths: Record<string, number>` state を保持 (in-memory)、skylineCards で反映 → contentBounds も正しく
+- `components/board/use-card-reorder-drag.ts` — `makeSkylineSimulator` を `defaultCardWidth: number` から `resolveWidth: (id) => number` に変更 (reorder シミュレーションも custom width 対応)
+- 5 ResizeHandle unit tests + 既存 307 = **312 unit tests all pass**, tsc 0 errors, `pnpm build` OK
+
+**変更ファイル**:
+- 新規: `components/board/ResizeHandle.{tsx,module.css,test.tsx}`
+- 編集: `components/board/BoardRoot.tsx`、`CardsLayer.tsx`、`use-card-reorder-drag.ts`
+
+**気になる残課題 (セッション 3 で対応)**:
+- 永続化: 通常リロードでサイズが消える (IDB v11 + customCardWidth flag で fix)
+- リセット UI: カード単体 / 全リセット / 矩形選択リセット (3 段階で実装、矩形は Session 4)
+
+### 🎯 セッション (2026-05-07 末尾) の到達点 — 自由サイジング機能セッション 1: skyline エンジン導入
 
 board のレイアウトエンジンを **column-masonry → skyline bin-packing に差し替え**。各カードが任意 px 幅で重ならず詰められる土台を整えた。視覚的見た目はセッション 1 では完全維持（全カードが defaultCardWidth = `(viewport - (N-1)*gap) / N` を使うため、現状の auto-distribute と一致）。
 
