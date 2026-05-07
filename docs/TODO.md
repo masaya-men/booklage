@@ -8,12 +8,56 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **Phase 1A (board chrome 再設計) 反映済**（ハードリロードで確認）
-- **次セッション最優先**: **Phase 1B — カードサイズ連続スライダー + S/M/L → cardWidth migration**
-  - Spec: [`docs/superpowers/specs/2026-05-07-board-chrome-redesign-design.md`](superpowers/specs/2026-05-07-board-chrome-redesign-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-07-board-chrome-redesign.md`](superpowers/plans/2026-05-07-board-chrome-redesign.md) — Task 1B.1〜1B.9
-  - 9 タスク、~1 日。subagent-driven-development で実行
+- **本番**: `https://booklage.pages.dev` に **Phase 1A + 1B (board chrome 再設計 + cardWidth スライダー) 反映済**（ハードリロードで確認）
+- **次セッション最優先**: **Phase 1C — Board ZoomSlider (50-200%)**
+  - Plan: [`docs/superpowers/plans/2026-05-07-board-chrome-redesign.md`](superpowers/plans/2026-05-07-board-chrome-redesign.md) — Task 1C.1〜1C.3
+  - その後 Phase 1D — ViewDropdown (display mode + theme picker)
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
+
+### 🎯 今セッション (2026-05-07 続き) の到達点 — Phase 1B カードサイズ連続スライダー
+
+**Phase 1B 完了 (9 タスク、約 18 commits)**:
+- `WaveformTrack` 新規作成 — 共通 waveform-bar slider track (40 bars, deterministic heights)
+- `lib/board/size-migration.ts` — `MIN/MAX/DEFAULT_CARD_WIDTH` (80/480/240)、`presetToCardWidth`、`clampCardWidth`、`widthToPreset`
+- `lib/board/column-masonry.ts` — `MasonryCard.targetWidth?: number` 追加、span を targetWidth から逆算 (legacy `columnSpan` fallback も維持)
+- IndexedDB **v9 → v10 migration**: `BookmarkRecord.cardWidth?: number` 追加、`presetToCardWidth(sizePreset)` で seed。v8→v10 single-hop でも `tags[]` を壊さないように `v9BookmarkRewritePromise` で sequencing 防御
+- `BoardItem.sizePreset` 削除、`cardWidth: number` 必須化。`persistCardWidth` + `persistCardWidthBatch` を hook に追加。`updateBookmarkSizePreset` 削除 (orphan)
+- 全 board-side caller (`BoardRoot` / `CardsLayer` / `use-card-reorder-drag`) を `targetWidth: it.cardWidth` に切り替え
+- 共有 wire format `ShareCard.s: ShareSize` は維持 (既存共有 URL 互換)。BoardItem→ComposerItem 境界で `widthToPreset(cardWidth)` で encode、ShareFrame 受信側は `presetToCardWidth(c.s)` で decode
+- `SizePresetToggle` 削除 + 関連 dead code (`onCycleSize` prop、`handleCycleSize`、`sizeOverrides` setter) クリーンアップ
+- `SizeSlider` 新規 — TopHeader instrument スロットに配置、`WaveformTrack` + transparent `<input type="range">`、`[ 0240px ]` monospace readout
+- スライダーの onChange は `persistCardWidthBatch(filteredItems の bookmarkIds, next)` で全カードに即適用 + IDB persist
+- **First-drag overwrite bug 防御**: `seededRef` で reload 後 1 度だけ `globalCardWidth = items[0].cardWidth` で初期化 (slider thumb と persisted state を同期)
+
+**変更ファイル**:
+- 新規: `components/board/WaveformTrack.{tsx,module.css,test.tsx}`、`components/board/SizeSlider.{tsx,module.css,test.tsx}`、`lib/board/size-migration.{ts,test.ts}`、`tests/lib/idb-v10-migration.test.ts`
+- 編集 (大): `lib/board/column-masonry.ts`、`lib/storage/indexeddb.ts`、`lib/storage/use-board-data.ts`、`components/board/BoardRoot.tsx`、`components/board/CardsLayer.tsx`、`components/share/ShareFrame.tsx`、`components/share/ShareComposer.tsx`、`lib/share/composer-layout.ts`、`lib/share/relay-layout.ts`、`lib/board/constants.ts` (SIZE_PRESET_SPAN は share-wire decoder にスコープ縮小、JSDoc 更新)
+- 削除: `components/board/SizePresetToggle.{tsx,module.css}`
+- DB: schema v9 → **v10** (constants.ts)
+
+**気になる残課題 (次セッション or polish 用)**:
+- `MediaTypeIndicator` の `right: 64px` は SizePresetToggle を避けるための offset。今は toggle が無いので浮いた位置。`right: 8px` 程度に詰めて bottom-right corner に寄せた方が自然 — ユーザー判断で。
+- `pad4` の上限 9999 と下限 0 のクランプはデッドコード化 (`MAX_CARD_WIDTH=480`、`clampCardWidth` で MIN 保証済)。簡素化可。
+- `aria-valuetext={\`${value}px\`}` を SizeSlider の input に追加するとスクリーンリーダーが「240」ではなく「240px」と読み上げる。1C/1D で polish 一括対応で OK。
+
+### 🎯 今セッション (2026-05-07 後半) の到達点 — Phase 1A board chrome 再設計
+
+シェアモーダル深掘りから方針 pivot: **ボード UX が rigid なせいで share modal complexity が増えてた → board UX 先に直す**。
+
+**Phase 1A 完了 (5 タスク、6 commits)**:
+- `TopHeader` 新規作成 — 64px sticky 3-group chrome (NAV / INSTRUMENT / ACTIONS)
+- 既存 `Toolbar` 廃止、`BoardRoot` の grid 構造を `auto / 1fr` に
+- `FilterPill` を bracket-wrapped count 形式 `[ ALL · 248 ]` にリスタイル (waveform aesthetic 第 1 弾)
+- canvasRef を canvasWrap に移動 (masonry viewport 計算の精度維持)
+- E2E selectors `board-toolbar` → `board-top-header` に swap (7 箇所、4 ファイル)
+- TopHeader 単体 unit test 追加
+- 271 unit tests + 1 新 E2E smoke、tsc 0 errors
+
+**変更ファイル**:
+- 新規: `components/board/TopHeader.tsx` / `.module.css` / `.test.tsx`
+- 編集: `components/board/BoardRoot.tsx` / `.module.css`、`components/board/FilterPill.tsx` / `.module.css`
+- 削除: `components/board/Toolbar.tsx` / `.module.css`
+- 編集 (E2E): `tests/e2e/board-b0.spec.ts` (smoke 追加)、`share-fullscreen` / `share-composer-edit` / `share-sender` / `board-lightbox-nav` (testid swap)
 
 ### 🎯 今セッション (2026-05-07 後半) の到達点 — Phase 1A board chrome 再設計
 
