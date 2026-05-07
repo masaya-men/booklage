@@ -2,7 +2,7 @@
 'use client'
 
 import { useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react'
-import type { ShareCard, ShareSize } from '@/lib/share/types'
+import type { ShareCard } from '@/lib/share/types'
 import type { CardPosition } from '@/lib/board/types'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { CardNode } from '@/components/board/CardNode'
@@ -20,7 +20,6 @@ type Props = {
   readonly height: number
   readonly editable: boolean
   readonly onReorder?: (orderedIds: readonly string[]) => void
-  readonly onCycleSize?: (id: string, next: ShareSize) => void
   readonly onDelete?: (id: string) => void
   /** Receiving-side click target. rect is the clicked card's screen
    *  position so the parent can seed the Lightbox FLIP open animation. */
@@ -63,7 +62,6 @@ export function ShareFrame({
   height,
   editable,
   onReorder,
-  onCycleSize,
   onDelete,
   onCardOpen,
 }: Props): ReactElement {

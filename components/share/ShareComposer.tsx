@@ -2,7 +2,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import type { ShareAspect, ShareCard, ShareData, ShareSize } from '@/lib/share/types'
+import type { ShareAspect, ShareCard, ShareData } from '@/lib/share/types'
 import { SHARE_SCHEMA_VERSION } from '@/lib/share/types'
 import { composeShareLayout, type ComposerItem } from '@/lib/share/composer-layout'
 import { filterByViewport } from '@/lib/share/board-to-cards'
@@ -62,8 +62,6 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
     const visible = filterByViewport(items, positions, viewport)
     return sortByBoardPosition(visible.map((i) => i.bookmarkId), positions)
   })
-  const [sizeOverrides, setSizeOverrides] = useState<ReadonlyMap<string, ShareSize>>(new Map())
-
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasAreaRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number } | null>(null)
@@ -150,12 +148,12 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
       composeShareLayout({
         items: composerItems,
         order: cardOrder,
-        sizeOverrides,
+        sizeOverrides: new Map(),
         aspect,
         viewport: frameViewport,
         mode: fullscreen.mode,
       }),
-    [composerItems, cardOrder, sizeOverrides, aspect, frameViewport, fullscreen.mode],
+    [composerItems, cardOrder, aspect, frameViewport, fullscreen.mode],
   )
 
   const cardIds = layout.cardIds
@@ -183,14 +181,6 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
 
   const handleReorder = useCallback((orderedIds: readonly string[]): void => {
     setCardOrder(orderedIds)
-  }, [])
-
-  const handleCycleSize = useCallback((id: string, next: ShareSize): void => {
-    setSizeOverrides((prev) => {
-      const m = new Map(prev)
-      m.set(id, next)
-      return m
-    })
   }, [])
 
   const handleDelete = useCallback((id: string): void => {
@@ -278,7 +268,6 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
                 height={layout.frameSize.height}
                 editable={true}
                 onReorder={handleReorder}
-                onCycleSize={handleCycleSize}
                 onDelete={handleDelete}
               />
             </div>
