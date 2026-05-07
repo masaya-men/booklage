@@ -1,0 +1,20 @@
+.track {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 18px;
+  width: 100%;
+  position: relative;
+}
+
+.bar {
+  flex: 1 1 0;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 1px;
+  min-width: 1px;
+  transition: background 120ms ease-out;
+}
+
+.bar[data-active="true"] {
+  background: rgba(255, 255, 255, 0.7);
+}
