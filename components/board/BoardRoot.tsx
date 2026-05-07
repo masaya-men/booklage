@@ -591,7 +591,7 @@ export function BoardRoot() {
             description: it.description ?? '',
             thumbnail: it.thumbnail ?? '',
             type: detectUrlType(it.url),
-            sizePreset: widthToPreset(it.cardWidth),
+            cardWidth: it.cardWidth,
             aspectRatio: it.aspectRatio,
           }))}
           positions={layout.positions}

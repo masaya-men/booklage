@@ -10,6 +10,7 @@ import { ShareAspectSwitcher } from './ShareAspectSwitcher'
 import { ShareFrame } from './ShareFrame'
 import { ShareSourceList } from './ShareSourceList'
 import { useShareFullscreen } from './use-share-fullscreen'
+import { widthToPreset } from '@/lib/board/size-migration'
 import styles from './ShareComposer.module.css'
 
 type BoardItemLite = {
@@ -19,7 +20,7 @@ type BoardItemLite = {
   readonly description?: string
   readonly thumbnail: string
   readonly type: ShareCard['ty']
-  readonly sizePreset: ShareSize
+  readonly cardWidth: number
   readonly aspectRatio: number
 }
 
@@ -127,7 +128,7 @@ export function ShareComposer({ open, onClose, items, positions, viewport, onCon
           description: i.description,
           thumbnail: i.thumbnail,
           type: i.type,
-          sizePreset: i.sizePreset,
+          sizePreset: widthToPreset(i.cardWidth),
           aspectRatio: i.aspectRatio,
         })),
     [items, selectedIds],
