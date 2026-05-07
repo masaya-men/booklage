@@ -2,6 +2,7 @@ import { openDB, type IDBPDatabase } from 'idb'
 import { DB_NAME, DB_VERSION, FLOAT_ROTATION_RANGE } from '@/lib/constants'
 import type { UrlType } from '@/lib/utils/url'
 import { generateCardDimensions } from '@/lib/canvas/card-sizing'
+import { clampCardWidth, presetToCardWidth, DEFAULT_CARD_WIDTH } from '@/lib/board/size-migration'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,8 +45,10 @@ export interface BookmarkRecord {
   // v8 additions
   /** Board display order (lower = earlier). Dense; rewrite on reorder. */
   orderIndex?: number
-  /** Board size preset — S (1 col) / M (2 col) / L (3 col). Default 'S'. */
+  /** @deprecated post-v10 — use cardWidth. Kept for migration read-back only. */
   sizePreset?: 'S' | 'M' | 'L'
+  /** Continuous card width in CSS pixels. Replaces sizePreset post-v10. */
+  cardWidth?: number
   /** v9: mood id array. Empty = Inbox. */
   tags: string[]
   /** v9: null = follow global displayMode (BoardConfig). */
@@ -374,6 +377,7 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
       // 1. Create moods store (1:1 copy of folders)
       // 2. Rewrite every bookmark: folderId → tags[folderId]; add displayMode=null
       // 3. Delete folders store
+      let v9BookmarkRewritePromise: Promise<void> = Promise.resolve()
       if (oldVersion < 9) {
         if (!db.objectStoreNames.contains('moods')) {
           db.createObjectStore('moods', { keyPath: 'id' })
@@ -410,9 +414,9 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
             })()
           : Promise.resolve()
 
-        // Step 2: rewrite every bookmark
+        // Step 2: rewrite every bookmark — capture the promise so v10 can chain on it.
         const bookmarkStore = transaction.objectStore('bookmarks')
-        void bookmarkStore.openCursor().then(function rewriteBookmark(
+        v9BookmarkRewritePromise = bookmarkStore.openCursor().then(function rewriteBookmark(
           cursor: Awaited<ReturnType<typeof bookmarkStore.openCursor>>,
         ): Promise<void> | undefined {
           if (!cursor) return
@@ -433,6 +437,30 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
             }
           })
         }
+      }
+
+      // ── v9 → v10: seed cardWidth from sizePreset ──
+      // Chain on v9BookmarkRewritePromise to avoid a cursor race when upgrading
+      // from v8 directly to v10: the v9 rewrite must finish writing tags before
+      // the v10 cursor reads and re-writes each record.
+      if (oldVersion < 10) {
+        void v9BookmarkRewritePromise.then(() => {
+          const bookmarkStore = transaction.objectStore('bookmarks')
+          void bookmarkStore.openCursor().then(function seedCardWidth(
+            cursor: Awaited<ReturnType<typeof bookmarkStore.openCursor>>,
+          ): Promise<void> | undefined {
+            if (!cursor) return
+            const rec = cursor.value as BookmarkRecord
+            if (typeof rec.cardWidth !== 'number') {
+              const next: BookmarkRecord = {
+                ...rec,
+                cardWidth: presetToCardWidth(rec.sizePreset),
+              }
+              void cursor.update(next)
+            }
+            return cursor.continue().then(seedCardWidth)
+          })
+        })
       }
     },
   })
@@ -469,6 +497,7 @@ export async function addBookmark(
     ogpStatus: input.ogpStatus ?? 'fetched',
     orderIndex: nextOrder,
     sizePreset: 'S',
+    cardWidth: DEFAULT_CARD_WIDTH,
     tags: input.tags ?? [],
     displayMode: input.displayMode ?? null,
   }
@@ -656,6 +685,19 @@ export async function updateBookmarkSizePreset(
 }
 
 /**
+ * Set a single bookmark's continuous card width. Clamped to [MIN_CARD_WIDTH, MAX_CARD_WIDTH].
+ */
+export async function updateBookmarkCardWidth(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  cardWidth: number,
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  await db.put('bookmarks', { ...existing, cardWidth: clampCardWidth(cardWidth) })
+}
+
+/**
  * Atomically rewrite orderIndex for multiple bookmarks in one transaction.
  * Use for drag-to-reorder: caller supplies the new complete order by ID.
  */
@@ -731,6 +773,7 @@ export async function addBookmarkBatch(
         ogpStatus: input.ogpStatus ?? 'fetched',
         orderIndex: nextOrder++,
         sizePreset: 'S',
+        cardWidth: DEFAULT_CARD_WIDTH,
         tags: input.tags ?? [],
         displayMode: input.displayMode ?? null,
       }

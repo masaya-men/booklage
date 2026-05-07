@@ -19,6 +19,7 @@ const baseItem: BoardItem = {
   gridIndex: 0,
   orderIndex: 0,
   sizePreset: 'S',
+  cardWidth: 240,
   isRead: false,
   isDeleted: false,
   tags: [],
