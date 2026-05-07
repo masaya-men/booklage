@@ -46,17 +46,19 @@
   pointer-events: none;
 }
 
-/* Playhead — 1px vertical line at the exact viewport center. Thin and
-   precise; the surrounding Gaussian halo provides the soft locality cue. */
-.playhead {
+/* Bookend lines — two 1px verticals marking the start and end of the
+   current viewport range on the meter. They clamp to the meter edges when
+   the user scrolls to the very top or bottom (so there's always a line at
+   the edge, never floating awkwardly inside). */
+.bookend {
   position: absolute;
   top: 1px;
   bottom: 1px;
   width: 1px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.88);
   box-shadow:
-    0 0 4px rgba(255, 255, 255, 0.55),
-    0 0 10px rgba(255, 255, 255, 0.25);
+    0 0 4px rgba(255, 255, 255, 0.45),
+    0 0 10px rgba(255, 255, 255, 0.18);
   pointer-events: none;
   transform: translateX(-0.5px);
 }

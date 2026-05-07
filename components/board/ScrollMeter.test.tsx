@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { ScrollMeter } from './ScrollMeter'
 
 describe('ScrollMeter', () => {
-  it('renders 140 ticks plus baseline + playhead', () => {
+  it('renders 140 ticks plus baseline + 2 bookends', () => {
     const { container } = render(
       <ScrollMeter
         contentHeight={2000}
@@ -15,8 +15,8 @@ describe('ScrollMeter', () => {
     const elementsWithLeft = Array.from(
       (container.firstChild as HTMLElement).children,
     ).filter((el) => (el as HTMLElement).style.left)
-    // 140 ticks + 1 playhead = 141 elements with inline `left`.
-    expect(elementsWithLeft).toHaveLength(141)
+    // 140 ticks + 2 bookends = 142 elements with inline `left`.
+    expect(elementsWithLeft).toHaveLength(142)
   })
 
   it('calls onScrollTo on pointer down with mapped y', () => {
