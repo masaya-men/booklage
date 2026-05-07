@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { presetToCardWidth, clampCardWidth, DEFAULT_CARD_WIDTH, MIN_CARD_WIDTH, MAX_CARD_WIDTH } from './size-migration'
+import { presetToCardWidth, clampCardWidth, DEFAULT_CARD_WIDTH, MIN_CARD_WIDTH, MAX_CARD_WIDTH, LegacyPreset } from './size-migration'
 
 describe('size-migration', () => {
   it('S maps to 160, M to 240, L to 320', () => {
@@ -23,5 +23,11 @@ describe('size-migration', () => {
     expect(MIN_CARD_WIDTH).toBe(80)
     expect(MAX_CARD_WIDTH).toBe(480)
     expect(DEFAULT_CARD_WIDTH).toBe(240)
+  })
+
+  it('returns default for unknown preset string at runtime (DB boundary)', () => {
+    // Simulate a corrupted/unexpected value coming back from an older or modified DB row.
+    const sneaky = 'XL' as unknown as LegacyPreset
+    expect(presetToCardWidth(sneaky)).toBe(DEFAULT_CARD_WIDTH)
   })
 })

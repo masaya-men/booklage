@@ -12,6 +12,7 @@ const PRESET_TO_WIDTH: Readonly<Record<LegacyPreset, number>> = {
 
 export function presetToCardWidth(preset: LegacyPreset | undefined): number {
   if (preset === undefined) return DEFAULT_CARD_WIDTH
+  if (!(preset in PRESET_TO_WIDTH)) return DEFAULT_CARD_WIDTH
   return PRESET_TO_WIDTH[preset]
 }
 
