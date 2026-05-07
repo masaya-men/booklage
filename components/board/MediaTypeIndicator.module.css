@@ -1,17 +1,9 @@
-/* Hover-revealed pill that sits to the LEFT of SizePresetToggle. Same
-   surface treatment (dark glass + 1px white inset) so the two read as a
-   matched pair when both appear together — they belong to the same hover
-   meta-layer. Width is content-driven (the icon) so the pill stays
-   compact whether the card is video or photo. */
+/* Hover-revealed pill anchored at bottom-right of the card. Dark glass +
+   1px white inset surface treatment. Width is content-driven (the icon)
+   so the pill stays compact whether the card is video or photo. */
 .indicator {
   position: absolute;
   bottom: 8px;
-  /* Anchored to the right of the card, offset to clear SizePresetToggle.
-     The toggle's width depends on its preset state (S = ~46px,
-     M = ~52px, L = ~58px) — anchoring to the right via `right` is
-     the simplest layout that survives those changes (the toggle stays
-     pinned, the indicator floats just to the left of where the toggle
-     would START). 64px clears the widest L state plus an 8px gap. */
   right: 64px;
   display: inline-flex;
   align-items: center;

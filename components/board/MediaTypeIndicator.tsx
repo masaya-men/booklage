@@ -13,7 +13,7 @@ type Props = {
 }
 
 /**
- * Tiny media-type pill rendered next to SizePresetToggle on hover. Tells
+ * Tiny media-type pill rendered on the card on hover. Tells
  * the user at a glance whether the card under their cursor is video or
  * photo — useful both as a content cue and (later) when filter / multi-
  * playback features need to disambiguate. We INTENTIONALLY don't render
