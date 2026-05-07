@@ -625,6 +625,10 @@
   cursor: pointer;
   user-select: none;
   touch-action: none;
+  /* `.meterWrap` upstream has pointer-events: none so the surrounding empty
+     area lets clicks pass through to the backdrop. Re-enable on the track
+     itself so drag-scrub gestures work. */
+  pointer-events: auto;
   /* Generous vertical padding for the hit area so the user doesn't have to
      pixel-target the 18px track to start a scrub. The visible ticks /
      baseline still occupy the inner 18px. */
