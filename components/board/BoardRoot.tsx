@@ -460,6 +460,20 @@ export function BoardRoot() {
     }
   }, [reload])
 
+  // Seed the SizeSlider from the first item's persisted cardWidth on initial
+  // load. Without this, globalCardWidth stays at DEFAULT_CARD_WIDTH (240) even
+  // when the user previously dragged to e.g. 320; the first slider drag would
+  // then batch-overwrite all cards back to 240 — silently destroying the
+  // persisted setting. seededRef ensures this fires exactly once per mount so
+  // subsequent item-array changes (drag/reorder/filter) never re-overwrite.
+  const seededRef = useRef(false)
+  useEffect(() => {
+    if (seededRef.current) return
+    if (items.length === 0) return
+    seededRef.current = true
+    setGlobalCardWidth(items[0].cardWidth)
+  }, [items])
+
   const sidebarCounts = useMemo(() => {
     const active = items.filter((i) => !i.isDeleted)
     const deleted = items.filter((i) => i.isDeleted)
