@@ -529,18 +529,21 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     // gives plenty of travel without making the entering card feel
     // launched from outer space.
     //
-    // In rapid mode (drag-scrub) the travel distance and tween duration
-    // collapse dramatically so cards stay centered: tiny side offset, no
-    // depth/rotate, and the tween finishes inside one frame budget. The
-    // result reads as a quick crossfade-with-a-hint-of-slide instead of a
-    // queue of snapshots fleeing toward the edge.
+    // In rapid mode (drag-scrub) we keep the directional travel + 3D feel
+    // — cards still enter from one side and exit toward the other — but
+    // shorten the duration so each transition resolves quickly. The
+    // snapshot-cleanup pass above guarantees only one in-flight pair at a
+    // time, so the dramatic travel won't pile up at the edge.
+    // power4.out is front-loaded (high velocity at t=0 → low at t=1), so
+    // even 16-30 ms of tween time covers a strongly visible chunk of the
+    // travel — the user sees cards genuinely shooting off-side.
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
-    const ENTER_DIST = isRapid ? Math.round(vw * 0.05) : Math.round(vw * 0.6)
-    const ENTER_DEPTH = isRapid ? 0 : -380
-    const LEAVE_DIST = isRapid ? Math.round(vw * 0.05) : Math.round(vw * 0.6)
-    const LEAVE_DEPTH = isRapid ? 0 : -280
-    const ROTATE_Y = isRapid ? 0 : 14
-    const DUR = isRapid ? 0.12 : 0.7
+    const ENTER_DIST = isRapid ? Math.round(vw * 0.45) : Math.round(vw * 0.6)
+    const ENTER_DEPTH = isRapid ? -200 : -380
+    const LEAVE_DIST = isRapid ? Math.round(vw * 0.45) : Math.round(vw * 0.6)
+    const LEAVE_DEPTH = isRapid ? -150 : -280
+    const ROTATE_Y = isRapid ? 10 : 14
+    const DUR = isRapid ? 0.22 : 0.7
 
     activeSnapshotsRef.current.add(snapshot)
     // Departing animation on the cloned snapshot.
