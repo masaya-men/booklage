@@ -32,6 +32,7 @@ import { SizePicker } from './SizePicker'
 import { ScrollMeter } from './ScrollMeter'
 import { BoardChrome } from './BoardChrome'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
+import { BookmarkletPill } from '@/components/bookmarklet/BookmarkletPill'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
 import { Lightbox } from './Lightbox'
 import { ShareComposer } from '@/components/share/ShareComposer'
@@ -543,6 +544,10 @@ export function BoardRoot() {
           Sits in the white margin around the dark canvas, gives users a way
           back to the marketing site without intruding on the board. */}
       <BoardChrome />
+      {/* Provisional onboarding affordance for early testers — drag the
+          pill into the browser bookmark bar to install Booklage. Revisit
+          once the marketing site handles install on its own. */}
+      <BookmarkletPill />
       {/* Inner dark canvas — destefanis-style stage. The whole pan/cards/
           live inside, so cursor pan never escapes the rounded frame.
           Phase 1A: canvas is now a grid (auto / 1fr) — TopHeader at top,
