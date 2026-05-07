@@ -184,7 +184,6 @@ export function BoardRoot() {
   // style half-gap on each side (SIDE_PADDING_PX = COLUMN_MASONRY.GAP_PX / 2).
   // No sidebar reservation, no max-width cap — the canvas is the whole stage.
   const effectiveLayoutWidth = Math.max(0, viewport.w - 2 * BOARD_INNER.SIDE_PADDING_PX)
-  const horizontalOffset = BOARD_INNER.SIDE_PADDING_PX
 
   const layout = useMemo(
     () =>
@@ -196,6 +195,12 @@ export function BoardRoot() {
       }),
     [masonryCards, effectiveLayoutWidth, globalCardWidth],
   )
+
+  // Center the cards block when slider value × columnCount does not fill
+  // effectiveLayoutWidth (e.g. between integer column-count steps). Keeps the
+  // visual centered with symmetric whitespace as the slider scrubs.
+  const horizontalOffset = BOARD_INNER.SIDE_PADDING_PX
+    + Math.max(0, (effectiveLayoutWidth - layout.totalWidth) / 2)
 
   // Actual content bounds — tracks the furthest right/bottom any card reaches,
   // using masonry positions (freePos not used in masonry mode) plus overrides

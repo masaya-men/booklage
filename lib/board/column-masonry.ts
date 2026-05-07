@@ -46,12 +46,20 @@ export function computeColumnMasonry(input: MasonryInput): MasonryResult {
     1,
     Math.floor((containerWidth + gap) / (targetColumnUnit + gap)),
   )
-  const columnUnit = (containerWidth - (columnCount - 1) * gap) / columnCount
+  // Cards render at exactly `targetColumnUnit` so the slider value matches the
+  // visual width 1:1. Clamped to containerWidth so a single column never
+  // overflows on narrow viewports. Leftover horizontal space is the caller's
+  // problem (BoardRoot centers the cards block; the share composer leaves it
+  // left-aligned because it has its own framing rules).
+  const columnUnit = Math.min(targetColumnUnit, containerWidth)
+  const totalUsedWidth = columnCount > 0
+    ? columnCount * columnUnit + (columnCount - 1) * gap
+    : 0
 
   if (cards.length === 0) {
     return {
       positions: {},
-      totalWidth: containerWidth,
+      totalWidth: totalUsedWidth,
       totalHeight: 0,
       columnCount,
       columnUnit,
@@ -103,7 +111,7 @@ export function computeColumnMasonry(input: MasonryInput): MasonryResult {
 
   return {
     positions,
-    totalWidth: containerWidth,
+    totalWidth: totalUsedWidth,
     totalHeight,
     columnCount,
     columnUnit,

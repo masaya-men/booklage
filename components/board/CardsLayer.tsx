@@ -181,8 +181,16 @@ export function CardsLayer({
   // dragState ref for use inside useLayoutEffect without triggering extra renders
   const dragStateRef = useRef<{ bookmarkId: string } | null>(null)
 
+  // Track globalCardWidth across effect runs so we can detect "the user is
+  // actively scrubbing the size slider" — in that mode every frame brings a
+  // tiny layout change and chained 150ms tweens would lag visibly behind the
+  // pointer. We snap instead so cards track the slider 1:1.
+  const prevGlobalCardWidthRef = useRef<number>(globalCardWidth)
+
   useLayoutEffect(() => {
     const draggedId = dragStateRef.current?.bookmarkId ?? null
+    const sizeChanging = prevGlobalCardWidthRef.current !== globalCardWidth
+    prevGlobalCardWidthRef.current = globalCardWidth
 
     for (const it of visibleItems) {
       // Skip the card being dragged — the drag hook owns its transform.
@@ -194,7 +202,8 @@ export function CardsLayer({
       if (!p) continue
 
       const prev = prevPositionsRef.current[it.bookmarkId]
-      if (prev && (prev.x !== p.x || prev.y !== p.y)) {
+      const positionMoved = prev && (prev.x !== p.x || prev.y !== p.y)
+      if (positionMoved && !sizeChanging) {
         // FLIP: animate from element's current live transform to new position.
         // gsap.to (not fromTo) continues from wherever the element is now —
         // avoids the per-tick snap-back to stored prev on fast pointer movement.
@@ -204,8 +213,7 @@ export function CardsLayer({
           y: p.y,
           width: p.w,
           height: p.h,
-          // scale removed — already snapped to 1 in onDrop for dragged, non-dragged always 1
-          duration: isLiveReflow ? 0.18 : 0.15, // 0.22 → 0.15 for quieter drop
+          duration: isLiveReflow ? 0.18 : 0.15,
           ease: 'power2.out',
           overwrite: 'auto',
         })
