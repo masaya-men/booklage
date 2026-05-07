@@ -1,14 +1,13 @@
 .track {
   position: relative;
   width: 320px;
-  height: 26px;
+  height: 28px;
   cursor: pointer;
   user-select: none;
   touch-action: none;
   border-radius: 4px;
-  /* Allow ticks at percentage positions (left:0% to left:100%) to sit
-     centered via translate(-50%, -50%). Padding lets the burst-amplified
-     ticks visibly extend beyond the baseline without clipping. */
+  /* Vertical padding gives ticks room to grow above / below the baseline
+     without clipping at the maximum noise amplitude. */
   padding: 4px 0;
 }
 
@@ -21,61 +20,34 @@
   cursor: grabbing;
 }
 
-/* Faint horizontal baseline — the ticks visually straddle this line. */
+/* Faint horizontal baseline. Ticks are vertically centered on it. */
 .baseline {
   position: absolute;
   left: 0;
   right: 0;
   top: 50%;
   height: 1px;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.12);
   transform: translateY(-0.5px);
   pointer-events: none;
 }
 
-/* 1px tick. Height is rewritten every animation frame by the rAF loop. */
+/* 1px tick. Height + opacity rewritten every animation frame by the rAF
+   loop in ScrollMeter.tsx. The static styles here are placeholders that
+   only matter for the very first paint. */
 .tick {
   position: absolute;
   top: 50%;
   width: 1px;
-  height: 4px; /* placeholder; overridden every frame */
-  background: rgba(255, 255, 255, 0.42);
+  height: 4px;
+  background: #fff;
+  opacity: 0.42;
   transform: translate(-50%, -50%);
-  transform-origin: center;
   pointer-events: none;
-  /* No CSS animation — the rAF loop drives heights directly so the wave
-     reads as a continuous flow rather than a staggered pulse. */
-  transition: background 220ms ease-out, box-shadow 220ms ease-out;
 }
 
-.tick[data-active="true"] {
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.45);
-}
-
-/* 1px vertical edge lines marking the active range bookends. Slightly
-   taller than the tick column so they read as a frame around the
-   viewport span. */
-.edge {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.35);
-  pointer-events: none;
-  transform: translateX(-0.5px);
-  transition:
-    left 320ms cubic-bezier(0.16, 1, 0.3, 1),
-    background 200ms ease-out;
-}
-
-.edge[data-instant] {
-  transition: none;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.55);
-}
-
+/* Hover preview line — 1px vertical, gently pulses to telegraph
+   "click here to jump to this position." */
 .hoverLine {
   position: absolute;
   top: 0;
@@ -95,5 +67,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .hoverLine { animation: none; }
-  .edge { transition: none; }
 }

@@ -295,16 +295,6 @@ export function BoardRoot() {
     scrollAnimRef.current = requestAnimationFrame(tick)
   }, [viewport.y, contentBounds.height])
 
-  // Active card extents for the ScrollMeter density map. Recomputed only when
-  // the layout changes, not on every scroll tick.
-  const scrollMeterCards = useMemo(
-    () =>
-      filteredItems
-        .map((it) => layout.positions[it.bookmarkId])
-        .filter((p): p is NonNullable<typeof p> => Boolean(p))
-        .map((p) => ({ y: p.y, h: p.h })),
-    [filteredItems, layout.positions],
-  )
 
   const handleCardClick = useCallback((bookmarkId: string, originRect: DOMRect): void => {
     setLightboxOriginRect(originRect)
@@ -568,7 +558,6 @@ export function BoardRoot() {
           }
           instrument={
             <ScrollMeter
-              cards={scrollMeterCards}
               contentHeight={contentBounds.height}
               viewportY={viewport.y}
               viewportHeight={viewport.h}

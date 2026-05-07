@@ -13,35 +13,96 @@ import styles from './ScrollMeter.module.css'
 
 const TICK_COUNT = 140
 
-/** Y-extent summary of a single card on the board, sufficient for density mapping. */
-export type CardYExtent = {
-  readonly y: number
-  readonly h: number
-}
-
 type Props = {
-  /** All visible cards' vertical extents — drives the density map. */
-  readonly cards: ReadonlyArray<CardYExtent>
   /** Total scrollable content height of the board (cards + padding). */
   readonly contentHeight: number
   /** Current viewport y offset within the board's coordinate space. */
   readonly viewportY: number
   /** Visible viewport height. */
   readonly viewportHeight: number
-  /** Scroll the board to the given y (called on click / drag-jump). */
+  /** Scroll the board to the given y (called on click / drag). */
   readonly onScrollTo: (y: number) => void
 }
 
+// ---------------------------------------------------------------------------
+// Noise math
+//
+// We want the meter to read like a real noise waveform: dense, multi-scale,
+// natural-looking, without periodic artifacts. Standard solution is fractal
+// Brownian motion (fBm) over value noise.
+//
+//   1. value noise: bilinear interpolation of deterministic per-lattice
+//      hashes, smoothed with a smoothstep curve. Continuous, locally
+//      smooth, but globally random.
+//   2. fBm: sum of N octaves of value noise at increasing frequencies and
+//      decreasing amplitudes. With persistence ~0.55 and lacunarity ~2.05
+//      the resulting spectrum approximates 1/f^0.85 — close to pink noise,
+//      which is the spectral signature of real-world signals (audio, EEG,
+//      ocean waves, river flow). This is why it "looks alive."
+// ---------------------------------------------------------------------------
+
+function hash2(x: number, y: number): number {
+  let h = (x * 374761393 + y * 668265263) | 0
+  h = (h ^ (h >>> 13)) * 1274126177
+  h = h ^ (h >>> 16)
+  return ((h >>> 0) % 1024) / 1023
+}
+
+function smoothstep(t: number): number {
+  return t * t * (3 - 2 * t)
+}
+
+function valueNoise2D(x: number, y: number): number {
+  const x0 = Math.floor(x)
+  const y0 = Math.floor(y)
+  const fx = smoothstep(x - x0)
+  const fy = smoothstep(y - y0)
+  const v00 = hash2(x0, y0)
+  const v10 = hash2(x0 + 1, y0)
+  const v01 = hash2(x0, y0 + 1)
+  const v11 = hash2(x0 + 1, y0 + 1)
+  const a = v00 + (v10 - v00) * fx
+  const b = v01 + (v11 - v01) * fx
+  return a + (b - a) * fy
+}
+
+function fBm(
+  x: number,
+  y: number,
+  octaves = 5,
+  persistence = 0.55,
+  lacunarity = 2.05,
+): number {
+  let sum = 0
+  let amp = 1
+  let freq = 1
+  let total = 0
+  for (let i = 0; i < octaves; i++) {
+    sum += amp * valueNoise2D(x * freq, y * freq)
+    total += amp
+    freq *= lacunarity
+    amp *= persistence
+  }
+  return sum / total
+}
+
 /**
- * Live scroll-position meter. Modeled on the LightboxNavMeter:
- * 1px ticks across a thin baseline, heights driven by a rAF loop that
- * superposes three sinusoids for an "audio waveform" feel, modulated by
- * card density per band, with a Gaussian swell over the active viewport
- * range and a periodic burst pulse that sweeps the meter left-to-right
- * for visual energy. Click / drag the track to scroll-jump.
+ * Live scroll-position meter.
+ *
+ * Tick heights are driven by 5-octave fBm noise (≈ pink-noise spectrum) so
+ * the waveform reads as natural, dense, and aperiodic — none of the obvious
+ * sinusoidal "stripes" you get from sin-stack approaches. Global amplitude
+ * also breathes via a low-frequency fBm so intensity rises and falls
+ * organically over time without scheduled bursts.
+ *
+ * Brightness is a smooth Gaussian spotlight centered on the current viewport
+ * — no per-tick boolean active/inactive (which created visible stripe edges
+ * at the boundary). Sigma scales with viewport extent so a small viewport
+ * shows a tight bright peak and a large viewport shows a broader glow.
+ *
+ * Click or drag the track to scroll-jump.
  */
 export function ScrollMeter({
-  cards,
   contentHeight,
   viewportY,
   viewportHeight,
@@ -50,14 +111,10 @@ export function ScrollMeter({
   const trackRef = useRef<HTMLDivElement>(null)
   const tickRefs = useRef<HTMLDivElement[]>([])
 
-  // rAF-loop reads these refs each frame so updates from React renders
-  // (scroll position, density) are picked up without restarting the loop.
+  // The rAF loop reads these refs each frame. No restart on scroll.
   const viewportYRef = useRef<number>(viewportY)
   const viewportHRef = useRef<number>(viewportHeight)
   const contentHRef = useRef<number>(contentHeight)
-  const densityRef = useRef<ReadonlyArray<number>>([])
-  const activeRangeRef = useRef<{ start: number; end: number }>({ start: 0, end: 1 })
-
   useEffect(() => { viewportYRef.current = viewportY }, [viewportY])
   useEffect(() => { viewportHRef.current = viewportHeight }, [viewportHeight])
   useEffect(() => { contentHRef.current = contentHeight }, [contentHeight])
@@ -65,117 +122,53 @@ export function ScrollMeter({
   const [hoverFrac, setHoverFrac] = useState<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
 
-  // Density per tick band — recomputed only when layout changes.
-  const density = useMemo<ReadonlyArray<number>>(() => {
-    if (contentHeight <= 0 || cards.length === 0) {
-      return new Array(TICK_COUNT).fill(0.5)
-    }
-    const bandH = contentHeight / TICK_COUNT
-    const counts: number[] = new Array(TICK_COUNT).fill(0)
-    for (const c of cards) {
-      const start = Math.max(0, Math.floor(c.y / bandH))
-      const end = Math.min(TICK_COUNT - 1, Math.floor((c.y + c.h) / bandH))
-      for (let i = start; i <= end; i++) counts[i] += 1
-    }
-    const max = counts.reduce((m, c) => (c > m ? c : m), 0)
-    if (max === 0) return new Array(TICK_COUNT).fill(0.5)
-    return counts.map((c) => 0.35 + 0.65 * (c / max))
-  }, [cards, contentHeight])
-
   useEffect(() => {
-    densityRef.current = density
-  }, [density])
-
-  // Compute the integer tick range that falls within the current viewport.
-  // Triggers React re-render so the active-range edge lines + tick color
-  // update on scroll. (rAF handles tick *heights*, not class updates.)
-  const activeStartTick = useMemo(() => {
-    if (contentHeight <= 0) return 0
-    return Math.max(0, Math.floor((viewportY / contentHeight) * TICK_COUNT))
-  }, [viewportY, contentHeight])
-  const activeEndTick = useMemo(() => {
-    if (contentHeight <= 0) return TICK_COUNT - 1
-    return Math.min(
-      TICK_COUNT - 1,
-      Math.floor(((viewportY + viewportHeight) / contentHeight) * TICK_COUNT),
-    )
-  }, [viewportY, viewportHeight, contentHeight])
-
-  useEffect(() => {
-    activeRangeRef.current = { start: activeStartTick, end: activeEndTick }
-  }, [activeStartTick, activeEndTick])
-
-  // The single rAF loop. Mounts once; reads everything from refs.
-  useEffect(() => {
-    // Burst: every BURST_PERIOD a Gaussian wave sweeps left-to-right.
-    // Wraps around the cycle so it's always either traveling or resting.
-    const BURST_PERIOD_MS = 5400
-    const BURST_TRAVEL_MS = 1100
     let raf = 0
     const start = performance.now()
-
     const loop = (): void => {
-      const now = performance.now()
-      const t = (now - start) / 1000
-
+      const t = (performance.now() - start) / 1000
       const cy = viewportYRef.current
       const ch = viewportHRef.current
       const total = contentHRef.current
-      const dens = densityRef.current
-      const range = activeRangeRef.current
-      const swellCenter = total > 0
+
+      // Spotlight center + sigma. Sigma scales with viewport extent so the
+      // bright region is "viewport-shaped" — small viewport → tight peak,
+      // big viewport → broader glow. Capped to avoid the spotlight ever
+      // washing the entire meter (which would defeat the locality cue).
+      const viewportCenterTick = total > 0
         ? ((cy + ch / 2) / total) * (TICK_COUNT - 1)
         : (TICK_COUNT - 1) / 2
-      const swellSigma = TICK_COUNT / 14
-      const swellGain = 1.6
+      const viewportTickSpan = total > 0
+        ? (ch / total) * TICK_COUNT
+        : TICK_COUNT
+      const sigma = Math.max(5, Math.min(TICK_COUNT / 3, viewportTickSpan * 0.45))
 
-      const burstPhase = (now - start) % BURST_PERIOD_MS
-      const burstActive = burstPhase < BURST_TRAVEL_MS
-      const burstCenter = burstActive
-        ? (burstPhase / BURST_TRAVEL_MS) * (TICK_COUNT + 14) - 7
-        : -1000
-      const burstSigma = TICK_COUNT / 22
-      const burstGain = 2.6
+      // Global amplitude "breath" — slow low-freq fBm sample at constant x.
+      // Range ~0.65..1.35; produces natural rise-and-fall in overall waveform
+      // intensity without scheduled events. This is what gives the meter
+      // its "occasionally more intense" feel without being obviously cyclic.
+      const breath = 0.65 + 0.7 * fBm(7.13, t * 0.18, 3, 0.6, 2.0)
 
       for (let i = 0; i < TICK_COUNT; i++) {
         const el = tickRefs.current[i]
         if (!el) continue
 
-        // Three superposed sinusoids — low/mid/high — for the audio-waveform
-        // feel. Phase-shifted per tick so the wave shimmers across the bar.
-        const w1 = Math.sin(t * 0.7 + i * 0.09) * 0.42
-        const w2 = Math.sin(t * 1.9 + i * 0.27) * 0.30
-        const w3 = Math.sin(t * 4.6 + i * 0.81) * 0.16
-        const norm = (w1 + w2 + w3 + 0.88) / 1.76 // → 0..1 roughly
-        const baseH = 2 + norm * 7
+        // 5-octave fBm — natural pink-noise-ish waveform.
+        // Space coord = tick index; time coord = elapsed seconds.
+        const noise = fBm(i * 0.16, t * 0.42, 5)
 
-        // Density factor: dense bands are visibly taller (1.0..1.55x).
-        const d = dens[i] ?? 0.5
-        const densityFactor = 0.85 + 0.55 * d
+        // Mild gamma curve so peaks read crisply against the baseline.
+        const shaped = Math.pow(noise, 0.82)
+        const heightPx = 1.4 + shaped * 14 * breath
 
-        // Active-region Gaussian swell — the meter "knows" where you are.
-        const distSwell = i - swellCenter
-        const swell = 1
-          + swellGain * Math.exp(-(distSwell * distSwell) / (2 * swellSigma * swellSigma))
+        // Gaussian opacity. Single peak at viewport center, smooth fall-off.
+        // Floor at 0.22 so the rest of the meter is still legible.
+        const dist = i - viewportCenterTick
+        const gauss = Math.exp(-(dist * dist) / (2 * sigma * sigma))
+        const opacity = 0.22 + 0.78 * gauss
 
-        // Travelling burst — every BURST_PERIOD a tall narrow Gaussian
-        // sweeps left-to-right. Adds visual energy; reads as a "scan."
-        const distBurst = i - burstCenter
-        const burst = burstActive
-          ? burstGain * Math.exp(-(distBurst * distBurst) / (2 * burstSigma * burstSigma))
-          : 0
-
-        const h = baseH * densityFactor * swell + burst * 5
-        el.style.height = `${Math.max(1, h).toFixed(1)}px`
-
-        // Active range: brighter ticks within the current viewport. Plain
-        // class swap is too costly per-frame; toggle data-attr instead so
-        // CSS can style it (the integer range comes from React state and
-        // is updated only on scroll).
-        const inRange = i >= range.start && i <= range.end
-        if ((el.dataset.active === 'true') !== inRange) {
-          el.dataset.active = inRange ? 'true' : 'false'
-        }
+        el.style.height = `${heightPx.toFixed(1)}px`
+        el.style.opacity = opacity.toFixed(3)
       }
 
       raf = requestAnimationFrame(loop)
@@ -227,8 +220,6 @@ export function ScrollMeter({
 
   useEffect(() => (): void => setHoverFrac(null), [])
 
-  const activeStartPct = (activeStartTick / Math.max(1, TICK_COUNT - 1)) * 100
-  const activeEndPct = (activeEndTick / Math.max(1, TICK_COUNT - 1)) * 100
   const hoverPct = hoverFrac !== null ? hoverFrac * 100 : null
   const ticks = useMemo(() => Array.from({ length: TICK_COUNT }, (_, i) => i), [])
 
@@ -249,42 +240,17 @@ export function ScrollMeter({
       data-testid="scroll-meter"
       data-dragging={isDragging || undefined}
     >
-      {/* Faint horizontal baseline that the ticks straddle. */}
       <div className={styles.baseline} aria-hidden="true" />
-
-      {/* 1px ticks. Heights are rewritten every frame by the rAF loop. */}
       {ticks.map((i) => (
         <div
           key={i}
-          ref={(el): void => {
-            if (el) tickRefs.current[i] = el
-          }}
+          ref={(el): void => { if (el) tickRefs.current[i] = el }}
           className={styles.tick}
-          data-active="false"
           style={{ left: `${(i / (TICK_COUNT - 1)) * 100}%` }}
         />
       ))}
-
-      {/* Active range edge lines — 1px vertical bookends marking viewport. */}
-      <div
-        className={styles.edge}
-        aria-hidden="true"
-        data-instant={isDragging || undefined}
-        style={{ left: `${activeStartPct}%` }}
-      />
-      <div
-        className={styles.edge}
-        aria-hidden="true"
-        data-instant={isDragging || undefined}
-        style={{ left: `${activeEndPct}%` }}
-      />
-
       {hoverPct !== null && !isDragging && (
-        <div
-          className={styles.hoverLine}
-          aria-hidden="true"
-          style={{ left: `${hoverPct}%` }}
-        />
+        <div className={styles.hoverLine} aria-hidden="true" style={{ left: `${hoverPct}%` }} />
       )}
     </div>
   )
