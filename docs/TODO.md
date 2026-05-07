@@ -8,11 +8,43 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **Phase 1A + 1B (board chrome 再設計 + cardWidth スライダー) 反映済**（ハードリロードで確認）
-- **次セッション最優先**: **Phase 1C — Board ZoomSlider (50-200%)**
-  - Plan: [`docs/superpowers/plans/2026-05-07-board-chrome-redesign.md`](superpowers/plans/2026-05-07-board-chrome-redesign.md) — Task 1C.1〜1C.3
-  - その後 Phase 1D — ViewDropdown (display mode + theme picker)
+- **本番**: `https://booklage.pages.dev` に **Phase 1B 完成 + chrome polish (SizePicker / ScrollMeter / smooth wheel / lightbox 拡張) 反映済**（ハードリロードで確認）
+- **次セッション最優先**: ユーザーから次の polish 指示を受けて 1 件ずつ対応（Phase 1C ZoomSlider はペンディング、要相談）
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
+
+### 🎯 今セッション (2026-05-07 末尾, polish #3) の到達点 — board chrome 完成 + lightbox UX 拡張
+
+board chrome の連続 cardWidth slider を **discrete 5-level SizePicker + ScrollMeter** に方針 pivot、さらに wheel/drag の滑らかさを物理ベースで仕上げて lightbox にも展開。
+
+**主要変更**:
+- **SizePicker** (`Size: 1 2 3 4 5`) — TopHeader actions エリアにアクティブセル + フィル + scale 1.05 アニメ。localStorage で persist。1=7col(密), 5=3col(大)
+- **ScrollMeter** (TopHeader instrument エリア) — 反復的に再設計の末、**LightboxNavMeter スタイルに直接ポート** (3 sinusoid 重畳 + Gaussian swell at scroll position)。TopHeader の中央に grid layout で page-center 固定
+- **column-masonry を auto-distribute に戻す** — discrete 列数 → カード横幅常時フル充填
+- **TopHeader を grid-template-columns 1fr auto auto auto 1fr** に変更 — instrument が geometric center 固定（nav と actions の幅差に依存しない）
+- **マウスホイール spring physics** (board + lightbox text panel + lightbox nav meter)
+  - 共通 hook 化 `lib/scroll/use-smooth-wheel-scroll.ts`
+  - dt-aware integration（60/120/144Hz 全部一貫）
+  - critical-damped spring (`STIFFNESS=200`, `DAMPING=2√k≈28.28`, settle ≈ 283ms)
+  - `deltaMode` 正規化（line/page mode → px 換算）
+- **Lightbox nav meter をドラッグスクラブ可能に**
+  - swell が指の真下を 1:1 follow（spring lag ゼロ）
+  - rAF 内で cardIdx 変化検知 → リアルタイム `onJump` 発火 = **高速ページめくり**体験
+  - swell のカード遷移移動は spring physics で滑らか（chevron / 矢印 / wheel 経路全部）
+- **rapid mode page-flip** — 120ms 以内連続遷移時、3D slide 距離 / 持続時間を圧縮 + **古い snapshot を毎回 kill** で pile up 防止。directional flow（左右どちらかから入って反対側へ）は維持
+
+**変更ファイル (主要)**:
+- 新規: `components/board/SizePicker.{tsx,module.css,test.tsx}`、`components/board/ScrollMeter.{tsx,module.css,test.tsx}`、`lib/board/size-levels.{ts,test.ts}`、`lib/scroll/use-smooth-wheel-scroll.ts`
+- 編集: `components/board/BoardRoot.tsx`、`CardsLayer.tsx`、`TopHeader.module.css`、`InteractionLayer.tsx`、`Lightbox.tsx`、`LightboxNavMeter.tsx`、`Lightbox.module.css`、`column-masonry.ts`、`use-board-data.ts`、`indexeddb.ts`
+- 削除: `components/board/SizeSlider.{tsx,module.css,test.tsx}`、orphan `persistCardWidth/Batch` + `updateBookmarkCardWidth/Batch`
+
+**今セッションの commits 数**: 33 commits（前 handoff `f06b48d` から）
+
+**気になる残課題（次セッション以降で順次対応）**:
+- `MediaTypeIndicator` の `right: 64px` offset（旧 SizePresetToggle の跡地）— カード右下に詰めるか要相談
+- フィルタプル ドロップダウンが TopHeader 下部で見切れる現象（chrome を canvas 外に出すか議論あり、未着手）
+- TopHeader を黒 canvas エリアの**外側**に出す案（広告挿入のための余白を考慮）— 議論中、未実装
+- `pad4` のデッドクランプ（影響なし、簡素化可）
+- SizeSlider 関連の旧 doc 参照を plan/spec から徐々に整理
 
 ### 🎯 今セッション (2026-05-07 続き) の到達点 — Phase 1B カードサイズ連続スライダー
 
