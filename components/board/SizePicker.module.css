@@ -1,0 +1,100 @@
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+}
+
+.label {
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.16em;
+  user-select: none;
+}
+
+.cells {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.cell {
+  position: relative;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font: inherit;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cellInner {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  transform: scale(0.4);
+  opacity: 0;
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 200ms ease-out,
+    box-shadow 320ms ease-out;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.cell:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cell:hover::before {
+  transform: scale(0.85);
+  opacity: 0.08;
+}
+
+.cell:focus-visible {
+  outline: none;
+}
+
+.cell:focus-visible::before {
+  transform: scale(0.92);
+  opacity: 0.12;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
+.cell[data-active="true"] {
+  color: #000;
+  transform: scale(1.05);
+}
+
+.cell[data-active="true"]::before {
+  transform: scale(1);
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.0), 0 4px 16px rgba(255, 255, 255, 0.25);
+}

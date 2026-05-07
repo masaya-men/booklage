@@ -672,19 +672,6 @@ export async function updateBookmarkOrderIndex(
 }
 
 /**
- * Set a single bookmark's continuous card width. Clamped to [MIN_CARD_WIDTH, MAX_CARD_WIDTH].
- */
-export async function updateBookmarkCardWidth(
-  db: IDBPDatabase<BooklageDB>,
-  bookmarkId: string,
-  cardWidth: number,
-): Promise<void> {
-  const existing = await db.get('bookmarks', bookmarkId)
-  if (!existing) return
-  await db.put('bookmarks', { ...existing, cardWidth: clampCardWidth(cardWidth) })
-}
-
-/**
  * Atomically rewrite orderIndex for multiple bookmarks in one transaction.
  * Use for drag-to-reorder: caller supplies the new complete order by ID.
  */
@@ -699,27 +686,6 @@ export async function updateBookmarkOrderBatch(
     const existing = await store.get(id)
     if (!existing) continue
     await store.put({ ...existing, orderIndex: i })
-  }
-  await tx.done
-}
-
-/**
- * Atomically rewrite cardWidth for multiple bookmarks in one transaction.
- * Use for global card-size slider: caller supplies the bookmark IDs and
- * the single cardWidth to apply to all of them. Width is clamped per-row.
- */
-export async function updateBookmarkCardWidthBatch(
-  db: IDBPDatabase<BooklageDB>,
-  bookmarkIds: readonly string[],
-  cardWidth: number,
-): Promise<void> {
-  const clamped = clampCardWidth(cardWidth)
-  const tx = db.transaction('bookmarks', 'readwrite')
-  const store = tx.objectStore('bookmarks')
-  for (const id of bookmarkIds) {
-    const existing = await store.get(id)
-    if (!existing) continue
-    await store.put({ ...existing, cardWidth: clamped })
   }
   await tx.done
 }

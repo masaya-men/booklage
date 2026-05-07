@@ -67,7 +67,7 @@ type CardsLayerProps = {
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly displayMode: DisplayMode
   readonly newlyAddedIds: ReadonlySet<string>
-  readonly globalCardWidth: number
+  readonly targetColumnUnit: number
 }
 
 export function CardsLayer({
@@ -83,7 +83,7 @@ export function CardsLayer({
   persistMeasuredAspect,
   displayMode,
   newlyAddedIds,
-  globalCardWidth,
+  targetColumnUnit,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -123,9 +123,9 @@ export function CardsLayer({
         cards: masonryCards,
         containerWidth: viewportWidth,
         gap: COLUMN_MASONRY.GAP_PX,
-        targetColumnUnit: globalCardWidth,
+        targetColumnUnit: targetColumnUnit,
       }),
-    [masonryCards, viewportWidth, globalCardWidth],
+    [masonryCards, viewportWidth, targetColumnUnit],
   )
 
   // Stage 2: preview masonry computed from the live virtual order.
@@ -148,9 +148,9 @@ export function CardsLayer({
       cards: orderedCards,
       containerWidth: viewportWidth,
       gap: COLUMN_MASONRY.GAP_PX,
-      targetColumnUnit: globalCardWidth,
+      targetColumnUnit: targetColumnUnit,
     })
-  }, [virtualOrderedIds, items, viewportWidth, intrinsicHeights, globalCardWidth])
+  }, [virtualOrderedIds, items, viewportWidth, intrinsicHeights, targetColumnUnit])
 
   // During drag, use preview positions for non-dragged cards.
   // During drop/idle, use real masonry positions.
@@ -181,16 +181,8 @@ export function CardsLayer({
   // dragState ref for use inside useLayoutEffect without triggering extra renders
   const dragStateRef = useRef<{ bookmarkId: string } | null>(null)
 
-  // Track globalCardWidth across effect runs so we can detect "the user is
-  // actively scrubbing the size slider" — in that mode every frame brings a
-  // tiny layout change and chained 150ms tweens would lag visibly behind the
-  // pointer. We snap instead so cards track the slider 1:1.
-  const prevGlobalCardWidthRef = useRef<number>(globalCardWidth)
-
   useLayoutEffect(() => {
     const draggedId = dragStateRef.current?.bookmarkId ?? null
-    const sizeChanging = prevGlobalCardWidthRef.current !== globalCardWidth
-    prevGlobalCardWidthRef.current = globalCardWidth
 
     for (const it of visibleItems) {
       // Skip the card being dragged — the drag hook owns its transform.
@@ -203,7 +195,7 @@ export function CardsLayer({
 
       const prev = prevPositionsRef.current[it.bookmarkId]
       const positionMoved = prev && (prev.x !== p.x || prev.y !== p.y)
-      if (positionMoved && !sizeChanging) {
+      if (positionMoved) {
         // FLIP: animate from element's current live transform to new position.
         // gsap.to (not fromTo) continues from wherever the element is now —
         // avoids the per-tick snap-back to stored prev on fast pointer movement.
@@ -265,7 +257,7 @@ export function CardsLayer({
           cardWorldY,
           containerWidth: viewportWidth,
           gap: COLUMN_MASONRY.GAP_PX,
-          targetColumnUnit: globalCardWidth,
+          targetColumnUnit: targetColumnUnit,
         })
 
         // Only update state if order actually changed — avoids re-render storms.
@@ -278,7 +270,7 @@ export function CardsLayer({
           return prev
         })
       },
-      [items, viewportWidth, globalCardWidth],
+      [items, viewportWidth, targetColumnUnit],
     ),
     onDrop: useCallback(
       (_orderedIds: readonly string[]): void => {
@@ -312,7 +304,7 @@ export function CardsLayer({
           cards: finalCards,
           containerWidth: viewportWidth,
           gap: COLUMN_MASONRY.GAP_PX,
-          targetColumnUnit: globalCardWidth,
+          targetColumnUnit: targetColumnUnit,
         })
 
         // Snap all non-dragged cards to their FINAL masonry positions + scale 1,
@@ -352,7 +344,7 @@ export function CardsLayer({
         onDrop(finalOrder)
         setVirtualOrderedIds(null)
       },
-      [onDrop, virtualOrderedIds, items, viewportWidth, intrinsicHeights, globalCardWidth],
+      [onDrop, virtualOrderedIds, items, viewportWidth, intrinsicHeights, targetColumnUnit],
     ),
   })
 

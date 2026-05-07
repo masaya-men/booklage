@@ -8,7 +8,13 @@ import {
   getThemeMeta,
 } from '@/lib/board/theme-registry'
 import { BOARD_INNER, COLUMN_MASONRY } from '@/lib/board/constants'
-import { DEFAULT_CARD_WIDTH, widthToPreset } from '@/lib/board/size-migration'
+import {
+  DEFAULT_SIZE_LEVEL,
+  type SizeLevel,
+  clampSizeLevel,
+  sizeLevelToColumnCount,
+  targetColumnUnitForCount,
+} from '@/lib/board/size-levels'
 import type { BoardFilter, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
@@ -24,7 +30,8 @@ import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
 import { TopHeader } from './TopHeader'
 import { FilterPill } from './FilterPill'
-import { SizeSlider } from './SizeSlider'
+import { SizePicker } from './SizePicker'
+import { ScrollMeter } from './ScrollMeter'
 import { BoardChrome } from './BoardChrome'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
@@ -43,7 +50,7 @@ import styles from './BoardRoot.module.css'
 const BOARD_TOP_PAD_PX = 80
 
 export function BoardRoot() {
-  const { items, loading, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistVideoFlag, persistSoftDelete, persistCardWidthBatch, reload } = useBoardData()
+  const { items, loading, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistVideoFlag, persistSoftDelete, reload } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
   const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
@@ -63,7 +70,7 @@ export function BoardRoot() {
   const [newlyAddedIds, setNewlyAddedIds] = useState<ReadonlySet<string>>(new Set())
   const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
   const [actionSheet, setActionSheet] = useState<{ pngDataUrl: string; shareUrl: string } | null>(null)
-  const [globalCardWidth, setGlobalCardWidth] = useState<number>(DEFAULT_CARD_WIDTH)
+  const [sizeLevel, setSizeLevel] = useState<SizeLevel>(DEFAULT_SIZE_LEVEL)
   // Ref points at the inner dark canvas — viewport.w/h reflect the canvas's
   // inner dimensions (window minus the outer-frame margin), so masonry layout
   // and culling all work in canvas-local coordinates.
@@ -173,7 +180,6 @@ export function BoardRoot() {
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
         columnSpan: 1,
-        targetWidth: it.cardWidth,
       })),
     [filteredItems],
   )
@@ -185,22 +191,28 @@ export function BoardRoot() {
   // No sidebar reservation, no max-width cap — the canvas is the whole stage.
   const effectiveLayoutWidth = Math.max(0, viewport.w - 2 * BOARD_INNER.SIDE_PADDING_PX)
 
+  // Slider has 5 discrete levels each mapping to an integer column count.
+  // We feed `targetColumnUnit` such that masonry derives that exact count and
+  // distributes leftover horizontal space across cards (auto-fill width).
+  const desiredColumnCount = sizeLevelToColumnCount(sizeLevel)
+  const targetColumnUnit = targetColumnUnitForCount(
+    effectiveLayoutWidth,
+    COLUMN_MASONRY.GAP_PX,
+    desiredColumnCount,
+  )
+
   const layout = useMemo(
     () =>
       computeColumnMasonry({
         cards: masonryCards,
         containerWidth: effectiveLayoutWidth,
         gap: COLUMN_MASONRY.GAP_PX,
-        targetColumnUnit: globalCardWidth,
+        targetColumnUnit,
       }),
-    [masonryCards, effectiveLayoutWidth, globalCardWidth],
+    [masonryCards, effectiveLayoutWidth, targetColumnUnit],
   )
 
-  // Center the cards block when slider value × columnCount does not fill
-  // effectiveLayoutWidth (e.g. between integer column-count steps). Keeps the
-  // visual centered with symmetric whitespace as the slider scrubs.
   const horizontalOffset = BOARD_INNER.SIDE_PADDING_PX
-    + Math.max(0, (effectiveLayoutWidth - layout.totalWidth) / 2)
 
   // Actual content bounds — tracks the furthest right/bottom any card reaches,
   // using masonry positions (freePos not used in masonry mode) plus overrides
@@ -246,6 +258,54 @@ export function BoardRoot() {
     [contentBounds.width, contentBounds.height],
   )
 
+  // ScrollMeter click/drag → animated scroll-to-y. requestAnimationFrame loop
+  // with cubic ease-out so jumps feel directed but never abrupt. While the
+  // user is actively dragging the meter (multiple onScrollTo calls per frame)
+  // we cancel any in-flight tween and snap so the meter tracks the pointer.
+  const scrollAnimRef = useRef<number | null>(null)
+  const lastJumpAtRef = useRef<number>(0)
+  const handleScrollMeterJump = useCallback((targetY: number): void => {
+    const now = performance.now()
+    const isDragLike = now - lastJumpAtRef.current < 80
+    lastJumpAtRef.current = now
+    if (scrollAnimRef.current !== null) {
+      cancelAnimationFrame(scrollAnimRef.current)
+      scrollAnimRef.current = null
+    }
+    if (isDragLike) {
+      setViewport((v) => ({ ...v, y: Math.max(0, Math.min(targetY, contentBounds.height - v.h)) }))
+      return
+    }
+    const startY = viewport.y
+    const start = performance.now()
+    const duration = 380
+    const tick = (t: number): void => {
+      const p = Math.min(1, (t - start) / duration)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setViewport((v) => ({
+        ...v,
+        y: Math.max(0, Math.min(startY + (targetY - startY) * eased, contentBounds.height - v.h)),
+      }))
+      if (p < 1) {
+        scrollAnimRef.current = requestAnimationFrame(tick)
+      } else {
+        scrollAnimRef.current = null
+      }
+    }
+    scrollAnimRef.current = requestAnimationFrame(tick)
+  }, [viewport.y, contentBounds.height])
+
+  // Active card extents for the ScrollMeter density map. Recomputed only when
+  // the layout changes, not on every scroll tick.
+  const scrollMeterCards = useMemo(
+    () =>
+      filteredItems
+        .map((it) => layout.positions[it.bookmarkId])
+        .filter((p): p is NonNullable<typeof p> => Boolean(p))
+        .map((p) => ({ y: p.y, h: p.h })),
+    [filteredItems, layout.positions],
+  )
+
   const handleCardClick = useCallback((bookmarkId: string, originRect: DOMRect): void => {
     setLightboxOriginRect(originRect)
     setLightboxItemId(bookmarkId)
@@ -261,10 +321,18 @@ export function BoardRoot() {
     void persistSoftDelete(bookmarkId, true)
   }, [persistSoftDelete])
 
-  const onCardWidthChange = useCallback((next: number): void => {
-    setGlobalCardWidth(next)
-    void persistCardWidthBatch(filteredItems.map((i) => i.bookmarkId), next)
-  }, [filteredItems, persistCardWidthBatch])
+  // Size level is a single board-wide preference, not per-card data.
+  // localStorage is sufficient (recovers on next visit, cross-device sync
+  // not in scope). On mount we hydrate from the saved value once.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = window.localStorage.getItem('booklage:size-level')
+    if (saved !== null) setSizeLevel(clampSizeLevel(Number(saved)))
+  }, [])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('booklage:size-level', String(sizeLevel))
+  }, [sizeLevel])
 
   const handleLightboxClose = useCallback((): void => {
     setLightboxItemId(null)
@@ -465,20 +533,6 @@ export function BoardRoot() {
     }
   }, [reload])
 
-  // Seed the SizeSlider from the first item's persisted cardWidth on initial
-  // load. Without this, globalCardWidth stays at DEFAULT_CARD_WIDTH (240) even
-  // when the user previously dragged to e.g. 320; the first slider drag would
-  // then batch-overwrite all cards back to 240 — silently destroying the
-  // persisted setting. seededRef ensures this fires exactly once per mount so
-  // subsequent item-array changes (drag/reorder/filter) never re-overwrite.
-  const seededRef = useRef(false)
-  useEffect(() => {
-    if (seededRef.current) return
-    if (items.length === 0) return
-    seededRef.current = true
-    setGlobalCardWidth(items[0].cardWidth)
-  }, [items])
-
   const sidebarCounts = useMemo(() => {
     const active = items.filter((i) => !i.isDeleted)
     const deleted = items.filter((i) => i.isDeleted)
@@ -513,20 +567,26 @@ export function BoardRoot() {
             />
           }
           instrument={
-            <SizeSlider
-              value={globalCardWidth}
-              onChange={onCardWidthChange}
+            <ScrollMeter
+              cards={scrollMeterCards}
+              contentHeight={contentBounds.height}
+              viewportY={viewport.y}
+              viewportHeight={viewport.h}
+              onScrollTo={handleScrollMeterJump}
             />
           }
           actions={
-            <button
-              type="button"
-              className={styles.sharePill}
-              onClick={(): void => setShareComposerOpen(true)}
-              data-testid="share-pill"
-            >
-              Share ↗
-            </button>
+            <>
+              <SizePicker value={sizeLevel} onChange={setSizeLevel} />
+              <button
+                type="button"
+                className={styles.sharePill}
+                onClick={(): void => setShareComposerOpen(true)}
+                data-testid="share-pill"
+              >
+                Share ↗
+              </button>
+            </>
           }
         />
         <div ref={canvasRef} className={styles.canvasWrap}>
@@ -578,7 +638,7 @@ export function BoardRoot() {
                 persistMeasuredAspect={persistMeasuredAspect}
                 displayMode={displayMode}
                 newlyAddedIds={newlyAddedIds}
-                globalCardWidth={globalCardWidth}
+                targetColumnUnit={targetColumnUnit}
               />
             </div>
           </InteractionLayer>
@@ -623,7 +683,7 @@ export function BoardRoot() {
             description: it.description ?? '',
             thumbnail: it.thumbnail ?? '',
             type: detectUrlType(it.url),
-            cardWidth: it.cardWidth,
+            cardWidth: layout.columnUnit,
             aspectRatio: it.aspectRatio,
           }))}
           positions={layout.positions}
