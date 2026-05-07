@@ -10,8 +10,9 @@ export type MasonryCard = {
   readonly columnSpan: number
   /**
    * Continuous target width in pixels. When provided, the algorithm picks
-   * the column count nearest to (containerWidth + gap) / (targetWidth + gap).
-   * Falls back to columnSpan when undefined (legacy callers).
+   * the integer span nearest to (targetWidth + gap) / (columnUnit + gap),
+   * clamped to [1, columnCount]. Falls back to columnSpan when undefined
+   * (legacy callers).
    */
   readonly targetWidth?: number
   /**

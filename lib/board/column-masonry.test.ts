@@ -181,4 +181,31 @@ describe('computeColumnMasonry — targetWidth', () => {
     expect(a.w).toBeGreaterThan(140)
     expect(a.w).toBeLessThan(200)
   })
+
+  it('clamps targetWidth larger than the container to columnCount', () => {
+    const result = computeColumnMasonry({
+      cards: [{ id: 'huge', aspectRatio: 1, columnSpan: 1, targetWidth: 2000 }],
+      containerWidth: 800,
+      gap: 16,
+      targetColumnUnit: 240,
+    })
+    // 800 + 16 / (240 + 16) = ~3 columns. The card should span all 3.
+    expect(result.positions['huge'].w).toBeCloseTo(result.totalWidth, 0)
+  })
+
+  it('handles mixed targetWidth and legacy columnSpan cards in one layout', () => {
+    const result = computeColumnMasonry({
+      cards: [
+        { id: 'legacy', aspectRatio: 1, columnSpan: 2 },                       // span=2 via legacy
+        { id: 'modern', aspectRatio: 1, columnSpan: 1, targetWidth: 240 },     // span=1 via targetWidth (matches columnUnit)
+      ],
+      containerWidth: 800,
+      gap: 16,
+      targetColumnUnit: 240,
+    })
+    // 800 wide → ~3 columns at unit 240+16. Legacy card spans 2; modern spans 1.
+    const legacyW = result.positions['legacy'].w
+    const modernW = result.positions['modern'].w
+    expect(legacyW).toBeGreaterThan(modernW * 1.5) // legacy ~ 2 * modern + gap
+  })
 })
