@@ -8,10 +8,43 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **PREVIEW モード搭載済み**（ハードリロードで確認）
-- **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（SW 番号は次回 polish 時に更新）
+- **本番**: `https://booklage.pages.dev` に **Phase 1A (board chrome 再設計) 反映済**（ハードリロードで確認）
+- **次セッション最優先**: **Phase 1B — カードサイズ連続スライダー + S/M/L → cardWidth migration**
+  - Spec: [`docs/superpowers/specs/2026-05-07-board-chrome-redesign-design.md`](superpowers/specs/2026-05-07-board-chrome-redesign-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-07-board-chrome-redesign.md`](superpowers/plans/2026-05-07-board-chrome-redesign.md) — Task 1B.1〜1B.9
+  - 9 タスク、~1 日。subagent-driven-development で実行
+- **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-07) の到達点 — 共有モーダル Foundation 再設計
+### 🎯 今セッション (2026-05-07 後半) の到達点 — Phase 1A board chrome 再設計
+
+シェアモーダル深掘りから方針 pivot: **ボード UX が rigid なせいで share modal complexity が増えてた → board UX 先に直す**。
+
+**Phase 1A 完了 (5 タスク、6 commits)**:
+- `TopHeader` 新規作成 — 64px sticky 3-group chrome (NAV / INSTRUMENT / ACTIONS)
+- 既存 `Toolbar` 廃止、`BoardRoot` の grid 構造を `auto / 1fr` に
+- `FilterPill` を bracket-wrapped count 形式 `[ ALL · 248 ]` にリスタイル (waveform aesthetic 第 1 弾)
+- canvasRef を canvasWrap に移動 (masonry viewport 計算の精度維持)
+- E2E selectors `board-toolbar` → `board-top-header` に swap (7 箇所、4 ファイル)
+- TopHeader 単体 unit test 追加
+- 271 unit tests + 1 新 E2E smoke、tsc 0 errors
+
+**変更ファイル**:
+- 新規: `components/board/TopHeader.tsx` / `.module.css` / `.test.tsx`
+- 編集: `components/board/BoardRoot.tsx` / `.module.css`、`components/board/FilterPill.tsx` / `.module.css`
+- 削除: `components/board/Toolbar.tsx` / `.module.css`
+- 編集 (E2E): `tests/e2e/board-b0.spec.ts` (smoke 追加)、`share-fullscreen` / `share-composer-edit` / `share-sender` / `board-lightbox-nav` (testid swap)
+
+**今セッションの commits** (古い → 新しい):
+- `ec9ea91` — spec + share R fix
+- `3a79554` — implementation plan
+- `fff8882` — TopHeader skeleton
+- `c57ba24` — E2E testid swap
+- `dbb024e` — TopHeader minor (z-index annotation + unit test)
+- `ca95637` — FilterPill bracket style
+- `ae255b9` — Toolbar 削除
+- `f3f9f61` — TopHeader E2E smoke
+
+### 🎯 同セッション前半 (2026-05-07 早朝) の到達点 — 共有モーダル Foundation 再設計
 
 **glass / sticky / scrollContainer を全部捨てて、シンプル & 全体像が見える構造に作り直した**。前々セッションで「無限ボードとして縦スクロール OK」と判断 → 使ってみたら **「全体像が把握しづらい」のが composer の致命傷** と判明 → 方針反転。
 
