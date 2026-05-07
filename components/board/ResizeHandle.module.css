@@ -61,45 +61,52 @@
   cursor: nwse-resize;
 }
 
+/* Arc lives as its own absolutely-positioned SVG sibling so it can
+   render at a generous 24×24 visual size while the click-active
+   .handle stays a tight 32×32. The .arc-* classes shift the box so
+   the card corner is centered (box-local 12, 12) and the arc bulges
+   into the outward quadrant. */
 .arc {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
   opacity: 0;
   transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
   filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.55));
+  z-index: 28; /* above .hint (25), below .handle (30) */
 }
 
-/* Approach-radius arc: subtle (0.55) when cursor enters the wide hint
-   zone but hasn't reached the active handle yet. The ~ combinator
-   matches the paired .handle that follows .hint in DOM order — each
-   <Handle> renders the pair as siblings, and the four pairs are flat
-   under ResizeHandle's fragment. */
-.hint-tl:hover ~ .handle.tl .arc,
-.hint-tr:hover ~ .handle.tr .arc,
-.hint-bl:hover ~ .handle.bl .arc,
-.hint-br:hover ~ .handle.br .arc {
+.arc-tl { top: -12px; left: -12px; }
+.arc-tr { top: -12px; right: -12px; }
+.arc-bl { bottom: -12px; left: -12px; }
+.arc-br { bottom: -12px; right: -12px; }
+
+/* Subtle (0.55): wide hint zone hover OR corner action button hover.
+   The ~ combinator requires the matched .arc-X to come AFTER the
+   hovered element. DOM order inside each <Handle>: hint, handle,
+   arc — so hint:hover ~ arc works. CardCornerActions renders BEFORE
+   ResizeHandle in CardsLayer so its buttons precede every arc. */
+.hint-tl:hover ~ .arc-tl,
+.hint-tr:hover ~ .arc-tr,
+.hint-bl:hover ~ .arc-bl,
+.hint-br:hover ~ .arc-br,
+:global([data-testid="card-delete-button"]):hover ~ .arc-tr,
+:global([data-testid="card-reset-size-button"]):hover ~ .arc-bl {
   opacity: 0.55;
 }
 
-/* The corner action icons (× delete in TR, ↺ reset in BL) sit at
-   z-index 50 and physically cover part of their hint zone — when the
-   cursor is on the icon, .hint:hover does NOT fire (z-order blocks
-   :hover from reaching the underlying hint). Without this rule, the
-   arc would unhelpfully blank out exactly when the user is near the
-   corner. The CardCornerActions buttons live BEFORE ResizeHandle in
-   DOM order so the ~ sibling combinator can find the paired handle's
-   arc here. */
-:global([data-testid="card-delete-button"]):hover ~ .handle.tr .arc,
-:global([data-testid="card-reset-size-button"]):hover ~ .handle.bl .arc {
-  opacity: 0.55;
-}
-
-/* Full opacity when the cursor reaches the click-active handle. */
-.handle:hover .arc,
-.handle.resizing .arc {
+/* Full (1.0): cursor reached the click-active handle, or a resize is
+   in progress. Higher specificity than the subtle rule above so it
+   wins when the cursor's position triggers both. */
+.handle.tl:hover ~ .arc-tl,
+.handle.tr:hover ~ .arc-tr,
+.handle.bl:hover ~ .arc-bl,
+.handle.br:hover ~ .arc-br,
+.handle.tl.resizing ~ .arc-tl,
+.handle.tr.resizing ~ .arc-tr,
+.handle.bl.resizing ~ .arc-bl,
+.handle.br.resizing ~ .arc-br {
   opacity: 1;
 }
 

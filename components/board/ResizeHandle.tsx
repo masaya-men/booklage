@@ -179,66 +179,64 @@ function Handle({ corner, cardWidth, cardHeight, maxCardWidth, onResize, onResiz
         className={handleClass}
         onPointerDown={handlePointerDown}
         data-testid={`resize-handle-${corner}`}
-      >
-        <ArcSvg corner={corner} />
-      </div>
+      />
+      {/* Arc lives as a separate sibling so it can render at a generous
+          24×24 visual size even though the click-active .handle is only
+          32×32. Sizing the arc to its own SVG box (rather than the
+          handle's) lets the curve stay smooth — earlier attempts that
+          embedded the arc inside the shrunken 32×32 handle made it
+          render at a tiny radius (8 SVG units) and look pixelated. */}
+      <ArcSvg corner={corner} />
     </>
   )
 }
 
-/** 1/4-circle arc anchored to the corresponding corner of the 32x32 zone.
- *  The handle box overshoots the card by 8px on the corner-side axes
- *  (top:-8 left:-8 for TL etc.), so the card corner sits at box-local
- *  (8, 8) for TL or (24, 8) for TR (since 32-8=24). The arc is
- *  centered ON the card corner and opens AWAY from the card body
- *  (visible portion lives in the 8px outward strip), so the
- *  affordance reads as a small bracket sitting just outside the corner. */
+/** 1/4-circle arc rendered as its own SVG sibling. The 24×24 viewBox is
+ *  positioned so the card corner sits at box-local (12, 12) on every
+ *  corner — `.arc-tl/tr/bl/br` shift the box with a 12px outward
+ *  overshoot — and the arc is drawn with r=12, sweeping into the
+ *  outward quadrant. SVG sweep=1 = clockwise visually, sweep=0 = ccw. */
 function ArcSvg({ corner }: { corner: ResizeCorner }): ReactElement {
-  const r = 8
-  const cx = corner === 'tl' || corner === 'bl' ? 8 : 24
-  const cy = corner === 'tl' || corner === 'tr' ? 8 : 24
-  // Start / end points 90° around the card corner. Each corner picks
-  // the two endpoints that sit on the OUTWARD axes (the area outside
-  // the card edge), and the sweep flag is chosen so the arc bulges
-  // through the outward quadrant. SVG sweep=1 = clockwise visually,
-  // sweep=0 = counter-clockwise visually.
+  const r = 12
+  const cx = 12
+  const cy = 12
   let p1x: number
   let p1y: number
   let p2x: number
   let p2y: number
   let sweepFlag: 0 | 1
   if (corner === 'tl') {
-    // From left-of-corner (9 o'clock) to above-corner (12 o'clock),
-    // bulging through upper-left = clockwise.
+    // From 9 o'clock to 12 o'clock, bulging upper-left = clockwise.
     p1x = cx - r; p1y = cy
     p2x = cx; p2y = cy - r
     sweepFlag = 1
   } else if (corner === 'tr') {
-    // From right-of-corner (3 o'clock) to above-corner (12 o'clock),
-    // bulging through upper-right = counter-clockwise.
+    // From 3 o'clock to 12 o'clock, bulging upper-right = ccw.
     p1x = cx + r; p1y = cy
     p2x = cx; p2y = cy - r
     sweepFlag = 0
   } else if (corner === 'bl') {
-    // From left-of-corner (9 o'clock) to below-corner (6 o'clock),
-    // bulging through lower-left = counter-clockwise.
+    // From 9 o'clock to 6 o'clock, bulging lower-left = ccw.
     p1x = cx - r; p1y = cy
     p2x = cx; p2y = cy + r
     sweepFlag = 0
   } else {
-    // From right-of-corner (3 o'clock) to below-corner (6 o'clock),
-    // bulging through lower-right = clockwise.
+    // From 3 o'clock to 6 o'clock, bulging lower-right = clockwise.
     p1x = cx + r; p1y = cy
     p2x = cx; p2y = cy + r
     sweepFlag = 1
   }
   const d = `M ${p1x} ${p1y} A ${r} ${r} 0 0 ${sweepFlag} ${p2x} ${p2y}`
   return (
-    <svg className={styles.arc} viewBox="0 0 32 32" aria-hidden="true">
+    <svg
+      className={[styles.arc, styles[`arc-${corner}`]].join(' ')}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
       <path
         d={d}
         fill="none"
-        stroke="rgba(255, 255, 255, 0.9)"
+        stroke="rgba(255, 255, 255, 0.92)"
         strokeWidth={2.25}
         strokeLinecap="round"
       />
