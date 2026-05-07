@@ -165,3 +165,20 @@ describe('computeColumnMasonry', () => {
     expect(result.totalHeight).toBeCloseTo(result.positions.b.y + result.positions.b.h)
   })
 })
+
+describe('computeColumnMasonry — targetWidth', () => {
+  it('uses per-card targetWidth to pick the column count, falls back to columnSpan', () => {
+    const result = computeColumnMasonry({
+      cards: [
+        { id: 'a', aspectRatio: 1, columnSpan: 1, targetWidth: 160 },
+        { id: 'b', aspectRatio: 1, columnSpan: 1, targetWidth: 160 },
+      ],
+      containerWidth: 1000,
+      gap: 16,
+      targetColumnUnit: 160,
+    })
+    const a = result.positions['a']
+    expect(a.w).toBeGreaterThan(140)
+    expect(a.w).toBeLessThan(200)
+  })
+})

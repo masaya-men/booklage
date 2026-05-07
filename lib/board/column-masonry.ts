@@ -3,8 +3,17 @@ import type { CardPosition } from './types'
 export type MasonryCard = {
   readonly id: string
   readonly aspectRatio: number
-  /** 1 = S, 2 = M, 3 = L. Will be clamped to `columnCount` at layout time. */
+  /**
+   * Legacy: 1 = S, 2 = M, 3 = L. Kept so existing call sites compile.
+   * Will be ignored if `targetWidth` is provided.
+   */
   readonly columnSpan: number
+  /**
+   * Continuous target width in pixels. When provided, the algorithm picks
+   * the column count nearest to (containerWidth + gap) / (targetWidth + gap).
+   * Falls back to columnSpan when undefined (legacy callers).
+   */
+  readonly targetWidth?: number
   /**
    * Absolute rendered height in pixels. When present, overrides the aspectRatio
    * formula. Intended for text-heavy cards (Tweet, Text) where height does not
@@ -52,7 +61,14 @@ export function computeColumnMasonry(input: MasonryInput): MasonryResult {
   const positions: Record<string, CardPosition> = {}
 
   for (const card of cards) {
-    const span = Math.max(1, Math.min(card.columnSpan, columnCount))
+    let effectiveSpan: number
+    if (typeof card.targetWidth === 'number' && card.targetWidth > 0) {
+      const slotW = columnUnit + gap
+      effectiveSpan = Math.max(1, Math.round((card.targetWidth + gap) / slotW))
+    } else {
+      effectiveSpan = card.columnSpan
+    }
+    const span = Math.max(1, Math.min(effectiveSpan, columnCount))
 
     let bestStartCol = 0
     let bestTop = Infinity
