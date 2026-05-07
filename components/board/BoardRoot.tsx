@@ -83,80 +83,68 @@ export function BoardRoot() {
   const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
   const [actionSheet, setActionSheet] = useState<{ pngDataUrl: string; shareUrl: string } | null>(null)
   const [sizeLevel, setSizeLevel] = useState<SizeLevel>(DEFAULT_SIZE_LEVEL)
-  // Per-card resize overrides — hydrated from items[customCardWidth=true]
-  // on every items change, then mutated locally during in-flight drags
-  // for instant feedback. ResizeHandle pointerup persists the final
-  // width to IDB via `persistCustomWidth`, which then updates `items`
-  // on the next tick — the effect below picks it up and writes the
-  // settled value back into customWidths so the two stay coherent.
-  const [customWidths, setCustomWidths] = useState<Readonly<Record<string, number>>>({})
-  useEffect(() => {
-    setCustomWidths((prev) => {
-      const next: Record<string, number> = {}
-      for (const it of items) {
-        if (it.customCardWidth) next[it.bookmarkId] = it.cardWidth
-      }
-      // Cheap shallow equality so non-resize items changes (e.g. tag
-      // edits, thumbnail backfill) don't re-render every card.
-      const prevKeys = Object.keys(prev)
-      const nextKeys = Object.keys(next)
-      if (prevKeys.length === nextKeys.length) {
-        let same = true
-        for (const k of nextKeys) {
-          if (prev[k] !== next[k]) { same = false; break }
-        }
-        if (same) return prev
-      }
-      return next
-    })
+  // Per-card persisted overrides — derived directly from items so the
+  // very first render after the IDB load already knows the right widths.
+  // The previous useEffect-based hydration created a one-frame flash on
+  // reload where every card briefly snapped to the SizePicker default
+  // before the effect populated the override map; useMemo eliminates
+  // that flash since it runs in the same render as items.
+  const persistentCustomWidths = useMemo<Readonly<Record<string, number>>>(() => {
+    const map: Record<string, number> = {}
+    for (const it of items) {
+      if (it.customCardWidth) map[it.bookmarkId] = it.cardWidth
+    }
+    return map
   }, [items])
 
-  // In-flight resize drag → update local override immediately so the
-  // skyline reflows under the cursor. No IDB write yet; that happens on
-  // pointerup via handleCardResizeEnd.
+  // Live resize override during an in-flight drag. Holds at most ONE
+  // entry (only the actively-dragged card needs it), so it doesn't
+  // need a Map. Cleared on pointerup; the optimistic items update
+  // inside `persistCustomWidth` carries the new width into
+  // persistentCustomWidths in the same React batch.
+  const [liveResize, setLiveResize] = useState<{ id: string; width: number } | null>(null)
+
+  // What the layout actually reads — persisted overrides, with the
+  // live in-flight width layered on top for the dragging card.
+  const customWidths = useMemo<Readonly<Record<string, number>>>(() => {
+    if (!liveResize) return persistentCustomWidths
+    return { ...persistentCustomWidths, [liveResize.id]: liveResize.width }
+  }, [persistentCustomWidths, liveResize])
+
   const handleCardResize = useCallback((bookmarkId: string, nextWidth: number): void => {
-    setCustomWidths((prev) => {
-      if (prev[bookmarkId] === nextWidth) return prev
-      return { ...prev, [bookmarkId]: nextWidth }
+    setLiveResize((prev) => {
+      if (prev?.id === bookmarkId && prev.width === nextWidth) return prev
+      return { id: bookmarkId, width: nextWidth }
     })
   }, [])
 
-  // Resize drag finished → persist to IDB. The hook does optimistic
-  // updates on `items` so customCardWidth=true takes effect immediately
-  // (without waiting for the IDB round-trip), and the hydration effect
-  // above keeps customWidths in sync.
   const handleCardResizeEnd = useCallback(
     (bookmarkId: string, finalWidth: number): void => {
+      // Clearing liveResize and queueing the optimistic items update
+      // in the same task lets React batch them — no flicker between
+      // the live drag and the persisted state taking over.
+      setLiveResize(null)
       void persistCustomWidth(bookmarkId, finalWidth)
     },
     [persistCustomWidth],
   )
 
-  // Per-card "reset size" affordance → clear the IDB flag and drop the
-  // override from local state in the same tick so the card snaps back
-  // to the SizePicker default without waiting for the round-trip.
   const handleCardResetSize = useCallback(
     (bookmarkId: string): void => {
-      setCustomWidths((prev) => {
-        if (!(bookmarkId in prev)) return prev
-        const next = { ...prev }
-        delete next[bookmarkId]
-        return next
-      })
+      setLiveResize((prev) => (prev?.id === bookmarkId ? null : prev))
       void resetCustomWidth(bookmarkId)
     },
     [resetCustomWidth],
   )
 
-  // Header "Reset all" → clear every custom override at once.
   const handleResetAllCustomWidths = useCallback((): void => {
-    setCustomWidths({})
+    setLiveResize(null)
     void resetAllCustomWidths()
   }, [resetAllCustomWidths])
 
   const customWidthCount = useMemo(
-    () => items.reduce((n, it) => (it.customCardWidth ? n + 1 : n), 0),
-    [items],
+    () => Object.keys(persistentCustomWidths).length,
+    [persistentCustomWidths],
   )
   // Ref points at the inner dark canvas — viewport.w/h reflect the canvas's
   // inner dimensions (window minus the outer-frame margin), so masonry layout

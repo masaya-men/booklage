@@ -165,13 +165,24 @@ function Handle({ corner, cardWidth, cardHeight, maxCardWidth, onResize, onResiz
     .join(' ')
 
   return (
-    <div
-      className={handleClass}
-      onPointerDown={handlePointerDown}
-      data-testid={`resize-handle-${corner}`}
-    >
-      <ArcSvg corner={corner} />
-    </div>
+    <>
+      {/* Wider hover-only hint zone — fires :hover at a generous approach
+          radius so the arc fades in BEFORE the cursor reaches the small
+          click-active handle. No event handlers: clicks here bubble up to
+          the card-parent's reorder pointerdown, which is the desired
+          fallback behavior near (but not on) the corner. */}
+      <div
+        className={[styles.hint, styles[`hint-${corner}`]].join(' ')}
+        aria-hidden="true"
+      />
+      <div
+        className={handleClass}
+        onPointerDown={handlePointerDown}
+        data-testid={`resize-handle-${corner}`}
+      >
+        <ArcSvg corner={corner} />
+      </div>
+    </>
   )
 }
 
