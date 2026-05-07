@@ -11,7 +11,8 @@ import {
 } from 'react'
 import styles from './ScrollMeter.module.css'
 
-const TICK_COUNT = 140
+/** Match LightboxNavMeter so the two meters read as a matched set. */
+const TICK_COUNT = 150
 
 type Props = {
   /** Total scrollable content height of the board (cards + padding). */
@@ -24,48 +25,20 @@ type Props = {
   readonly onScrollTo: (y: number) => void
 }
 
-// ---------------------------------------------------------------------------
-// Noise generator — Pure spatial white noise, temporally interpolated
-//
-// Earlier iterations layered in spectrum synthesis for "envelope" texture,
-// but any band-limited spectral component injects visible low-frequency
-// structure (≈20-tick undulations from the 1/f-ish slope of the lowest
-// bands). White noise sidesteps this entirely:
-//
-//   - Spatially: each tick samples an independent hash of (i, time-bucket)
-//     → the spatial spectrum is flat. No frequency is over-represented, so
-//     no wavelength stands out as a "stripe."
-//   - Temporally: linear interpolation between consecutive 12 Hz samples
-//     gives smooth, calm motion (no flicker, no per-frame jitter).
-//
-// The "audio meter" feel comes from the spotlight's amplitude modulation —
-// the noise's *amplitude* envelope is the Gaussian spotlight itself, so
-// outside the active region the meter is nearly flat (tiny ~2 px ticks),
-// inside it the noise is fully expressed (up to ~17 px). This gives the
-// requested "sharply enlarged spotlight" without busy motion elsewhere.
-// ---------------------------------------------------------------------------
-
-// Avalanche hash → [0, 1). xxhash-style mixing on standard 32-bit constants.
-function hash01(a: number, b: number): number {
-  let h = Math.imul(a | 0, 0x9E3779B1)
-  h = (h + Math.imul(b | 0, 0x85EBCA77)) | 0
-  h = Math.imul(h ^ (h >>> 16), 0x85EBCA77)
-  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE3D)
-  h = h ^ (h >>> 16)
-  return (h >>> 0) / 4294967296
-}
-
-const FUZZ_RATE_HZ = 12
-
 /**
- * Live scroll-position meter.
+ * Live scroll-position meter — direct port of `LightboxNavMeter`'s waveform
+ * algorithm, adapted to drive its swell from the board's scroll position
+ * instead of the active card index.
  *
- * Heights are pure interpolated white noise (no spectral component → no
- * residual stripe envelope). Motion is calm everywhere except inside the
- * spotlight, which sharply boosts both amplitude and opacity at the
- * current viewport center. Two thin bookend lines mark the viewport's
- * active range edges; they clamp to the meter ends when scrolled to top
- * or bottom.
+ * Three superposed sinusoids per tick (low / mid / high frequency, each
+ * phase-shifted per tick index) give an audio-waveform "音の波形" feel.
+ * On top, a localized Gaussian amplitude swell centered on the current
+ * scroll fraction makes the meter "notice" itself there — the swell IS
+ * the position indicator (no separate playhead or bookend lines needed).
+ *
+ * Track and ticks visually mirror the lightbox meter: faint 1px baseline,
+ * 1px tick columns at uniform white 0.55 opacity, swell amplitude scaled
+ * up to 3.4× the base height at the spot center.
  */
 export function ScrollMeter({
   contentHeight,
@@ -88,53 +61,46 @@ export function ScrollMeter({
 
   useEffect(() => {
     let raf = 0
-    const start = performance.now()
     const loop = (): void => {
-      const t = (performance.now() - start) / 1000
+      const t = performance.now() / 1000
       const cy = viewportYRef.current
       const ch = viewportHRef.current
       const total = contentHRef.current
 
-      const viewportCenterTick = total > 0
-        ? ((cy + ch / 2) / total) * (TICK_COUNT - 1)
-        : (TICK_COUNT - 1) / 2
-      // Sharp narrow spotlight — sigma chosen so the bright zone reads as
-      // a focused indicator rather than a diffuse glow. The amplitude
-      // multiplier (below) accents this further.
-      const SPOT_SIGMA = 5.5
-      const TWO_SIG2 = 2 * SPOT_SIGMA * SPOT_SIGMA
+      // Map scroll fraction to a tick index. When at top (cy=0) the swell
+      // sits at tick 0 (left edge). When at bottom (cy=scrollableMax) it
+      // sits at the last tick (right edge). Removes the "indicator never
+      // reaches the edge" issue from the previous viewport-center mapping.
+      const scrollableH = Math.max(0, total - ch)
+      const fraction = scrollableH > 0 ? cy / scrollableH : 0
+      const centerTickIdx = fraction * (TICK_COUNT - 1)
 
-      // Per-frame fuzz interpolation parameters.
-      const fuzzClockRaw = t * FUZZ_RATE_HZ
-      const fuzzIdx = Math.floor(fuzzClockRaw)
-      const fuzzPhase = fuzzClockRaw - fuzzIdx
+      // Lightbox parameters, verbatim. The narrow sigma + tall gain reads
+      // as a sharp spike at the active position — the meter "noticing"
+      // itself there.
+      const swellSigma = TICK_COUNT / 32
+      const swellGain = 3.4
 
       for (let i = 0; i < TICK_COUNT; i++) {
         const el = tickRefs.current[i]
         if (!el) continue
 
-        // Spotlight: Gaussian centered on viewport mid. Drives both
-        // amplitude (height range) and opacity (brightness).
-        const dist = i - viewportCenterTick
-        const spot = Math.exp(-(dist * dist) / TWO_SIG2)
+        // Three superposed sinusoids — low / mid / high frequency — phase-
+        // shifted per tick index. The result is a flowing aperiodic
+        // waveform with audio-waveform character.
+        const w1 = Math.sin(t * 0.6 + i * 0.08) * 0.45
+        const w2 = Math.sin(t * 1.7 + i * 0.31) * 0.30
+        const w3 = Math.sin(t * 4.2 + i * 0.93) * 0.15
+        const norm = (w1 + w2 + w3 + 0.9) / 1.8 // → 0..1-ish
+        const baseH = 2 + norm * 8
 
-        // Per-tick interpolated white noise. Two hashes + lerp per frame.
-        const a = hash01(i, fuzzIdx)
-        const b = hash01(i, fuzzIdx + 1)
-        const noise = a + (b - a) * fuzzPhase
+        // Gaussian amplitude swell at the current scroll position.
+        const dist = i - centerTickIdx
+        const swell = 1
+          + swellGain * Math.exp(-(dist * dist) / (2 * swellSigma * swellSigma))
 
-        // Amplitude modulated by spotlight: ~2 px outside (calm), up to
-        // ~17 px inside (vivid). The crisp transition is what makes the
-        // active position read as "sharply enlarged."
-        const amp = 2 + 15 * spot
-        const heightPx = 1 + Math.pow(noise, 0.85) * amp
-
-        // Opacity also scales with spotlight so the active region is
-        // genuinely brighter, not just taller.
-        const opacity = 0.28 + 0.62 * spot
-
-        el.style.height = `${heightPx.toFixed(1)}px`
-        el.style.opacity = opacity.toFixed(3)
+        const h = baseH * swell
+        el.style.height = `${Math.max(1, h).toFixed(1)}px`
       }
 
       raf = requestAnimationFrame(loop)
@@ -186,15 +152,6 @@ export function ScrollMeter({
 
   useEffect(() => (): void => setHoverFrac(null), [])
 
-  // Active range bookends — two 1px lines at the viewport's start and end
-  // fractions. Clamp to [0, 100] so they hug the meter edges when the user
-  // is scrolled all the way to the top or bottom.
-  const activeStartPct = contentHeight > 0
-    ? Math.max(0, Math.min(100, (viewportY / contentHeight) * 100))
-    : 0
-  const activeEndPct = contentHeight > 0
-    ? Math.max(0, Math.min(100, ((viewportY + viewportHeight) / contentHeight) * 100))
-    : 100
   const hoverPct = hoverFrac !== null ? hoverFrac * 100 : null
   const ticks = useMemo(() => Array.from({ length: TICK_COUNT }, (_, i) => i), [])
 
@@ -224,16 +181,6 @@ export function ScrollMeter({
           style={{ left: `${(i / (TICK_COUNT - 1)) * 100}%` }}
         />
       ))}
-      <div
-        className={styles.bookend}
-        aria-hidden="true"
-        style={{ left: `${activeStartPct}%` }}
-      />
-      <div
-        className={styles.bookend}
-        aria-hidden="true"
-        style={{ left: `${activeEndPct}%` }}
-      />
       {hoverPct !== null && !isDragging && (
         <div className={styles.hoverLine} aria-hidden="true" style={{ left: `${hoverPct}%` }} />
       )}

@@ -1,70 +1,52 @@
+/* Mirror LightboxNavMeter so the two meters read as a matched set. The
+   only structural addition for the board context is the hover-preview line
+   (lightbox doesn't need one because it advances by full-card click). */
+
 .track {
   position: relative;
   width: 320px;
-  height: 28px;
+  height: 18px;
   cursor: pointer;
   user-select: none;
   touch-action: none;
-  border-radius: 4px;
-  /* Vertical padding gives ticks room to grow above / below the baseline
-     without clipping at the maximum noise amplitude. */
-  padding: 4px 0;
 }
 
 .track:hover {
-  background: rgba(255, 255, 255, 0.025);
+  /* No background tint — keep it minimal like the lightbox version. */
 }
 
 .track[data-dragging] {
-  background: rgba(255, 255, 255, 0.05);
   cursor: grabbing;
 }
 
-/* Faint horizontal baseline. Ticks are vertically centered on it. */
+/* Faint horizontal baseline that the waveform straddles. Identical to
+   `.meterTrackLine` in Lightbox.module.css. */
 .baseline {
   position: absolute;
   left: 0;
   right: 0;
   top: 50%;
   height: 1px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.18);
   transform: translateY(-0.5px);
   pointer-events: none;
 }
 
-/* 1px tick. Height + opacity rewritten every animation frame by the rAF
-   loop in ScrollMeter.tsx. The static styles here are placeholders that
-   only matter for the very first paint. */
+/* Each tick is a 1px vertical line whose height is rewritten every frame
+   by the rAF loop. Identical to `.meterTick` in Lightbox.module.css. */
 .tick {
   position: absolute;
   top: 50%;
   width: 1px;
-  height: 4px;
-  background: #fff;
-  opacity: 0.42;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.55);
   transform: translate(-50%, -50%);
+  transform-origin: center;
   pointer-events: none;
 }
 
-/* Bookend lines — two 1px verticals marking the start and end of the
-   current viewport range on the meter. They clamp to the meter edges when
-   the user scrolls to the very top or bottom (so there's always a line at
-   the edge, never floating awkwardly inside). */
-.bookend {
-  position: absolute;
-  top: 1px;
-  bottom: 1px;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow:
-    0 0 4px rgba(255, 255, 255, 0.45),
-    0 0 10px rgba(255, 255, 255, 0.18);
-  pointer-events: none;
-  transform: translateX(-0.5px);
-}
-
-/* Hover preview line — 1px vertical, gently pulses to telegraph
-   "click here to jump to this position." */
+/* Hover preview line — only on the board meter (lightbox advances by
+   click, so it doesn't need a hover indicator). */
 .hoverLine {
   position: absolute;
   top: 0;
