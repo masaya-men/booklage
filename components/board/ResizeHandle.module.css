@@ -78,19 +78,20 @@
   height: 40px;
   pointer-events: none;
   opacity: 0;
-  /* The arc is offset INWARD (toward the card body) at rest by the
-     per-corner translate below; on :hover it transitions to
-     translate(0,0) at the final outward position while the opacity
-     fades in. The combined effect reads as the arc emerging FROM the
-     card corner and sliding OUT into place — "スッと出てくる" feel.
-     Both transitions share the same duration so the un-hover reverse
-     animation stays visible all the way back to the tucked-in state
-     (an earlier setup had opacity finishing at 220ms while transform
-     ran for 320ms, which made the last 100ms of slide-back invisible
-     because opacity had already hit 0). */
+  /* OUT direction (un-hover) uses cubic-bezier(0.7, 0, 0.84, 0) — the
+     mathematical reverse of the IN direction's (0.16, 1, 0.3, 1)
+     ease-out. With ease-out applied symmetrically on un-hover the
+     opacity collapsed to ~0 in the first 30% of the duration, so the
+     slide-back played out invisibly. Switching the un-hover curve to
+     ease-in keeps the arc lingering at the final visible position
+     while the slide barely budges, then in the back half of the
+     duration both transform and opacity rapidly play out — exactly
+     the "reverse" of the IN feel and the slide-back becomes clearly
+     visible. Hover rules below override the curves with the
+     ease-out IN values to keep the emergence snappy. */
   transition:
-    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform 320ms cubic-bezier(0.7, 0, 0.84, 0),
+    opacity 320ms cubic-bezier(0.7, 0, 0.84, 0);
   filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.55));
   z-index: 28; /* above .hint (25), below .handle (30) */
 }
@@ -118,6 +119,11 @@
 :global([data-testid="card-reset-size-button"]):hover ~ .arc-bl {
   transform: translate(0, 0);
   opacity: 0.55;
+  /* IN direction: ease-out for snappy emergence. Opacity faster than
+     transform so the arc fades in quickly then settles into position. */
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Full (1.0): cursor reached the click-active handle, or a resize is
@@ -133,6 +139,10 @@
 .handle.br.resizing ~ .arc-br {
   transform: translate(0, 0);
   opacity: 1;
+  /* IN direction: same ease-out timing as the subtle rule above. */
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .handle.resizing {
