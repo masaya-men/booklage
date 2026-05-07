@@ -187,16 +187,16 @@ function Handle({ corner, cardWidth, cardHeight, maxCardWidth, onResize, onResiz
 }
 
 /** 1/4-circle arc anchored to the corresponding corner of the 32x32 zone.
- *  The handle box overshoots the card by 12px on the corner-side axes
- *  (top:-12 left:-12 for TL etc.), so the card corner sits at box-local
- *  (12, 12) for TL or (20, 12) for TR (since 32-12=20). The arc is
+ *  The handle box overshoots the card by 8px on the corner-side axes
+ *  (top:-8 left:-8 for TL etc.), so the card corner sits at box-local
+ *  (8, 8) for TL or (24, 8) for TR (since 32-8=24). The arc is
  *  centered ON the card corner and opens AWAY from the card body
- *  (visible portion lives in the 12px outward strip), so the
+ *  (visible portion lives in the 8px outward strip), so the
  *  affordance reads as a small bracket sitting just outside the corner. */
 function ArcSvg({ corner }: { corner: ResizeCorner }): ReactElement {
-  const r = 10
-  const cx = corner === 'tl' || corner === 'bl' ? 12 : 20
-  const cy = corner === 'tl' || corner === 'tr' ? 12 : 20
+  const r = 8
+  const cx = corner === 'tl' || corner === 'bl' ? 8 : 24
+  const cy = corner === 'tl' || corner === 'tr' ? 8 : 24
   // Start / end points 90° around the card corner. Each corner picks
   // the two endpoints that sit on the OUTWARD axes (the area outside
   // the card edge), and the sweep flag is chosen so the arc bulges

@@ -1,17 +1,20 @@
 /* Two-layer corner: wider .hint for the subtle approach feel, narrow
  * .handle for the actual click-and-drag.
  *
- * .hint is 56×56 and exists only to trigger :hover at a generous radius
- *   around the corner — the arc fades in early so the user knows the
- *   corner is interactive before they're literally on it. It has
- *   pointer-events: auto so :hover fires, but no JS handlers; clicks
- *   that miss the inner handle just bubble to the card-parent's reorder
- *   pointerdown. z-index 25 sits below the corner action icons (50)
- *   and below the active handle (30).
+ * Both layers overshoot the card edge by only 8px so adjacent cards
+ * (COLUMN_MASONRY.GAP_PX = 18) leave a 2px gap between their hot
+ * zones — without that constraint the corner regions of neighbouring
+ * cards would overlap and the cursor would get pulled to the wrong
+ * card's resize handle when approaching from between two cards.
  *
- * .handle is 32×32 centered on each card corner (12px outward overshoot,
- *   20px inward bite). Tight enough that the click-active region reads
- *   as "right at the corner" and never competes with the × / ↺ icons.
+ * .hint is 56×56, pointer-events: auto, z-index 25. Triggers :hover at
+ *   a generous radius around the corner so the arc fades in early, but
+ *   has no JS handlers — clicks that miss the inner handle just bubble
+ *   to the card-parent's reorder pointerdown.
+ *
+ * .handle is 32×32, z-index 30. Click-active region; tight enough that
+ *   it never competes with the × / ↺ corner action icons (which sit at
+ *   z-index 50 and win pointer events on overlap).
  */
 
 .hint {
@@ -22,10 +25,10 @@
   z-index: 25;
 }
 
-.hint-tl { top: -24px; left: -24px; }
-.hint-tr { top: -24px; right: -24px; }
-.hint-bl { bottom: -24px; left: -24px; }
-.hint-br { bottom: -24px; right: -24px; }
+.hint-tl { top: -8px; left: -8px; }
+.hint-tr { top: -8px; right: -8px; }
+.hint-bl { bottom: -8px; left: -8px; }
+.hint-br { bottom: -8px; right: -8px; }
 
 .handle {
   position: absolute;
@@ -38,23 +41,23 @@
 }
 
 .handle.tl {
-  top: -12px;
-  left: -12px;
+  top: -8px;
+  left: -8px;
   cursor: nwse-resize;
 }
 .handle.tr {
-  top: -12px;
-  right: -12px;
+  top: -8px;
+  right: -8px;
   cursor: nesw-resize;
 }
 .handle.bl {
-  bottom: -12px;
-  left: -12px;
+  bottom: -8px;
+  left: -8px;
   cursor: nesw-resize;
 }
 .handle.br {
-  bottom: -12px;
-  right: -12px;
+  bottom: -8px;
+  right: -8px;
   cursor: nwse-resize;
 }
 
@@ -78,6 +81,19 @@
 .hint-tr:hover ~ .handle.tr .arc,
 .hint-bl:hover ~ .handle.bl .arc,
 .hint-br:hover ~ .handle.br .arc {
+  opacity: 0.55;
+}
+
+/* The corner action icons (× delete in TR, ↺ reset in BL) sit at
+   z-index 50 and physically cover part of their hint zone — when the
+   cursor is on the icon, .hint:hover does NOT fire (z-order blocks
+   :hover from reaching the underlying hint). Without this rule, the
+   arc would unhelpfully blank out exactly when the user is near the
+   corner. The CardCornerActions buttons live BEFORE ResizeHandle in
+   DOM order so the ~ sibling combinator can find the paired handle's
+   arc here. */
+:global([data-testid="card-delete-button"]):hover ~ .handle.tr .arc,
+:global([data-testid="card-reset-size-button"]):hover ~ .handle.bl .arc {
   opacity: 0.55;
 }
 

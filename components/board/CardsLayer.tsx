@@ -458,18 +458,23 @@ export function CardsLayer({
               type={deriveMediaType(it)}
               visible={hoveredBookmarkId === it.bookmarkId}
             />
+            {/* CardCornerActions renders BEFORE ResizeHandle so the corner
+                arcs can pick up button hover via the ~ sibling combinator
+                (see ResizeHandle.module.css cross-module rules). Without
+                this ordering, hovering × or ↺ silences the resize hint
+                arcs in the corners they cover. */}
+            <CardCornerActions
+              hovered={hoveredBookmarkId === it.bookmarkId}
+              hasCustomWidth={it.customCardWidth}
+              onDelete={(): void => onDelete(it.bookmarkId)}
+              onResetSize={(): void => onCardResetSize(it.bookmarkId)}
+            />
             <ResizeHandle
               cardWidth={p.w}
               cardHeight={p.h}
               maxCardWidth={viewportWidth}
               onResize={(nextW: number): void => onCardResize(it.bookmarkId, nextW)}
               onResizeEnd={(finalW: number): void => onCardResizeEnd(it.bookmarkId, finalW)}
-            />
-            <CardCornerActions
-              hovered={hoveredBookmarkId === it.bookmarkId}
-              hasCustomWidth={it.customCardWidth}
-              onDelete={(): void => onDelete(it.bookmarkId)}
-              onResetSize={(): void => onCardResetSize(it.bookmarkId)}
             />
           </div>
         )
