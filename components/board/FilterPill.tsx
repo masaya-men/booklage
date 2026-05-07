@@ -21,6 +21,13 @@ function label(f: BoardFilter, moods: ReadonlyArray<MoodRecord>): string {
   return moods.find((m) => m.id === moodId)?.name ?? '—'
 }
 
+function countFor(f: BoardFilter, counts: { all: number; inbox: number; archive: number }): string {
+  if (f === 'all') return String(counts.all).padStart(3, '0')
+  if (f === 'inbox') return String(counts.inbox).padStart(3, '0')
+  if (f === 'archive') return String(counts.archive).padStart(3, '0')
+  return '---'
+}
+
 export function FilterPill({ value, onChange, moods, counts }: Props): ReactElement {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -49,7 +56,10 @@ export function FilterPill({ value, onChange, moods, counts }: Props): ReactElem
         aria-expanded={open}
         data-testid="filter-pill"
       >
-        {label(value, moods)} ▾
+        <span className={styles.bracket}>[</span>
+        <span className={styles.label}>{label(value, moods)}</span>
+        <span className={styles.count}>· {countFor(value, counts)}</span>
+        <span className={styles.bracket}>]</span>
       </button>
       {open && (
         <div className={styles.menu} role="menu">
