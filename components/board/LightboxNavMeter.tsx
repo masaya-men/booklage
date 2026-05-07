@@ -58,10 +58,13 @@ export function LightboxNavMeter({ current, total, onJump }: Props): ReactElemen
   const lastFrameTimeRef = useRef<number>(0)
 
   // ---- Drag scrubbing ----
-  // While dragging, the swell tracks the pointer 1:1 (no spring lag).
-  // On pointer-up we snap to the nearest card index and call onJump.
+  // While dragging, the swell tracks the pointer 1:1 (no spring lag) AND
+  // the lightbox content live-flips through cards as the scrub crosses
+  // card-index boundaries — feels like rapidly leafing through pages.
   const scrubTickIdxRef = useRef<number | null>(null)
   const [isScrubbing, setIsScrubbing] = useState(false)
+  const onJumpRef = useRef<typeof onJump>(onJump)
+  useEffect(() => { onJumpRef.current = onJump }, [onJump])
 
   // Initialize displayed swell to match the first `current` so we don't
   // animate in from tick 0 on mount.
@@ -100,6 +103,27 @@ export function LightboxNavMeter({ current, total, onJump }: Props): ReactElemen
         swellVelRef.current = 0
         lastFrameTimeRef.current = 0
         centerTickIdx = scrubTick
+
+        // Live page-flip: as the scrub crosses card-index boundaries we
+        // immediately commit a jump so the lightbox content tracks the
+        // pointer in real-time (a "rapid leafing through pages" feel).
+        // Throttled to once-per-frame (rAF rate) so we don't fire hundreds
+        // of React updates per second on a fast flick.
+        if (onJumpRef.current && tot > 1) {
+          const cardIdx = Math.max(
+            0,
+            Math.min(
+              tot - 1,
+              Math.round((scrubTick / (TICK_COUNT - 1)) * (tot - 1)),
+            ),
+          )
+          if (cardIdx !== cur) {
+            // Sync currentRef so the next frame's "should I fire?" check
+            // sees the latest committed index, not the stale React prop.
+            currentRef.current = cardIdx
+            onJumpRef.current(cardIdx)
+          }
+        }
       } else {
         // Free flight: spring chases the current-card tick.
         const targetIdx = tot > 1
