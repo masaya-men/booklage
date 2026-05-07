@@ -11,6 +11,7 @@ import { normalizeItem, type LightboxItem } from '@/lib/share/lightbox-item'
 import type { ShareCard } from '@/lib/share/types'
 import { LightboxNavChevron } from './LightboxNavChevron'
 import { LightboxNavMeter } from './LightboxNavMeter'
+import { useSmoothWheelScroll } from '@/lib/scroll/use-smooth-wheel-scroll'
 import type { LightboxFlipSceneProps } from './LightboxFlipScene'
 import {
   detectUrlType,
@@ -48,6 +49,8 @@ type Props = {
 export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
+  const textRef = useRef<HTMLDivElement>(null)
+  useSmoothWheelScroll(textRef, { disabled: !item })
   // closeButtonRef intentionally absent — see "No programmatic auto-focus"
   // comment near the keyboard handler below.
 
@@ -603,7 +606,7 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
             ? <TweetMedia item={view} meta={tweetMeta} />
             : <LightboxMedia item={view} />}
         </div>
-        <div className={styles.text}>
+        <div ref={textRef} className={styles.text}>
           {tweetId
             ? <TweetText item={view} meta={tweetMeta} />
             : <DefaultText item={view} host={host} />}
