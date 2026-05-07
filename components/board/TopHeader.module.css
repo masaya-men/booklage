@@ -1,5 +1,10 @@
 .header {
-  display: flex;
+  /* Grid keeps the instrument column geometrically pinned to page center
+     regardless of nav vs actions widths. The two 1fr side columns absorb
+     leftover horizontal space symmetrically; the auto-width middle group
+     stays at the dead center of the header. */
+  display: grid;
+  grid-template-columns: 1fr auto auto auto 1fr;
   align-items: center;
   height: 64px;
   padding: 0 24px;
@@ -15,21 +20,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 0 0 auto;
 }
 
-.group[data-group="instrument"] {
-  flex: 1 1 auto;
-  justify-content: center;
-}
-
-.group[data-group="actions"] {
-  margin-left: auto;
-}
+.group[data-group="nav"]        { justify-self: start; }
+.group[data-group="instrument"] { justify-self: center; }
+.group[data-group="actions"]    { justify-self: end; }
 
 .divider {
   width: 1px;
   height: 24px;
   background: rgba(255, 255, 255, 0.12);
-  flex: 0 0 auto;
+  justify-self: center;
 }

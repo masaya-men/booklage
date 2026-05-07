@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useRef,
   type PointerEvent,
   type ReactNode,
@@ -36,17 +37,68 @@ export function InteractionLayer({
 
   const isHorizontal = direction === 'horizontal'
 
+  // ---- Smooth-scroll wheel integration ----
+  //
+  // The raw wheel event arrives as a discrete impulse (one per detent on a
+  // mouse wheel, ≈100–200 units per notch). Applying it directly to viewport
+  // produces a stair-step feel. Instead we accumulate the impulse into a
+  // remaining-distance target and ease that target down each frame with an
+  // exponential decay (current frame consumes ALPHA of the remaining
+  // distance). Multiple wheel events naturally compose — they just add to
+  // the same target, which keeps gliding to the new total.
+  //
+  // ALPHA controls the "weight" of the deceleration:
+  //   0.10 → settles in ~600ms (heavy / floaty)
+  //   0.16 → settles in ~330ms (smooth, escalator-ish)
+  //   0.25 → settles in ~190ms (quick, less obvious smoothing)
+  const wheelTargetRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 })
+  const wheelRafRef = useRef<number | null>(null)
+
+  const stepWheel = useCallback((): void => {
+    const target = wheelTargetRef.current
+    const ALPHA = 0.16
+    const stepX = target.dx * ALPHA
+    const stepY = target.dy * ALPHA
+    target.dx -= stepX
+    target.dy -= stepY
+
+    // Sub-pixel residue → declare done. Resets target so the next wheel
+    // event starts from zero accumulator and the animation is re-armed.
+    if (Math.abs(target.dx) < 0.5 && Math.abs(target.dy) < 0.5) {
+      target.dx = 0
+      target.dy = 0
+      wheelRafRef.current = null
+      return
+    }
+
+    onScroll(stepX, stepY)
+    wheelRafRef.current = requestAnimationFrame(stepWheel)
+  }, [onScroll])
+
   const handleWheel = useCallback(
     (e: WheelEvent<HTMLDivElement>): void => {
       const m = INTERACTION.WHEEL_SCROLL_MULTIPLIER
+      const delta = e.deltaY * m
       if (isHorizontal) {
-        onScroll(e.deltaY * m, 0)
+        wheelTargetRef.current.dx += delta
       } else {
-        onScroll(0, e.deltaY * m)
+        wheelTargetRef.current.dy += delta
+      }
+      if (wheelRafRef.current === null) {
+        wheelRafRef.current = requestAnimationFrame(stepWheel)
       }
     },
-    [isHorizontal, onScroll],
+    [isHorizontal, stepWheel],
   )
+
+  // Cancel any in-flight wheel animation when the layer unmounts so we don't
+  // leak rAFs after navigating away from /board.
+  useEffect(() => (): void => {
+    if (wheelRafRef.current !== null) {
+      cancelAnimationFrame(wheelRafRef.current)
+      wheelRafRef.current = null
+    }
+  }, [])
 
   const handlePointerDown = useCallback(
     (e: PointerEvent<HTMLDivElement>): void => {
