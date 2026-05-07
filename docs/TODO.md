@@ -8,33 +8,51 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **自由サイジング機能セッション 3 完了 (永続化 + 単体/全リセット UI)** 反映済（ハードリロードで確認）
+- **本番**: `https://booklage.pages.dev` に **自由サイジング機能セッション 3 + UX polish 完了** 反映済
 - **次セッション最優先**: 自由サイジング機能セッション 4 — 矩形選択 marquee で範囲内カードのみリセット
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
 
-### 🎯 今セッション (2026-05-08 続き) の到達点 — 自由サイジング機能セッション 3: 永続化 + リセット UI
+### 🎯 今セッション (2026-05-08〜09) の到達点 — 自由サイジング機能セッション 3: 永続化 + リセット UI + 大量の UX polish
 
-skyline + 4 角ハンドルの上に **IDB v11 永続化 + カード × / ↺ アクション + ヘッダー RESET ピル** を実装。リロード後もリサイズが残り、単体/全リセットの導線が揃った。
+セッション 3 (永続化 + リセット導線) を実装し、本番デプロイ後に**ユーザーフィードバックを受けて 9 回 polish イテレーション**で完成度を上げた。1 セッションでの commit は計 **8 個**:
 
-**主要変更**:
-- IDB **v10 → v11**: `BookmarkRecord.customCardWidth?: boolean` フィールド追加。マイグレーションは no-op (undefined → false 扱い、cursor sweep 不要)
-- `persistCustomCardWidth` / `clearCustomCardWidth` / `clearAllCustomCardWidths` を indexeddb.ts に追加。clamp は `MAX_CARD_WIDTH=480` で守る
-- `BoardItem.customCardWidth: boolean` 必須化。`use-board-data` hook に `persistCustomWidth` / `resetCustomWidth` / `resetAllCustomWidths` を追加 (全て optimistic local update + IDB write-through)
-- `BoardRoot.tsx`: `customWidths` を items の `customCardWidth=true` から hydrate (shallow-equality check で再レンダ抑制)、ResizeHandle `onResizeEnd` で persist、単体リセットは local state delete + IDB clear、全リセットは setCustomWidths({}) + clearAll、`customWidthCount = useMemo` でヘッダー pill 表示判定
-- 新規 `CardCornerActions.tsx` — カード右上 × (削除) + 左下 ↺ (サイズリセット、custom 時のみ表示)。32×32 透明 hit zone + 内側 24px disc で大きいマウスポインタにも対応、ホバー時 `data-visible="true"` でフェードイン、`pointerdown`/`mousedown` で `stopPropagation` し reorder drag と非干渉
-- 新規 `ResetAllButton.tsx` — TopHeader actions の Share 左に配置、`count=0` で null 返却、count badge と SVG ↺ アイコン、220ms フェードイン entrance アニメ
-- `ResizeHandle.tsx`: `hasPointerCapture` を try/catch でガード (jsdom 互換、既存 unhandled error 解消)
-- 既存 fixture (`cards/index.test.ts`、`lightbox-item.test.ts`、`filter.test.ts`、`ShareFrame.tsx`) に `customCardWidth: false` 追加
+**1. セッション 3 本体**
+- IDB **v10 → v11**: `BookmarkRecord.customCardWidth?: boolean` フィールド追加 (no-op マイグレーション、undefined → false 扱い)
+- `persistCustomCardWidth` / `clearCustomCardWidth` / `clearAllCustomCardWidths` を indexeddb.ts に追加
+- `use-board-data` hook に `persistCustomWidth` / `resetCustomWidth` / `resetAllCustomWidths` を追加 (optimistic local update + IDB write-through)
+- 新規 `CardCornerActions.tsx` — カード右上 × (削除) + 左下 ↺ (サイズリセット、custom 時のみ表示)
+- 新規 `ResetAllButton.tsx` — TopHeader actions に配置、`count=0` で null 返却
 
-**変更ファイル**:
+**2. クリック衝突修正 (commit 168a158)**
+- × / ↺ の z-index を 50 に上げて ResizeHandle (30) 上に配置 → クリックを × が確実に取る
+- × / ↺ の見た目を Lightbox close と同じ「**素のグリフ + drop-shadow**」に統一 (disc/blur 撤去)
+- 右クリック削除を撤去 (右クリック を将来の用途に空ける)
+- `persistCustomCardWidth` の MAX clamp 480 撤去 → ビューポート幅まで拡げたカードがリロード後も維持される
+
+**3. 隣接カード hijack 修正 + リロード flash 解消 (commit 17921de, 41766e5)**
+- ResizeHandle 構造を **2 層化**: 56×56 hint zone (subtle arc 表示) + 32×32 active handle (click)
+- × / ↺ ボタン hover でも arc 表示する `:global` sibling 規則を ResizeHandle.module.css に追加
+- 隣接カードと衝突しないよう hint/handle の outward overshoot を 24→8px に縮小
+- `customWidths` を `useState + useEffect[items]` から **`useMemo(items)` 直接導出** に切替 → リロード時の 1 フレーム flash 解消
+
+**4. Arc visual polish (commit 9f80e82, 8917b71, 3cad472, 55a3fe2, 0aae1ed)**
+- arc を `.handle` から独立させて 40×40 viewBox + r=10 で描画 (8px padding で stroke + drop-shadow が完全 bloom、柔らかい halo を維持)
+- ホバー時に `translate(±8px, ±8px) → translate(0, 0)` の slide-in 動作を追加 (角からスッと出てくる感)
+- **un-hover の逆スライド**: easing を `cubic-bezier(0.16, 1, 0.3, 1)` (ease-out) → 数学的反転の `cubic-bezier(0.7, 0, 0.84, 0)` (ease-in) に変更。最初は visible 維持 → 後半に一気に slide+fade で戻る動作がはっきり見える
+
+**変更ファイル (主要)**:
 - 新規: `components/board/CardCornerActions.{tsx,module.css,test.tsx}` (7 tests)、`components/board/ResetAllButton.{tsx,module.css,test.tsx}` (4 tests)、`tests/lib/idb-v11-custom-card-width.test.ts` (6 tests)
-- 編集: `lib/constants.ts` (DB v11)、`lib/storage/indexeddb.ts`、`lib/storage/use-board-data.ts`、`components/board/BoardRoot.tsx`、`CardsLayer.tsx`、`ResizeHandle.tsx`、`components/share/ShareFrame.tsx`、3 つの test fixture
+- 編集: `lib/constants.ts` (DB v11)、`lib/storage/indexeddb.ts`、`lib/storage/use-board-data.ts`、`components/board/BoardRoot.tsx`、`CardsLayer.tsx`、`ResizeHandle.tsx`、`ResizeHandle.module.css`、`components/share/ShareFrame.tsx`、3 つの test fixture
 
-**検証**: tsc 0 errors、329/329 unit tests pass (前 312 + 新規 17)、`pnpm build` 成功
+**検証**: tsc 0 errors、330/330 unit tests pass、`pnpm build` 成功
+
+**今セッションで覚えた重要な学び (memory にも保存)**:
+- Cloudflare Pages `wrangler pages deploy` は git commit メッセージに**非 ASCII 文字 (日本語) が含まれると `Invalid commit message` で reject される**。subject だけなら通ることもあるが body の Japanese で確実に落ちる。回避策: `--commit-message="ASCII string"` フラグで override
+- 「emerge / recede」の対称アニメーションは ease-out をそのまま reverse 方向にも適用すると opacity が早期に 0 に落ち、戻り動作が見えない。**OUT 方向には ease-in (ease-out の数学的反転 cubic-bezier) を使う**のが鉄則
 
 **気になる残課題 (セッション 4 で対応)**:
 - 矩形選択 marquee で範囲リセット (board 全体じゃなく一部だけ戻したい時の導線)
-- × ボタンの位置/デザインがうるさく感じたら微調整 (ユーザー本番確認後判断)
+- ハンドル位置・arc サイズはユーザー OK 出ているが、本番で長く使ってみて違和感あれば微調整可能
 
 ### 🎯 今セッション (2026-05-08) の到達点 — 自由サイジング機能セッション 2: ResizeHandle 実装
 
