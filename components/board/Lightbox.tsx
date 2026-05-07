@@ -440,6 +440,12 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
   // identity changes, and only the entering animation would be visible.
   const prevIdentityRef = useRef<string | null>(null)
   const prevNavIndexRef = useRef<number | null>(null)
+  // Tracks every in-flight snapshot clone so a new identity change can
+  // wipe them all out before starting a fresh tween. Without this, fast
+  // drag-scrub piles up dozens of snapshots all sliding the same way —
+  // they'd pool on one side instead of staying centered.
+  const activeSnapshotsRef = useRef<Set<HTMLElement>>(new Set())
+  const lastTransitionAtRef = useRef<number>(0)
   useLayoutEffect(() => {
     if (!identity) {
       prevIdentityRef.current = null
@@ -461,6 +467,25 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     const el = frameRef.current
     const backdrop = backdropRef.current
     if (!el || !backdrop) return
+
+    // Detect rapid-fire transitions (drag-scrub). When changes arrive
+    // faster than ~120ms apart we shorten the tween dramatically so each
+    // card has time to read as a flip rather than getting buried under
+    // the next snapshot. Slow nav (chevron / arrow / wheel) keeps the
+    // dramatic 0.7s travel.
+    const now = performance.now()
+    const sinceLast = now - lastTransitionAtRef.current
+    const isRapid = sinceLast < 120
+    lastTransitionAtRef.current = now
+
+    // Wipe any still-animating snapshot clones before we add the next
+    // one. Otherwise their long 0.7s tweens linger and accumulate on the
+    // edge of the screen during a fast drag.
+    for (const oldSnap of activeSnapshotsRef.current) {
+      gsap.killTweensOf(oldSnap)
+      oldSnap.remove()
+    }
+    activeSnapshotsRef.current.clear()
 
     const delta = nav.currentIndex - prevNavIndex
     let dir: 1 | -1
@@ -503,14 +528,21 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     // page-flip rather than a polite shuffle. 60% of the viewport width
     // gives plenty of travel without making the entering card feel
     // launched from outer space.
+    //
+    // In rapid mode (drag-scrub) the travel distance and tween duration
+    // collapse dramatically so cards stay centered: tiny side offset, no
+    // depth/rotate, and the tween finishes inside one frame budget. The
+    // result reads as a quick crossfade-with-a-hint-of-slide instead of a
+    // queue of snapshots fleeing toward the edge.
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
-    const ENTER_DIST = Math.round(vw * 0.6)
-    const ENTER_DEPTH = -380
-    const LEAVE_DIST = Math.round(vw * 0.6)
-    const LEAVE_DEPTH = -280
-    const ROTATE_Y = 14
-    const DUR = 0.7
+    const ENTER_DIST = isRapid ? Math.round(vw * 0.05) : Math.round(vw * 0.6)
+    const ENTER_DEPTH = isRapid ? 0 : -380
+    const LEAVE_DIST = isRapid ? Math.round(vw * 0.05) : Math.round(vw * 0.6)
+    const LEAVE_DEPTH = isRapid ? 0 : -280
+    const ROTATE_Y = isRapid ? 0 : 14
+    const DUR = isRapid ? 0.12 : 0.7
 
+    activeSnapshotsRef.current.add(snapshot)
     // Departing animation on the cloned snapshot.
     gsap.fromTo(
       snapshot,
@@ -522,7 +554,10 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
         opacity: 0,
         duration: DUR,
         ease: 'power4.out',
-        onComplete: () => { snapshot.remove() },
+        onComplete: () => {
+          activeSnapshotsRef.current.delete(snapshot)
+          snapshot.remove()
+        },
       },
     )
 
