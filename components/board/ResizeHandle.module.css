@@ -1,17 +1,15 @@
 /* Four corner resize-handle hot zones + arc hint.
  *
- * Each handle is a 56x56 box anchored to its card corner with a 14px
- * outward offset, so the visible arc sits CLEARLY outside the card
- * edge while the hot zone extends ~42px inward — that gives the
- * pointer a generous approach radius so the arc reveals BEFORE the
- * cursor reaches the corner, but only when the cursor is actually in
- * the neighbourhood of THIS corner (not whenever the card is hovered).
+ * 32x32 box centered on each card corner (12px outward overshoot, 20px
+ * inward bite). Tighter than the original 56x56 so the active region
+ * reads as "right at the corner" — the corner-action icons (× delete,
+ * ↺ reset) sit further inward and never compete with the resize drag.
  */
 
 .handle {
   position: absolute;
-  width: 56px;
-  height: 56px;
+  width: 32px;
+  height: 32px;
   z-index: 30; /* BOARD_Z_INDEX.RESIZE_HANDLE */
   pointer-events: auto;
   touch-action: none;
@@ -19,23 +17,23 @@
 }
 
 .handle.tl {
-  top: -14px;
-  left: -14px;
+  top: -12px;
+  left: -12px;
   cursor: nwse-resize;
 }
 .handle.tr {
-  top: -14px;
-  right: -14px;
+  top: -12px;
+  right: -12px;
   cursor: nesw-resize;
 }
 .handle.bl {
-  bottom: -14px;
-  left: -14px;
+  bottom: -12px;
+  left: -12px;
   cursor: nesw-resize;
 }
 .handle.br {
-  bottom: -14px;
-  right: -14px;
+  bottom: -12px;
+  right: -12px;
   cursor: nwse-resize;
 }
 

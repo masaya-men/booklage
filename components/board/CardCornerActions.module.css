@@ -1,7 +1,12 @@
-/* Both corner buttons share the same chrome — a 32×32 transparent hit
-   zone with a smaller (~22px) circular glyph centered inside. The hit
-   zone gives a forgiving target for users with large pointers without
-   making the visible glyph itself look chunky. */
+/* Bare-glyph corner buttons — no disc, no border, no blur. Mirrors the
+   Lightbox close button's "intentionally NO surface" treatment so the
+   chrome stays calm even when overlaid on busy thumbnails. The 32×32
+   transparent hit zone gives forgiving targets for users with large
+   pointers, while the visible glyph itself stays small and unobtrusive.
+
+   z-index 50 sits above the resize handles (which sit at 30 and bump
+   to 31 while resizing). Without this, the resize hot zone — which
+   overlaps the corner area — eats clicks intended for ×/↺. */
 
 .delete,
 .reset {
@@ -15,77 +20,61 @@
   border: 0;
   background: transparent;
   cursor: pointer;
-  /* Above ResizeHandle (which has no explicit z-index, lives in the
-     same parent flow) so a click on the icon wins event ordering. */
-  z-index: 12;
+  z-index: 50;
   opacity: 0;
   transition: opacity 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* The visible disc is drawn as a pseudo-element so we can keep the
-   outer button as the 32×32 hit zone (forgiving for big pointers)
-   while the glyph itself looks small and unobtrusive. */
-.delete::before,
-.reset::before {
-  content: '';
-  position: absolute;
-  inset: 4px; /* 32 - 2*4 = 24px disc */
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition:
-    background 160ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 0;
-}
-
 .delete > svg,
 .reset > svg {
-  position: relative;
-  z-index: 1;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.85);
+  /* Drop-shadow keeps the glyph readable over light photo thumbnails
+     (white skies, pale photos etc). Two-stop shadow mimics the lightbox
+     close button's text-shadow trick on an SVG. */
+  filter:
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 4px rgba(0, 0, 0, 0.35));
   transition: color 160ms;
 }
 
 .delete[data-visible="true"],
 .reset[data-visible="true"] {
+  opacity: 0.78;
+}
+
+.delete:hover {
   opacity: 1;
 }
 
-.delete:hover::before {
-  background: rgba(220, 50, 50, 0.78);
-  border-color: rgba(255, 200, 200, 0.45);
-  transform: scale(1.06);
+.delete:hover > svg {
+  color: #fff;
 }
 
-.reset:hover::before {
-  background: rgba(0, 0, 0, 0.82);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: scale(1.06);
+.reset:hover {
+  opacity: 1;
 }
 
-.delete:focus-visible::before,
-.reset:focus-visible::before {
-  border-color: rgba(255, 255, 255, 0.7);
+.reset:hover > svg {
+  color: #fff;
 }
 
-/* Top-right placement for delete. The 32px hit box sits with its
-   inner-most 4px gutter offset 4px from the card edge — visible disc
-   ends up roughly 8px from the corner. Sits inside the TR resize
-   handle's hot zone but its higher z-index + stopPropagation on
-   pointerdown / mousedown keep the resize from firing. */
+.delete:focus-visible,
+.reset:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: -4px;
+  border-radius: 4px;
+}
+
+/* Top-right placement for delete. The visible glyph reads at the
+   card corner; the surrounding 32×32 transparent hit box gives the
+   pointer a forgiving approach radius. */
 .delete {
   top: 4px;
   right: 4px;
 }
 
-/* Bottom-left placement for the size-reset glyph. Mirrors delete's
-   geometry on the opposite diagonal so the two affordances feel
-   like a paired set. Only rendered when the card has a custom width
-   override, which keeps the chrome quiet in the default state. */
+/* Bottom-left placement mirrors delete on the opposite diagonal. Only
+   rendered when the card has a custom width override. */
 .reset {
   bottom: 4px;
   left: 4px;

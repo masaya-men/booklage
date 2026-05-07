@@ -80,7 +80,11 @@ describe('IDB v11 customCardWidth', () => {
     expect(bm.cardWidth).toBe(360)
   })
 
-  it('persistCustomCardWidth clamps the width to MIN/MAX', async () => {
+  it('persistCustomCardWidth preserves wide widths (no MAX clamp on persist)', async () => {
+    // ResizeHandle already clamps to viewportWidth during the drag, so a
+    // 1500px value here is the user's deliberate "edge to edge" choice.
+    // Persistence must not silently truncate it to MAX_CARD_WIDTH=480
+    // — that would make the card snap to a small preset on reload.
     const v11 = await initDB()
     db = v11 as unknown as IDBPDatabase<unknown>
     await v11.put('bookmarks', {
@@ -89,11 +93,27 @@ describe('IDB v11 customCardWidth', () => {
       ogpStatus: 'fetched', cardWidth: 240, tags: [], displayMode: null,
     })
 
-    await persistCustomCardWidth(v11, 'b3', 9999)
+    await persistCustomCardWidth(v11, 'b3', 1500)
 
     const bm = (await (v11 as unknown as IDBPDatabase<unknown>).get('bookmarks', 'b3')) as Record<string, unknown>
-    // clampCardWidth caps at MAX_CARD_WIDTH = 480
-    expect(bm.cardWidth).toBe(480)
+    expect(bm.cardWidth).toBe(1500)
+    expect(bm.customCardWidth).toBe(true)
+  })
+
+  it('persistCustomCardWidth still enforces the MIN floor', async () => {
+    const v11 = await initDB()
+    db = v11 as unknown as IDBPDatabase<unknown>
+    await v11.put('bookmarks', {
+      id: 'b3-min', url: 'https://x.com', title: 'X', description: '', thumbnail: '',
+      favicon: '', siteName: '', type: 'website', savedAt: '2026-04-02T00:00:00Z',
+      ogpStatus: 'fetched', cardWidth: 240, tags: [], displayMode: null,
+    })
+
+    await persistCustomCardWidth(v11, 'b3-min', 10)
+
+    const bm = (await (v11 as unknown as IDBPDatabase<unknown>).get('bookmarks', 'b3-min')) as Record<string, unknown>
+    // MIN_CARD_WIDTH = 80
+    expect(bm.cardWidth).toBe(80)
     expect(bm.customCardWidth).toBe(true)
   })
 
@@ -127,7 +147,7 @@ describe('IDB v11 customCardWidth', () => {
     await v11.put('bookmarks', { id: 'b7', ...baseFields, customCardWidth: true })
 
     const cleared = await clearAllCustomCardWidths(v11)
-    expect(cleared.sort()).toEqual(['b5', 'b7'])
+    expect([...cleared].sort()).toEqual(['b5', 'b7'])
 
     const after5 = (await (v11 as unknown as IDBPDatabase<unknown>).get('bookmarks', 'b5')) as Record<string, unknown>
     const after6 = (await (v11 as unknown as IDBPDatabase<unknown>).get('bookmarks', 'b6')) as Record<string, unknown>

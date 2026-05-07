@@ -65,12 +65,13 @@ export function CardCornerActions({
           onDelete()
         }}
       >
-        <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+        <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
           <path
-            d="M3 3 L9 9 M9 3 L3 9"
+            d="M3.5 3.5 L10.5 10.5 M10.5 3.5 L3.5 10.5"
             stroke="currentColor"
-            strokeWidth="1.5"
+            strokeWidth="1.6"
             strokeLinecap="round"
+            fill="none"
           />
         </svg>
       </button>

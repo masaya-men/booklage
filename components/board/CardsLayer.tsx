@@ -59,12 +59,9 @@ type CardsLayerProps = {
   readonly onHoverChange: (id: string | null) => void
   readonly onClick: (bookmarkId: string, originRect: DOMRect) => void
   readonly onDrop: (orderedBookmarkIds: readonly string[]) => void
-  /** Right-click on a card → soft-delete immediately. Pre-launch the
-   *  user wanted a "no-confirmation, just remove it" path while still
-   *  iterating on the board, so we suppress the browser context menu
-   *  and route straight to BoardRoot's persistSoftDelete. Misclick risk
-   *  is acceptable because the deletion is soft (isDeleted flag, not a
-   *  hard row drop) and can be undone later via a "trash" UI. */
+  /** Soft-delete handler — fired by the visible × button in the card's
+   *  top-right corner. Right-click is intentionally NOT wired up so
+   *  the gesture stays free for future affordances (selection, etc). */
   readonly onDelete: (bookmarkId: string) => void
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly displayMode: DisplayMode
@@ -425,13 +422,6 @@ export function CardsLayer({
             onPointerDown={(e: PointerEvent<HTMLDivElement>): void => handleReorderPointerDown(e, it.bookmarkId)}
             onPointerEnter={(): void => onHoverChange(it.bookmarkId)}
             onPointerLeave={(): void => onHoverChange(null)}
-            onContextMenu={(e): void => {
-              // Right-click → instant soft-delete. preventDefault stops
-              // the browser's native context menu from appearing on top.
-              e.preventDefault()
-              e.stopPropagation()
-              onDelete(it.bookmarkId)
-            }}
             style={{
               position: 'absolute',
               top: 0,

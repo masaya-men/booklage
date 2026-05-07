@@ -2,7 +2,7 @@ import { openDB, type IDBPDatabase } from 'idb'
 import { DB_NAME, DB_VERSION, FLOAT_ROTATION_RANGE } from '@/lib/constants'
 import type { UrlType } from '@/lib/utils/url'
 import { generateCardDimensions } from '@/lib/canvas/card-sizing'
-import { clampCardWidth, presetToCardWidth, DEFAULT_CARD_WIDTH } from '@/lib/board/size-migration'
+import { MIN_CARD_WIDTH, presetToCardWidth, DEFAULT_CARD_WIDTH } from '@/lib/board/size-migration'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -674,6 +674,13 @@ export async function updateBookmarkOgp(
  * Persist a user-defined card width and flip the `customCardWidth` flag
  * to true so the header Size picker no longer touches this card. Called
  * from ResizeHandle pointerup.
+ *
+ * Only the MIN floor is enforced here — ResizeHandle already clamps the
+ * upper bound to the live viewport width during the drag, so the value
+ * arriving here is always already viewport-bounded. Re-clamping with
+ * MAX_CARD_WIDTH (480) was a leftover from the S/M/L preset era and
+ * silently truncated any custom width above 480 to 480 on persist,
+ * causing reloaded boards to "snap to nearest preset" — bug fix.
  */
 export async function persistCustomCardWidth(
   db: IDBPDatabase<BooklageDB>,
@@ -682,9 +689,12 @@ export async function persistCustomCardWidth(
 ): Promise<void> {
   const existing = await db.get('bookmarks', bookmarkId)
   if (!existing) return
+  const safeWidth = Number.isFinite(width)
+    ? Math.max(MIN_CARD_WIDTH, width)
+    : DEFAULT_CARD_WIDTH
   await db.put('bookmarks', {
     ...existing,
-    cardWidth: clampCardWidth(width),
+    cardWidth: safeWidth,
     customCardWidth: true,
   })
 }
