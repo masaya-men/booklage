@@ -17,7 +17,7 @@ async function openFirstCard(page: Page): Promise<void> {
 test.describe('Board-side Lightbox nav', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/board')
-    await page.waitForSelector('[data-testid="board-toolbar"]', { timeout: 10000 })
+    await page.waitForSelector('[data-testid="board-top-header"]', { timeout: 10000 })
   })
 
   test('arrow keys navigate between cards', async ({ page }) => {

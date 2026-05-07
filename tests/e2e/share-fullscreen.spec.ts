@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test'
 
 const openComposer = async (page: import('@playwright/test').Page): Promise<void> => {
   await page.goto('/board')
-  await page.waitForSelector('[data-testid="board-toolbar"]', { timeout: 10000 })
+  await page.waitForSelector('[data-testid="board-top-header"]', { timeout: 10000 })
   await page.locator('[data-testid="share-pill"]').click()
   await expect(page.locator('[data-testid="share-composer"]')).toBeVisible({ timeout: 10000 })
 }
@@ -189,7 +189,7 @@ test.describe('Share composer — fullscreen / preview mode', () => {
       }
     })
     await page.goto('/board')
-    await page.waitForSelector('[data-testid="board-toolbar"]', { timeout: 10000 })
+    await page.waitForSelector('[data-testid="board-top-header"]', { timeout: 10000 })
     await page.locator('[data-testid="share-pill"]').click()
     await expect(page.locator('[data-testid="share-composer"]')).toBeVisible()
 

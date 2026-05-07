@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Share sender flow', () => {
   test('Share pill opens composer; confirm opens action sheet', async ({ page }) => {
     await page.goto('/board')
-    await page.waitForSelector('[data-testid="board-toolbar"]', { timeout: 10000 })
+    await page.waitForSelector('[data-testid="board-top-header"]', { timeout: 10000 })
 
     // If the board is empty, the share pill still exists but composer will
     // show no source items. We just verify the pill → composer → confirm flow.

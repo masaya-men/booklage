@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Share composer — edit flow', () => {
   test('composer shows cards inside the frame (not blank)', async ({ page }) => {
     await page.goto('/board')
-    await page.waitForSelector('[data-testid="board-toolbar"]', { timeout: 10000 })
+    await page.waitForSelector('[data-testid="board-top-header"]', { timeout: 10000 })
 
     const sharePill = page.locator('[data-testid="share-pill"]')
     await expect(sharePill).toBeVisible()
@@ -35,7 +35,7 @@ test.describe('Share composer — edit flow', () => {
 
   test('aspect switcher reflows the layout', async ({ page }) => {
     await page.goto('/board')
-    await page.waitForSelector('[data-testid="board-toolbar"]', { timeout: 10000 })
+    await page.waitForSelector('[data-testid="board-top-header"]', { timeout: 10000 })
     await page.locator('[data-testid="share-pill"]').click()
     await expect(page.locator('[data-testid="share-composer"]')).toBeVisible({ timeout: 10000 })
 
@@ -62,7 +62,7 @@ test.describe('Share composer — edit flow', () => {
 
   test('right-click on a frame card removes it from the frame', async ({ page }) => {
     await page.goto('/board')
-    await page.waitForSelector('[data-testid="board-toolbar"]', { timeout: 10000 })
+    await page.waitForSelector('[data-testid="board-top-header"]', { timeout: 10000 })
     await page.locator('[data-testid="share-pill"]').click()
     await expect(page.locator('[data-testid="share-composer"]')).toBeVisible()
 
