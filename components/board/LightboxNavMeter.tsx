@@ -1,6 +1,13 @@
 'use client'
 
-import { useEffect, useRef, type ReactElement } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactElement,
+} from 'react'
 import styles from './Lightbox.module.css'
 
 type Props = {
@@ -8,6 +15,8 @@ type Props = {
   readonly total: number
   /** Stable per-card identity, currently used only as a render key. */
   readonly cardKey: string
+  /** Snap-jump to a specific card index when the user releases a scrub. */
+  readonly onJump?: (index: number) => void
 }
 
 function pad4(n: number): string {
@@ -22,7 +31,14 @@ const TICK_COUNT = 150
 /** Counter slot-machine animation duration on card change. */
 const COUNTER_ANIM_MS = 600
 
-export function LightboxNavMeter({ current, total }: Props): ReactElement | null {
+/** Spring stiffness driving the swell-position chase between cards. With
+ *  critical damping (DAMPING = 2√k) settle time ≈ 4/√k ≈ 225 ms — snappy
+ *  enough to feel direct on a single ±1 card move, slow enough to read as
+ *  a deliberate slide rather than a discrete jump. */
+const SWELL_STIFFNESS = 320
+const SWELL_DAMPING = 2 * Math.sqrt(SWELL_STIFFNESS)
+
+export function LightboxNavMeter({ current, total, onJump }: Props): ReactElement | null {
   const trackRef = useRef<HTMLDivElement>(null)
   const tickRefs = useRef<HTMLDivElement[]>([])
   const counterRef = useRef<HTMLSpanElement>(null)
@@ -33,8 +49,32 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
   const totalRef = useRef<number>(total)
   const animUntilRef = useRef<number>(0)
 
-  // On card change: kick off the counter slot-machine animation and
-  // update the position the meter swell tracks.
+  // ---- Smooth swell position ----
+  // `displayedTickIdx` is what the rAF actually renders. It springs
+  // toward the current card's tick index so a card change reads as a
+  // smooth slide instead of a hard jump.
+  const displayedTickIdxRef = useRef<number>(0)
+  const swellVelRef = useRef<number>(0)
+  const lastFrameTimeRef = useRef<number>(0)
+
+  // ---- Drag scrubbing ----
+  // While dragging, the swell tracks the pointer 1:1 (no spring lag).
+  // On pointer-up we snap to the nearest card index and call onJump.
+  const scrubTickIdxRef = useRef<number | null>(null)
+  const [isScrubbing, setIsScrubbing] = useState(false)
+
+  // Initialize displayed swell to match the first `current` so we don't
+  // animate in from tick 0 on mount.
+  useEffect(() => {
+    const cur = currentRef.current
+    const tot = totalRef.current
+    displayedTickIdxRef.current = tot > 1
+      ? (cur / (tot - 1)) * (TICK_COUNT - 1)
+      : (TICK_COUNT - 1) / 2
+  }, [])
+
+  // On card change: kick off the counter scramble animation; the swell
+  // will smoothly spring to its new target via the rAF loop.
   useEffect(() => {
     currentRef.current = current
     totalRef.current = total
@@ -45,33 +85,64 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
   useEffect(() => {
     let raf = 0
     const loop = (): void => {
-      const t = performance.now() / 1000
       const now = performance.now()
+      const t = now / 1000
       const cur = currentRef.current
       const tot = totalRef.current
 
-      // --- Tick heights: flowing sinusoid waveform (the "音の波形" the
-      //     user liked) + a localized amplitude swell at current position.
-      //     Centered on the tick index that maps to the active card —
-      //     reads as if the meter is alive and "noticing" itself there. ---
-      const centerTickIdx = tot > 1 ? (cur / (tot - 1)) * (TICK_COUNT - 1) : TICK_COUNT / 2
-      const swellSigma = TICK_COUNT / 32   // sharp narrow swell — needle / spike profile
-      const swellGain = 3.4                // taller peak compensates for narrower base
+      // ---- Determine swell center this frame ----
+      const scrubTick = scrubTickIdxRef.current
+      let centerTickIdx: number
+      if (scrubTick !== null) {
+        // Drag mode: pointer is the source of truth, snap displayed
+        // directly to it (no spring) for ばらばらばら 1:1 follow.
+        displayedTickIdxRef.current = scrubTick
+        swellVelRef.current = 0
+        lastFrameTimeRef.current = 0
+        centerTickIdx = scrubTick
+      } else {
+        // Free flight: spring chases the current-card tick.
+        const targetIdx = tot > 1
+          ? (cur / (tot - 1)) * (TICK_COUNT - 1)
+          : (TICK_COUNT - 1) / 2
+
+        const dt = lastFrameTimeRef.current === 0
+          ? 1 / 60
+          : Math.min(0.05, (now - lastFrameTimeRef.current) / 1000)
+        lastFrameTimeRef.current = now
+
+        const displayed = displayedTickIdxRef.current
+        const error = targetIdx - displayed
+        const accel = SWELL_STIFFNESS * error - SWELL_DAMPING * swellVelRef.current
+        swellVelRef.current += accel * dt
+        const stepIdx = swellVelRef.current * dt
+
+        const next = displayed + stepIdx
+        if (Math.abs(error) < 0.02 && Math.abs(swellVelRef.current) < 0.5) {
+          displayedTickIdxRef.current = targetIdx
+          swellVelRef.current = 0
+          lastFrameTimeRef.current = 0
+          centerTickIdx = targetIdx
+        } else {
+          displayedTickIdxRef.current = next
+          centerTickIdx = next
+        }
+      }
+
+      // ---- Tick heights: flowing sinusoid waveform + amplitude swell ----
+      const swellSigma = TICK_COUNT / 32
+      const swellGain = 3.4
 
       for (let i = 0; i < TICK_COUNT; i++) {
         const el = tickRefs.current[i]
         if (!el) continue
 
-        // Base flowing waveform — three superposed sinusoids (low / mid /
-        // high freq) phase-shifted per tick give an audio-waveform feel.
         const w1 = Math.sin(t * 0.6 + i * 0.08) * 0.45
         const w2 = Math.sin(t * 1.7 + i * 0.31) * 0.30
         const w3 = Math.sin(t * 4.2 + i * 0.93) * 0.15
         const norm = (w1 + w2 + w3 + 0.9) / 1.8 // → 0..1-ish
-        const baseH = 2 + norm * 8 // slightly tamed base so swell can stand out
+        const baseH = 2 + norm * 8
 
-        // Amplitude swell centered on current card position. Gaussian
-        // bell scales tick height by up to (1 + swellGain)x at the peak.
         const dist = i - centerTickIdx
         const swell = 1 + swellGain * Math.exp(-(dist * dist) / (2 * swellSigma * swellSigma))
 
@@ -79,12 +150,21 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
         el.style.height = `${Math.max(1, h).toFixed(1)}px`
       }
 
-      // --- Counter text: integer part stable, decimal part scrambles
-      //     during the post-change window then settles to .0000 ---
+      // ---- Counter text ----
       if (counterRef.current) {
         const isAnimating = now < animUntilRef.current
-        const intPart = pad4(cur + 1)
-        const decPart = isAnimating
+        // While scrubbing, show the card the user is about to land on.
+        const showingIdx = scrubTick !== null
+          ? Math.max(
+              0,
+              Math.min(
+                tot - 1,
+                Math.round((scrubTick / (TICK_COUNT - 1)) * (tot - 1)),
+              ),
+            )
+          : cur
+        const intPart = pad4(showingIdx + 1)
+        const decPart = isAnimating && scrubTick === null
           ? Math.floor(Math.random() * 10000).toString().padStart(4, '0')
           : '0000'
         const totalStr = pad4(tot)
@@ -95,6 +175,60 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
     raf = requestAnimationFrame(loop)
     return (): void => cancelAnimationFrame(raf)
   }, [])
+
+  // ---- Pointer handlers for drag scrubbing ----
+  const tickIdxFromPointer = useCallback((clientX: number): number => {
+    const el = trackRef.current
+    if (!el) return 0
+    const rect = el.getBoundingClientRect()
+    if (rect.width <= 0) return 0
+    const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return frac * (TICK_COUNT - 1)
+  }, [])
+
+  const handlePointerDown = useCallback((e: PointerEvent<HTMLDivElement>): void => {
+    if (totalRef.current <= 1 || !onJump) return
+    e.preventDefault()
+    const el = trackRef.current
+    if (!el) return
+    if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
+    const idx = tickIdxFromPointer(e.clientX)
+    scrubTickIdxRef.current = idx
+    setIsScrubbing(true)
+  }, [onJump, tickIdxFromPointer])
+
+  const handlePointerMove = useCallback((e: PointerEvent<HTMLDivElement>): void => {
+    if (scrubTickIdxRef.current === null) return
+    scrubTickIdxRef.current = tickIdxFromPointer(e.clientX)
+  }, [tickIdxFromPointer])
+
+  const finishScrub = useCallback((): void => {
+    const scrub = scrubTickIdxRef.current
+    if (scrub === null) return
+    scrubTickIdxRef.current = null
+    setIsScrubbing(false)
+    const tot = totalRef.current
+    if (tot <= 0 || !onJump) return
+    const cardIdx = Math.max(
+      0,
+      Math.min(tot - 1, Math.round((scrub / (TICK_COUNT - 1)) * (tot - 1))),
+    )
+    if (cardIdx !== currentRef.current) {
+      // Sync currentRef so the rAF loop's spring target matches the new
+      // index immediately — prevents a one-frame snap-back to the old
+      // index between this call and React's re-render.
+      currentRef.current = cardIdx
+      onJump(cardIdx)
+    }
+  }, [onJump])
+
+  const handlePointerUp = useCallback((e: PointerEvent<HTMLDivElement>): void => {
+    const el = trackRef.current
+    if (el && typeof el.hasPointerCapture === 'function' && el.hasPointerCapture(e.pointerId)) {
+      el.releasePointerCapture(e.pointerId)
+    }
+    finishScrub()
+  }, [finishScrub])
 
   if (total <= 1) return null
 
@@ -108,7 +242,15 @@ export function LightboxNavMeter({ current, total }: Props): ReactElement | null
           {' '}
           <span className={styles.meterBracket}>]</span>
         </div>
-        <div className={styles.meterTrack} ref={trackRef}>
+        <div
+          className={styles.meterTrack}
+          ref={trackRef}
+          data-scrubbing={isScrubbing || undefined}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+        >
           <div className={styles.meterTrackLine} />
           {Array.from({ length: TICK_COUNT }, (_, i) => (
             <div

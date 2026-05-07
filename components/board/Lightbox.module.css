@@ -622,6 +622,18 @@
   position: relative;
   width: 360px;
   height: 18px;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  /* Generous vertical padding for the hit area so the user doesn't have to
+     pixel-target the 18px track to start a scrub. The visible ticks /
+     baseline still occupy the inner 18px. */
+  padding: 8px 0;
+  margin: -8px 0;
+}
+
+.meterTrack[data-scrubbing] {
+  cursor: grabbing;
 }
 
 /* Faint horizontal baseline that the waveform straddles. */

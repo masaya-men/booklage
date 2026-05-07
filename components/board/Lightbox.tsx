@@ -597,6 +597,7 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
             current={nav.currentIndex}
             total={nav.total}
             cardKey={identity ?? ''}
+            onJump={nav.onJump}
           />
         </>
       )}
