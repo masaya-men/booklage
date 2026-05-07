@@ -10,7 +10,50 @@ import styles from './SaveToast.module.css'
 
 type State = 'saving' | 'saved' | 'error'
 
+/**
+ * Reset the global Booklage body/html styling for the duration of the
+ * bookmarklet popup window. The popup inherits the app shell's dark
+ * canvas background and flex-column min-height, which would otherwise
+ * paint a "frame" around the toast pill. By making body/html transparent
+ * + zero-margin, the pill floats on the popup's native window background
+ * with no visible chrome.
+ */
+function useTransparentPopupShell(): void {
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const body = document.body
+    const html = document.documentElement
+    const prev = {
+      bodyMinHeight: body.style.minHeight,
+      bodyDisplay: body.style.display,
+      bodyBackground: body.style.background,
+      bodyMargin: body.style.margin,
+      bodyPadding: body.style.padding,
+      htmlBackground: html.style.background,
+      htmlMargin: html.style.margin,
+    }
+    body.style.minHeight = '0'
+    body.style.display = 'block'
+    body.style.background = 'transparent'
+    body.style.margin = '0'
+    body.style.padding = '0'
+    html.style.background = 'transparent'
+    html.style.margin = '0'
+    return (): void => {
+      body.style.minHeight = prev.bodyMinHeight
+      body.style.display = prev.bodyDisplay
+      body.style.background = prev.bodyBackground
+      body.style.margin = prev.bodyMargin
+      body.style.padding = prev.bodyPadding
+      html.style.background = prev.htmlBackground
+      html.style.margin = prev.htmlMargin
+    }
+  }, [])
+}
+
 export function SaveToast(): ReactElement {
+  useTransparentPopupShell()
+
   const params = useSearchParams()
   const url = params.get('url') ?? ''
   const title = params.get('title') || url
@@ -42,17 +85,18 @@ export function SaveToast(): ReactElement {
           tags: [],
         })
         postBookmarkSaved({ bookmarkId: bm.id })
-        // Hold spinner visually for at least ~800ms to avoid flash on fast machines,
-        // then transition to saved state.
-        timer = setTimeout(() => setState('saved'), 800)
+        // Hold the spinner ~600ms so the success state never just flashes
+        // by — even on instant saves the user gets a beat to register the
+        // pill before it dismisses.
+        timer = setTimeout(() => setState('saved'), 600)
         closeTimer = setTimeout(() => {
           try { window.close() } catch { /* browser blocked */ }
-        }, 2300)
+        }, 1800)
       } catch {
         setState('error')
         closeTimer = setTimeout(() => {
           try { window.close() } catch { /* ignore */ }
-        }, 3000)
+        }, 2600)
       }
     })()
 
@@ -62,14 +106,19 @@ export function SaveToast(): ReactElement {
     }
   }, [url, title, desc, image, site, favicon])
 
-  // No-URL fallback
+  // No-URL fallback (popup opened without query params).
   if (!url) {
     return (
       <div className={styles.container} data-state="no-url">
-        <div className={styles.icon}>📌</div>
-        <div className={styles.body}>
-          <span className={styles.brand}>Booklage</span>
-          <span className={styles.label}>ブックマークレットから開いてください</span>
+        <div className={styles.pill}>
+          <span className={styles.icon} aria-hidden="true">
+            <span className={styles.spinner} style={{ borderTopColor: 'transparent', borderColor: 'rgba(255,255,255,0.24)' }} />
+          </span>
+          <span className={styles.text}>
+            <span className={styles.brand}>Booklage</span>
+            <span className={styles.sep}>·</span>
+            <span className={styles.label}>ブックマークレットから開いてください</span>
+          </span>
         </div>
       </div>
     )
@@ -77,21 +126,28 @@ export function SaveToast(): ReactElement {
 
   return (
     <div className={styles.container} data-state={state} data-testid="save-toast">
-      <div className={styles.icon}>
-        {state === 'saving' && <div className={styles.spinner} aria-hidden />}
-        {state === 'saved' && (
-          <div className={styles.checkmark} role="img" aria-label={t('bookmarklet.toast.saved')}>
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden><path d="M3 7 L6 10 L11 4" /></svg>
-          </div>
-        )}
-        {state === 'error' && <div className={styles.errorIcon} role="img" aria-label={t('bookmarklet.toast.error')}>✗</div>}
-      </div>
-      <div className={styles.body}>
-        <span className={styles.brand}>Booklage</span>
-        <span className={`${styles.label} ${state === 'saved' ? styles.saved : ''} ${state === 'error' ? styles.error : ''}`.trim()}>
-          {state === 'saving' && t('bookmarklet.toast.saving')}
-          {state === 'saved' && t('bookmarklet.toast.saved')}
-          {state === 'error' && t('bookmarklet.toast.error')}
+      <div className={styles.pill}>
+        <span className={styles.icon} aria-hidden="true">
+          {state === 'saving' && <span className={styles.spinner} />}
+          {state === 'saved' && (
+            <span className={styles.checkmark} role="img" aria-label={t('bookmarklet.toast.saved')}>
+              <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden="true">
+                <path d="M3 7 L6 10 L11 4" />
+              </svg>
+            </span>
+          )}
+          {state === 'error' && (
+            <span className={styles.errorIcon} role="img" aria-label={t('bookmarklet.toast.error')}>!</span>
+          )}
+        </span>
+        <span className={styles.text}>
+          <span className={styles.brand}>Booklage</span>
+          <span className={styles.sep}>·</span>
+          <span className={`${styles.label} ${state === 'saved' ? styles.saved : ''} ${state === 'error' ? styles.error : ''}`.trim()}>
+            {state === 'saving' && t('bookmarklet.toast.saving')}
+            {state === 'saved' && t('bookmarklet.toast.saved')}
+            {state === 'error' && t('bookmarklet.toast.error')}
+          </span>
         </span>
       </div>
     </div>

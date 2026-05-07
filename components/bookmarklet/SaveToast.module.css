@@ -1,50 +1,155 @@
+/* SaveToast occupies the entire bookmarklet popup window (240×56) and
+ * draws a single horizontal "pill" centered inside it. The popup window
+ * is opened directly above the OS taskbar, so the pill reads as a system
+ * notification toast — minimum chrome, immediate intent.
+ *
+ * The popup inherits Booklage's global body styles (dark canvas bg,
+ * flex-column min-height). SaveToast.tsx resets those on mount so the
+ * pill floats on a transparent body without the dark "frame" leaking
+ * around it. The CSS here assumes that reset already happened.
+ */
+
 .container {
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 18px;
-  background: #ffffff;
-  border-radius: 10px;
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #1a1a1a;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
+  justify-content: center;
+  background: transparent;
+  font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
+  /* Hairline so popup edges never look like a draftsman drew the box. */
+  padding: 0 8px;
 }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  background: rgba(18, 18, 22, 0.92);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 8px 24px rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.94);
+  white-space: nowrap;
+  animation: pill-rise 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pill-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .icon {
-  width: 24px; height: 24px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
+
 .spinner {
-  width: 20px; height: 20px; border-radius: 50%;
-  border: 2px solid rgba(0,0,0,0.1);
-  border-top-color: #1a1a1a;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.6px solid rgba(255, 255, 255, 0.18);
+  border-top-color: rgba(255, 255, 255, 0.92);
   animation: spin 700ms linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.checkmark {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: #1a1a1a;
-  display: flex; align-items: center; justify-content: center;
-  animation: pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
-.checkmark svg { stroke: #fff; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+.checkmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #121216;
+  animation: pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.checkmark svg {
+  stroke: currentColor;
+  stroke-width: 2.4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .errorIcon {
-  width: 24px; height: 24px; border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
   background: #d04a4a;
   color: #fff;
-  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
   font-weight: 700;
 }
-@keyframes pop {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.12); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+
+.text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  letter-spacing: -0.005em;
+  line-height: 1;
 }
-.body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.brand { font-family: var(--font-sans); font-weight: 600; font-size: 15px; color: #1a1a1a; letter-spacing: -0.01em; }
-.label { font-size: 13px; color: #6a6a6a; }
-.label.saved { color: #1a1a1a; font-weight: 600; animation: fadeIn 280ms ease-out; }
-.label.error { color: #d04a4a; font-weight: 600; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.brand {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.sep {
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.label {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.label.saved {
+  color: rgba(255, 255, 255, 0.96);
+  font-weight: 500;
+}
+
+.label.error {
+  color: #ff8a8a;
+  font-weight: 500;
+}
