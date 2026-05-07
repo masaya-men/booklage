@@ -157,4 +157,10 @@ test.describe('B0 board skeleton', () => {
     const after = await card.boundingBox()
     expect(Math.abs((after?.x ?? 0) - before.x)).toBeGreaterThan(50)
   })
+
+  test('top header renders with the 3 expected slots', async ({ page }) => {
+    await expect(page.locator('[data-testid="board-top-header"]')).toBeVisible()
+    await expect(page.locator('[data-testid="filter-pill"]')).toBeVisible()
+    await expect(page.locator('[data-testid="share-pill"]')).toBeVisible()
+  })
 })
