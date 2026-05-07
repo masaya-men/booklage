@@ -1,0 +1,36 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.label {
+  letter-spacing: 0.12em;
+  user-select: none;
+}
+
+.trackHost {
+  position: relative;
+  width: 120px;
+  height: 18px;
+}
+
+.range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.readout {
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.06em;
+  min-width: 78px;
+  text-align: right;
+}

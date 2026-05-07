@@ -8,7 +8,7 @@ import {
   getThemeMeta,
 } from '@/lib/board/theme-registry'
 import { BOARD_INNER, COLUMN_MASONRY } from '@/lib/board/constants'
-import { widthToPreset } from '@/lib/board/size-migration'
+import { DEFAULT_CARD_WIDTH, widthToPreset } from '@/lib/board/size-migration'
 import type { BoardFilter, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
@@ -24,6 +24,7 @@ import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
 import { TopHeader } from './TopHeader'
 import { FilterPill } from './FilterPill'
+import { SizeSlider } from './SizeSlider'
 import { BoardChrome } from './BoardChrome'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
@@ -62,6 +63,7 @@ export function BoardRoot() {
   const [newlyAddedIds, setNewlyAddedIds] = useState<ReadonlySet<string>>(new Set())
   const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
   const [actionSheet, setActionSheet] = useState<{ pngDataUrl: string; shareUrl: string } | null>(null)
+  const [globalCardWidth, setGlobalCardWidth] = useState<number>(DEFAULT_CARD_WIDTH)
   // Ref points at the inner dark canvas — viewport.w/h reflect the canvas's
   // inner dimensions (window minus the outer-frame margin), so masonry layout
   // and culling all work in canvas-local coordinates.
@@ -486,7 +488,12 @@ export function BoardRoot() {
               counts={sidebarCounts}
             />
           }
-          instrument={null /* SizeSlider + ZoomSlider go here in 1B / 1C */}
+          instrument={
+            <SizeSlider
+              value={globalCardWidth}
+              onChange={setGlobalCardWidth}
+            />
+          }
           actions={
             <button
               type="button"
