@@ -11,6 +11,7 @@ import {
   updateCard,
   updateBookmarkOrderIndex,
   updateBookmarkCardWidth,
+  updateBookmarkCardWidthBatch,
   updateBookmarkOrderBatch,
   type BookmarkRecord,
   type CardRecord,
@@ -113,6 +114,7 @@ export function useBoardData(): {
   persistGridIndex: (cardId: string, gridIndex: number) => Promise<void>
   persistOrderIndex: (bookmarkId: string, orderIndex: number) => Promise<void>
   persistCardWidth: (bookmarkId: string, cardWidth: number) => Promise<void>
+  persistCardWidthBatch: (bookmarkIds: readonly string[], cardWidth: number) => Promise<void>
   persistOrderBatch: (orderedBookmarkIds: readonly string[]) => Promise<void>
   persistReadFlag: (bookmarkId: string, isRead: boolean) => Promise<void>
   persistSoftDelete: (bookmarkId: string, isDeleted: boolean) => Promise<void>
@@ -238,6 +240,20 @@ export function useBoardData(): {
         prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, cardWidth: clamped } : it)),
       )
       await updateBookmarkCardWidth(db as Parameters<typeof updateBookmarkCardWidth>[0], bookmarkId, clamped)
+    },
+    [],
+  )
+
+  const persistCardWidthBatch = useCallback(
+    async (bookmarkIds: readonly string[], cardWidth: number): Promise<void> => {
+      const db = dbRef.current
+      if (!db) return
+      const clamped = clampCardWidth(cardWidth)
+      const idSet = new Set(bookmarkIds)
+      setItems((prev) =>
+        prev.map((it) => (idSet.has(it.bookmarkId) ? { ...it, cardWidth: clamped } : it)),
+      )
+      await updateBookmarkCardWidthBatch(db as Parameters<typeof updateBookmarkCardWidthBatch>[0], bookmarkIds, clamped)
     },
     [],
   )
@@ -419,6 +435,7 @@ export function useBoardData(): {
     persistGridIndex,
     persistOrderIndex,
     persistCardWidth,
+    persistCardWidthBatch,
     persistOrderBatch,
     persistReadFlag,
     persistSoftDelete,

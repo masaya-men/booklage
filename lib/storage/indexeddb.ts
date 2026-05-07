@@ -703,6 +703,27 @@ export async function updateBookmarkOrderBatch(
   await tx.done
 }
 
+/**
+ * Atomically rewrite cardWidth for multiple bookmarks in one transaction.
+ * Use for global card-size slider: caller supplies the bookmark IDs and
+ * the single cardWidth to apply to all of them. Width is clamped per-row.
+ */
+export async function updateBookmarkCardWidthBatch(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkIds: readonly string[],
+  cardWidth: number,
+): Promise<void> {
+  const clamped = clampCardWidth(cardWidth)
+  const tx = db.transaction('bookmarks', 'readwrite')
+  const store = tx.objectStore('bookmarks')
+  for (const id of bookmarkIds) {
+    const existing = await store.get(id)
+    if (!existing) continue
+    await store.put({ ...existing, cardWidth: clamped })
+  }
+  await tx.done
+}
+
 // ---------------------------------------------------------------------------
 // Bulk queries
 // ---------------------------------------------------------------------------

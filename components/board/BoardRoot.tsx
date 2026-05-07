@@ -43,7 +43,7 @@ import styles from './BoardRoot.module.css'
 const BOARD_TOP_PAD_PX = 80
 
 export function BoardRoot() {
-  const { items, loading, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistVideoFlag, persistSoftDelete, reload } = useBoardData()
+  const { items, loading, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistVideoFlag, persistSoftDelete, persistCardWidthBatch, reload } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
   const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
@@ -255,6 +255,11 @@ export function BoardRoot() {
   const handleCardDelete = useCallback((bookmarkId: string): void => {
     void persistSoftDelete(bookmarkId, true)
   }, [persistSoftDelete])
+
+  const onCardWidthChange = useCallback((next: number): void => {
+    setGlobalCardWidth(next)
+    void persistCardWidthBatch(filteredItems.map((i) => i.bookmarkId), next)
+  }, [filteredItems, persistCardWidthBatch])
 
   const handleLightboxClose = useCallback((): void => {
     setLightboxItemId(null)
@@ -491,7 +496,7 @@ export function BoardRoot() {
           instrument={
             <SizeSlider
               value={globalCardWidth}
-              onChange={setGlobalCardWidth}
+              onChange={onCardWidthChange}
             />
           }
           actions={
