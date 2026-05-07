@@ -78,27 +78,40 @@
   height: 40px;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* The arc is offset INWARD (toward the card body) at rest by the
+     per-corner translate below; on :hover it transitions to
+     translate(0,0) at the final outward position while the opacity
+     fades in. The combined effect reads as the arc emerging FROM the
+     card corner and sliding OUT into place — "スッと出てくる" feel. */
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms cubic-bezier(0.16, 1, 0.3, 1);
   filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.55));
   z-index: 28; /* above .hint (25), below .handle (30) */
 }
 
-.arc-tl { top: -20px; left: -20px; }
-.arc-tr { top: -20px; right: -20px; }
-.arc-bl { bottom: -20px; left: -20px; }
-.arc-br { bottom: -20px; right: -20px; }
+/* Per-corner: position the box AND seed the resting "tucked-in" state.
+   The translate values move the arc 8px toward the card body (i.e. the
+   diagonally-inward direction for each corner) so the slide-out on
+   :hover travels visually outward from the card edge. */
+.arc-tl { top: -20px; left: -20px; transform: translate(8px, 8px); }
+.arc-tr { top: -20px; right: -20px; transform: translate(-8px, 8px); }
+.arc-bl { bottom: -20px; left: -20px; transform: translate(8px, -8px); }
+.arc-br { bottom: -20px; right: -20px; transform: translate(-8px, -8px); }
 
 /* Subtle (0.55): wide hint zone hover OR corner action button hover.
    The ~ combinator requires the matched .arc-X to come AFTER the
    hovered element. DOM order inside each <Handle>: hint, handle,
    arc — so hint:hover ~ arc works. CardCornerActions renders BEFORE
-   ResizeHandle in CardsLayer so its buttons precede every arc. */
+   ResizeHandle in CardsLayer so its buttons precede every arc.
+   transform: translate(0, 0) overrides the resting tuck-in offset. */
 .hint-tl:hover ~ .arc-tl,
 .hint-tr:hover ~ .arc-tr,
 .hint-bl:hover ~ .arc-bl,
 .hint-br:hover ~ .arc-br,
 :global([data-testid="card-delete-button"]):hover ~ .arc-tr,
 :global([data-testid="card-reset-size-button"]):hover ~ .arc-bl {
+  transform: translate(0, 0);
   opacity: 0.55;
 }
 
@@ -113,6 +126,7 @@
 .handle.tr.resizing ~ .arc-tr,
 .handle.bl.resizing ~ .arc-bl,
 .handle.br.resizing ~ .arc-br {
+  transform: translate(0, 0);
   opacity: 1;
 }
 
