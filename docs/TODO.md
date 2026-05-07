@@ -9,8 +9,30 @@
 
 - **ブランチ**: `master` 単一運用
 - **本番**: `https://booklage.pages.dev` に **Phase 1B 完成 + chrome polish (SizePicker / ScrollMeter / smooth wheel / lightbox 拡張) 反映済**（ハードリロードで確認）
-- **次セッション最優先**: ユーザーから次の polish 指示を受けて 1 件ずつ対応（Phase 1C ZoomSlider はペンディング、要相談）
+- **次セッション最優先**: 自由サイジング機能セッション 2 — カード 4 角リサイズハンドル + 角接近時 arc hint の実装。エンジン (`lib/board/skyline-layout.ts`) は導入済、UI 待ち。
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
+
+### 🎯 今セッション (2026-05-07 末尾) の到達点 — 自由サイジング機能セッション 1: skyline エンジン導入
+
+board のレイアウトエンジンを **column-masonry → skyline bin-packing に差し替え**。各カードが任意 px 幅で重ならず詰められる土台を整えた。視覚的見た目はセッション 1 では完全維持（全カードが defaultCardWidth = `(viewport - (N-1)*gap) / N` を使うため、現状の auto-distribute と一致）。
+
+**主要変更**:
+- 新規 `lib/board/skyline-layout.ts` — skyline bin-packing エンジン (`computeSkylineLayout`)。カードを「左 → 右、空きスペース最も低い位置に詰める」方式で配置。Pinterest 風だが列の整数倍縛りが無い。13 unit tests 全 pass
+- `components/board/CardsLayer.tsx` — 入力を `MasonryCard` から `SkylineCard` へ。`targetColumnUnit` prop を `defaultCardWidth` prop に置き換え
+- `components/board/use-card-reorder-drag.ts` — `computeVirtualOrder` を **layout 関数注入型** にリファクタ。board は `makeSkylineSimulator`、share は column-masonry を local で渡す形
+- `components/board/BoardRoot.tsx` — `targetColumnUnitForCount` を捨て、`defaultCardWidth = (effectiveLayoutWidth - (N-1)*gap) / N` を直接計算 → CardsLayer / ShareComposer に渡す
+- `components/share/ShareFrame.tsx` — column-masonry を維持しつつ `simulateLayout` callback で reorder 用にもう 1 度 column-masonry を実行
+- 既存 `lib/board/column-masonry.ts` は share/composer/relay-layout のために残す (削除しない)
+- `components/board/MediaTypeIndicator.module.css` — `right: 64px` → `right: 8px` (旧 SizePresetToggle 跡地解消、ホバー時のメディア種別ピルがカード右下隅に詰まる)
+
+**変更ファイル**:
+- 新規: `lib/board/skyline-layout.{ts,test.ts}`
+- 編集: `components/board/BoardRoot.tsx`、`CardsLayer.tsx`、`use-card-reorder-drag.ts`、`MediaTypeIndicator.module.css`、`components/share/ShareFrame.tsx`
+- tsc 0 errors、307/307 unit tests pass、`pnpm build` OK
+
+**残タスク (セッション 2 / セッション 3)**:
+- セッション 2: カード 4 角リサイズハンドル + arc hint (`ResizeHandle.tsx` 新規)、ドラッグで `cardWidth` 更新、自由幅を skyline に流す
+- セッション 3: 左下リセットボタン + IDB v10 → v11 マイグレーション (`customCardWidth: boolean` 追加)、SizePicker batch update を `customCardWidth !== true` に限定
 
 ### 🎯 今セッション (2026-05-07 末尾, polish #3) の到達点 — board chrome 完成 + lightbox UX 拡張
 

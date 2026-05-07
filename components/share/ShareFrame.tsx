@@ -132,14 +132,26 @@ export function ShareFrame({
     },
     onDragMove: (id, cardWorldX, cardWorldY): void => {
       if (!editable) return
+      const containerWidth = Math.max(60, width - 2 * BOARD_INNER.SIDE_PADDING_PX)
       const newOrder = computeVirtualOrder({
         items: adaptedItems,
         draggedId: id,
         cardWorldX,
         cardWorldY,
-        containerWidth: Math.max(60, width - 2 * BOARD_INNER.SIDE_PADDING_PX),
-        gap: COLUMN_MASONRY.GAP_PX,
-        targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+        simulateLayout: (orderedItems) => {
+          const orderedCards: MasonryCard[] = orderedItems.map((it) => ({
+            id: it.bookmarkId,
+            aspectRatio: it.aspectRatio,
+            columnSpan: 1,
+            targetWidth: it.cardWidth,
+          }))
+          return computeColumnMasonry({
+            cards: orderedCards,
+            containerWidth,
+            gap: COLUMN_MASONRY.GAP_PX,
+            targetColumnUnit: COLUMN_MASONRY.TARGET_COLUMN_UNIT_PX,
+          }).positions
+        },
       })
       setVirtualOrder(newOrder)
     },

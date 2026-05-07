@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 import { gsap } from 'gsap'
-import { computeColumnMasonry, type MasonryCard } from '@/lib/board/column-masonry'
+import { computeSkylineLayout, type SkylineCard } from '@/lib/board/skyline-layout'
 import type { CardPosition, DisplayMode } from '@/lib/board/types'
 import {
   BOARD_Z_INDEX,
@@ -22,7 +22,7 @@ import type { BoardItem } from '@/lib/storage/use-board-data'
 import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
 import { CardNode } from './CardNode'
 import { MediaTypeIndicator, type MediaType } from './MediaTypeIndicator'
-import { useCardReorderDrag, computeVirtualOrder } from './use-card-reorder-drag'
+import { useCardReorderDrag, computeVirtualOrder, makeSkylineSimulator } from './use-card-reorder-drag'
 import { pickCard } from './cards'
 
 /** Derive the media-type badge for a bookmark from existing fields — no
@@ -67,7 +67,11 @@ type CardsLayerProps = {
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly displayMode: DisplayMode
   readonly newlyAddedIds: ReadonlySet<string>
-  readonly targetColumnUnit: number
+  /** Default per-card width for cards with no custom width — derived from
+   *  the active SizePicker level so the board still distributes evenly
+   *  across N columns. Skyline layout uses this directly as each card's
+   *  width input. */
+  readonly defaultCardWidth: number
 }
 
 export function CardsLayer({
@@ -83,7 +87,7 @@ export function CardsLayer({
   persistMeasuredAspect,
   displayMode,
   newlyAddedIds,
-  targetColumnUnit,
+  defaultCardWidth,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -105,52 +109,57 @@ export function CardsLayer({
     })
   }, [])
 
-  const masonryCards = useMemo<MasonryCard[]>(
-    () =>
-      items.map((it) => ({
-        id: it.bookmarkId,
-        aspectRatio: it.aspectRatio,
-        columnSpan: 1,
-        targetWidth: it.cardWidth,
-        intrinsicHeight: intrinsicHeights[it.bookmarkId],
-      })),
-    [items, intrinsicHeights],
+  // Resolve each card's render width + height for the skyline engine.
+  // Session 1: every card uses defaultCardWidth (= columnUnit equivalent
+  // from the SizePicker) so the visual output matches the previous
+  // column-masonry behavior. Session 2 will introduce per-card custom
+  // widths via the corner-resize handle.
+  const buildSkylineCard = useCallback(
+    (it: BoardItem): SkylineCard => {
+      const intrinsic = intrinsicHeights[it.bookmarkId]
+      const w = defaultCardWidth
+      const h =
+        intrinsic && intrinsic > 0
+          ? intrinsic
+          : it.aspectRatio > 0
+            ? w / it.aspectRatio
+            : w
+      return { id: it.bookmarkId, width: w, height: h }
+    },
+    [defaultCardWidth, intrinsicHeights],
+  )
+
+  const skylineCards = useMemo<SkylineCard[]>(
+    () => items.map(buildSkylineCard),
+    [items, buildSkylineCard],
   )
 
   const masonryLayout = useMemo(
     () =>
-      computeColumnMasonry({
-        cards: masonryCards,
+      computeSkylineLayout({
+        cards: skylineCards,
         containerWidth: viewportWidth,
         gap: COLUMN_MASONRY.GAP_PX,
-        targetColumnUnit: targetColumnUnit,
       }),
-    [masonryCards, viewportWidth, targetColumnUnit],
+    [skylineCards, viewportWidth],
   )
 
-  // Stage 2: preview masonry computed from the live virtual order.
+  // Stage 2: preview layout computed from the live virtual order.
   const previewMasonry = useMemo(() => {
     if (!virtualOrderedIds) return null
     const idToItem = new Map(items.map((it) => [it.bookmarkId, it]))
-    const orderedCards: MasonryCard[] = []
+    const orderedCards: SkylineCard[] = []
     for (const id of virtualOrderedIds) {
       const it = idToItem.get(id)
       if (!it) continue
-      orderedCards.push({
-        id: it.bookmarkId,
-        aspectRatio: it.aspectRatio,
-        columnSpan: 1,
-        targetWidth: it.cardWidth,
-        intrinsicHeight: intrinsicHeights[it.bookmarkId],
-      })
+      orderedCards.push(buildSkylineCard(it))
     }
-    return computeColumnMasonry({
+    return computeSkylineLayout({
       cards: orderedCards,
       containerWidth: viewportWidth,
       gap: COLUMN_MASONRY.GAP_PX,
-      targetColumnUnit: targetColumnUnit,
     })
-  }, [virtualOrderedIds, items, viewportWidth, intrinsicHeights, targetColumnUnit])
+  }, [virtualOrderedIds, items, viewportWidth, buildSkylineCard])
 
   // During drag, use preview positions for non-dragged cards.
   // During drop/idle, use real masonry positions.
@@ -255,9 +264,12 @@ export function CardsLayer({
           draggedId: id,
           cardWorldX,
           cardWorldY,
-          containerWidth: viewportWidth,
-          gap: COLUMN_MASONRY.GAP_PX,
-          targetColumnUnit: targetColumnUnit,
+          simulateLayout: makeSkylineSimulator({
+            containerWidth: viewportWidth,
+            gap: COLUMN_MASONRY.GAP_PX,
+            defaultCardWidth,
+            intrinsicHeights,
+          }),
         })
 
         // Only update state if order actually changed — avoids re-render storms.
@@ -270,7 +282,7 @@ export function CardsLayer({
           return prev
         })
       },
-      [items, viewportWidth, targetColumnUnit],
+      [items, viewportWidth, defaultCardWidth, intrinsicHeights],
     ),
     onDrop: useCallback(
       (_orderedIds: readonly string[]): void => {
@@ -283,28 +295,21 @@ export function CardsLayer({
         // hook's _orderedIds (unused but kept as fallback).
         const finalOrder = virtualOrderedIds ?? _orderedIds
 
-        // Compute the FINAL masonry layout manually — identical to what
+        // Compute the FINAL skyline layout manually — identical to what
         // masonryLayout will be after React commits the new items order. This
         // guarantees the positions we snap to match what React will render,
         // so FLIP's useLayoutEffect sees prev === p and issues no animation.
         const idToItem = new Map(items.map((it) => [it.bookmarkId, it]))
-        const finalCards: MasonryCard[] = []
+        const finalCards: SkylineCard[] = []
         for (const id of finalOrder) {
           const it = idToItem.get(id)
           if (!it) continue
-          finalCards.push({
-            id: it.bookmarkId,
-            aspectRatio: it.aspectRatio,
-            columnSpan: 1,
-            targetWidth: it.cardWidth,
-            intrinsicHeight: intrinsicHeights[it.bookmarkId],
-          })
+          finalCards.push(buildSkylineCard(it))
         }
-        const finalMasonry = computeColumnMasonry({
+        const finalMasonry = computeSkylineLayout({
           cards: finalCards,
           containerWidth: viewportWidth,
           gap: COLUMN_MASONRY.GAP_PX,
-          targetColumnUnit: targetColumnUnit,
         })
 
         // Snap all non-dragged cards to their FINAL masonry positions + scale 1,
@@ -344,7 +349,7 @@ export function CardsLayer({
         onDrop(finalOrder)
         setVirtualOrderedIds(null)
       },
-      [onDrop, virtualOrderedIds, items, viewportWidth, intrinsicHeights, targetColumnUnit],
+      [onDrop, virtualOrderedIds, items, viewportWidth, buildSkylineCard],
     ),
   })
 

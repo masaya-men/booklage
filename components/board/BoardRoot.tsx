@@ -1,8 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { computeColumnMasonry } from '@/lib/board/column-masonry'
-import type { MasonryCard } from '@/lib/board/column-masonry'
+import { computeSkylineLayout, type SkylineCard } from '@/lib/board/skyline-layout'
 import {
   DEFAULT_THEME_ID,
   getThemeMeta,
@@ -13,7 +12,6 @@ import {
   type SizeLevel,
   clampSizeLevel,
   sizeLevelToColumnCount,
-  targetColumnUnitForCount,
 } from '@/lib/board/size-levels'
 import type { BoardFilter, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
@@ -174,16 +172,6 @@ export function BoardRoot() {
 
   const filteredItems = useMemo(() => applyFilter(items, activeFilter), [items, activeFilter])
 
-  const masonryCards = useMemo<MasonryCard[]>(
-    () =>
-      filteredItems.map((it) => ({
-        id: it.bookmarkId,
-        aspectRatio: it.aspectRatio,
-        columnSpan: 1,
-      })),
-    [filteredItems],
-  )
-
   const themeMeta = getThemeMeta(DEFAULT_THEME_ID)
 
   // Cards span the full width of the inner dark canvas with a destefanis-
@@ -191,25 +179,38 @@ export function BoardRoot() {
   // No sidebar reservation, no max-width cap — the canvas is the whole stage.
   const effectiveLayoutWidth = Math.max(0, viewport.w - 2 * BOARD_INNER.SIDE_PADDING_PX)
 
-  // Slider has 5 discrete levels each mapping to an integer column count.
-  // We feed `targetColumnUnit` such that masonry derives that exact count and
-  // distributes leftover horizontal space across cards (auto-fill width).
+  // SizePicker level → column count → default per-card width that evenly
+  // distributes the layout area across N columns with the standard gap.
+  // This default applies to every card on the board until per-card custom
+  // widths land in the next session.
   const desiredColumnCount = sizeLevelToColumnCount(sizeLevel)
-  const targetColumnUnit = targetColumnUnitForCount(
-    effectiveLayoutWidth,
-    COLUMN_MASONRY.GAP_PX,
-    desiredColumnCount,
+  const defaultCardWidth =
+    desiredColumnCount > 0 && effectiveLayoutWidth > 0
+      ? Math.max(
+          1,
+          (effectiveLayoutWidth - (desiredColumnCount - 1) * COLUMN_MASONRY.GAP_PX) /
+            desiredColumnCount,
+        )
+      : 1
+
+  const skylineCards = useMemo<SkylineCard[]>(
+    () =>
+      filteredItems.map((it) => {
+        const w = defaultCardWidth
+        const h = it.aspectRatio > 0 ? w / it.aspectRatio : w
+        return { id: it.bookmarkId, width: w, height: h }
+      }),
+    [filteredItems, defaultCardWidth],
   )
 
   const layout = useMemo(
     () =>
-      computeColumnMasonry({
-        cards: masonryCards,
+      computeSkylineLayout({
+        cards: skylineCards,
         containerWidth: effectiveLayoutWidth,
         gap: COLUMN_MASONRY.GAP_PX,
-        targetColumnUnit,
       }),
-    [masonryCards, effectiveLayoutWidth, targetColumnUnit],
+    [skylineCards, effectiveLayoutWidth],
   )
 
   const horizontalOffset = BOARD_INNER.SIDE_PADDING_PX
@@ -627,7 +628,7 @@ export function BoardRoot() {
                 persistMeasuredAspect={persistMeasuredAspect}
                 displayMode={displayMode}
                 newlyAddedIds={newlyAddedIds}
-                targetColumnUnit={targetColumnUnit}
+                defaultCardWidth={defaultCardWidth}
               />
             </div>
           </InteractionLayer>
@@ -672,7 +673,7 @@ export function BoardRoot() {
             description: it.description ?? '',
             thumbnail: it.thumbnail ?? '',
             type: detectUrlType(it.url),
-            cardWidth: layout.columnUnit,
+            cardWidth: defaultCardWidth,
             aspectRatio: it.aspectRatio,
           }))}
           positions={layout.positions}

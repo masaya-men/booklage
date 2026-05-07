@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState, type PointerEvent } from 'react'
-import { computeColumnMasonry, type MasonryCard } from '@/lib/board/column-masonry'
+import { computeSkylineLayout, type SkylineCard } from '@/lib/board/skyline-layout'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { CardPosition } from '@/lib/board/types'
 
@@ -149,16 +149,35 @@ export function useCardReorderDrag(params: UseReorderDragParams): {
 // --------------------------------------------------------------------------
 
 /**
- * Build masonry input cards from ordered items (module-scope helper).
+ * Build skyline input cards from ordered items. Width is the resolved
+ * default (= columnUnit equivalent from the SizePicker); height comes
+ * from the per-card intrinsic height when present (text cards) or from
+ * `defaultWidth / aspectRatio` otherwise (image / video cards).
  */
-function buildMasonryCards(items: ReadonlyArray<BoardItem>): MasonryCard[] {
-  return items.map((it) => ({
-    id: it.bookmarkId,
-    aspectRatio: it.aspectRatio,
-    columnSpan: 1,
-    targetWidth: it.cardWidth,
-  }))
+function buildSkylineCards(
+  items: ReadonlyArray<BoardItem>,
+  defaultWidth: number,
+  intrinsicHeights: Readonly<Record<string, number>>,
+): SkylineCard[] {
+  return items.map((it) => {
+    const intrinsic = intrinsicHeights[it.bookmarkId]
+    const w = defaultWidth
+    const h =
+      intrinsic && intrinsic > 0
+        ? intrinsic
+        : it.aspectRatio > 0
+          ? w / it.aspectRatio
+          : w
+    return { id: it.bookmarkId, width: w, height: h }
+  })
 }
+
+/** Layout simulator the caller provides — runs whatever engine fits its
+ *  context (board uses skyline, share uses column-masonry). Must return
+ *  positions keyed by bookmarkId for the items that were laid out. */
+type SimulateLayout = (
+  orderedItems: ReadonlyArray<BoardItem>,
+) => Readonly<Record<string, CardPosition>>
 
 /**
  * Compute what the card order WOULD BE if the dragged card were dropped at
@@ -166,14 +185,19 @@ function buildMasonryCards(items: ReadonlyArray<BoardItem>): MasonryCard[] {
  *
  * Strategy (position-preserving):
  *   For each candidate insertion index (0 … withoutDragged.length), simulate
- *   the masonry layout with the dragged card inserted at that index. Record
- *   where the dragged card lands in the simulation. Pick the index whose
- *   simulated position is closest to the card's current visual top-left
+ *   the layout with the dragged card inserted at that index. Record where
+ *   the dragged card lands in the simulation. Pick the index whose simulated
+ *   position is closest to the card's current visual top-left
  *   (cardWorldX, cardWorldY). This ensures the drop location matches the
  *   user's spatial intent rather than just a relative order change.
  *
- * Complexity: O(N²) per call — acceptable up to ~200 cards at 60Hz with the
- * 8px movement throttle applied in CardsLayer.
+ * The caller injects the layout engine via `simulateLayout` so this works
+ * for both the board (skyline) and the share composer (column-masonry).
+ *
+ * Complexity: O(N) calls to `simulateLayout`; each call is O(N) to O(N²)
+ * depending on the chosen engine. With the 8px movement throttle applied
+ * in CardsLayer this stays under a frame for boards up to a few hundred
+ * cards.
  */
 export function computeVirtualOrder(params: {
   items: ReadonlyArray<BoardItem>
@@ -181,12 +205,11 @@ export function computeVirtualOrder(params: {
   /** Dragged card's current world-space top-left (pointer-driven transform). */
   cardWorldX: number
   cardWorldY: number
-  /** Masonry layout params — the fn runs simulations internally. */
-  containerWidth: number
-  gap: number
-  targetColumnUnit: number
+  /** Caller-supplied layout simulator. Receives the simulated ordered items
+   *  and must return positions for all of them. */
+  simulateLayout: SimulateLayout
 }): readonly string[] {
-  const { items, draggedId, cardWorldX, cardWorldY, containerWidth, gap, targetColumnUnit } = params
+  const { items, draggedId, cardWorldX, cardWorldY, simulateLayout } = params
 
   const ordered = items.slice().sort((a, b) => a.orderIndex - b.orderIndex)
   const withoutDragged = ordered.filter((it) => it.bookmarkId !== draggedId)
@@ -203,16 +226,8 @@ export function computeVirtualOrder(params: {
     const simulatedItems: BoardItem[] = withoutDragged.slice()
     simulatedItems.splice(idx, 0, draggedItem)
 
-    // Simulate masonry layout.
-    const simMasonryCards = buildMasonryCards(simulatedItems)
-    const sim = computeColumnMasonry({
-      cards: simMasonryCards,
-      containerWidth,
-      gap,
-      targetColumnUnit,
-    })
-
-    const simPos = sim.positions[draggedId]
+    const positions = simulateLayout(simulatedItems)
+    const simPos = positions[draggedId]
     if (!simPos) continue
 
     // Squared distance between simulated position and current visual top-left.
@@ -229,4 +244,21 @@ export function computeVirtualOrder(params: {
   const ids = withoutDragged.map((it) => it.bookmarkId)
   ids.splice(bestIdx, 0, draggedId)
   return ids
+}
+
+/**
+ * Convenience helper that builds a `SimulateLayout` callback wired to the
+ * skyline engine — the board's standard configuration.
+ */
+export function makeSkylineSimulator(params: {
+  containerWidth: number
+  gap: number
+  defaultCardWidth: number
+  intrinsicHeights: Readonly<Record<string, number>>
+}): SimulateLayout {
+  const { containerWidth, gap, defaultCardWidth, intrinsicHeights } = params
+  return (orderedItems): Readonly<Record<string, CardPosition>> => {
+    const cards = buildSkylineCards(orderedItems, defaultCardWidth, intrinsicHeights)
+    return computeSkylineLayout({ cards, containerWidth, gap }).positions
+  }
 }
