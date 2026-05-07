@@ -1,0 +1,23 @@
+export const MIN_CARD_WIDTH = 80
+export const MAX_CARD_WIDTH = 480
+export const DEFAULT_CARD_WIDTH = 240
+
+export type LegacyPreset = 'S' | 'M' | 'L'
+
+const PRESET_TO_WIDTH: Readonly<Record<LegacyPreset, number>> = {
+  S: 160,
+  M: 240,
+  L: 320,
+}
+
+export function presetToCardWidth(preset: LegacyPreset | undefined): number {
+  if (preset === undefined) return DEFAULT_CARD_WIDTH
+  return PRESET_TO_WIDTH[preset]
+}
+
+export function clampCardWidth(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_CARD_WIDTH
+  if (value < MIN_CARD_WIDTH) return MIN_CARD_WIDTH
+  if (value > MAX_CARD_WIDTH) return MAX_CARD_WIDTH
+  return value
+}
