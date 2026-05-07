@@ -46,6 +46,21 @@
   pointer-events: none;
 }
 
+/* Playhead — 1px vertical line at the exact viewport center. Thin and
+   precise; the surrounding Gaussian halo provides the soft locality cue. */
+.playhead {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 4px rgba(255, 255, 255, 0.55),
+    0 0 10px rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  transform: translateX(-0.5px);
+}
+
 /* Hover preview line — 1px vertical, gently pulses to telegraph
    "click here to jump to this position." */
 .hoverLine {

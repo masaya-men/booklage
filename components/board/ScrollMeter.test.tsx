@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { ScrollMeter } from './ScrollMeter'
 
 describe('ScrollMeter', () => {
-  it('renders 140 ticks plus baseline', () => {
+  it('renders 140 ticks plus baseline + playhead', () => {
     const { container } = render(
       <ScrollMeter
         contentHeight={2000}
@@ -12,13 +12,11 @@ describe('ScrollMeter', () => {
         onScrollTo={() => {}}
       />,
     )
-    // Each tick has class containing "tick" (CSS module mangles it). Easiest
-    // selector is divs with an inline `left` style — the baseline div has
-    // no inline style, the hover line is conditional.
-    const ticks = Array.from(
+    const elementsWithLeft = Array.from(
       (container.firstChild as HTMLElement).children,
     ).filter((el) => (el as HTMLElement).style.left)
-    expect(ticks).toHaveLength(140)
+    // 140 ticks + 1 playhead = 141 elements with inline `left`.
+    expect(elementsWithLeft).toHaveLength(141)
   })
 
   it('calls onScrollTo on pointer down with mapped y', () => {
