@@ -16,6 +16,33 @@
   border-radius: var(--canvas-radius);
   background: var(--bg-dark);
   overflow: hidden;
+  /* Phase 1A: TopHeader (auto) sits above canvasWrap (1fr) which holds the
+     existing absolute-layered scroll/cards/lightbox tree. */
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.canvasWrap {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sharePill {
+  background: transparent;
+  border: none;
+  color: var(--share-pill-text);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color var(--share-transition-fast);
+}
+
+.sharePill:hover {
+  color: var(--share-accent);
 }
 
 /* Scroll affordance — a soft top/bottom fade hints that more cards live

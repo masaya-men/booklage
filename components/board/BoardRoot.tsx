@@ -21,7 +21,8 @@ import { loadBoardConfig, saveBoardConfig } from '@/lib/storage/board-config'
 import { ThemeLayer } from './ThemeLayer'
 import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
-import { Toolbar } from './Toolbar'
+import { TopHeader } from './TopHeader'
+import { FilterPill } from './FilterPill'
 import { BoardChrome } from './BoardChrome'
 import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletInstallModal'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
@@ -500,90 +501,106 @@ export function BoardRoot() {
           back to the marketing site without intruding on the board. */}
       <BoardChrome />
       {/* Inner dark canvas — destefanis-style stage. The whole pan/cards/
-          toolbar live inside, so cursor pan never escapes the rounded frame. */}
-      <div ref={canvasRef} className={styles.canvas}>
-        <InteractionLayer
-          direction={themeMeta.direction}
-          onScroll={handleScroll}
-          spaceHeld={spaceHeld}
-        >
-          {/* Background — full canvas coverage, follows scroll. */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              transform: `translate3d(${-viewport.x}px, ${-viewport.y}px, 0)`,
-              willChange: 'transform',
-              pointerEvents: 'none',
-            }}
-          >
-            <ThemeLayer
-              themeId={DEFAULT_THEME_ID}
-              totalWidth={contentWidth}
-              totalHeight={contentHeight}
+          live inside, so cursor pan never escapes the rounded frame.
+          Phase 1A: canvas is now a grid (auto / 1fr) — TopHeader at top,
+          canvasWrap holds the existing absolute-layered scroll/cards stage. */}
+      <div className={styles.canvas}>
+        <TopHeader
+          nav={
+            <FilterPill
+              value={activeFilter}
+              onChange={handleFilterChange}
+              moods={moods}
+              counts={sidebarCounts}
             />
-          </div>
-          {/* Cards — full-canvas-width with destefanis half-gap padding.
-              Vertical transform adds BOARD_TOP_PAD_PX so the first row gets
-              breathing room below the canvas top edge / toolbar pill. */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              transform: `translate3d(${horizontalOffset - viewport.x}px, ${BOARD_TOP_PAD_PX - viewport.y}px, 0)`,
-              willChange: 'transform',
-              pointerEvents: 'none',
-            }}
+          }
+          instrument={null /* SizeSlider + ZoomSlider go here in 1B / 1C */}
+          actions={
+            <button
+              type="button"
+              className={styles.sharePill}
+              onClick={(): void => setShareComposerOpen(true)}
+              data-testid="share-pill"
+            >
+              Share ↗
+            </button>
+          }
+        />
+        <div ref={canvasRef} className={styles.canvasWrap}>
+          <InteractionLayer
+            direction={themeMeta.direction}
+            onScroll={handleScroll}
+            spaceHeld={spaceHeld}
           >
-            <CardsLayer
-              items={filteredItems}
-              viewport={viewport}
-              viewportWidth={effectiveLayoutWidth}
-              hoveredBookmarkId={hoveredBookmarkId}
-              spaceHeld={spaceHeld}
-              onHoverChange={setHoveredBookmarkId}
-              onCyclePreset={handleCyclePreset}
-              onClick={handleCardClick}
-              onDrop={handleDropOrder}
-              onDelete={handleCardDelete}
-              persistMeasuredAspect={persistMeasuredAspect}
-              displayMode={displayMode}
-              newlyAddedIds={newlyAddedIds}
-            />
-          </div>
-        </InteractionLayer>
-        {/* Soft fade at canvas top/bottom edges — scroll affordance. */}
-        <div className={styles.fadeTop} aria-hidden="true" />
-        <div className={styles.fadeBottom} aria-hidden="true" />
-        <Toolbar
-          activeFilter={activeFilter}
-          onFilterChange={handleFilterChange}
-          displayMode={displayMode}
-          onDisplayModeChange={handleDisplayModeChange}
-          moods={moods}
-          counts={sidebarCounts}
-          onShareClick={(): void => setShareComposerOpen(true)}
-        />
-        {!loading && items.length === 0 && (
-          <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
-        )}
-        {/* Lightbox lives INSIDE the dark canvas so its backdrop and
-            FLIP open animation are clipped to the canvas's rounded
-            border-radius. The white outer margin remains visible
-            during lightbox — the rounded stage is preserved. */}
-        <Lightbox
-          item={lightboxItem}
-          originRect={lightboxOriginRect}
-          onClose={handleLightboxClose}
-          nav={lightboxItem ? {
-            currentIndex: lightboxIndex,
-            total: filteredItems.length,
-            onNav: handleLightboxNav,
-            onJump: handleLightboxJump,
-          } : undefined}
-        />
+            {/* Background — full canvas coverage, follows scroll. */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                transform: `translate3d(${-viewport.x}px, ${-viewport.y}px, 0)`,
+                willChange: 'transform',
+                pointerEvents: 'none',
+              }}
+            >
+              <ThemeLayer
+                themeId={DEFAULT_THEME_ID}
+                totalWidth={contentWidth}
+                totalHeight={contentHeight}
+              />
+            </div>
+            {/* Cards — full-canvas-width with destefanis half-gap padding.
+                Vertical transform adds BOARD_TOP_PAD_PX so the first row gets
+                breathing room below the canvas top edge / toolbar pill. */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                transform: `translate3d(${horizontalOffset - viewport.x}px, ${BOARD_TOP_PAD_PX - viewport.y}px, 0)`,
+                willChange: 'transform',
+                pointerEvents: 'none',
+              }}
+            >
+              <CardsLayer
+                items={filteredItems}
+                viewport={viewport}
+                viewportWidth={effectiveLayoutWidth}
+                hoveredBookmarkId={hoveredBookmarkId}
+                spaceHeld={spaceHeld}
+                onHoverChange={setHoveredBookmarkId}
+                onCyclePreset={handleCyclePreset}
+                onClick={handleCardClick}
+                onDrop={handleDropOrder}
+                onDelete={handleCardDelete}
+                persistMeasuredAspect={persistMeasuredAspect}
+                displayMode={displayMode}
+                newlyAddedIds={newlyAddedIds}
+              />
+            </div>
+          </InteractionLayer>
+          {/* Soft fade at canvas top/bottom edges — scroll affordance. */}
+          <div className={styles.fadeTop} aria-hidden="true" />
+          <div className={styles.fadeBottom} aria-hidden="true" />
+          {!loading && items.length === 0 && (
+            <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
+          )}
+          {/* Lightbox lives INSIDE the canvasWrap so its backdrop and
+              FLIP open animation are clipped to the canvas's rounded
+              border-radius. The white outer margin remains visible
+              during lightbox — the rounded stage is preserved. */}
+          <Lightbox
+            item={lightboxItem}
+            originRect={lightboxOriginRect}
+            onClose={handleLightboxClose}
+            nav={lightboxItem ? {
+              currentIndex: lightboxIndex,
+              total: filteredItems.length,
+              onNav: handleLightboxNav,
+              onJump: handleLightboxJump,
+            } : undefined}
+          />
+        </div>
       </div>
       {/* Modals stay viewport-level so they cover everything including
           the outer margin (different visual treatment from Lightbox). */}
