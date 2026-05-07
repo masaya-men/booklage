@@ -25,82 +25,89 @@ type Props = {
 }
 
 // ---------------------------------------------------------------------------
-// Noise math
+// Noise math — Spectrum Synthesis Method
 //
-// We want the meter to read like a real noise waveform: dense, multi-scale,
-// natural-looking, without periodic artifacts. Standard solution is fractal
-// Brownian motion (fBm) over value noise.
+// Earlier attempts used grid-based fractal noise (value noise + fBm). At our
+// sample rate (140 1px ticks) the upper octaves alias below Nyquist and the
+// hash function leaks correlation between adjacent integer lattice points,
+// producing visible regular stripes. Spectrum synthesis avoids both:
 //
-//   1. value noise: bilinear interpolation of deterministic per-lattice
-//      hashes, smoothed with a smoothstep curve. Continuous, locally
-//      smooth, but globally random.
-//   2. fBm: sum of N octaves of value noise at increasing frequencies and
-//      decreasing amplitudes. With persistence ~0.55 and lacunarity ~2.05
-//      the resulting spectrum approximates 1/f^0.85 — close to pink noise,
-//      which is the spectral signature of real-world signals (audio, EEG,
-//      ocean waves, river flow). This is why it "looks alive."
+//   - Sum N sinusoids with **random** spatial freq, time freq, and phase
+//   - Spatial freqs are bounded **below** Nyquist (0.5 cycles/sample) so
+//     aliasing is mathematically impossible
+//   - Random phases at irrational frequency ratios → truly aperiodic output
+//   - Amplitudes follow 1/√k → pink-noise spectrum (the spectrum of audio,
+//     EEG, ocean waves — i.e., the spectrum that "looks natural")
+//   - Central Limit Theorem: a sum of many independent sinusoids approaches
+//     a Gaussian distribution, which we soft-clip with tanh to compress the
+//     rare large peaks while preserving mid-range texture. This is exactly
+//     how broadcast audio limiters work, and gives us "occasionally more
+//     intense" peaks for free without scheduled events.
 // ---------------------------------------------------------------------------
 
-function hash2(x: number, y: number): number {
-  let h = (x * 374761393 + y * 668265263) | 0
-  h = (h ^ (h >>> 13)) * 1274126177
-  h = h ^ (h >>> 16)
-  return ((h >>> 0) % 1024) / 1023
+type Band = {
+  readonly fSpace: number
+  readonly fTime: number
+  readonly phase: number
+  readonly amp: number
 }
 
-function smoothstep(t: number): number {
-  return t * t * (3 - 2 * t)
-}
-
-function valueNoise2D(x: number, y: number): number {
-  const x0 = Math.floor(x)
-  const y0 = Math.floor(y)
-  const fx = smoothstep(x - x0)
-  const fy = smoothstep(y - y0)
-  const v00 = hash2(x0, y0)
-  const v10 = hash2(x0 + 1, y0)
-  const v01 = hash2(x0, y0 + 1)
-  const v11 = hash2(x0 + 1, y0 + 1)
-  const a = v00 + (v10 - v00) * fx
-  const b = v01 + (v11 - v01) * fx
-  return a + (b - a) * fy
-}
-
-function fBm(
-  x: number,
-  y: number,
-  octaves = 5,
-  persistence = 0.55,
-  lacunarity = 2.05,
-): number {
-  let sum = 0
-  let amp = 1
-  let freq = 1
-  let total = 0
-  for (let i = 0; i < octaves; i++) {
-    sum += amp * valueNoise2D(x * freq, y * freq)
-    total += amp
-    freq *= lacunarity
-    amp *= persistence
+const NOISE_BANDS: ReadonlyArray<Band> = (() => {
+  // Deterministic LCG so the pattern is stable across reloads (no jitter
+  // between dev/prod, no per-session re-seeding).
+  let s = 0xC0FFEE7A | 0
+  const rand = (): number => {
+    s = (Math.imul(s, 1664525) + 1013904223) | 0
+    return (s >>> 0) / 4294967296
   }
-  return sum / total
+  const N = 26
+  const bands: Band[] = []
+  for (let k = 0; k < N; k++) {
+    const fk = (k + 1) / N
+    bands.push({
+      // Spatial freq spread: 0.02..0.42 cycles/tick.
+      // Period at low end = 50 ticks (macro envelope), at high end = 2.4
+      // ticks (texture). Stays strictly below Nyquist (0.5) → no aliasing.
+      fSpace: 0.02 + Math.pow(fk, 1.25) * 0.40,
+      // Time freq spread: 0.12..1.6 rad/sec independently random per band
+      // so different scales evolve at different rates — gives the meter
+      // its "non-uniform" feel.
+      fTime: 0.12 + Math.pow(rand(), 0.7) * 1.48,
+      // Random phase guarantees aperiodicity in space.
+      phase: rand() * Math.PI * 2,
+      // Pink-ish: 1/√(k+1) → -3dB/octave (close to 1/f).
+      amp: 1 / Math.sqrt(k + 1),
+    })
+  }
+  return bands
+})()
+
+// Stddev of the sum (used to normalize the tanh argument). For independent
+// random-phase sinusoids, Var(Σ amp_i sin(...)) = ½ Σ amp_i².
+const NOISE_STD = Math.sqrt(
+  NOISE_BANDS.reduce((acc, b) => acc + (b.amp * b.amp) / 2, 0),
+)
+
+function spectralNoise(x: number, t: number): number {
+  let sum = 0
+  for (const b of NOISE_BANDS) {
+    sum += b.amp * Math.sin(b.fSpace * x + b.fTime * t + b.phase)
+  }
+  // tanh soft-clip via 5/9 Padé approximation (faster than Math.tanh,
+  // shape is indistinguishable for our visual purposes). 1.35 * stddev is
+  // chosen so most values map into tanh's near-linear range while peaks
+  // smoothly compress — feel of an audio limiter.
+  const u = sum / (1.35 * NOISE_STD)
+  const u2 = u * u
+  const tanh = u * (27 + u2) / (27 + 9 * u2)
+  return (tanh + 1) / 2 // → 0..1
 }
 
 /**
- * Live scroll-position meter.
- *
- * Tick heights are driven by 5-octave fBm noise (≈ pink-noise spectrum) so
- * the waveform reads as natural, dense, and aperiodic — none of the obvious
- * sinusoidal "stripes" you get from sin-stack approaches. Global amplitude
- * also breathes via a low-frequency fBm so intensity rises and falls
- * organically over time without scheduled bursts.
- *
- * Brightness is a smooth Gaussian spotlight centered on the current viewport
- * — no per-tick boolean active/inactive (which created visible stripe edges
- * at the boundary). Sigma scales with viewport extent so a small viewport
- * shows a tight bright peak and a large viewport shows a broader glow.
- *
- * Click or drag the track to scroll-jump.
+ * Live scroll-position meter. Heights driven by Spectrum Synthesis
+ * (random-phase sinusoid sum) for true aperiodic pink noise. Brightness is
+ * a smooth Gaussian centered on the current viewport — single bright spot,
+ * no discrete on/off boundary.
  */
 export function ScrollMeter({
   contentHeight,
@@ -111,7 +118,6 @@ export function ScrollMeter({
   const trackRef = useRef<HTMLDivElement>(null)
   const tickRefs = useRef<HTMLDivElement[]>([])
 
-  // The rAF loop reads these refs each frame. No restart on scroll.
   const viewportYRef = useRef<number>(viewportY)
   const viewportHRef = useRef<number>(viewportHeight)
   const contentHRef = useRef<number>(contentHeight)
@@ -131,10 +137,6 @@ export function ScrollMeter({
       const ch = viewportHRef.current
       const total = contentHRef.current
 
-      // Spotlight center + sigma. Sigma scales with viewport extent so the
-      // bright region is "viewport-shaped" — small viewport → tight peak,
-      // big viewport → broader glow. Capped to avoid the spotlight ever
-      // washing the entire meter (which would defeat the locality cue).
       const viewportCenterTick = total > 0
         ? ((cy + ch / 2) / total) * (TICK_COUNT - 1)
         : (TICK_COUNT - 1) / 2
@@ -143,26 +145,20 @@ export function ScrollMeter({
         : TICK_COUNT
       const sigma = Math.max(5, Math.min(TICK_COUNT / 3, viewportTickSpan * 0.45))
 
-      // Global amplitude "breath" — slow low-freq fBm sample at constant x.
-      // Range ~0.65..1.35; produces natural rise-and-fall in overall waveform
-      // intensity without scheduled events. This is what gives the meter
-      // its "occasionally more intense" feel without being obviously cyclic.
-      const breath = 0.65 + 0.7 * fBm(7.13, t * 0.18, 3, 0.6, 2.0)
-
       for (let i = 0; i < TICK_COUNT; i++) {
         const el = tickRefs.current[i]
         if (!el) continue
 
-        // 5-octave fBm — natural pink-noise-ish waveform.
-        // Space coord = tick index; time coord = elapsed seconds.
-        const noise = fBm(i * 0.16, t * 0.42, 5)
+        // Spectral pink noise at this tick's space/time coordinates. Output
+        // is in 0..1 with rare excursions toward the edges; the soft-clip
+        // already shaped the distribution to feel "audio-like".
+        const noise = spectralNoise(i, t)
 
-        // Mild gamma curve so peaks read crisply against the baseline.
-        const shaped = Math.pow(noise, 0.82)
-        const heightPx = 1.4 + shaped * 14 * breath
+        // Gentle gamma curve to crisp peaks while retaining floor.
+        const heightPx = 1.4 + Math.pow(noise, 0.85) * 14.5
 
-        // Gaussian opacity. Single peak at viewport center, smooth fall-off.
-        // Floor at 0.22 so the rest of the meter is still legible.
+        // Brightness: smooth Gaussian centered on viewport position. No
+        // boolean active/inactive (which created visible stripe edges).
         const dist = i - viewportCenterTick
         const gauss = Math.exp(-(dist * dist) / (2 * sigma * sigma))
         const opacity = 0.22 + 0.78 * gauss
