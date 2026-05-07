@@ -191,15 +191,17 @@ function Handle({ corner, cardWidth, cardHeight, maxCardWidth, onResize, onResiz
   )
 }
 
-/** 1/4-circle arc rendered as its own SVG sibling. The 24×24 viewBox is
- *  positioned so the card corner sits at box-local (12, 12) on every
- *  corner — `.arc-tl/tr/bl/br` shift the box with a 12px outward
- *  overshoot — and the arc is drawn with r=12, sweeping into the
- *  outward quadrant. SVG sweep=1 = clockwise visually, sweep=0 = ccw. */
+/** 1/4-circle arc rendered as its own SVG sibling. 40×40 viewBox with
+ *  the card corner at box-local (20, 20), arc r=12 — that leaves 8px
+ *  of padding around the curve so the 2.25px stroke AND the 5px
+ *  drop-shadow blur both bloom freely without being clipped at the
+ *  SVG bounds (an earlier 24×24 viewBox had the arc touching the
+ *  edge, which hard-clipped the soft halo and made the curve read as
+ *  brittle). SVG sweep=1 = clockwise visually, sweep=0 = ccw. */
 function ArcSvg({ corner }: { corner: ResizeCorner }): ReactElement {
   const r = 12
-  const cx = 12
-  const cy = 12
+  const cx = 20
+  const cy = 20
   let p1x: number
   let p1y: number
   let p2x: number
@@ -230,13 +232,13 @@ function ArcSvg({ corner }: { corner: ResizeCorner }): ReactElement {
   return (
     <svg
       className={[styles.arc, styles[`arc-${corner}`]].join(' ')}
-      viewBox="0 0 24 24"
+      viewBox="0 0 40 40"
       aria-hidden="true"
     >
       <path
         d={d}
         fill="none"
-        stroke="rgba(255, 255, 255, 0.92)"
+        stroke="rgba(255, 255, 255, 0.9)"
         strokeWidth={2.25}
         strokeLinecap="round"
       />

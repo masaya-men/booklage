@@ -62,14 +62,20 @@
 }
 
 /* Arc lives as its own absolutely-positioned SVG sibling so it can
-   render at a generous 24×24 visual size while the click-active
-   .handle stays a tight 32×32. The .arc-* classes shift the box so
-   the card corner is centered (box-local 12, 12) and the arc bulges
-   into the outward quadrant. */
+   render at a generous 40×40 visual size while the click-active
+   .handle stays a tight 32×32. The viewBox is sized so the curve
+   has 8px of padding to every side — that lets the 2.25px stroke
+   plus 5px drop-shadow halo render fully without being clipped at
+   the box bounds, which is what gives the arc its soft / haloed
+   character. The .arc-* classes shift the box with a 20px outward
+   overshoot so the card corner is centered (box-local 20, 20) and
+   the arc bulges into the outward quadrant. pointer-events: none
+   keeps the box transparent to clicks even though it visually
+   overlaps the card body. */
 .arc {
   position: absolute;
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -77,10 +83,10 @@
   z-index: 28; /* above .hint (25), below .handle (30) */
 }
 
-.arc-tl { top: -12px; left: -12px; }
-.arc-tr { top: -12px; right: -12px; }
-.arc-bl { bottom: -12px; left: -12px; }
-.arc-br { bottom: -12px; right: -12px; }
+.arc-tl { top: -20px; left: -20px; }
+.arc-tr { top: -20px; right: -20px; }
+.arc-bl { bottom: -20px; left: -20px; }
+.arc-br { bottom: -20px; right: -20px; }
 
 /* Subtle (0.55): wide hint zone hover OR corner action button hover.
    The ~ combinator requires the matched .arc-X to come AFTER the
