@@ -10,7 +10,6 @@ import {
   getAllBookmarks,
   updateCard,
   updateBookmarkOrderIndex,
-  updateBookmarkSizePreset,
   updateBookmarkCardWidth,
   updateBookmarkOrderBatch,
   type BookmarkRecord,
@@ -28,7 +27,6 @@ export type BoardItem = {
   readonly aspectRatio: number
   readonly gridIndex: number
   readonly orderIndex: number
-  readonly sizePreset: 'S' | 'M' | 'L'
   readonly cardWidth: number
   readonly freePos?: FreePosition
   readonly userOverridePos?: CardPosition  // legacy compat: same data as freePos for grid-side consumers
@@ -97,7 +95,6 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     aspectRatio,
     gridIndex: c?.gridIndex ?? 0,
     orderIndex: b.orderIndex ?? 0,
-    sizePreset: b.sizePreset ?? 'S',
     cardWidth: typeof b.cardWidth === 'number' ? b.cardWidth : presetToCardWidth(b.sizePreset),
     freePos,
     userOverridePos: hasPlacement ? { x: c.x, y: c.y, w, h } : undefined,
@@ -115,7 +112,6 @@ export function useBoardData(): {
   persistFreePosition: (cardId: string, pos: FreePosition) => Promise<void>
   persistGridIndex: (cardId: string, gridIndex: number) => Promise<void>
   persistOrderIndex: (bookmarkId: string, orderIndex: number) => Promise<void>
-  persistSizePreset: (bookmarkId: string, sizePreset: 'S' | 'M' | 'L') => Promise<void>
   persistCardWidth: (bookmarkId: string, cardWidth: number) => Promise<void>
   persistOrderBatch: (orderedBookmarkIds: readonly string[]) => Promise<void>
   persistReadFlag: (bookmarkId: string, isRead: boolean) => Promise<void>
@@ -229,18 +225,6 @@ export function useBoardData(): {
         prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, orderIndex } : it)),
       )
       await updateBookmarkOrderIndex(db as Parameters<typeof updateBookmarkOrderIndex>[0], bookmarkId, orderIndex)
-    },
-    [],
-  )
-
-  const persistSizePreset = useCallback(
-    async (bookmarkId: string, sizePreset: 'S' | 'M' | 'L'): Promise<void> => {
-      const db = dbRef.current
-      if (!db || !bookmarkId) return
-      setItems((prev) =>
-        prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, sizePreset } : it)),
-      )
-      await updateBookmarkSizePreset(db as Parameters<typeof updateBookmarkSizePreset>[0], bookmarkId, sizePreset)
     },
     [],
   )
@@ -434,7 +418,6 @@ export function useBoardData(): {
     persistFreePosition,
     persistGridIndex,
     persistOrderIndex,
-    persistSizePreset,
     persistCardWidth,
     persistOrderBatch,
     persistReadFlag,

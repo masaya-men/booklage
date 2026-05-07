@@ -22,3 +22,14 @@ export function clampCardWidth(value: number): number {
   if (value > MAX_CARD_WIDTH) return MAX_CARD_WIDTH
   return value
 }
+
+/**
+ * Project a continuous cardWidth back into the legacy 'S' | 'M' | 'L' bucket.
+ * Used at the board → share-wire boundary where the wire format remains
+ * a compact 'S' | 'M' | 'L' byte for backward compatibility.
+ */
+export function widthToPreset(width: number): LegacyPreset {
+  if (width < 200) return 'S'
+  if (width < 280) return 'M'
+  return 'L'
+}

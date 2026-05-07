@@ -7,7 +7,8 @@ import {
   DEFAULT_THEME_ID,
   getThemeMeta,
 } from '@/lib/board/theme-registry'
-import { BOARD_INNER, COLUMN_MASONRY, SIZE_PRESET_SPAN } from '@/lib/board/constants'
+import { BOARD_INNER, COLUMN_MASONRY } from '@/lib/board/constants'
+import { widthToPreset } from '@/lib/board/size-migration'
 import type { BoardFilter, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
@@ -41,7 +42,7 @@ import styles from './BoardRoot.module.css'
 const BOARD_TOP_PAD_PX = 80
 
 export function BoardRoot() {
-  const { items, loading, persistSizePreset, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistVideoFlag, persistSoftDelete, reload } = useBoardData()
+  const { items, loading, persistOrderBatch, persistMeasuredAspect, persistThumbnail, persistVideoFlag, persistSoftDelete, reload } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
   const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
@@ -169,7 +170,8 @@ export function BoardRoot() {
       filteredItems.map((it) => ({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
-        columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+        columnSpan: 1,
+        targetWidth: it.cardWidth,
       })),
     [filteredItems],
   )
@@ -235,13 +237,6 @@ export function BoardRoot() {
       })
     },
     [contentBounds.width, contentBounds.height],
-  )
-
-  const handleCyclePreset = useCallback(
-    (bookmarkId: string, next: 'S' | 'M' | 'L'): void => {
-      void persistSizePreset(bookmarkId, next)
-    },
-    [persistSizePreset],
   )
 
   const handleCardClick = useCallback((bookmarkId: string, originRect: DOMRect): void => {
@@ -458,29 +453,6 @@ export function BoardRoot() {
     }
   }, [reload])
 
-  // 1/2/3 keys cycle hovered card's size preset (S/M/L)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key !== '1' && e.key !== '2' && e.key !== '3') return
-      if (!hoveredBookmarkId) return
-      const target = e.target as HTMLElement | null
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      )
-        return
-      e.preventDefault()
-      const preset = e.key === '1' ? 'S' : e.key === '2' ? 'M' : 'L'
-      void persistSizePreset(hoveredBookmarkId, preset)
-    }
-    window.addEventListener('keydown', onKey)
-    return (): void => {
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [hoveredBookmarkId, persistSizePreset])
-
   const sidebarCounts = useMemo(() => {
     const active = items.filter((i) => !i.isDeleted)
     const deleted = items.filter((i) => i.isDeleted)
@@ -569,7 +541,6 @@ export function BoardRoot() {
                 hoveredBookmarkId={hoveredBookmarkId}
                 spaceHeld={spaceHeld}
                 onHoverChange={setHoveredBookmarkId}
-                onCyclePreset={handleCyclePreset}
                 onClick={handleCardClick}
                 onDrop={handleDropOrder}
                 onDelete={handleCardDelete}
@@ -620,7 +591,7 @@ export function BoardRoot() {
             description: it.description ?? '',
             thumbnail: it.thumbnail ?? '',
             type: detectUrlType(it.url),
-            sizePreset: it.sizePreset,
+            sizePreset: widthToPreset(it.cardWidth),
             aspectRatio: it.aspectRatio,
           }))}
           positions={layout.positions}

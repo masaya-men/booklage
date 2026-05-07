@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto'
 import { type IDBPDatabase } from 'idb'
 import {
   initDB, addBookmark, getAllBookmarks, deleteBookmark, updateCard,
-  updateBookmarkOrderIndex, updateBookmarkSizePreset, updateBookmarkOrderBatch,
+  updateBookmarkOrderIndex, updateBookmarkOrderBatch,
 } from '@/lib/storage/indexeddb'
 
 let db: IDBPDatabase<unknown> | null = null
@@ -117,18 +117,6 @@ describe('v8 migration', () => {
     await updateBookmarkOrderIndex(database, bm.id, 42)
     const [updated] = await getAllBookmarks(database)
     expect(updated.orderIndex).toBe(42)
-  })
-
-  it('updateBookmarkSizePreset changes the sizePreset', async () => {
-    const database = await initDB()
-    db = database as unknown as IDBPDatabase<unknown>
-    const bm = await addBookmark(database, {
-      url: 'https://a.com', title: 'A', description: '',
-      thumbnail: '', favicon: '', siteName: '', type: 'website', tags: [],
-    })
-    await updateBookmarkSizePreset(database, bm.id, 'L')
-    const [updated] = await getAllBookmarks(database)
-    expect(updated.sizePreset).toBe('L')
   })
 
   it('updateBookmarkOrderBatch rewrites orderIndex atomically', async () => {

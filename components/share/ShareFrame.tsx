@@ -6,10 +6,10 @@ import type { ShareCard, ShareSize } from '@/lib/share/types'
 import type { CardPosition } from '@/lib/board/types'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { CardNode } from '@/components/board/CardNode'
-import { SizePresetToggle } from '@/components/board/SizePresetToggle'
 import { useCardReorderDrag, computeVirtualOrder } from '@/components/board/use-card-reorder-drag'
 import { computeColumnMasonry, type MasonryCard } from '@/lib/board/column-masonry'
-import { COLUMN_MASONRY, BOARD_INNER, SIZE_PRESET_SPAN } from '@/lib/board/constants'
+import { COLUMN_MASONRY, BOARD_INNER } from '@/lib/board/constants'
+import { presetToCardWidth } from '@/lib/board/size-migration'
 import styles from './ShareFrame.module.css'
 
 type Props = {
@@ -29,8 +29,10 @@ type Props = {
 
 /**
  * Adapt ShareCards to the BoardItem shape that use-card-reorder-drag
- * expects. Only bookmarkId / aspectRatio / sizePreset / orderIndex carry
- * meaningful data — the rest are filler to satisfy the type.
+ * expects. Only bookmarkId / aspectRatio / cardWidth / orderIndex carry
+ * meaningful data — the rest are filler to satisfy the type. The wire
+ * byte `c.s` (S/M/L) is decoded into a continuous cardWidth here so the
+ * receiving side runs the same masonry as the board.
  */
 function buildAdapterItems(
   cards: ReadonlyArray<ShareCard>,
@@ -46,11 +48,12 @@ function buildAdapterItems(
     aspectRatio: typeof c.a === 'number' && c.a > 0 ? c.a : 1,
     gridIndex: i,
     orderIndex: i,
-    sizePreset: c.s,
+    cardWidth: presetToCardWidth(c.s),
     isRead: false,
     isDeleted: false,
     tags: [] as readonly string[],
-  })) as BoardItem[]
+    displayMode: null,
+  }))
 }
 
 export function ShareFrame({
@@ -98,7 +101,8 @@ export function ShareFrame({
       orderedCards.push({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
-        columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+        columnSpan: 1,
+        targetWidth: it.cardWidth,
       })
     }
     const innerW = Math.max(60, width - 2 * BOARD_INNER.SIDE_PADDING_PX)
@@ -223,15 +227,6 @@ export function ShareFrame({
                 ? <img className={styles.thumbOnly} src={c.th} alt="" draggable={false} />
                 : <div className={styles.thumbPlaceholder}>{c.t.slice(0, 24)}</div>}
             </CardNode>
-            {editable && (
-              <SizePresetToggle
-                preset={c.s}
-                visible={hoveredId === id}
-                onCycle={(next): void => {
-                  if (onCycleSize) onCycleSize(id, next)
-                }}
-              />
-            )}
           </div>
         )
       })}

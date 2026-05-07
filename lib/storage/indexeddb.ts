@@ -672,19 +672,6 @@ export async function updateBookmarkOrderIndex(
 }
 
 /**
- * Set a single bookmark's sizePreset. 'S' | 'M' | 'L'.
- */
-export async function updateBookmarkSizePreset(
-  db: IDBPDatabase<BooklageDB>,
-  bookmarkId: string,
-  sizePreset: 'S' | 'M' | 'L',
-): Promise<void> {
-  const existing = await db.get('bookmarks', bookmarkId)
-  if (!existing) return
-  await db.put('bookmarks', { ...existing, sizePreset })
-}
-
-/**
  * Set a single bookmark's continuous card width. Clamped to [MIN_CARD_WIDTH, MAX_CARD_WIDTH].
  */
 export async function updateBookmarkCardWidth(

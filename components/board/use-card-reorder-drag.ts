@@ -2,7 +2,6 @@
 
 import { useCallback, useRef, useState, type PointerEvent } from 'react'
 import { computeColumnMasonry, type MasonryCard } from '@/lib/board/column-masonry'
-import { SIZE_PRESET_SPAN } from '@/lib/board/constants'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { CardPosition } from '@/lib/board/types'
 
@@ -156,7 +155,8 @@ function buildMasonryCards(items: ReadonlyArray<BoardItem>): MasonryCard[] {
   return items.map((it) => ({
     id: it.bookmarkId,
     aspectRatio: it.aspectRatio,
-    columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+    columnSpan: 1,
+    targetWidth: it.cardWidth,
   }))
 }
 

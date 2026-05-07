@@ -17,12 +17,10 @@ import {
   BOARD_Z_INDEX,
   COLUMN_MASONRY,
   CULLING,
-  SIZE_PRESET_SPAN,
 } from '@/lib/board/constants'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
 import { CardNode } from './CardNode'
-import { SizePresetToggle } from './SizePresetToggle'
 import { MediaTypeIndicator, type MediaType } from './MediaTypeIndicator'
 import { useCardReorderDrag, computeVirtualOrder } from './use-card-reorder-drag'
 import { pickCard } from './cards'
@@ -57,7 +55,6 @@ type CardsLayerProps = {
   readonly hoveredBookmarkId: string | null
   readonly spaceHeld: boolean
   readonly onHoverChange: (id: string | null) => void
-  readonly onCyclePreset: (bookmarkId: string, next: 'S' | 'M' | 'L') => void
   readonly onClick: (bookmarkId: string, originRect: DOMRect) => void
   readonly onDrop: (orderedBookmarkIds: readonly string[]) => void
   /** Right-click on a card → soft-delete immediately. Pre-launch the
@@ -79,7 +76,6 @@ export function CardsLayer({
   hoveredBookmarkId,
   spaceHeld,
   onHoverChange,
-  onCyclePreset,
   onClick,
   onDrop,
   onDelete,
@@ -112,7 +108,8 @@ export function CardsLayer({
       items.map((it) => ({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
-        columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+        columnSpan: 1,
+        targetWidth: it.cardWidth,
         intrinsicHeight: intrinsicHeights[it.bookmarkId],
       })),
     [items, intrinsicHeights],
@@ -140,7 +137,8 @@ export function CardsLayer({
       orderedCards.push({
         id: it.bookmarkId,
         aspectRatio: it.aspectRatio,
-        columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+        columnSpan: 1,
+        targetWidth: it.cardWidth,
         intrinsicHeight: intrinsicHeights[it.bookmarkId],
       })
     }
@@ -295,7 +293,8 @@ export function CardsLayer({
           finalCards.push({
             id: it.bookmarkId,
             aspectRatio: it.aspectRatio,
-            columnSpan: SIZE_PRESET_SPAN[it.sizePreset],
+            columnSpan: 1,
+            targetWidth: it.cardWidth,
             intrinsicHeight: intrinsicHeights[it.bookmarkId],
           })
         }
@@ -434,11 +433,6 @@ export function CardsLayer({
             <MediaTypeIndicator
               type={deriveMediaType(it)}
               visible={hoveredBookmarkId === it.bookmarkId}
-            />
-            <SizePresetToggle
-              preset={it.sizePreset}
-              visible={hoveredBookmarkId === it.bookmarkId}
-              onCycle={(next): void => onCyclePreset(it.bookmarkId, next)}
             />
           </div>
         )

@@ -110,6 +110,13 @@ export const COLUMN_MASONRY = {
   GAP_PX: 18,
 } as const
 
+/**
+ * Share-wire encoding only. The board itself uses continuous `cardWidth`
+ * (lib/board/size-migration.ts); this column-span map is kept for the
+ * legacy 'S' | 'M' | 'L' wire format consumed by composer-layout and
+ * relay-layout, where preserving the original 1/2/3-column behavior is
+ * required for backward-compat with already-shared URLs.
+ */
 export const SIZE_PRESET_SPAN: Readonly<Record<'S' | 'M' | 'L', number>> = {
   S: 1,
   M: 2,
