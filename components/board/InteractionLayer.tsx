@@ -39,50 +39,105 @@ export function InteractionLayer({
 
   // ---- Smooth-scroll wheel integration ----
   //
-  // The raw wheel event arrives as a discrete impulse (one per detent on a
-  // mouse wheel, ≈100–200 units per notch). Applying it directly to viewport
-  // produces a stair-step feel. Instead we accumulate the impulse into a
-  // remaining-distance target and ease that target down each frame with an
-  // exponential decay (current frame consumes ALPHA of the remaining
-  // distance). Multiple wheel events naturally compose — they just add to
-  // the same target, which keeps gliding to the new total.
+  // Three-layer model designed to feel as smooth as a system-level
+  // touchpad-style scroll on any refresh rate:
   //
-  // ALPHA controls the "weight" of the deceleration:
-  //   0.10 → settles in ~600ms (heavy / floaty)
-  //   0.16 → settles in ~330ms (smooth, escalator-ish)
-  //   0.25 → settles in ~190ms (quick, less obvious smoothing)
-  const wheelTargetRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 })
+  // 1. deltaMode normalization
+  //    Firefox occasionally sends DOM_DELTA_LINE (deltaY ≈ 3 per notch)
+  //    instead of pixels — translate to pixels so the multiplier behaves
+  //    the same across browsers.
+  //
+  // 2. Wheel events accumulate into a "remaining distance" target rather
+  //    than firing the scroll synchronously. New events stack additively.
+  //
+  // 3. Spring physics with critical damping
+  //    Each frame integrates F = k·target − c·v − dt-scaled — a damped
+  //    spring chasing the target. With c = 2√k (critical damping) the
+  //    motion never overshoots while feeling physically natural. dt is
+  //    measured per-frame so the spring behaves identically at 60, 90,
+  //    120, 144, 240 Hz monitors (frame-rate independent).
+  //
+  // STIFFNESS controls the chase speed; DAMPING is locked to critical so
+  // a tweak to STIFFNESS automatically rebalances. Settling time ≈
+  // 4/√k seconds — at k=200 that's ≈283 ms, the sweet spot between
+  // "snappy" and "drifty" for board scrolling.
+  const WHEEL_STIFFNESS = 200
+  const WHEEL_DAMPING = 2 * Math.sqrt(WHEEL_STIFFNESS) // critical
+  // Cap dt so a tab-switch or main-thread stall (huge dt) doesn't fling
+  // the spring across the whole canvas in one frame.
+  const MAX_DT_S = 0.05
+
+  const wheelStateRef = useRef<{
+    targetDx: number
+    targetDy: number
+    velX: number
+    velY: number
+    lastTime: number
+  }>({
+    targetDx: 0,
+    targetDy: 0,
+    velX: 0,
+    velY: 0,
+    lastTime: 0,
+  })
   const wheelRafRef = useRef<number | null>(null)
 
-  const stepWheel = useCallback((): void => {
-    const target = wheelTargetRef.current
-    const ALPHA = 0.16
-    const stepX = target.dx * ALPHA
-    const stepY = target.dy * ALPHA
-    target.dx -= stepX
-    target.dy -= stepY
+  const stepWheel = useCallback((now: number): void => {
+    const s = wheelStateRef.current
+    const dt = s.lastTime === 0
+      ? 1 / 60
+      : Math.min(MAX_DT_S, (now - s.lastTime) / 1000)
+    s.lastTime = now
 
-    // Sub-pixel residue → declare done. Resets target so the next wheel
-    // event starts from zero accumulator and the animation is re-armed.
-    if (Math.abs(target.dx) < 0.5 && Math.abs(target.dy) < 0.5) {
-      target.dx = 0
-      target.dy = 0
+    // Spring force: F = k·(remaining distance) − c·velocity. target is the
+    // signed remaining distance, so F has the same sign as target and
+    // drives velocity toward depleting it.
+    const ax = WHEEL_STIFFNESS * s.targetDx - WHEEL_DAMPING * s.velX
+    const ay = WHEEL_STIFFNESS * s.targetDy - WHEEL_DAMPING * s.velY
+    s.velX += ax * dt
+    s.velY += ay * dt
+
+    const stepX = s.velX * dt
+    const stepY = s.velY * dt
+    s.targetDx -= stepX
+    s.targetDy -= stepY
+
+    const stillEnough = (
+      Math.abs(s.targetDx) < 0.05 &&
+      Math.abs(s.targetDy) < 0.05 &&
+      Math.abs(s.velX) < 0.5 &&
+      Math.abs(s.velY) < 0.5
+    )
+    if (stillEnough) {
+      s.targetDx = 0
+      s.targetDy = 0
+      s.velX = 0
+      s.velY = 0
+      s.lastTime = 0
       wheelRafRef.current = null
       return
     }
 
-    onScroll(stepX, stepY)
+    if (stepX !== 0 || stepY !== 0) onScroll(stepX, stepY)
     wheelRafRef.current = requestAnimationFrame(stepWheel)
   }, [onScroll])
 
   const handleWheel = useCallback(
     (e: WheelEvent<HTMLDivElement>): void => {
       const m = INTERACTION.WHEEL_SCROLL_MULTIPLIER
-      const delta = e.deltaY * m
+      // Normalize deltaMode so all browsers contribute pixel-equivalent
+      // deltas. Most send DOM_DELTA_PIXEL (=0); Firefox may send
+      // DOM_DELTA_LINE (=1) at ≈3 lines per notch.
+      let dy = e.deltaY
+      if (e.deltaMode === 1) dy *= 16
+      else if (e.deltaMode === 2) dy *= window.innerHeight
+      const delta = dy * m
+
+      const s = wheelStateRef.current
       if (isHorizontal) {
-        wheelTargetRef.current.dx += delta
+        s.targetDx += delta
       } else {
-        wheelTargetRef.current.dy += delta
+        s.targetDy += delta
       }
       if (wheelRafRef.current === null) {
         wheelRafRef.current = requestAnimationFrame(stepWheel)
