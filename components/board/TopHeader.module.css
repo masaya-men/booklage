@@ -7,7 +7,7 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   position: sticky;
   top: 0;
-  z-index: 110;
+  z-index: 110; /* mirrors BOARD_Z_INDEX.TOOLBAR in lib/board/constants.ts */
   gap: 16px;
 }
 
