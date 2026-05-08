@@ -122,42 +122,64 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toMatch(/\(function\(\)\{[\s\S]*\}\)\(\);?$/)
   })
 
-  it('uses 240x200 popup dims (smaller than PiP 256x286 outer so it tucks behind)', () => {
+  it('uses 320x320 popup dims (fallback popup when PiP probe fails or pipActive=false)', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('width=240')
-    expect(uri).toContain('height=200')
+    expect(uri).toContain('width=320')
+    expect(uri).toContain('height=320')
   })
 
-  it('positions popup at bottom-right corner where PiP companion sits', () => {
+  it('positions fallback popup at bottom-right (20px inset)', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    // Right edge: availWidth - 240 - 20 inset = availWidth - 260
-    expect(uri).toContain('screen.availWidth-260')
-    // Bottom edge: availHeight - 200 - 20 inset = availHeight - 220
-    expect(uri).toContain('screen.availHeight-220')
-    // Old larger-popup math must be gone
-    expect(uri).not.toContain('screen.availWidth-340')
-    expect(uri).not.toContain('screen.availHeight-340')
+    expect(uri).toContain('screen.availWidth-340')
+    expect(uri).toContain('screen.availHeight-340')
   })
 
-  it('includes Booklage origin and /save popup path', () => {
+  it('iframe path: contains /save-iframe?bookmarklet=1', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('https://booklage.pages.dev/save?')
+    expect(uri).toContain('/save-iframe?bookmarklet=1')
   })
 
-  it('opens via window.open (popup-only, no iframe)', () => {
+  it('contains booklage:probe and booklage:save message types', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('window.open(')
-    // Iframe-mediated silent save is gone (Chrome storage partitioning made
-    // it unworkable: 3rd-party-embedded booklage iframe lives in a different
-    // partition than the booklage main tab + PiP).
-    expect(uri).not.toContain('/save-iframe?bookmarklet=1')
-    expect(uri).not.toContain('createElement(\'iframe\'')
-    expect(uri).not.toContain('booklage:probe')
+    expect(uri).toContain('booklage:probe')
+    expect(uri).toContain('booklage:save')
+  })
+
+  it('reads booklage:probe:result and booklage:save:result responses', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('booklage:probe:result')
+    expect(uri).toContain('booklage:save:result')
+  })
+
+  it('still contains a window.open(/save?...) fallback path', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toMatch(/\.open\([^)]*\/save\?/)
+  })
+
+  it('hidden iframe has invisible cssText (no visual artifact while probing)', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('position:fixed')
+    expect(uri).toContain('left:-9999px')
+    expect(uri).toContain('opacity:0')
+    expect(uri).toContain('pointer-events:none')
+  })
+
+  it('600ms probe timeout triggers popup fallback', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('600')
+  })
+
+  it('arms a 1500ms save-result deadline distinct from the 600ms probe timeout', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('1500')
+  })
+
+  it('cleans up via removeEventListener (not just iframe removal)', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('removeEventListener')
   })
 
   it('IIFE source contains the same OGP selectors as extractOgpFromDocument', () => {
-    // Source-level drift check: ensure the inline IIFE references all the
-    // same OGP meta selectors as the TS extractor.
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
     expect(uri).toContain('og:title')
     expect(uri).toContain('og:image')
