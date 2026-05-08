@@ -10,9 +10,37 @@
 - **ブランチ**: `master` 単一運用
 - **本番**: `https://booklage.pages.dev` に **PiP カルーセル化 + ライトボックス風スクロール完了 (v88)**
 - **Service Worker**: `v88-2026-05-09-pip-meter-always-on`
-- **次セッション**: PiP は一区切り。次タスクは未確定（ユーザーと相談）
+- **PiP polish 一区切り済**: 旧 fan stack → カルーセル + 全カード native aspect + ライトボックス風 700ms power4.out スクロール + メーター常時表示 + 1 枚目スーッと入場 + 右に append (1,2,3,...)
+
+### 次セッションの最優先 — 残スコープ整理
+
+**ブクマ追加の流れ全部 + Chrome 拡張 + PiP 完全連携が未完です**。今日やったのは PiP の見た目 polish のみ。広い設計スコープ（spec: `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`）に対して、進捗:
+
+| エリア | 状態 |
+|---|---|
+| `/save-iframe` postMessage endpoint | ✅ Plan 1 済 |
+| PiP companion UI (in-tab, Document PiP) | ✅ Plan 1 + 今日 polish 済 |
+| `?focus=cardId` 仕組み + PiP card click → board glow | ✅ コード上は wired（同タブ内 CustomEvent）。**ただし parent tab/window へ focus を移す挙動は未実装** — PiP 内クリック→裏のボードが scroll するが見えない |
+| ブックマークレット (Phase 0) | ⚠️ 実装済も実機未検証 |
+| 重複 URL ポリシー全導線統一 | ❌ 未実装（bookmarklet と /save-iframe で同 URL 多重保存される） |
+| **Chrome 拡張 v0 (Manifest v3 パッケージ)** | ❌ **完全未着手**。Plan 2 ドキュメントすら未作成 |
+| Cursor pill (PiP 無時の保存インジケータ §6) | ❌ 未実装 |
+| 拡張内設定 UI (§9) | ❌ 未実装 |
+| 拡張の test + 配布 (§10, §11) | ❌ 未実装 |
+
+**着手の自然な順序の提案** (要相談):
+
+1. **Plan 2 plan を書く** — Chrome 拡張パッケージ本体の着手前段。spec §7 の manifest / 構造を実装単位に分解
+2. **PiP click → parent tab focus** の小修正 (現状 background の board が scroll してるだけ → window.focus() 等)
+3. **重複 URL ポリシー** の全導線統一（save-iframe, bookmarklet, 拡張）
+4. **Cursor pill** 実装 (PiP 無効時の保存可視化、独立して進行可能)
+5. **Chrome 拡張本体** (Plan 2 〜 N) — manifest, background SW, content script, PiP iframe origin 切替、設定 UI、配布
+
+### 保留中の他タスク
+
 - **保留**: 自由サイジング機能セッション 4 (矩形選択 marquee で範囲リセット) は `docs/private/IDEAS.md` 末尾に退避済
 - **保留**: TikTok サムネ動作の実機確認 (実装済、ユーザー未検証)
+- **保留**: ブックマークレット (Phase 0) 実機検証
 
 ### 🎯 2026-05-09 セッション 3 — PiP アニメーション + レイアウト全面リデザイン (v81→v88)
 
