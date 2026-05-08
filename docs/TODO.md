@@ -8,14 +8,17 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **自由サイジング機能セッション 3 + UX polish 完了** 反映済
-- **次セッション最優先**: 取り込み体験の総点検 — ブクマレットは天井 (popup chrome 不可避)。次は (1) Chrome 拡張 v0 設計 (2) 一括インポート (3) PiP / Booklage タブ常駐 + drag&drop インボックス。並行で重複 URL ハンドリング全導線に実装
+- **本番**: `https://booklage.pages.dev` に **bookmarklet final polish (320×320 / 右下 / 黒キャンバス / staged animation)** 反映済
+- **次セッション最優先**: Phase 1 — Chrome 拡張 v0 の設計開始 (brainstorm → spec → plan)。Phase 2 = 一括インポート、Phase 3 = PiP / Booklage タブ常駐 + drag&drop インボックス
 - **保留**: 自由サイジング機能セッション 4 (矩形選択 marquee で範囲リセット) は `docs/private/IDEAS.md` 末尾に退避済。MVP では優先度低
-- **2026-05-09 引き継ぎ**:
-  - ブクマレット popup は 240×130 ピル (画面下中央) に刷新 + height fix 済 (commit `9f43509`)
-  - **ブクマレット再インストールが必要** — 古いやつを削除して `📌 Booklage ↤ Drag me` を再ドラッグ
-  - popup の chrome (タイトル + アドレスバー) は **絶対消せない** ことが確定 → 拡張機能 / PiP に投資する方針
-  - 重複 URL ポリシー確定 (memory `project_duplicate_url_policy.md`): 確認 → 許可で重複追加可、削除済みは別扱い
+- **2026-05-09 引き継ぎ (Phase 0 完了)**:
+  - ブクマレット popup を 320×320 / 右下 20px inset / 黒フルキャンバス / 4-stage animation (Awaken → Save → Reveal → Recede) に刷新済
+  - サムネ取れたサイト (GitHub / 多くの記事) では og:image が blurred bg として乗る、無いサイトでは radial glow フォールバック
+  - **ブクマレット再インストールが必要** — 古いやつを削除して `📌 Booklage ↤ Drag me` を再ドラッグ (window 寸法が変わったので必須)
+  - 関連 spec: `docs/superpowers/specs/2026-05-09-bookmarklet-final-polish-design.md`
+  - 関連 plan: `docs/superpowers/plans/2026-05-09-bookmarklet-final-polish.md`
+  - **Phase 0 (ブクマレット polish) ＝ 終了**。ブクマレット路線はこれで打ち止め、これより Phase 1 (拡張) → Phase 2 (一括インポート) → Phase 3 (PiP) に投資移転
+  - 重複 URL ポリシー確定 (memory `project_duplicate_url_policy.md`): 確認 → 許可で重複追加可、削除済みは別扱い (Phase 1 の拡張 v0 で全導線統一実装予定)
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
 
 ### 🎯 今セッション (2026-05-08〜09) の到達点 — 自由サイジング機能セッション 3: 永続化 + リセット UI + 大量の UX polish
