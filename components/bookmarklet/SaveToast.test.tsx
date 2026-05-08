@@ -16,9 +16,15 @@ vi.mock('@/lib/board/channel', () => ({
   postBookmarkSaved: vi.fn(),
 }))
 
+let mockPipActive = false
+vi.mock('@/lib/board/pip-presence', () => ({
+  queryPipPresence: vi.fn(() => Promise.resolve(mockPipActive)),
+}))
+
 describe('SaveToast', () => {
   beforeEach(() => {
     mockParams = new URLSearchParams()
+    mockPipActive = false
   })
 
   afterEach(() => {
@@ -93,11 +99,12 @@ describe('SaveToast', () => {
     expect(img).toBeNull()
   })
 
-  it('transitions saved → recede → close at the right times', async () => {
+  it('transitions saved → recede → close at the right times (PiP not active)', async () => {
     mockParams = new URLSearchParams({
       url: 'https://example.com',
       title: 'Example',
     })
+    mockPipActive = false
     const closeMock = vi.fn()
     Object.defineProperty(window, 'close', { value: closeMock, configurable: true, writable: true })
 
@@ -124,5 +131,29 @@ describe('SaveToast', () => {
       },
       { timeout: 1000 },
     )
+  })
+
+  it('fast-closes within ~150ms when PiP is active (skips toast animation)', async () => {
+    mockParams = new URLSearchParams({
+      url: 'https://example.com',
+      title: 'Example',
+    })
+    mockPipActive = true
+    const closeMock = vi.fn()
+    Object.defineProperty(window, 'close', { value: closeMock, configurable: true, writable: true })
+
+    render(<SaveToast />)
+
+    // Should close fast — well under the ~600ms it would take to reach the 'saved'
+    // animation state in the PiP-inactive path.
+    await waitFor(
+      () => {
+        expect(closeMock).toHaveBeenCalledTimes(1)
+      },
+      { timeout: 500 },
+    )
+
+    // State should still be 'saving' when close fired (toast animation skipped).
+    expect(screen.getByTestId('save-toast').getAttribute('data-state')).toBe('saving')
   })
 })
