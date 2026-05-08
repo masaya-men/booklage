@@ -38,25 +38,28 @@ export function extractOgpFromDocument(doc: Document): OgpData {
  * Inline bookmarklet source. Mirrors extractOgpFromDocument semantics but
  * written as a compact ES5-safe IIFE.
  *
- * Flow:
+ * Popup-tucked-behind-PiP flow:
  *   1) Extract OGP inline from document (parity with extractOgpFromDocument).
- *   2) Inject a hidden iframe at <APP>/save-iframe?bookmarklet=1.
- *   3) On iframe load, postMessage `booklage:probe` and wait up to 600ms.
- *      - If the iframe replies pipActive=true, postMessage `booklage:save`
- *        (silent in-app save). Set `done=true` so the 600ms probe-timeout
- *        becomes a no-op, then arm a fresh 1500ms save-result deadline:
- *        if `booklage:save:result` arrives in time, just clean up; if it
- *        doesn't, fall back to the popup so the user isn't left with a
- *        silent failure (race-safe even when IDB write is slow).
- *      - Otherwise (pipActive=false or 600ms probe timeout): remove iframe
- *        and fall back to the legacy popup at <APP>/save?... so the
- *        bookmarklet still works when Booklage isn't open in another tab.
+ *   2) Open <APP>/save?... in a small popup (240×200) positioned at the
+ *      bottom-right corner, where the Document PiP companion (256×286 outer)
+ *      naturally sits. When PiP is open, PiP covers the popup so the user
+ *      sees only the new card sliding into PiP. When PiP is closed, the
+ *      user sees a brief save-toast in the corner that auto-closes after
+ *      ~2.1s (handled by /save page itself).
  *
- * Keep this in sync with extractOgpFromDocument. The 2000-char heuristic
- * (after __APP_URL__ substitution with https://booklage.pages.dev) is a
- * safety target, not a hard browser limit (Chrome accepts >=32KB).
+ * Why popup, not silent iframe save: Chrome's storage partitioning
+ * (Chrome 115+, Aug 2023) keys BroadcastChannel and IndexedDB by
+ * top-level-site. A booklage-origin iframe embedded in a 3rd-party page
+ * lives in the {3rd-party-site, booklage} partition — different from the
+ * booklage main tab + PiP at {booklage, booklage}. So an iframe-mediated
+ * save would write to a partition the booklage tab can't read, AND the
+ * iframe can't observe BroadcastChannel events from PiP either. The popup
+ * is a full top-level booklage tab, so it shares the {booklage, booklage}
+ * partition — bookmark-saved propagates to PiP correctly.
+ *
+ * Keep this in sync with extractOgpFromDocument.
  */
-const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,W=window,g=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},h=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},u=l.href,t=g('meta[property="og:title"]')||d.title||u,i=g('meta[property="og:image"]')||g('meta[name="twitter:image"]')||'',ds=(g('meta[property="og:description"]')||g('meta[name="description"]')||'').slice(0,200),sn=g('meta[property="og:site_name"]')||l.hostname,f=h('link[rel="icon"]')||h('link[rel="shortcut icon"]')||'/favicon.ico';if(f&&!/^https?:/.test(f)){try{f=new URL(f,u).href}catch(e){f=''}}var A='__APP_URL__',n='b'+Date.now()+Math.random().toString(36).slice(2,7),D=0,Q=0,fr=d.createElement('iframe'),P=function(){var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f});W.open(A+'/save?'+p.toString(),'booklage-save','width=320,height=320,left='+Math.max(0,screen.availWidth-340)+',top='+Math.max(0,screen.availHeight-340)+',toolbar=0,menubar=0,location=0,status=0,resizable=0,scrollbars=0')},C=function(){try{d.body.removeChild(fr)}catch(e){}W.removeEventListener('message',M)},F=function(){D=Q=1;C();P()},M=function(e){if(Q||e.source!==fr.contentWindow)return;var z=e.data;if(!z||typeof z!=='object')return;if(z.type==='booklage:probe:result'&&z.nonce==='p'+n){if(D)return;if(z.pipActive){D=1;fr.contentWindow.postMessage({type:'booklage:save',payload:{url:u,title:t,description:ds,image:i,favicon:f,siteName:sn,nonce:n}},A);setTimeout(function(){Q||F()},1500)}else F()}else if(z.type==='booklage:save:result'&&z.nonce===n){D=Q=1;C()}};fr.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';fr.src=A+'/save-iframe?bookmarklet=1';W.addEventListener('message',M);fr.onload=function(){fr.contentWindow.postMessage({type:'booklage:probe',payload:{nonce:'p'+n}},A);setTimeout(function(){if(!D)F()},600)};fr.onerror=function(){if(!D)F()};d.body.appendChild(fr)})();`
+const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,m=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},k=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},u=l.href,t=m('meta[property="og:title"]')||d.title||u,i=m('meta[property="og:image"]')||m('meta[name="twitter:image"]')||'',ds=(m('meta[property="og:description"]')||m('meta[name="description"]')||'').slice(0,200),sn=m('meta[property="og:site_name"]')||l.hostname,f=k('link[rel="icon"]')||k('link[rel="shortcut icon"]')||'/favicon.ico';if(f&&!/^https?:/.test(f)){try{f=new URL(f,u).href}catch(e){f=''}}var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f});window.open('__APP_URL__/save?'+p.toString(),'booklage-save','width=240,height=200,left='+Math.max(0,screen.availWidth-260)+',top='+Math.max(0,screen.availHeight-220)+',toolbar=0,menubar=0,location=0,status=0,resizable=0,scrollbars=0')})();`
 
 /**
  * Generate the `javascript:` URI for the Booklage bookmarklet.
