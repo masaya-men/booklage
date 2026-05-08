@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v88-2026-05-09-pip-meter-always-on'
+const CACHE_VERSION = 'v96-2026-05-09-slot-easing-opacity-blink'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

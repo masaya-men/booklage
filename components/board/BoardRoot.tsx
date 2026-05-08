@@ -14,7 +14,7 @@ import {
   clampSizeLevel,
   sizeLevelToColumnCount,
 } from '@/lib/board/size-levels'
-import type { BoardFilter, DisplayMode } from '@/lib/board/types'
+import type { BoardFilter, CardPosition, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
 import { subscribeBookmarkSaved } from '@/lib/board/channel'
@@ -87,10 +87,19 @@ export function BoardRoot() {
   const [newlyAddedIds, setNewlyAddedIds] = useState<ReadonlySet<string>>(new Set())
   const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
   const [actionSheet, setActionSheet] = useState<{ pngDataUrl: string; shareUrl: string } | null>(null)
+  // When focusCard is called for a bookmark not in the current filtered view
+  // (e.g. user is on `mood:foo` but the PiP-clicked card has different tags),
+  // we clear the filter to 'all' and stash the cardId here. The retry useEffect
+  // below picks this up after filteredItems re-renders and completes the scroll.
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
   const [sizeLevel, setSizeLevel] = useState<SizeLevel>(DEFAULT_SIZE_LEVEL)
   const pip = usePipWindow()
   const handleCardClickFromPip = useCallback((cardId: string) => {
     if (typeof window !== 'undefined') {
+      // PiP click is a valid user gesture; Chrome lets us pull the opener tab
+      // to the foreground. focusCard handles the case where the card is
+      // filtered out of the current view by clearing the filter first.
+      window.focus()
       window.dispatchEvent(new CustomEvent('booklage:focus-card', { detail: { cardId } }))
     }
   }, [])
@@ -348,9 +357,12 @@ export function BoardRoot() {
   )
 
   // ScrollMeter click/drag → animated scroll-to-y. requestAnimationFrame loop
-  // with cubic ease-out so jumps feel directed but never abrupt. While the
-  // user is actively dragging the meter (multiple onScrollTo calls per frame)
-  // we cancel any in-flight tween and snap so the meter tracks the pointer.
+  // with ease-in-out cubic — soft start AND soft end so long jumps feel
+  // cinematic instead of slingshot. Duration scales with distance so tiny
+  // corrections stay snappy while big jumps get the full luxurious arc.
+  // While the user is actively dragging the meter (multiple onScrollTo
+  // calls per frame) we cancel any in-flight tween and snap so the meter
+  // tracks the pointer.
   const scrollAnimRef = useRef<number | null>(null)
   const lastJumpAtRef = useRef<number>(0)
   const handleScrollMeterJump = useCallback((targetY: number): void => {
@@ -367,10 +379,28 @@ export function BoardRoot() {
     }
     const startY = viewport.y
     const start = performance.now()
-    const duration = 380
+    const distance = Math.abs(targetY - startY)
+    // 750ms base + ~70ms per 1000px, capped at 1600ms. The Expo easing's
+    // soft tails need real time to register — anything under ~700ms feels
+    // abrupt no matter how extreme the curve is. With 750ms minimum, even
+    // tiny corrections get the slow-inhale-slow-settle "rich" feel; long
+    // jumps can stretch past a second of cinematic arc.
+    const duration = Math.min(3000, 1800 + distance * 0.07)
+    // Power-30 exponential easing — slot-machine pre-alignment feel.
+    // First ~30% and last ~30% of the duration are visibly motionless
+    // (sub-pixel motion over hundreds of ms); the middle ~40% covers
+    // ~95% of the distance. Symmetric, so both the inhale into motion
+    // and the settle to rest read as "almost stopping, almost there".
+    const easeInOutSlotExpo = (p: number): number => {
+      if (p <= 0) return 0
+      if (p >= 1) return 1
+      return p < 0.5
+        ? Math.pow(2, 30 * p - 15) / 2
+        : (2 - Math.pow(2, -30 * p + 15)) / 2
+    }
     const tick = (t: number): void => {
       const p = Math.min(1, (t - start) / duration)
-      const eased = 1 - Math.pow(1 - p, 3)
+      const eased = easeInOutSlotExpo(p)
       setViewport((v) => ({
         ...v,
         y: Math.max(0, Math.min(startY + (targetY - startY) * eased, contentBounds.height - v.h)),
@@ -384,31 +414,72 @@ export function BoardRoot() {
     scrollAnimRef.current = requestAnimationFrame(tick)
   }, [viewport.y, contentBounds.height])
 
-  // Focus a card by ID — used by ?focus=<cardId> URL param and PiP card click.
-  // Computes the smooth-scroll target via computeFocusScrollY and reuses the
-  // existing handleScrollMeterJump easing. After scroll, applies a 600ms glow
-  // halo via data-glowing attribute (CSS animation in CardNode.module.css).
-  const focusCard = useCallback((cardId: string): void => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const node = canvas.querySelector<HTMLElement>(`[data-card-id="${cardId}"]`)
-    if (!node) return
-    const rect = node.getBoundingClientRect()
-    const canvasRect = canvas.getBoundingClientRect()
-    const cardYInCanvas = rect.top - canvasRect.top + viewport.y
+  // Inner scroll-and-glow primitive driven by the layout's stored position
+  // for the card, NOT a DOM measurement. CardsLayer culls off-screen cards
+  // out of the DOM (perf optimisation), so a DOM lookup at click time will
+  // miss any card more than a viewport-buffer away from the current scroll.
+  // The layout always knows where the card belongs, regardless of culling.
+  const doFocus = useCallback((cardId: string, pos: CardPosition): void => {
+    const cardYInCanvas = pos.y + BOARD_TOP_PAD_PX
     const targetY = computeFocusScrollY({
       cardY: cardYInCanvas,
-      cardH: rect.height,
+      cardH: pos.h,
       viewportH: viewport.h,
       contentH: contentBounds.height,
     })
     handleScrollMeterJump(targetY)
-    // Glow halo: trigger after the scroll's 380ms animation completes.
+    // Glow lands after the scroll completes — by then the card is inside
+    // the viewport-cull window so it's in the DOM. Match the scroll's
+    // distance-scaled duration (see handleScrollMeterJump) and retry a few
+    // frames in case React hasn't yet painted the newly-visible card.
+    const distance = Math.abs(targetY - viewport.y)
+    const scrollDuration = Math.min(3000, 1800 + distance * 0.07)
+    // Glow fires AFTER the scroll fully settles — never during. Three
+    // opacity blinks at 1800ms each (5400ms total) — opacity instead of
+    // box-shadow because the latter is invisible on white cards. Tempo
+    // is constant regardless of distance.
     window.setTimeout(() => {
-      node.setAttribute('data-glowing', 'true')
-      window.setTimeout(() => node.removeAttribute('data-glowing'), 600)
-    }, 380)
-  }, [viewport, contentBounds.height, handleScrollMeterJump])
+      let attempts = 0
+      const tryGlow = (): void => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const node = canvas.querySelector<HTMLElement>(`[data-card-id="${cardId}"]`)
+        if (node) {
+          node.setAttribute('data-glowing', 'true')
+          window.setTimeout(() => node.removeAttribute('data-glowing'), 5400)
+          return
+        }
+        if (attempts++ < 6) requestAnimationFrame(tryGlow)
+      }
+      requestAnimationFrame(tryGlow)
+    }, scrollDuration + 60)
+  }, [viewport.h, viewport.y, contentBounds.height, handleScrollMeterJump])
+
+  // Focus a card by ID — used by ?focus=<cardId> URL param and PiP card click.
+  // If the card isn't in the current filter's layout (e.g. user is on a mood
+  // filter that excludes the bookmark), clear the filter to 'all' and stash
+  // the cardId; the retry useEffect below completes the scroll once
+  // layout.positions catches up with the new filteredItems.
+  const focusCard = useCallback((cardId: string): void => {
+    const pos = layout.positions[cardId]
+    if (!pos) {
+      setActiveFilter('all')
+      setPendingFocusId(cardId)
+      return
+    }
+    doFocus(cardId, pos)
+  }, [layout.positions, doFocus])
+
+  // Retry path — fires after a filter clear when pendingFocusId is set,
+  // once layout.positions has the card. layout.positions is in deps so we
+  // re-evaluate when filteredItems re-renders.
+  useEffect(() => {
+    if (!pendingFocusId) return
+    const pos = layout.positions[pendingFocusId]
+    if (!pos) return
+    doFocus(pendingFocusId, pos)
+    setPendingFocusId(null)
+  }, [pendingFocusId, layout.positions, doFocus])
 
   // ?focus=<cardId> URL param + booklage:focus-card CustomEvent listener.
   useEffect(() => {
@@ -416,7 +487,6 @@ export function BoardRoot() {
     const url = new URL(window.location.href)
     const focusId = url.searchParams.get('focus')
     if (focusId) {
-      // Defer to allow layout to settle.
       requestAnimationFrame(() => focusCard(focusId))
       url.searchParams.delete('focus')
       window.history.replaceState({}, '', url.toString())

@@ -8,33 +8,42 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **PiP カルーセル化 + ライトボックス風スクロール完了 (v88)**
-- **Service Worker**: `v88-2026-05-09-pip-meter-always-on`
-- **PiP polish 一区切り済**: 旧 fan stack → カルーセル + 全カード native aspect + ライトボックス風 700ms power4.out スクロール + メーター常時表示 + 1 枚目スーッと入場 + 右に append (1,2,3,...)
+- **本番**: `https://booklage.pages.dev` に **PiP カード click → 親タブ focus + 該当ブクマへ slot-machine 風 smooth scroll + 透過度明滅 3 回** が deploy 済 (2026-05-09 セッション 4)
+- **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink`
+- **PiP click → board focus 完成済 (リッチ仕上げ)**:
+  - `window.focus()` で親タブを前面に
+  - `layout.positions[cardId]` ベースで scroll target 算出 (viewport culling 関係なく動く)
+  - filter 除外時は `'all'` に自動切替
+  - **scroll**: hyper-Expo (power 30) + 1800ms base + 0.07/px + cap 3000ms — 両端 ~30% 停滞、中間で大半移動
+  - **明滅**: scroll 完了後に `.cardNode` の `opacity` を 1 → 0.45 → 1 を 3 回 (1800ms × 3 = 5400ms)。box-shadow は白カードで見えないので opacity に変更
+- **Plan 2 plan 書き上げ済**: `docs/superpowers/plans/2026-05-09-extension-v0-plan2-package.md` — Group 0 (bookmarklet/PiP 被り解消) → A (拡張 skeleton) → B (save pipeline) → C (cursor pill) → D (settings) → E (tests) → F (distribution)。次セッションはここから着手
 
-### 次セッションの最優先 — 残スコープ整理
+### 次セッションの最優先 — Plan 2 を実行
 
-**ブクマ追加の流れ全部 + Chrome 拡張 + PiP 完全連携が未完です**。今日やったのは PiP の見た目 polish のみ。広い設計スコープ（spec: `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`）に対して、進捗:
+1. `docs/superpowers/plans/2026-05-09-extension-v0-plan2-package.md` を読む
+2. 実行モードを選ぶ:
+   - **Subagent-driven (推奨)**: タスクごとに fresh subagent を dispatch、checkpoint で review。fast iteration
+   - **Inline execution**: 同一セッションで `superpowers:executing-plans` で連続実行、batch checkpoint
+3. Group 0 から順に進める。Group 0.5 (bookmarklet IIFE 改修) で **bookmarklet 再登録が必要になる** — ユーザーに案内
+4. Group A.4 sideload 完了時点で「拡張機能、自分で 1 回読み込んでみてください」と user に案内する
+5. Group F.3 (Web Store 申請) は user が能動的にやる必要がある (developer fee 等)
+
+### 残スコープ整理
+
+spec: `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`
 
 | エリア | 状態 |
 |---|---|
 | `/save-iframe` postMessage endpoint | ✅ Plan 1 済 |
 | PiP companion UI (in-tab, Document PiP) | ✅ Plan 1 + 今日 polish 済 |
-| `?focus=cardId` 仕組み + PiP card click → board glow | ✅ コード上は wired（同タブ内 CustomEvent）。**ただし parent tab/window へ focus を移す挙動は未実装** — PiP 内クリック→裏のボードが scroll するが見えない |
-| ブックマークレット (Phase 0) | ⚠️ 実装済も実機未検証 |
-| 重複 URL ポリシー全導線統一 | ❌ 未実装（bookmarklet と /save-iframe で同 URL 多重保存される） |
-| **Chrome 拡張 v0 (Manifest v3 パッケージ)** | ❌ **完全未着手**。Plan 2 ドキュメントすら未作成 |
-| Cursor pill (PiP 無時の保存インジケータ §6) | ❌ 未実装 |
-| 拡張内設定 UI (§9) | ❌ 未実装 |
-| 拡張の test + 配布 (§10, §11) | ❌ 未実装 |
-
-**着手の自然な順序の提案** (要相談):
-
-1. **Plan 2 plan を書く** — Chrome 拡張パッケージ本体の着手前段。spec §7 の manifest / 構造を実装単位に分解
-2. **PiP click → parent tab focus** の小修正 (現状 background の board が scroll してるだけ → window.focus() 等)
-3. **重複 URL ポリシー** の全導線統一（save-iframe, bookmarklet, 拡張）
-4. **Cursor pill** 実装 (PiP 無効時の保存可視化、独立して進行可能)
-5. **Chrome 拡張本体** (Plan 2 〜 N) — manifest, background SW, content script, PiP iframe origin 切替、設定 UI、配布
+| `?focus=cardId` 仕組み + PiP card click → board focus | ✅ Plan 1 + 今日 `window.focus()` 追加で完了、本番反映済 |
+| ブックマークレット (Phase 0) | ⚠️ 実装済も実機未検証。Plan 2 Group 0 で IIFE 改修 → 再登録要 |
+| **bookmarklet/PiP 被り問題** (PiP 出てる時に popup と PiP が両方出る) | ❌ Plan 2 Group 0 で解消予定 (silent iframe save) |
+| 重複 URL ポリシー全導線統一 | ❌ 未実装。Plan 2 後の別フェーズ |
+| **Chrome 拡張 v0 (Manifest v3 パッケージ)** | ❌ **未着手**。Plan 2 plan は完成、実行待ち |
+| Cursor pill (PiP 無時の保存インジケータ §6) | ❌ 未実装。Plan 2 Group C |
+| 拡張内設定 UI (§9) | ❌ 未実装。Plan 2 Group D |
+| 拡張の test + 配布 (§10, §11) | ❌ 未実装。Plan 2 Group E + F |
 
 ### 保留中の他タスク
 
