@@ -24,7 +24,14 @@ const PIP_HEIGHT = 320
 
 export function usePipWindow(): PipWindowApi {
   const [pipWindow, setPipWindow] = useState<Window | null>(null)
-  const isSupported = typeof window !== 'undefined' && 'documentPictureInPicture' in window
+  // SSR-safe support detection: hydration starts with isSupported=false to
+  // match the prerendered HTML, then promotes to true on the client after
+  // mount. Without this, statically exported pages render <button disabled>
+  // and React 19's strict hydration keeps the disabled state.
+  const [isSupported, setIsSupported] = useState(false)
+  useEffect(() => {
+    setIsSupported(typeof window !== 'undefined' && 'documentPictureInPicture' in window)
+  }, [])
 
   const open = useCallback(async (): Promise<void> => {
     if (!isSupported) return

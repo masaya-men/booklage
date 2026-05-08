@@ -1,37 +1,45 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { PipCompanion } from './PipCompanion'
 
+let savedHandler: ((msg: { bookmarkId: string }) => void) | null = null
+
 vi.mock('@/lib/storage/indexeddb', () => ({
-  initDB: vi.fn().mockResolvedValue({}),
-  getRecentBookmarks: vi.fn().mockResolvedValue([]),
+  initDB: vi.fn().mockResolvedValue({
+    get: vi.fn().mockImplementation((_store: string, id: string) =>
+      Promise.resolve({ id, title: `Title ${id}`, thumbnail: '', favicon: '', url: '' }),
+    ),
+  }),
 }))
 
 vi.mock('@/lib/board/channel', () => ({
-  subscribeBookmarkSaved: vi.fn(() => () => {}),
+  subscribeBookmarkSaved: vi.fn((handler: (msg: { bookmarkId: string }) => void) => {
+    savedHandler = handler
+    return () => { savedHandler = null }
+  }),
 }))
 
 describe('PipCompanion', () => {
   beforeEach(() => {
+    savedHandler = null
     vi.clearAllMocks()
   })
 
-  it('renders empty state when no bookmarks exist', async () => {
-    const { getRecentBookmarks } = await import('@/lib/storage/indexeddb')
-    ;(getRecentBookmarks as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+  it('renders empty state on mount (no initial IDB read of past bookmarks)', () => {
     render(<PipCompanion onClose={() => {}} />)
-    await waitFor(() => {
-      expect(screen.getByTestId('pip-empty-state')).toBeTruthy()
-    })
+    expect(screen.getByTestId('pip-empty-state')).toBeTruthy()
   })
 
-  it('renders stack when bookmarks exist', async () => {
-    const { getRecentBookmarks } = await import('@/lib/storage/indexeddb')
-    ;(getRecentBookmarks as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-      { id: 'b1', title: 'Card 1', thumbnail: '', favicon: '', savedAt: '2026-05-09T10:00:00Z', url: '' },
-      { id: 'b2', title: 'Card 2', thumbnail: '', favicon: '', savedAt: '2026-05-09T11:00:00Z', url: '' },
-    ])
+  it('switches to stack when a new bookmark-saved event arrives', async () => {
     render(<PipCompanion onClose={() => {}} />)
+    expect(screen.getByTestId('pip-empty-state')).toBeTruthy()
+
+    // Simulate the BroadcastChannel callback firing.
+    expect(savedHandler).toBeTruthy()
+    await act(async () => {
+      await savedHandler?.({ bookmarkId: 'b1' })
+    })
+
     await waitFor(() => {
       expect(screen.getByTestId('pip-stack')).toBeTruthy()
     })
@@ -40,11 +48,6 @@ describe('PipCompanion', () => {
   it('calls onClose when × is clicked', async () => {
     const onClose = vi.fn()
     render(<PipCompanion onClose={onClose} />)
-    // Wait for the loaded render to settle (avoid clicking the loading-state
-    // button which gets unmounted by the loaded-state re-render).
-    await waitFor(() => {
-      expect(screen.getByTestId('pip-empty-state')).toBeTruthy()
-    })
     fireEvent.click(screen.getByTestId('pip-close'))
     expect(onClose).toHaveBeenCalled()
   })

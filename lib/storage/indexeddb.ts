@@ -790,21 +790,6 @@ export async function getAllBookmarks(
 }
 
 /**
- * Return the N most recently saved bookmarks, excluding soft-deleted entries.
- * Used by the PiP companion to populate its 5-card stack.
- */
-export async function getRecentBookmarks(
-  db: IDBPDatabase<BooklageDB>,
-  limit: number = 5,
-): Promise<BookmarkRecord[]> {
-  const all = await db.getAll('bookmarks')
-  return all
-    .filter((b) => !b.isDeleted)
-    .sort((a, b) => (a.savedAt < b.savedAt ? 1 : a.savedAt > b.savedAt ? -1 : 0))
-    .slice(0, limit)
-}
-
-/**
  * Add multiple bookmarks in batches with associated cards.
  * Writes are batched across transactions for performance on large imports.
  * @param db - The database instance
