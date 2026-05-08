@@ -129,15 +129,14 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toContain('H=160')
   })
 
-  it('positions popup at center-bottom (avoids overlap with PiP at corners)', () => {
+  it('positions popup at bottom-right (PiP default location, popup tucks behind PiP)', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    // Horizontal center: (availWidth - W) / 2
-    expect(uri).toContain('(screen.availWidth-W)/2')
+    // Right edge: availWidth - W - 20 inset
+    expect(uri).toContain('screen.availWidth-W-20')
     // Bottom: availHeight - H - 20 inset
     expect(uri).toContain('screen.availHeight-H-20')
-    // Old corner-positioning math must be gone
-    expect(uri).not.toContain('screen.availWidth-340')
-    expect(uri).not.toContain('screen.availWidth-260')
+    // Old center-bottom math must be gone
+    expect(uri).not.toContain('(screen.availWidth-W)/2')
   })
 
   it('opens via window.open at /save (popup-only flow, no iframe)', () => {
