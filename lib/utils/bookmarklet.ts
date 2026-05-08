@@ -36,12 +36,23 @@ export function extractOgpFromDocument(doc: Document): OgpData {
 
 /**
  * Inline bookmarklet source. Mirrors extractOgpFromDocument semantics but
- * written as a compact ES5-safe IIFE so the `javascript:` URI stays well
- * under the 2000-char browser limit and works on arbitrary pages.
+ * written as a compact ES5-safe IIFE.
  *
- * Keep this in sync with extractOgpFromDocument.
+ * Flow:
+ *   1) Extract OGP inline from document (parity with extractOgpFromDocument).
+ *   2) Inject a hidden iframe at <APP>/save-iframe?bookmarklet=1.
+ *   3) On iframe load, postMessage `booklage:probe` and wait up to 600ms.
+ *      - If the iframe replies pipActive=true, postMessage `booklage:save`
+ *        (silent in-app save) and remove the iframe.
+ *      - Otherwise (pipActive=false or timeout): remove iframe and fall back
+ *        to the legacy popup at <APP>/save?... so the bookmarklet still
+ *        works when Booklage isn't open in another tab.
+ *
+ * Keep this in sync with extractOgpFromDocument. The 2000-char heuristic
+ * (after __APP_URL__ substitution with https://booklage.pages.dev) is a
+ * safety target, not a hard browser limit (Chrome accepts >=32KB).
  */
-const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,m=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},k=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},u=l.href,t=m('meta[property="og:title"]')||d.title||u,i=m('meta[property="og:image"]')||m('meta[name="twitter:image"]')||'',ds=(m('meta[property="og:description"]')||m('meta[name="description"]')||'').slice(0,200),sn=m('meta[property="og:site_name"]')||l.hostname,f=k('link[rel="icon"]')||k('link[rel="shortcut icon"]')||'/favicon.ico';if(f&&!/^https?:/.test(f)){try{f=new URL(f,u).href}catch(e){f=''}}var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f});window.open('__APP_URL__/save?'+p.toString(),'booklage-save','width=320,height=320,left='+Math.max(0,(screen.availWidth-340))+',top='+Math.max(0,(screen.availHeight-340))+',toolbar=0,menubar=0,location=0,status=0,resizable=0,scrollbars=0')})();`
+const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,W=window,g=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},h=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},u=l.href,t=g('meta[property="og:title"]')||d.title||u,i=g('meta[property="og:image"]')||g('meta[name="twitter:image"]')||'',ds=(g('meta[property="og:description"]')||g('meta[name="description"]')||'').slice(0,200),sn=g('meta[property="og:site_name"]')||l.hostname,f=h('link[rel="icon"]')||h('link[rel="shortcut icon"]')||'/favicon.ico';if(f&&!/^https?:/.test(f)){try{f=new URL(f,u).href}catch(e){f=''}}var A='__APP_URL__',n='b'+Date.now()+Math.random().toString(36).slice(2,7),done=false,fr=d.createElement('iframe'),P=function(){var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f});W.open(A+'/save?'+p.toString(),'booklage-save','width=320,height=320,left='+Math.max(0,screen.availWidth-340)+',top='+Math.max(0,screen.availHeight-340)+',toolbar=0,menubar=0,location=0,status=0,resizable=0,scrollbars=0')},C=function(){try{d.body.removeChild(fr)}catch(e){}W.removeEventListener('message',M)},F=function(){done=true;C();P()},M=function(e){if(done||e.source!==fr.contentWindow)return;var z=e.data;if(!z||typeof z!=='object')return;if(z.type==='booklage:probe:result'&&z.nonce==='p'+n){if(z.pipActive){fr.contentWindow.postMessage({type:'booklage:save',payload:{url:u,title:t,description:ds,image:i,favicon:f,siteName:sn,nonce:n}},A)}else F()}else if(z.type==='booklage:save:result'&&z.nonce===n){done=true;C()}};fr.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';fr.src=A+'/save-iframe?bookmarklet=1';W.addEventListener('message',M);fr.onload=function(){fr.contentWindow.postMessage({type:'booklage:probe',payload:{nonce:'p'+n}},A);setTimeout(function(){if(!done)F()},600)};fr.onerror=function(){if(!done)F()};d.body.appendChild(fr)})();`
 
 /**
  * Generate the `javascript:` URI for the Booklage bookmarklet.
