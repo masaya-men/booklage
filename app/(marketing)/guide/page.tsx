@@ -1,15 +1,36 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { generateBookmarkletUri } from '@/lib/utils/bookmarklet'
+
 export const metadata: Metadata = {
   title: 'Guide',
   description:
     'Booklage の使い方ガイド — ブックマークレットの設置から、ボード上でのコラージュ操作まで。',
 }
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://booklage.pages.dev'
+
 export default function GuidePage(): React.ReactElement {
+  const bookmarkletUri = generateBookmarkletUri(APP_URL)
   return (
     <>
+      <aside className="guide-callout" role="note" aria-label="bookmarklet update notice">
+        <h2>ブックマークレットを更新しました (2026-05-09)</h2>
+        <p>
+          PiP 表示中は popup なしの静かな保存に切り替わります。それ以外は従来どおりです。
+          古いブックマークレットも引き続き動作はしますが、PiP との見た目被り問題が残るため、入れ替えを推奨します。
+        </p>
+        <p>
+          下のリンクをブックマークバーへ <strong>ドラッグ&ドロップ</strong> してください。
+        </p>
+        <p>
+          <a className="bookmarklet-drag" href={bookmarkletUri} draggable>
+            📌 Booklage に保存
+          </a>
+        </p>
+      </aside>
+
       <h1>Guide</h1>
       <p className="updated">使い方ガイド</p>
 

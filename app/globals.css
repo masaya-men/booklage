@@ -484,6 +484,55 @@ ol {
   color: var(--color-text-primary);
 }
 
+.static-main .guide-callout {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-accent-primary) 6%, transparent);
+}
+
+.static-main .guide-callout h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-primary);
+}
+
+.static-main .guide-callout p {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.static-main .guide-callout p:last-child {
+  margin-bottom: 0;
+}
+
+.static-main .guide-callout .bookmarklet-drag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: 8px;
+  background: var(--color-bg-primary);
+  color: var(--color-accent-primary);
+  text-decoration: none;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+  cursor: grab;
+  transition: background var(--duration-fast) ease;
+}
+
+.static-main .guide-callout .bookmarklet-drag:hover {
+  background: color-mix(in srgb, var(--color-accent-primary) 8%, transparent);
+}
+
+.static-main .guide-callout .bookmarklet-drag:active {
+  cursor: grabbing;
+}
+
 .static-table {
   width: 100%;
   border-collapse: collapse;
