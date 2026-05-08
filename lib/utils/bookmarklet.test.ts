@@ -122,22 +122,21 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toMatch(/\(function\(\)\{[\s\S]*\}\)\(\);?$/)
   })
 
-  it('uses 240x130 toast-pill popup dims (130 includes browser chrome)', () => {
+  it('uses 320x320 square popup dims', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('width=240')
-    // 130 leaves ~60-70px of HTML viewport after the OS title bar +
-    // address bar, enough for the 40px pill plus breathing room.
-    expect(uri).toContain('height=130')
+    expect(uri).toContain('width=320')
+    expect(uri).toContain('height=320')
   })
 
-  it('positions popup at bottom-center via dynamic left + top calc', () => {
+  it('positions popup at bottom-right via dynamic left + top calc (20px inset)', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    // Horizontal: (screen.width-240)/2 keeps the pill horizontally centered.
-    expect(uri).toMatch(/left=.*screen\.width-240.*\/2/)
-    // Vertical: pin to the bottom edge minus popup height + 24px margin.
-    // availHeight excludes the OS taskbar/dock when supported.
-    expect(uri).toMatch(/screen\.availHeight\|\|screen\.height/)
-    expect(uri).toMatch(/top=.*sh-154/)
+    // Right edge: availWidth - 320 - 20 = availWidth - 340
+    expect(uri).toContain('screen.availWidth-340')
+    // Bottom edge: availHeight - 320 - 20 = availHeight - 340
+    expect(uri).toContain('screen.availHeight-340')
+    // Old centred-bottom math must be gone
+    expect(uri).not.toContain('(screen.width-240)/2')
+    expect(uri).not.toContain('sh-154')
   })
 
   it('includes Booklage origin', () => {
