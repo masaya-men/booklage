@@ -6,7 +6,7 @@
 //   - Skip: API calls, non-GET requests
 
 // Bump on each deploy to force clients to flush old caches.
-const CACHE_VERSION = 'v75-2026-05-09-pip-canary'
+const CACHE_VERSION = 'v80-2026-05-09-pip-256-layout-fit'
 const CACHE_NAME = 'booklage-' + CACHE_VERSION
 
 var PRECACHE_URLS = [

@@ -8,32 +8,70 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **Chrome 拡張 v0 — Plan 1 (Booklage 基盤) + 各種 fix 適用済**
-- **Service Worker**: `v75-2026-05-09-pip-canary`
-- **次セッション最優先**: **PiP の実機検証** (詳細は下記 known issue 参照) — 解決後に Plan 2 (Chrome 拡張本体) へ
+- **本番**: `https://booklage.pages.dev` に **Chrome 拡張 v0 Plan 1 + PiP polish 完了 (v80)**
+- **Service Worker**: `v80-2026-05-09-pip-256-layout-fit`
+- **次セッション最優先**: **PiP のアニメーション改善 (slide-in, scan-reveal, サムネ差し替えトランジション等)**
 - **保留**: 自由サイジング機能セッション 4 (矩形選択 marquee で範囲リセット) は `docs/private/IDEAS.md` 末尾に退避済
+- **保留**: TikTok サムネ動作の実機確認 (実装済、ユーザー未検証)
 
-### 🔴 既知の問題 (2026-05-09 セッション末)
+### 🎯 2026-05-09 セッション 2 完了内容 — PiP サイズ + サムネ parity
 
-**PiP が ユーザー実機で巨大表示・アニメ無効・スタック重なり** という症状が継続。一方 **Playwright で本番環境を直接検証した結果、deploy 済みコードは完全正常**:
-- PiP title canary `"Booklage [v75]"` 出てる
-- console warning `[Booklage PiP v75] injected 447 CSS rules across 2 parent sheets` 出てる
-- `.host` computed style `319.998px × 319.998px` (= 320×320 完璧)
-- CSS は inline `<style>` で 447 rules 注入済 (link じゃなく)
+前セッションで残った PiP の実機検証問題を解決し、サイズと位置を industry-standard に整え、サムネイル取得をボード本体と parity させた。**v76 → v80 まで段階的 deploy**。
 
-→ **ユーザー側ブラウザ環境固有の問題**。SW unregister + cache 全削除コマンドを試しても回復せず。考えられる原因:
-1. ユーザーの Chrome バージョンが PiP API の挙動が違う build (要確認: `chrome://version`)
-2. Chrome のサイトデータが完全リセットされてない (Settings → Site Settings → booklage.pages.dev → Clear data 試す)
-3. ブラウザ拡張機能 (uBlock 等) が干渉してる
-4. Windows 側の何か (ディスプレイスケーリング etc)
+**PiP ウィンドウの sizing/positioning ([lib/board/pip-window.ts](../lib/board/pip-window.ts))**:
+- `requestWindow` の inner request を **320 → 256** に縮小 (Spotify Miniplayer の square 下限 ~300 と Chrome 絶対下限 ~240 の中間)
+- `preferInitialWindowPlacement: true` (Chrome 130+) を追加 → **再起動時にユーザー移動位置を無視してデフォルト右下に戻る** (これが効いた、ユーザー検証済)
+- `win.resizeTo()` と `win.moveTo()` は Document PiP では仕様上**完全無視**されると判明 → コードからも撤去
+- 初回 outer 報告は opener の値が誤って返るため、診断は `inner` のみ信頼可
+- `win.outerWidth/Height` の log 値は壊れてる (1489×800 等が出る) — 実態は inner = request サイズ
 
-**次セッションの最初**: ユーザーに以下を聞く
-- `chrome://version` でバージョン
-- Chrome の他のプロファイル / シークレット window で再現するか
-- 別ブラウザ (Edge) で再現するか
-- 他の Document PiP サンプル (例: Chrome の公式デモページ) が普通に動くか
+**サムネイル parity ([lib/pip/resolve-thumbnail.ts](../lib/pip/resolve-thumbnail.ts) 新規)**:
+- ボード本体の backfill ロジックを PiP companion 側でも実行する resolver を新規作成
+- **Twitter/X**: `fetchTweetMeta(tweetId)` → `photoUrl` または `videoPosterUrl` (X デフォルト thumb の場合のみ backfill)
+- **YouTube**: `getYoutubeThumb(url, 0)` で `i.ytimg.com/maxresdefault.jpg` を pure 生成
+- **TikTok**: `fetchTikTokMeta(url)` (oEmbed 経由) で `thumbnailUrl`
+- **Instagram + Web**: 既存 og:image をそのまま信頼
+- 楽観的更新で **即 slide-in → 数百ms 後にサムネ差し替え** (delay 体感ゼロ)
+- 単体テスト 10 件 (`tests/lib/resolve-thumbnail.test.ts`)、全 371/371 pass
 
-これで切り分けすれば、Booklage 固有問題か Chrome/環境問題かが判明する。
+**PiP 内部レイアウトの 256 適合**:
+- `.host` 320 固定 → `100% / 100%` (ロゴ位置ズレ修正)
+- カード寸法 280×170 → **224×136** (0.8 倍)、margin-left -140 → -112
+- 5 カードの 3D 奥行 translate (pos1〜pos4) を全部 0.8 倍に縮小、bottom 36 → 28、hover lift -8/30 → -6/24
+
+**重要な学び (memory にも記録すべき)**:
+- **`win.resizeTo()` は Document PiP で完全無効** (Chrome 仕様)
+- **`win.moveTo()` も同様に完全無効** — preferInitialWindowPlacement で代替
+- **`win.outerWidth/Height` は不正な値**を返す (opener の値が混入する)、診断には `innerWidth/Height` を使う
+- Chrome は Document PiP のタイトルバーに **必ず origin** を表示する (document.title はほぼ無視、フィッシング対策)
+- **ブクマレット popup は `window.open` で width=320,height=320 inner**、PiP の inner と同等。outer 比較する時は Chrome browser chrome (~80px) を考慮要
+
+**サイズ感の最終決定**: **256×256 inner** (= outer ~256×286 with title bar)
+- Spotify Miniplayer (~300×300) より小さい
+- Chrome 絶対下限 240 より十分上
+- ユーザーが「とても良い」と確定済み (2026-05-09)
+
+**ユーザー検証済**:
+- ✅ サイズ 256 が好ましい
+- ✅ Booklage ロゴ (empty state) 中央配置
+- ✅ Tweet サムネ表示 (syndication backfill 動作)
+- ✅ YouTube サムネ表示 (i.ytimg.com 直接)
+- ✅ Web 一般 (Apple og:image)
+- ✅ 再起動時のデフォルト位置リセット (preferInitialWindowPlacement)
+- ⏸ TikTok サムネ (実機未検証だが実装済)
+
+### 次セッション最優先: PiP アニメーション ブラッシュアップ
+
+ユーザーから「アニメは別途改善が必要、サイズ + サムネ完了したらブラッシュアップに進む」と明言。
+着手対象 (要相談):
+- カード slide-in (現状: bottom-from translate)
+- サムネ差し替え時のトランジション (X デフォルト → 実画像、いまは img src 切り替えだけで唐突)
+- PipCard の scan-reveal (clip-path 0 → 100% on imgLoaded)
+- empty → stack 切替時のアニメ
+- カード hover pull-forward の手触り
+- 5 枚スタックの奥行表現
+
+`components/pip/Pip*.module.css` 内の transition / @keyframes が touch points。
 
 ### 🎯 2026-05-09 セッション完了内容 (Phase 1 / Plan 1)
 

@@ -16,10 +16,12 @@
 
 .slot {
   position: absolute;
-  bottom: 36px;
+  bottom: 28px;
   left: 50%;
   transform-origin: center bottom;
-  margin-left: -140px;
+  /* margin-left = -(card width / 2) so the slot centers horizontally;
+   * card is 224px wide. */
+  margin-left: -112px;
   cursor: pointer;
   transition:
     transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -27,14 +29,17 @@
   will-change: transform, opacity;
 }
 
+/* All translate/scale offsets are scaled by 0.8 from the original 320-stage
+ * values so the 5-card depth recession reads identically inside a 256-wide
+ * inner viewport. */
 .pos0 { transform: translate3d(0, 0, 0)         scale(1.00) rotate(0deg);  opacity: 1.0;  z-index: 5; }
-.pos1 { transform: translate3d(0, -16px, -20px) scale(0.94) rotate(-1deg); opacity: 0.85; z-index: 4; }
-.pos2 { transform: translate3d(0, -34px, -42px) scale(0.88) rotate(-2deg); opacity: 0.66; z-index: 3; }
-.pos3 { transform: translate3d(0, -54px, -66px) scale(0.82) rotate(-3deg); opacity: 0.46; z-index: 2; }
-.pos4 { transform: translate3d(0, -76px, -90px) scale(0.76) rotate(-4deg); opacity: 0.28; z-index: 1; }
+.pos1 { transform: translate3d(0, -13px, -16px) scale(0.94) rotate(-1deg); opacity: 0.85; z-index: 4; }
+.pos2 { transform: translate3d(0, -27px, -34px) scale(0.88) rotate(-2deg); opacity: 0.66; z-index: 3; }
+.pos3 { transform: translate3d(0, -43px, -53px) scale(0.82) rotate(-3deg); opacity: 0.46; z-index: 2; }
+.pos4 { transform: translate3d(0, -61px, -72px) scale(0.76) rotate(-4deg); opacity: 0.28; z-index: 1; }
 
 .slot.hovered {
-  transform: translate3d(0, -8px, 30px) scale(1.05) rotate(0deg) !important;
+  transform: translate3d(0, -6px, 24px) scale(1.05) rotate(0deg) !important;
   opacity: 1 !important;
   z-index: 100 !important;
 }

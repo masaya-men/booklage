@@ -13,14 +13,28 @@ export interface PipWindowApi {
 declare global {
   interface Window {
     documentPictureInPicture?: {
-      requestWindow(opts: { width: number; height: number }): Promise<Window>
+      requestWindow(opts: {
+        width: number
+        height: number
+        // Chrome 130+: when true, the browser opens the PiP window at its
+        // default placement (bottom-right of work area) instead of the
+        // last user-resized/moved position cached for this origin. Without
+        // this, every reopen lands wherever the user dragged it last.
+        preferInitialWindowPlacement?: boolean
+      }): Promise<Window>
       window: Window | null
     }
   }
 }
 
-const PIP_WIDTH = 320
-const PIP_HEIGHT = 320
+// Inner content size requested from the browser. Chrome's Document PiP
+// silently ignores resizeTo() on the returned window, so the inner here
+// is what actually ships visually. Chrome enforces a minimum around
+// 240×240; anything smaller will be clamped back up or rejected.
+// 256 sits between Spotify Miniplayer's square floor (~300) and Chrome's
+// absolute floor (240), giving a noticeably more compact footprint than
+// the bookmarklet popup while staying safely above the rejection edge.
+const PIP_OUTER = 256
 
 export function usePipWindow(): PipWindowApi {
   const [pipWindow, setPipWindow] = useState<Window | null>(null)
@@ -38,7 +52,35 @@ export function usePipWindow(): PipWindowApi {
     if (pipWindow && !pipWindow.closed) return
     const api = window.documentPictureInPicture
     if (!api) return
-    const win = await api.requestWindow({ width: PIP_WIDTH, height: PIP_HEIGHT })
+    // Ask Chrome for a square OUTER window at the default placement. The
+    // `preferInitialWindowPlacement: true` flag (Chrome 130+) is the only
+    // way to override Chrome's cached "last user position" — moveTo() is
+    // a no-op on PiP windows by spec. Without this flag, every reopen
+    // lands wherever the user dragged the window previously.
+    const win = await api.requestWindow({
+      width: PIP_OUTER,
+      height: PIP_OUTER,
+      preferInitialWindowPlacement: true,
+    })
+
+    // Force the OUTER window to a perfect square. Chrome counts the title
+    // bar inside the height it gives requestWindow, so on first open the
+    // window comes out as PIP_OUTER × (PIP_OUTER + chrome) — visually
+    // taller than wide. resizeTo on a PiP window operates on outer
+    // dimensions, which is exactly what we want.
+    try {
+      win.resizeTo(PIP_OUTER, PIP_OUTER)
+    } catch {
+      // resizeTo can throw on some platforms; fall back to Chrome's
+      // chosen size (slightly tall but functional).
+    }
+    // Surface the actual final outer dimensions so we can verify the
+    // resize landed (Chrome may clamp below ~240).
+    if (typeof console !== 'undefined') {
+      console.warn(
+        `[Booklage PiP v80] outer ${win.outerWidth}×${win.outerHeight}, inner ${win.innerWidth}×${win.innerHeight}`,
+      )
+    }
 
     // Copy parent stylesheets into the PiP window. Two parallel strategies:
     // (1) Clone every existing <link rel="stylesheet"> tag — this is the
@@ -87,18 +129,20 @@ export function usePipWindow(): PipWindowApi {
     if (typeof console !== 'undefined') {
       // Use console.warn so it bypasses default-level filters that hide info.
       console.warn(
-        `[Booklage PiP v75] injected ${totalRules} CSS rules across ${document.styleSheets.length} parent sheets`,
+        `[Booklage PiP v80] injected ${totalRules} CSS rules across ${document.styleSheets.length} parent sheets`,
       )
     }
 
-    // Enforce 320×320 viewport via html/body so layout never gets stretched
-    // by Chrome's user-resized PiP window. The popup is still resizable but
-    // our 320×320 content sits centered with a black letterbox.
+    // Fill whatever inner area Chrome ends up giving us (after resizeTo, the
+    // inner is roughly PIP_OUTER × (PIP_OUTER - title_bar_height) — slightly
+    // landscape). Companion content centers via grid, with a black letterbox
+    // for any residual aspect mismatch when the user resizes mid-session.
     win.document.documentElement.style.cssText = 'margin:0;padding:0;background:#000;width:100%;height:100%;overflow:hidden;'
     win.document.body.style.cssText = 'margin:0;padding:0;background:#000;width:100%;height:100%;overflow:hidden;display:grid;place-items:center;'
-    // v75 canary — if the PiP title contains this string, the latest code is
-    // running. Easier to verify than a console message which can be filtered.
-    win.document.title = 'Booklage [v75]'
+    // Chrome's Document PiP intentionally always shows the origin in the
+    // title bar (anti-spoofing), so document.title doesn't actually surface.
+    // Setting it anyway in case Chrome relaxes this in future versions.
+    win.document.title = 'Booklage'
 
     win.addEventListener('pagehide', () => setPipWindow(null), { once: true })
     setPipWindow(win)

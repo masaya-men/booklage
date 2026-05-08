@@ -1,10 +1,12 @@
 .host {
-  /* Fixed 320×320 stage that sits inside the PiP body's grid-center. If
-   * Chrome opens the PiP at a larger size (or the user resizes), our
-   * content stays the same — the surplus is black letterbox via body bg. */
+  /* Fills whatever inner area Chrome gave us — the PiP body uses
+   * display:grid + place-items:center so the host sits centered, and
+   * 100%/100% lets the wordmark and card stack stay perfectly aligned
+   * regardless of the requested size or any user-resize during the
+   * session. */
   position: relative;
-  width: 320px;
-  height: 320px;
+  width: 100%;
+  height: 100%;
   background: #000;
   overflow: hidden;
   font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
