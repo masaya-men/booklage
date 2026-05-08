@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseSaveMessage } from './save-message'
+import { parseSaveMessage, parseProbeMessage, parseProbeResult } from './save-message'
 
 describe('parseSaveMessage', () => {
   it('accepts a valid booklage:save payload', () => {
@@ -68,5 +68,63 @@ describe('parseSaveMessage', () => {
       },
     })
     expect(result.ok).toBe(true)
+  })
+})
+
+describe('parseProbeMessage', () => {
+  it('accepts a valid booklage:probe envelope', () => {
+    const result = parseProbeMessage({ type: 'booklage:probe', payload: { nonce: 'p-abc' } })
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value.payload.nonce).toBe('p-abc')
+  })
+
+  it('rejects probe with wrong type', () => {
+    const result = parseProbeMessage({ type: 'booklage:save', payload: { nonce: 'p-abc' } })
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects probe missing nonce', () => {
+    const result = parseProbeMessage({ type: 'booklage:probe', payload: {} })
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects probe with empty-string nonce', () => {
+    const result = parseProbeMessage({ type: 'booklage:probe', payload: { nonce: '' } })
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects null', () => {
+    expect(parseProbeMessage(null).ok).toBe(false)
+  })
+})
+
+describe('parseProbeResult', () => {
+  it('accepts a valid booklage:probe:result with pipActive=true', () => {
+    const result = parseProbeResult({ type: 'booklage:probe:result', nonce: 'p-abc', pipActive: true })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.nonce).toBe('p-abc')
+      expect(result.value.pipActive).toBe(true)
+    }
+  })
+
+  it('accepts pipActive=false', () => {
+    const result = parseProbeResult({ type: 'booklage:probe:result', nonce: 'p-abc', pipActive: false })
+    expect(result.ok).toBe(true)
+  })
+
+  it('rejects result with wrong type', () => {
+    const result = parseProbeResult({ type: 'booklage:save:result', nonce: 'p-abc', pipActive: true })
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects result missing nonce', () => {
+    const result = parseProbeResult({ type: 'booklage:probe:result', pipActive: true })
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects result with non-boolean pipActive', () => {
+    const result = parseProbeResult({ type: 'booklage:probe:result', nonce: 'p-abc', pipActive: 'yes' })
+    expect(result.ok).toBe(false)
   })
 })
