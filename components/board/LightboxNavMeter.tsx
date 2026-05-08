@@ -17,6 +17,11 @@ type Props = {
   readonly cardKey: string
   /** Snap-jump to a specific card index when the user releases a scrub. */
   readonly onJump?: (index: number) => void
+  /** When true, render the meter even with total ≤ 1 (single-card decks).
+   *  Default false: the Lightbox itself hides the meter when there's
+   *  nothing to navigate. PiP overrides this so the meter stays visible
+   *  as part of the always-on bottom chrome regardless of card count. */
+  readonly alwaysShow?: boolean
 }
 
 function pad4(n: number): string {
@@ -38,7 +43,7 @@ const COUNTER_ANIM_MS = 600
 const SWELL_STIFFNESS = 320
 const SWELL_DAMPING = 2 * Math.sqrt(SWELL_STIFFNESS)
 
-export function LightboxNavMeter({ current, total, onJump }: Props): ReactElement | null {
+export function LightboxNavMeter({ current, total, onJump, alwaysShow }: Props): ReactElement | null {
   const trackRef = useRef<HTMLDivElement>(null)
   const tickRefs = useRef<HTMLDivElement[]>([])
   const counterRef = useRef<HTMLSpanElement>(null)
@@ -254,7 +259,7 @@ export function LightboxNavMeter({ current, total, onJump }: Props): ReactElemen
     finishScrub()
   }, [finishScrub])
 
-  if (total <= 1) return null
+  if (total <= 1 && !alwaysShow) return null
 
   return (
     <div className={styles.meterWrap} aria-hidden="true">

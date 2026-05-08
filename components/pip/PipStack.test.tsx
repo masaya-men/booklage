@@ -9,33 +9,36 @@ const cards = [
 ]
 
 describe('PipStack', () => {
-  it('renders up to 5 cards in stack order (latest first)', () => {
-    render(<PipStack cards={cards} onCardClick={() => {}} />)
-    const stack = screen.getByTestId('pip-stack')
-    const items = stack.querySelectorAll('[data-card-id]')
-    expect(items).toHaveLength(3)
-    expect(items[0].getAttribute('data-card-id')).toBe('1')
-  })
-
-  it('caps at 5 cards even when more provided', () => {
+  it('renders every card (no cap) in array (chronological) order', () => {
     const many = Array.from({ length: 8 }, (_, i) => ({
       id: `c${i}`, title: `t${i}`, thumbnail: '', favicon: '',
     }))
     render(<PipStack cards={many} onCardClick={() => {}} />)
-    expect(screen.getByTestId('pip-stack').querySelectorAll('[data-card-id]')).toHaveLength(5)
+    const stack = screen.getByTestId('pip-stack')
+    const items = stack.querySelectorAll('[data-card-id]')
+    expect(items).toHaveLength(8)
+    expect(items[0].getAttribute('data-card-id')).toBe('c0')
+    expect(items[7].getAttribute('data-card-id')).toBe('c7')
   })
 
-  it('calls onCardClick with cardId when a card is clicked', () => {
+  it('starts with the newest (last-appended) card as the active centred slot', () => {
+    render(<PipStack cards={cards} onCardClick={() => {}} />)
+    expect(screen.getByTestId('pip-stack').getAttribute('data-active-idx')).toBe('2')
+  })
+
+  it('clicking the active card fires onCardClick with its id', () => {
     const onCardClick = vi.fn()
     render(<PipStack cards={cards} onCardClick={onCardClick} />)
-    fireEvent.click(screen.getByTestId('pip-card-2'))
-    expect(onCardClick).toHaveBeenCalledWith('2')
+    // Newest (= last) card is the active one.
+    fireEvent.click(screen.getByTestId('pip-card-3'))
+    expect(onCardClick).toHaveBeenCalledWith('3')
   })
 
-  it('applies hover state to the hovered card', () => {
-    render(<PipStack cards={cards} onCardClick={() => {}} />)
-    const card2 = screen.getByTestId('pip-card-2')
-    fireEvent.mouseEnter(card2)
-    expect(screen.getByTestId('pip-stack').getAttribute('data-hovered-id')).toBe('2')
+  it('clicking a non-active card does not fire onCardClick (it scrolls instead)', () => {
+    const onCardClick = vi.fn()
+    render(<PipStack cards={cards} onCardClick={onCardClick} />)
+    // Card '1' is the oldest — not active, click should scroll-to-centre.
+    fireEvent.click(screen.getByTestId('pip-card-1'))
+    expect(onCardClick).not.toHaveBeenCalled()
   })
 })

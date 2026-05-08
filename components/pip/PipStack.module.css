@@ -2,62 +2,85 @@
   position: absolute;
   inset: 0;
   background: #000;
-  perspective: 1000px;
-  perspective-origin: 50% 100%;
   overflow: hidden;
+
+  /* Carousel + meter defaults. Override via inline style on .stage for live
+   * tuning. Declared here so cascaded inline overrides win cleanly without
+   * a child element re-declaring and shadowing them. */
+  --pip-card-w: 178px;
+  --pip-card-h: 100px;
+  --pip-card-max-h: 220px;
+  --pip-gap: 16px;
+  --pip-neighbor-opacity: 0.4;
+  --pip-meter-bottom: 14px;
+  --pip-meter-w: 210px;
+  --pip-transition-ms: 280ms;
+  --pip-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.stack {
+.scroller {
   position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  transform: rotateX(8deg);
+  inset: 0; /* full stage — vertical cards can use the entire PiP height,
+              with the meter overlaying the bottom 56px on top. */
+  display: flex;
+  align-items: center;
+  gap: var(--pip-gap);
+  /* padding: 50% on each side so a card with `scroll-snap-align: center`
+   * can land at scroller-center even when it's the first / last item. */
+  padding-inline: 50%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* `proximity` (not `mandatory`) lets the wheel-driven momentum scroll
+   * roll past cards smoothly; the snap only kicks in once velocity is low
+   * and we're already near a card centre, like a flywheel coasting to a
+   * detent. */
+  scroll-snap-type: x proximity;
+  /* Hide the native scrollbar — the wave meter is the only scroll affordance. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
 }
+.scroller::-webkit-scrollbar { display: none; }
 
 .slot {
-  position: absolute;
-  bottom: 28px;
-  left: 50%;
-  transform-origin: center bottom;
-  /* margin-left = -(card width / 2) so the slot centers horizontally;
-   * card is 224px wide. */
-  margin-left: -112px;
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
   cursor: pointer;
-  transition:
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity   200ms ease-out;
-  will-change: transform, opacity;
+  opacity: var(--pip-neighbor-opacity);
+  transition: opacity var(--pip-transition-ms) var(--pip-transition-easing);
 }
 
-/* All translate/scale offsets are scaled by 0.8 from the original 320-stage
- * values so the 5-card depth recession reads identically inside a 256-wide
- * inner viewport. */
-.pos0 { transform: translate3d(0, 0, 0)         scale(1.00) rotate(0deg);  opacity: 1.0;  z-index: 5; }
-.pos1 { transform: translate3d(0, -13px, -16px) scale(0.94) rotate(-1deg); opacity: 0.85; z-index: 4; }
-.pos2 { transform: translate3d(0, -27px, -34px) scale(0.88) rotate(-2deg); opacity: 0.66; z-index: 3; }
-.pos3 { transform: translate3d(0, -43px, -53px) scale(0.82) rotate(-3deg); opacity: 0.46; z-index: 2; }
-.pos4 { transform: translate3d(0, -61px, -72px) scale(0.76) rotate(-4deg); opacity: 0.28; z-index: 1; }
-
-.slot.hovered {
-  transform: translate3d(0, -6px, 24px) scale(1.05) rotate(0deg) !important;
-  opacity: 1 !important;
-  z-index: 100 !important;
+.slot.active {
+  opacity: 1;
 }
 
-.wordmark {
+.meter {
   position: absolute;
-  bottom: 12px;
   left: 0;
   right: 0;
-  text-align: center;
-  font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.42);
+  bottom: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Meter sits on top of any vertical card overflow that has crept into the
+   * bottom band. Wrap stays pointer-events: none so non-track regions pass
+   * clicks through to cards; the inner track re-enables them for scrubbing. */
   pointer-events: none;
+  z-index: 2;
+}
+
+/* Constrain the inner LightboxNavMeter for PiP's narrow canvas. */
+.meter > * {
+  --lightbox-meter-w: var(--pip-meter-w);
+  position: static !important;
+  transform: none !important;
+  bottom: auto !important;
+  left: auto !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .slot { transition: none; }
+  .scroller { scroll-behavior: auto; }
 }

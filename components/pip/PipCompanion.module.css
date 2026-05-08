@@ -13,24 +13,3 @@
   color: rgba(255, 255, 255, 0.94);
 }
 
-.close {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  background: transparent;
-  border: 0;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: color 120ms ease, background 120ms ease;
-  z-index: 200;
-}
-
-.close:hover {
-  color: rgba(255, 255, 255, 1);
-  background: rgba(255, 255, 255, 0.06);
-}

@@ -9,16 +9,18 @@ import { PipStack, type PipStackCard } from './PipStack'
 import styles from './PipCompanion.module.css'
 
 export interface PipCompanionProps {
-  readonly onClose: () => void
+  /** Reserved for any future programmatic close path. The Document PiP
+   *  window's title bar already provides Chrome's native × close, so we
+   *  no longer render an in-page close button. */
+  readonly onClose?: () => void
   readonly onCardClick?: (cardId: string) => void
 }
 
-const MAX_VISIBLE = 5
-
-export function PipCompanion({ onClose, onCardClick }: PipCompanionProps): ReactElement {
-  // Per-session card buffer — starts empty every time PiP opens, so the
-  // first-save "Empty → Stack" transition is always visible. Closing the
-  // PiP loses this buffer; reopening starts fresh.
+export function PipCompanion({ onCardClick }: PipCompanionProps): ReactElement {
+  // Per-session card buffer — starts empty every time PiP opens. Cards
+  // accumulate without a cap so the user sees every bookmark they saved
+  // while the companion was visible (a "look how many you grabbed today"
+  // feel). Closing the PiP loses this buffer; reopening starts fresh.
   const [cards, setCards] = useState<PipStackCard[]>([])
 
   useEffect(() => {
@@ -36,7 +38,11 @@ export function PipCompanion({ onClose, onCardClick }: PipCompanionProps): React
         thumbnail: bm.thumbnail ?? '',
         favicon: bm.favicon ?? '',
       }
-      setCards((prev) => [initial, ...prev.filter((c) => c.id !== initial.id)].slice(0, MAX_VISIBLE))
+      // Append chronologically: 1, 2, 3, … each new bookmark lands on the
+      // right end of the carousel and the auto-scroll inside PipStack
+      // glides over to it. Re-saving an existing URL still moves it to
+      // the right end (we filter the prior copy out first).
+      setCards((prev) => [...prev.filter((c) => c.id !== initial.id), initial])
 
       const resolved = await resolveThumbnail(bm)
       if (resolved && resolved !== initial.thumbnail) {
@@ -57,13 +63,6 @@ export function PipCompanion({ onClose, onCardClick }: PipCompanionProps): React
       ) : (
         <PipStack cards={cards} onCardClick={handleCardClick} />
       )}
-      <button
-        type="button"
-        className={styles.close}
-        onClick={onClose}
-        data-testid="pip-close"
-        aria-label="Close Booklage Companion"
-      >×</button>
     </div>
   )
 }

@@ -8,11 +8,34 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **Chrome 拡張 v0 Plan 1 + PiP polish 完了 (v80)**
-- **Service Worker**: `v80-2026-05-09-pip-256-layout-fit`
-- **次セッション最優先**: **PiP のアニメーション改善 (slide-in, scan-reveal, サムネ差し替えトランジション等)**
+- **本番**: `https://booklage.pages.dev` に **PiP カルーセル化 + ライトボックス風スクロール完了 (v88)**
+- **Service Worker**: `v88-2026-05-09-pip-meter-always-on`
+- **次セッション**: PiP は一区切り。次タスクは未確定（ユーザーと相談）
 - **保留**: 自由サイジング機能セッション 4 (矩形選択 marquee で範囲リセット) は `docs/private/IDEAS.md` 末尾に退避済
 - **保留**: TikTok サムネ動作の実機確認 (実装済、ユーザー未検証)
+
+### 🎯 2026-05-09 セッション 3 — PiP アニメーション + レイアウト全面リデザイン (v81→v88)
+
+旧 fan-stack を破棄、ホリゾンタル**カルーセル**へ完全リプレース。長い対話的 iteration の末ユーザー確認で着地。詳細は memory `project_pip_size_decision.md`。
+
+**成果物**:
+- 全カード native aspect で表示（`min/calc` で `width = min(178, max_h * aspect)` / `height = min(178/aspect, max_h)`）
+- 16:9 → 178×100、1:1 → 178×178、9:16 → 124×220 等。`aspectRatio` prop OR `<img onLoad>` で自動検出
+- 下部に `LightboxNavMeter` を流用（`alwaysShow` prop 追加で 1 枚時も常時表示）。`--lightbox-meter-w: 210px` で PiP 用に幅縮小
+- PiP セッション中の全ブクマ累積（`MAX_VISIBLE` 撤去）、追加は **append**（1, 2, 3, ... 右へ）
+- ナビゲーション全部 `scrollToIdx` rAF + `power4.out` 700ms に統一: ホイール / クリック / メータースクラブ / 新規ブクマ自動スクロール / 1 枚目入場
+- ホイール 1 ノッチ = 1 枚進む（threshold 24, queue cap ±2）
+- in-page × ボタン削除（Chrome の Document PiP タイトルバーの × で十分）
+- `/pip-tune` プレイグラウンドページ追加（`app/(playground)/pip-tune/`）。スライダーで CSS 変数を live-tune できる、将来の調整用に保持
+
+**新規 / 変更ファイル**:
+- `components/pip/PipStack.{tsx,module.css,test.tsx}` — カルーセル + メーター + wheel 統一スクロール
+- `components/pip/PipCard.{tsx,module.css}` — aspect 自動検出 + native size
+- `components/pip/PipCompanion.{tsx,module.css,test.tsx}` — append 順 / × 削除
+- `components/board/LightboxNavMeter.tsx` — `alwaysShow` prop 追加
+- `components/board/Lightbox.module.css` — meter 幅を CSS 変数化
+- `app/(playground)/pip-tune/` — チューニング playground 新規
+- `public/sw.js` — v80 → v88 まで段階 bump
 
 ### 🎯 2026-05-09 セッション 2 完了内容 — PiP サイズ + サムネ parity
 

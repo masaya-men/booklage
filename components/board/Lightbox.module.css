@@ -620,7 +620,7 @@
 
 .meterTrack {
   position: relative;
-  width: 360px;
+  width: var(--lightbox-meter-w, 360px);
   height: 18px;
   cursor: pointer;
   user-select: none;

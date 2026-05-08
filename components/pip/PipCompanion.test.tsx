@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import { PipCompanion } from './PipCompanion'
 
 let savedHandler: ((msg: { bookmarkId: string }) => void) | null = null
@@ -45,10 +45,4 @@ describe('PipCompanion', () => {
     })
   })
 
-  it('calls onClose when × is clicked', async () => {
-    const onClose = vi.fn()
-    render(<PipCompanion onClose={onClose} />)
-    fireEvent.click(screen.getByTestId('pip-close'))
-    expect(onClose).toHaveBeenCalled()
-  })
 })
