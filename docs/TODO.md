@@ -8,17 +8,17 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **bookmarklet final polish (320×320 / 右下 / 黒キャンバス / staged animation)** 反映済
-- **次セッション最優先**: Phase 1 — Chrome 拡張 v0 の設計開始 (brainstorm → spec → plan)。Phase 2 = 一括インポート、Phase 3 = PiP / Booklage タブ常駐 + drag&drop インボックス
+- **本番**: `https://booklage.pages.dev` に **Chrome 拡張 v0 — Plan 1 (Booklage 基盤) 完了** 反映済
+- **次セッション最優先**: Plan 2 — Chrome 拡張本体の plan 作成 + 実装 (manifest + service worker + content script + offscreen + cursor pill + 配布 zip)。spec の §4-7 が対象範囲
 - **保留**: 自由サイジング機能セッション 4 (矩形選択 marquee で範囲リセット) は `docs/private/IDEAS.md` 末尾に退避済。MVP では優先度低
-- **2026-05-09 引き継ぎ (Phase 0 完了)**:
-  - ブクマレット popup を 320×320 / 右下 20px inset / 黒フルキャンバス / 4-stage animation (Awaken → Save → Reveal → Recede) に刷新済
-  - サムネ取れたサイト (GitHub / 多くの記事) では og:image が blurred bg として乗る、無いサイトでは radial glow フォールバック
-  - **ブクマレット再インストールが必要** — 古いやつを削除して `📌 Booklage ↤ Drag me` を再ドラッグ (window 寸法が変わったので必須)
-  - 関連 spec: `docs/superpowers/specs/2026-05-09-bookmarklet-final-polish-design.md`
-  - 関連 plan: `docs/superpowers/plans/2026-05-09-bookmarklet-final-polish.md`
-  - **Phase 0 (ブクマレット polish) ＝ 終了**。ブクマレット路線はこれで打ち止め、これより Phase 1 (拡張) → Phase 2 (一括インポート) → Phase 3 (PiP) に投資移転
-  - 重複 URL ポリシー確定 (memory `project_duplicate_url_policy.md`): 確認 → 許可で重複追加可、削除済みは別扱い (Phase 1 の拡張 v0 で全導線統一実装予定)
+- **2026-05-09 引き継ぎ (Phase 1 / Plan 1 完了)**:
+  - Booklage 側基盤を一括追加: `/save-iframe` postMessage endpoint + PiP コンパニオン (320×320 + 5-card 3D records-stack + scan reveal + hover pull-forward + bottom-from slide-in) + ボード TopHeader の Pop out ボタン + `?focus=<cardId>` smooth scroll + glow halo
+  - **拡張未実装でも単独で機能確認可能**: ボードで Pop out → PiP 開く → console から /save-iframe に postMessage 投げて新カード参入アニメ確認できる (動作確認の自前ループが回る)
+  - ブクマレット (Phase 0) は引き続き本番運用、これと PiP は両立 (BroadcastChannel `bookmark-saved` 共有)
+  - 関連 spec: `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`
+  - 関連 plan: `docs/superpowers/plans/2026-05-09-extension-v0-plan1-booklage-foundation.md`
+  - **デザイン未確認項目** (本番で実機確認 → 細部 polish): records-stack の重ね方・peek 量・hover の前傾度、scan reveal の timing、empty state の wordmark サイズ、Pop out button の位置と大きさ
+  - 重複 URL ポリシー (memory `project_duplicate_url_policy.md`): Plan 2 の拡張で全導線統一実装予定
 - **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
 
 ### 🎯 今セッション (2026-05-08〜09) の到達点 — 自由サイジング機能セッション 3: 永続化 + リセット UI + 大量の UX polish
