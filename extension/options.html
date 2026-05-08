@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <h1>Booklage settings</h1>
+  <section>
+    <label class="row">
+      <input type="checkbox" id="autoOpenPip" />
+      <span>Auto-open PiP on Booklage tab</span>
+    </label>
+  </section>
+  <section>
+    <h2>Cursor pill position when no mouse data</h2>
+    <label class="row"><input type="radio" name="pillPos" value="cursor" /> At cursor</label>
+    <label class="row"><input type="radio" name="pillPos" value="bottom-right" /> Bottom-right corner</label>
+  </section>
+  <section>
+    <h2>Keyboard shortcut</h2>
+    <p>Default: <kbd>Ctrl+Shift+B</kbd> (Mac: <kbd>Cmd+Shift+B</kbd>)</p>
+    <a href="#" id="shortcuts-link">Customize shortcuts</a>
+  </section>
+  <script src="options.js"></script>
+</body>
+</html>
