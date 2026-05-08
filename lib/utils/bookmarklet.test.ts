@@ -204,4 +204,14 @@ describe('generateBookmarkletUri', () => {
     // The popup fallback is wired through window.open(...'/save?'...)
     expect(uri).toMatch(/\.open\([^)]*\/save\?/)
   })
+
+  it('arms a 1500ms save-result deadline distinct from the 600ms probe timeout', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('1500')
+  })
+
+  it('cleans up via removeEventListener (not just iframe removal)', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('removeEventListener')
+  })
 })
