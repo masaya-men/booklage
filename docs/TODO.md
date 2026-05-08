@@ -7,49 +7,120 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **PiP カード click → 親タブ focus + 該当ブクマへ slot-machine 風 smooth scroll + 透過度明滅 3 回** が deploy 済 (2026-05-09 セッション 4)
-- **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink`
-- **PiP click → board focus 完成済 (リッチ仕上げ)**:
-  - `window.focus()` で親タブを前面に
-  - `layout.positions[cardId]` ベースで scroll target 算出 (viewport culling 関係なく動く)
-  - filter 除外時は `'all'` に自動切替
-  - **scroll**: hyper-Expo (power 30) + 1800ms base + 0.07/px + cap 3000ms — 両端 ~30% 停滞、中間で大半移動
-  - **明滅**: scroll 完了後に `.cardNode` の `opacity` を 1 → 0.45 → 1 を 3 回 (1800ms × 3 = 5400ms)。box-shadow は白カードで見えないので opacity に変更
-- **Plan 2 plan 書き上げ済**: `docs/superpowers/plans/2026-05-09-extension-v0-plan2-package.md` — Group 0 (bookmarklet/PiP 被り解消) → A (拡張 skeleton) → B (save pipeline) → C (cursor pill) → D (settings) → E (tests) → F (distribution)。次セッションはここから着手
+- **ブランチ**: `master` 単一運用、22 commits ahead of origin/master (未 push)
+- **本番**: `https://booklage.pages.dev` に **PiP カード click → 親タブ focus + slot-machine scroll + 透過度明滅 3 回** が deploy 済 (2026-05-09 セッション 4 時点)。**今セッション (2026-05-09 セッション 5) の Plan 2 work は未 deploy** — 次セッション最初に deploy 推奨
+- **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番)
+- **2026-05-09 セッション 5 — Plan 2 全タスク完了** (Group 0 → A → B → C → D → E.1+E.2 → F.1+F.2+F.4):
+  - Test count: 390 → **411 passing** (+21 unit tests)
+  - tsc clean, vitest全green
+  - **Chrome 拡張 v0 パッケージ完成**: `dist/booklage-extension-0.1.0.zip` (13.3 KB) を sideload / Web Store unlisted 投稿可能な状態に
 
-### 次セッションの最優先 — Plan 2 を実行
+### 次セッションの最優先 — Plan 2 仕上げ + deploy
 
-1. `docs/superpowers/plans/2026-05-09-extension-v0-plan2-package.md` を読む
-2. 実行モードを選ぶ:
-   - **Subagent-driven (推奨)**: タスクごとに fresh subagent を dispatch、checkpoint で review。fast iteration
-   - **Inline execution**: 同一セッションで `superpowers:executing-plans` で連続実行、batch checkpoint
-3. Group 0 から順に進める。Group 0.5 (bookmarklet IIFE 改修) で **bookmarklet 再登録が必要になる** — ユーザーに案内
-4. Group A.4 sideload 完了時点で「拡張機能、自分で 1 回読み込んでみてください」と user に案内する
-5. Group F.3 (Web Store 申請) は user が能動的にやる必要がある (developer fee 等)
+#### 1. Plan 2 work を本番 deploy
+- 新しい bookmarklet (`/save-iframe?bookmarklet=1` 経由 silent save)、`/extension/privacy` route、`/guide` callout を一気に本番反映
+- 手順は CLAUDE.md L168〜「本番デプロイのルール」参照: `rtk pnpm build` → `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true`
+- **deploy 後ユーザーに必ず案内**: 「booklage.pages.dev をハードリロードしてください」
+
+#### 2. ブックマークレット再登録 (USER-side)
+新しい bookmarklet IIFE は `/save-iframe?bookmarklet=1` を裏で叩く設計のため、**古い bookmarklet を一度ブックマークバーから削除し、`/guide` 冒頭の callout から新版をドラッグし直す必要がある**。この案内を deploy 案内と一緒に提示する。
+
+#### 3. 拡張機能 sideload (USER-side, Task A.4)
+- `chrome://extensions` を開く → デベロッパーモード ON → 「パッケージ化されていない拡張機能を読み込む」 → `c:\Users\masay\Desktop\マイコラージュ\extension\` を選択
+- アイコンが現れるか確認、popup → Open settings → options 画面が開くか確認
+- 任意ページで `Ctrl+Shift+B` → cursor pill が出て booklage.pages.dev tab に新カードが入るか確認
+- 右クリック → "Save to Booklage" / "Save link to Booklage" も同じ流れで動くか確認
+- chrome://extensions ページで save を試して OS 通知 fallback が出るか確認 (content script は chrome:// に注入されない)
+- 不具合あれば SW devtools (`chrome://extensions` → Booklage → "service worker") を開いてログ追跡
+
+#### 4. Chrome Web Store 投稿 (USER-led, Task F.3)
+- 一回だけ Chrome Web Store Developer 登録料 $5 USD (約 ¥800) を払う必要あり
+- `dist/booklage-extension-0.1.0.zip` を upload
+- 公開タイトル: "Booklage" / 短い説明: manifest の description / 詳しい説明: spec から作成 (要 docs/private/extension-store-description.md 新規 — まだ未作成)
+- Screenshots 1280×800 を 3〜5 枚 (board ページにカードが並んだ状態 + cursor pill が出た状態 + PiP companion 出た状態)
+- Privacy policy URL: `https://booklage.pages.dev/extension/privacy` (deploy 後)
+- **Visibility: Unlisted** (spec §11 — 非公開リンク配布のみ、検索結果には出さない)
+- 提出 → Google レビュー 1〜3 週間
+- レビュー fee は account 作成時の一回限り、その後は同じ account でいくつでも publish 可能
+
+#### 5. E.3 Playwright sideload テスト (defer)
+- `chromium.launchPersistentContext('', { headless: false, args: ['--load-extension=...']})` 構成で extension の sideload + save flow を E2E でカバー
+- Plan 2 では未実装、次フェーズで `tests/e2e/extension-save.spec.ts` を新規作成。複雑なため別セッションで集中対応
 
 ### 残スコープ整理
 
 spec: `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`
+plan: `docs/superpowers/plans/2026-05-09-extension-v0-plan2-package.md`
 
 | エリア | 状態 |
 |---|---|
-| `/save-iframe` postMessage endpoint | ✅ Plan 1 済 |
-| PiP companion UI (in-tab, Document PiP) | ✅ Plan 1 + 今日 polish 済 |
-| `?focus=cardId` 仕組み + PiP card click → board focus | ✅ Plan 1 + 今日 `window.focus()` 追加で完了、本番反映済 |
-| ブックマークレット (Phase 0) | ⚠️ 実装済も実機未検証。Plan 2 Group 0 で IIFE 改修 → 再登録要 |
-| **bookmarklet/PiP 被り問題** (PiP 出てる時に popup と PiP が両方出る) | ❌ Plan 2 Group 0 で解消予定 (silent iframe save) |
-| 重複 URL ポリシー全導線統一 | ❌ 未実装。Plan 2 後の別フェーズ |
-| **Chrome 拡張 v0 (Manifest v3 パッケージ)** | ❌ **未着手**。Plan 2 plan は完成、実行待ち |
-| Cursor pill (PiP 無時の保存インジケータ §6) | ❌ 未実装。Plan 2 Group C |
-| 拡張内設定 UI (§9) | ❌ 未実装。Plan 2 Group D |
-| 拡張の test + 配布 (§10, §11) | ❌ 未実装。Plan 2 Group E + F |
+| `/save-iframe` postMessage endpoint | ✅ Plan 1 + 今セッション probe handler 追加 |
+| PiP companion UI | ✅ Plan 1 + polish + presence broadcast 追加 |
+| `?focus=cardId` + PiP card click → board focus | ✅ 本番反映済 |
+| ブックマークレット (新版 IIFE) | ✅ probe-then-save に書き換え済、再登録要 |
+| **bookmarklet/PiP 被り問題** | ✅ silent iframe save で解消 |
+| **Chrome 拡張 v0 (sideload + Web Store unlisted)** | ✅ パッケージ完成 (13.3 KB)、sideload + Web Store 投稿は USER-side |
+| Cursor pill (extension 側) | ✅ |
+| 拡張内設定 UI | ✅ |
+| 拡張 unit tests (OGP / pill / protocol) | ✅ 21 tests |
+| 拡張 E2E (sideload Playwright) | ⚠️ defer |
+| Privacy policy (private + public route) | ✅ docs/private + /extension/privacy |
+| Web Store 投稿 | ⚠️ USER-side (developer fee 等) |
+| 重複 URL ポリシー全導線統一 | ❌ Plan 2 後の別フェーズ |
 
 ### 保留中の他タスク
 
 - **保留**: 自由サイジング機能セッション 4 (矩形選択 marquee で範囲リセット) は `docs/private/IDEAS.md` 末尾に退避済
 - **保留**: TikTok サムネ動作の実機確認 (実装済、ユーザー未検証)
-- **保留**: ブックマークレット (Phase 0) 実機検証
+
+### 🎯 2026-05-09 セッション 5 — Plan 2 全実装 (subagent-driven, 22 commits)
+
+`docs/superpowers/plans/2026-05-09-extension-v0-plan2-package.md` を Group 0 → F まで完走。各タスク fresh subagent dispatch + spec compliance review + code quality review の 2 段階チェック。
+
+**Group 0 — bookmarklet/PiP 衝突解消** (7 commits):
+- `lib/board/pip-presence.{ts,test.ts}` — pip:open / pip:closed / pip:query / pip:presence の 4 message を共通 `'booklage'` BroadcastChannel に流す pubsub + nonce-matched query/answer
+- `components/pip/PipCompanion.tsx` — mount/unmount で pip:open/pip:closed broadcast、`subscribePipPresence(handler, () => true)` で probe にも応答
+- `lib/utils/save-message.ts` — `parseProbeMessage` / `parseProbeResult` を Zod schema 追加
+- `app/save-iframe/SaveIframeClient.tsx` — `?bookmarklet=1` で any-origin 受け入れに切り替え (security trade-off コメント付き)、probe 受信 → presence ref 参照 → 初回は `queryPipPresence(80ms)` lazy-query → `booklage:probe:result` 返信
+- `lib/utils/bookmarklet.ts` — IIFE 全面書き換え: hidden iframe → probe → pipActive なら postMessage save (1500ms deadline)、それ以外は popup fallback。**critical race を 1 度発見 → fix** (D=save-in-flight, Q=fully-resolved の二段ガード)。最終 1990 chars (< 2000 target)
+- `app/(marketing)/guide/page.tsx` — 「ブックマークレット更新しました」callout + ドラッグ用 `<a>` を冒頭に追加 (要 deploy 後 user 再登録)
+
+**Group A — 拡張機能 skeleton** (3 commits + 1 fix):
+- `extension/manifest.json` — MV3 + minimum_chrome_version 124 + permissions
+- `extension/icons/icon-{16,32,48,128}.png` + `scripts/generate-extension-icons.mjs` (sharp で SVG → PNG)
+- `extension/popup.{html,js,css}` — minimal "Open settings" link
+
+**Group B — save pipeline** (3 commits):
+- `extension/background.js` — Ctrl+Shift+B + 右クリック page/link → `dispatchSave({ trigger, tabId, linkUrl? })`
+- `extension/offscreen.{html,js}` — booklage origin の hidden iframe を抱える、SW ⇄ iframe の postMessage bridge (4000ms timeout)
+- `extension/lib/dispatch.js` + `lib/ogp.js` — OGP 抽出 (chrome.scripting.executeScript inline copy + canonical module)、cursor-pill 通知発行 + 通知 fallback
+
+**Group C — cursor pill** (2 commits + 1 fix):
+- `extension/content.js` + `lib/pill-state-machine.js` — 別モジュール化した pure state machine + DOM glue
+- `extension/content.css` — glass-themed pill (z-index max int32, prefers-reduced-motion 対応)
+- `manifest.json` に `minimum_chrome_version: 124` 追加 (content_scripts の `type: module` 要件)
+
+**Group D — 設定** (1 commit):
+- `extension/options.{html,js,css}` — chrome.storage.sync で autoOpenPip / cursorPillFallbackPosition 永続化 (Phase 1.5 で wire-up 予定、v0 では永続化のみ)
+
+**Group E — テスト** (2 commits, +21 tests):
+- `tests/extension/ogp-extract.test.ts` — JSDOM で OGP extractor 9 cases
+- `tests/extension/pill-state-machine.test.ts` — pillStateView 5 cases
+- `tests/extension/save-message-protocol.test.ts` — `extension/lib/offscreen-router.js` 抽出 + 7 routing cases
+- `extension/offscreen.js` — router 化 refactor (behavior unchanged)
+- E.3 Playwright sideload は defer (要 headless: false + load-extension flag)
+
+**Group F — 配布** (2 commits + 1 ignored file):
+- `docs/private/extension-privacy-policy.md` — private full version (NOT committed per CLAUDE.md privacy rules)
+- `scripts/package-extension.mjs` — manifest validation + 必要ファイル check + Windows/Unix 両対応 zip → `dist/booklage-extension-0.1.0.zip` (13.3 KB)
+- `package.json` に `package:extension` script 追加
+- `app/(marketing)/extension/privacy/page.tsx` — public 版 (実メアドなし、/contact form 経由)
+- F.3 Web Store 投稿は USER-led ($5 fee 等)
+
+**重要な技術判断**:
+- `/save-iframe?bookmarklet=1` で origin policy を緩和 (security trade-off: 任意の site が embed してジャンクブクマを書き込み可能だが、データ流出はなし。bookmarklet permission model に近似)
+- Chrome 拡張は `chrome.runtime.getContexts` (Chrome 116+) と `content_scripts` の `type: module` (Chrome 124+) を使うため manifest に `minimum_chrome_version: 124`
+- bookmarklet IIFE は ES5-safe + var only + < 2000 chars 制約。1990 chars に着地、`D` / `Q` 二段ガードで probe-timeout vs save-deadline の race を解消
 
 ### 🎯 2026-05-09 セッション 3 — PiP アニメーション + レイアウト全面リデザイン (v81→v88)
 
