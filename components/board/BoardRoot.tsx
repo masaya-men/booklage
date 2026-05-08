@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { computeSkylineLayout, type SkylineCard } from '@/lib/board/skyline-layout'
+import { computeFocusScrollY } from '@/lib/board/scroll-to-card'
 import {
   DEFAULT_THEME_ID,
   getThemeMeta,
@@ -382,6 +383,51 @@ export function BoardRoot() {
     }
     scrollAnimRef.current = requestAnimationFrame(tick)
   }, [viewport.y, contentBounds.height])
+
+  // Focus a card by ID — used by ?focus=<cardId> URL param and PiP card click.
+  // Computes the smooth-scroll target via computeFocusScrollY and reuses the
+  // existing handleScrollMeterJump easing. After scroll, applies a 600ms glow
+  // halo via data-glowing attribute (CSS animation in CardNode.module.css).
+  const focusCard = useCallback((cardId: string): void => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const node = canvas.querySelector<HTMLElement>(`[data-card-id="${cardId}"]`)
+    if (!node) return
+    const rect = node.getBoundingClientRect()
+    const canvasRect = canvas.getBoundingClientRect()
+    const cardYInCanvas = rect.top - canvasRect.top + viewport.y
+    const targetY = computeFocusScrollY({
+      cardY: cardYInCanvas,
+      cardH: rect.height,
+      viewportH: viewport.h,
+      contentH: contentBounds.height,
+    })
+    handleScrollMeterJump(targetY)
+    // Glow halo: trigger after the scroll's 380ms animation completes.
+    window.setTimeout(() => {
+      node.setAttribute('data-glowing', 'true')
+      window.setTimeout(() => node.removeAttribute('data-glowing'), 600)
+    }, 380)
+  }, [viewport, contentBounds.height, handleScrollMeterJump])
+
+  // ?focus=<cardId> URL param + booklage:focus-card CustomEvent listener.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    const focusId = url.searchParams.get('focus')
+    if (focusId) {
+      // Defer to allow layout to settle.
+      requestAnimationFrame(() => focusCard(focusId))
+      url.searchParams.delete('focus')
+      window.history.replaceState({}, '', url.toString())
+    }
+    const evHandler = (e: Event): void => {
+      const detail = (e as CustomEvent<{ cardId: string }>).detail
+      if (detail?.cardId) focusCard(detail.cardId)
+    }
+    window.addEventListener('booklage:focus-card', evHandler)
+    return () => window.removeEventListener('booklage:focus-card', evHandler)
+  }, [focusCard])
 
 
   const handleCardClick = useCallback((bookmarkId: string, originRect: DOMRect): void => {

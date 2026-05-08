@@ -12,6 +12,24 @@
   cursor: grabbing;
 }
 
+/* Focus glow halo — applied for ~600ms after a card is focused via
+ * ?focus=<cardId> URL param or PiP click → focusCard(). The glow
+ * pulses softly outward and fades, drawing the eye to the just-scrolled-to
+ * card without being permanent decoration. */
+.cardNode[data-glowing="true"] {
+  animation: card-focus-glow 600ms ease-out;
+}
+
+@keyframes card-focus-glow {
+  0%   { box-shadow: 0 0 0   0 rgba(255, 255, 255, 0.0); }
+  30%  { box-shadow: 0 0 24px 8px rgba(255, 255, 255, 0.3); }
+  100% { box-shadow: 0 0 0   0 rgba(255, 255, 255, 0.0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardNode[data-glowing="true"] { animation: none; }
+}
+
 .inner {
   position: absolute;
   inset: 0;
