@@ -36,6 +36,10 @@ import { BookmarkletInstallModal } from '@/components/bookmarklet/BookmarkletIns
 import { BookmarkletPill } from '@/components/bookmarklet/BookmarkletPill'
 import { EmptyStateWelcome } from '@/components/bookmarklet/EmptyStateWelcome'
 import { Lightbox } from './Lightbox'
+import { PopOutButton } from './PopOutButton'
+import { PipPortal } from '@/components/pip/PipPortal'
+import { PipCompanion } from '@/components/pip/PipCompanion'
+import { usePipWindow } from '@/lib/board/pip-window'
 import { ShareComposer } from '@/components/share/ShareComposer'
 import { ShareActionSheet } from '@/components/share/ShareActionSheet'
 import { encodeShareData } from '@/lib/share/encode'
@@ -83,6 +87,12 @@ export function BoardRoot() {
   const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
   const [actionSheet, setActionSheet] = useState<{ pngDataUrl: string; shareUrl: string } | null>(null)
   const [sizeLevel, setSizeLevel] = useState<SizeLevel>(DEFAULT_SIZE_LEVEL)
+  const pip = usePipWindow()
+  const handleCardClickFromPip = useCallback((cardId: string) => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('booklage:focus-card', { detail: { cardId } }))
+    }
+  }, [])
   // Per-card persisted overrides — derived directly from items so the
   // very first render after the IDB load already knows the right widths.
   // The previous useEffect-based hydration created a one-frame flash on
@@ -648,6 +658,10 @@ export function BoardRoot() {
           }
           actions={
             <>
+              <PopOutButton
+                onClick={() => { void pip.open() }}
+                disabled={!pip.isSupported}
+              />
               <SizePicker value={sizeLevel} onChange={setSizeLevel} />
               <ResetAllButton
                 count={customWidthCount}
@@ -777,6 +791,12 @@ export function BoardRoot() {
           onClose={(): void => setActionSheet(null)}
         />
       )}
+      <PipPortal pipWindow={pip.window}>
+        <PipCompanion
+          onClose={() => pip.close()}
+          onCardClick={handleCardClickFromPip}
+        />
+      </PipPortal>
     </div>
   )
 }
