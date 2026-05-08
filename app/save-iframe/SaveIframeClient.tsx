@@ -31,33 +31,6 @@ export function SaveIframeClient(): ReactElement {
   const pipActiveRef = useRef<boolean>(false)
   const seenPresenceRef = useRef<boolean>(false)
 
-  // Storage Access API — the bookmarklet flow runs this iframe in a 3rd-party
-  // context (embedded in arbitrary user-visited pages). Chrome's storage
-  // partitioning (Chrome 115+) keys BroadcastChannel and IndexedDB by
-  // top-level-site, which would isolate this iframe from the booklage main
-  // tab + PiP companion. requestStorageAccess({all: true}) (Chrome 124+, the
-  // non-cookie storage extension) bridges this gap by granting unpartitioned
-  // access. Chrome auto-grants without a prompt when the user has visited
-  // booklage as a first-party recently. If denied or unsupported, the probe
-  // simply times out on the bookmarklet side and it falls back to the popup.
-  useEffect(() => {
-    if (!isBookmarkletFlow) return
-    const requestAccess = async (): Promise<void> => {
-      const doc = document as Document & {
-        requestStorageAccess?: (types?: { all?: boolean }) => Promise<void>
-      }
-      if (!doc.requestStorageAccess) return
-      try {
-        await doc.requestStorageAccess({ all: true })
-      } catch {
-        // Try the no-args variant as a last resort (cookies only, won't help
-        // for IDB/BC, but worth attempting if {all: true} isn't recognised).
-        try { await doc.requestStorageAccess() } catch { /* ignore */ }
-      }
-    }
-    void requestAccess()
-  }, [isBookmarkletFlow])
-
   // Subscribe to PiP presence broadcasts so the iframe can answer probes
   // synchronously on subsequent calls.
   useEffect(() => {

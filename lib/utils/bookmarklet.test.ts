@@ -122,61 +122,32 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toMatch(/\(function\(\)\{[\s\S]*\}\)\(\);?$/)
   })
 
-  it('uses 320x320 popup dims (fallback popup when PiP probe fails or pipActive=false)', () => {
+  it('uses 200x160 popup dims (small mini-popup; Chrome may inflate but we ask small)', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('width=320')
-    expect(uri).toContain('height=320')
+    expect(uri).toContain('width=')
+    expect(uri).toContain('W=200')
+    expect(uri).toContain('H=160')
   })
 
-  it('positions fallback popup at bottom-right (20px inset)', () => {
+  it('positions popup at center-bottom (avoids overlap with PiP at corners)', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('screen.availWidth-340')
-    expect(uri).toContain('screen.availHeight-340')
+    // Horizontal center: (availWidth - W) / 2
+    expect(uri).toContain('(screen.availWidth-W)/2')
+    // Bottom: availHeight - H - 20 inset
+    expect(uri).toContain('screen.availHeight-H-20')
+    // Old corner-positioning math must be gone
+    expect(uri).not.toContain('screen.availWidth-340')
+    expect(uri).not.toContain('screen.availWidth-260')
   })
 
-  it('iframe path: contains /save-iframe?bookmarklet=1', () => {
+  it('opens via window.open at /save (popup-only flow, no iframe)', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('/save-iframe?bookmarklet=1')
-  })
-
-  it('contains booklage:probe and booklage:save message types', () => {
-    const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('booklage:probe')
-    expect(uri).toContain('booklage:save')
-  })
-
-  it('reads booklage:probe:result and booklage:save:result responses', () => {
-    const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('booklage:probe:result')
-    expect(uri).toContain('booklage:save:result')
-  })
-
-  it('still contains a window.open(/save?...) fallback path', () => {
-    const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toMatch(/\.open\([^)]*\/save\?/)
-  })
-
-  it('hidden iframe has invisible cssText (no visual artifact while probing)', () => {
-    const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('position:fixed')
-    expect(uri).toContain('left:-9999px')
-    expect(uri).toContain('opacity:0')
-    expect(uri).toContain('pointer-events:none')
-  })
-
-  it('600ms probe timeout triggers popup fallback', () => {
-    const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('600')
-  })
-
-  it('arms a 1500ms save-result deadline distinct from the 600ms probe timeout', () => {
-    const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('1500')
-  })
-
-  it('cleans up via removeEventListener (not just iframe removal)', () => {
-    const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri).toContain('removeEventListener')
+    expect(uri).toContain('window.open(')
+    expect(uri).toContain('https://booklage.pages.dev/save?')
+    // Iframe-mediated silent save isn't viable due to Chrome storage
+    // partitioning; we removed it.
+    expect(uri).not.toContain('/save-iframe?bookmarklet=1')
+    expect(uri).not.toContain('booklage:probe')
   })
 
   it('IIFE source contains the same OGP selectors as extractOgpFromDocument', () => {
