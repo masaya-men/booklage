@@ -1,7 +1,12 @@
 .host {
-  position: fixed;
-  inset: 0;
+  /* Fixed 320×320 stage that sits inside the PiP body's grid-center. If
+   * Chrome opens the PiP at a larger size (or the user resizes), our
+   * content stays the same — the surplus is black letterbox via body bg. */
+  position: relative;
+  width: 320px;
+  height: 320px;
   background: #000;
+  overflow: hidden;
   font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
   color: rgba(255, 255, 255, 0.94);
 }
