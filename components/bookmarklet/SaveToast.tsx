@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { initDB, addBookmark } from '@/lib/storage/indexeddb'
 import { detectUrlType } from '@/lib/utils/url'
@@ -8,52 +8,27 @@ import { postBookmarkSaved } from '@/lib/board/channel'
 import { t } from '@/lib/i18n/t'
 import styles from './SaveToast.module.css'
 
-type State = 'saving' | 'saved' | 'error'
+type State = 'saving' | 'saved' | 'recede' | 'error'
 
-/**
- * Reset the global Booklage body/html styling for the duration of the
- * bookmarklet popup window. The popup inherits the app shell's dark
- * canvas background and flex-column min-height, which would otherwise
- * paint a "frame" around the toast pill. By making body/html transparent
- * + zero-margin, the pill floats on the popup's native window background
- * with no visible chrome.
- */
-function useTransparentPopupShell(): void {
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const body = document.body
-    const html = document.documentElement
-    const prev = {
-      bodyMinHeight: body.style.minHeight,
-      bodyDisplay: body.style.display,
-      bodyBackground: body.style.background,
-      bodyMargin: body.style.margin,
-      bodyPadding: body.style.padding,
-      htmlBackground: html.style.background,
-      htmlMargin: html.style.margin,
-    }
-    body.style.minHeight = '0'
-    body.style.display = 'block'
-    body.style.background = 'transparent'
-    body.style.margin = '0'
-    body.style.padding = '0'
-    html.style.background = 'transparent'
-    html.style.margin = '0'
-    return (): void => {
-      body.style.minHeight = prev.bodyMinHeight
-      body.style.display = prev.bodyDisplay
-      body.style.background = prev.bodyBackground
-      body.style.margin = prev.bodyMargin
-      body.style.padding = prev.bodyPadding
-      html.style.background = prev.htmlBackground
-      html.style.margin = prev.htmlMargin
-    }
-  }, [])
+const SAVING_HOLD_MS = 600
+const SAVED_VISIBLE_MS = 1250
+const RECEDE_DURATION_MS = 250
+const ERROR_CLOSE_MS = 2600
+
+function StaggeredLabel({ text }: { text: string }): ReactElement {
+  const chars = useMemo(() => Array.from(text), [text])
+  return (
+    <>
+      {chars.map((ch, i) => (
+        <span key={`${i}-${ch}`} style={{ animationDelay: `${i * 40}ms` }}>
+          {ch === ' ' ? ' ' : ch}
+        </span>
+      ))}
+    </>
+  )
 }
 
 export function SaveToast(): ReactElement {
-  useTransparentPopupShell()
-
   const params = useSearchParams()
   const url = params.get('url') ?? ''
   const title = params.get('title') || url
@@ -68,8 +43,7 @@ export function SaveToast(): ReactElement {
   useEffect(() => {
     if (!url || savedRef.current) return
     savedRef.current = true
-    let timer: ReturnType<typeof setTimeout> | null = null
-    let closeTimer: ReturnType<typeof setTimeout> | null = null
+    const timers: ReturnType<typeof setTimeout>[] = []
 
     ;(async (): Promise<void> => {
       try {
@@ -85,70 +59,92 @@ export function SaveToast(): ReactElement {
           tags: [],
         })
         postBookmarkSaved({ bookmarkId: bm.id })
-        // Hold the spinner ~600ms so the success state never just flashes
-        // by — even on instant saves the user gets a beat to register the
-        // pill before it dismisses.
-        timer = setTimeout(() => setState('saved'), 600)
-        closeTimer = setTimeout(() => {
+
+        timers.push(setTimeout(() => setState('saved'), SAVING_HOLD_MS))
+        timers.push(setTimeout(() => setState('recede'), SAVING_HOLD_MS + SAVED_VISIBLE_MS))
+        timers.push(setTimeout(() => {
           try { window.close() } catch { /* browser blocked */ }
-        }, 1800)
+        }, SAVING_HOLD_MS + SAVED_VISIBLE_MS + RECEDE_DURATION_MS))
       } catch {
         setState('error')
-        closeTimer = setTimeout(() => {
+        timers.push(setTimeout(() => {
           try { window.close() } catch { /* ignore */ }
-        }, 2600)
+        }, ERROR_CLOSE_MS))
       }
     })()
 
-    return () => {
-      if (timer) clearTimeout(timer)
-      if (closeTimer) clearTimeout(closeTimer)
-    }
+    return () => { for (const tm of timers) clearTimeout(tm) }
   }, [url, title, desc, image, site, favicon])
 
-  // No-URL fallback (popup opened without query params).
   if (!url) {
     return (
-      <div className={styles.container} data-state="no-url">
-        <div className={styles.pill}>
-          <span className={styles.icon} aria-hidden="true">
-            <span className={styles.spinner} style={{ borderTopColor: 'transparent', borderColor: 'rgba(255,255,255,0.24)' }} />
-          </span>
-          <span className={styles.text}>
-            <span className={styles.brand}>Booklage</span>
-            <span className={styles.sep}>·</span>
-            <span className={styles.label}>ブックマークレットから開いてください</span>
-          </span>
+      <div className={styles.stage} data-state="saving" data-testid="save-toast">
+        <div className={styles.glow} />
+        <div className={styles.center}>
+          <div className={styles.indicator}>
+            <div className={styles.ring} data-role="ring" />
+          </div>
+          <div className={styles.brand}>Booklage</div>
+          <div className={styles.label} aria-live="polite">
+            <StaggeredLabel text="ブックマークレットから開いてください" />
+          </div>
         </div>
       </div>
     )
   }
 
+  const labelText =
+    state === 'error' ? t('bookmarklet.toast.error') :
+    state === 'saved' || state === 'recede' ? t('bookmarklet.toast.saved') :
+    t('bookmarklet.toast.saving')
+
+  const labelClass =
+    state === 'saved' || state === 'recede' ? `${styles.label} ${styles.saved}` :
+    state === 'error' ? `${styles.label} ${styles.error}` :
+    styles.label
+
+  const showImage = (state === 'saved' || state === 'recede') && image !== ''
+
   return (
-    <div className={styles.container} data-state={state} data-testid="save-toast">
-      <div className={styles.pill}>
-        <span className={styles.icon} aria-hidden="true">
-          {state === 'saving' && <span className={styles.spinner} />}
-          {state === 'saved' && (
-            <span className={styles.checkmark} role="img" aria-label={t('bookmarklet.toast.saved')}>
-              <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden="true">
-                <path d="M3 7 L6 10 L11 4" />
-              </svg>
-            </span>
+    <div className={styles.stage} data-state={state} data-testid="save-toast">
+      {showImage && (
+        <img
+          className={styles.bgThumb}
+          src={image}
+          alt=""
+          aria-hidden="true"
+          data-role="bg-thumb"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+        />
+      )}
+      <div className={styles.glow} />
+      <div className={styles.center}>
+        <div className={styles.indicator}>
+          {state === 'saving' && <div className={styles.ring} data-role="ring" />}
+          {(state === 'saved' || state === 'recede') && (
+            <svg
+              className={styles.checkmark}
+              viewBox="0 0 24 24"
+              role="img"
+              aria-label={t('bookmarklet.toast.saved')}
+              data-role="checkmark"
+            >
+              <path d="M5 12 L10 17 L19 7" />
+            </svg>
           )}
           {state === 'error' && (
-            <span className={styles.errorIcon} role="img" aria-label={t('bookmarklet.toast.error')}>!</span>
+            <div
+              className={styles.errorMark}
+              role="img"
+              aria-label={t('bookmarklet.toast.error')}
+              data-role="error-mark"
+            >!</div>
           )}
-        </span>
-        <span className={styles.text}>
-          <span className={styles.brand}>Booklage</span>
-          <span className={styles.sep}>·</span>
-          <span className={`${styles.label} ${state === 'saved' ? styles.saved : ''} ${state === 'error' ? styles.error : ''}`.trim()}>
-            {state === 'saving' && t('bookmarklet.toast.saving')}
-            {state === 'saved' && t('bookmarklet.toast.saved')}
-            {state === 'error' && t('bookmarklet.toast.error')}
-          </span>
-        </span>
+        </div>
+        <div className={styles.brand}>Booklage</div>
+        <div className={labelClass} aria-live="polite">
+          <StaggeredLabel text={labelText} />
+        </div>
       </div>
     </div>
   )
