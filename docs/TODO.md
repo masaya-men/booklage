@@ -8,18 +8,50 @@
 ## 現在の状態（次セッションはここから読む）
 
 - **ブランチ**: `master` 単一運用
-- **本番**: `https://booklage.pages.dev` に **Chrome 拡張 v0 — Plan 1 (Booklage 基盤) 完了** 反映済
-- **次セッション最優先**: Plan 2 — Chrome 拡張本体の plan 作成 + 実装 (manifest + service worker + content script + offscreen + cursor pill + 配布 zip)。spec の §4-7 が対象範囲
-- **保留**: 自由サイジング機能セッション 4 (矩形選択 marquee で範囲リセット) は `docs/private/IDEAS.md` 末尾に退避済。MVP では優先度低
-- **2026-05-09 引き継ぎ (Phase 1 / Plan 1 完了)**:
-  - Booklage 側基盤を一括追加: `/save-iframe` postMessage endpoint + PiP コンパニオン (320×320 + 5-card 3D records-stack + scan reveal + hover pull-forward + bottom-from slide-in) + ボード TopHeader の Pop out ボタン + `?focus=<cardId>` smooth scroll + glow halo
-  - **拡張未実装でも単独で機能確認可能**: ボードで Pop out → PiP 開く → console から /save-iframe に postMessage 投げて新カード参入アニメ確認できる (動作確認の自前ループが回る)
-  - ブクマレット (Phase 0) は引き続き本番運用、これと PiP は両立 (BroadcastChannel `bookmark-saved` 共有)
-  - 関連 spec: `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`
-  - 関連 plan: `docs/superpowers/plans/2026-05-09-extension-v0-plan1-booklage-foundation.md`
-  - **デザイン未確認項目** (本番で実機確認 → 細部 polish): records-stack の重ね方・peek 量・hover の前傾度、scan reveal の timing、empty state の wordmark サイズ、Pop out button の位置と大きさ
-  - 重複 URL ポリシー (memory `project_duplicate_url_policy.md`): Plan 2 の拡張で全導線統一実装予定
-- **Service Worker**: `v72-2026-05-05-site-nav-header-footer-board-chrome`（次回 polish 時に更新）
+- **本番**: `https://booklage.pages.dev` に **Chrome 拡張 v0 — Plan 1 (Booklage 基盤) + 各種 fix 適用済**
+- **Service Worker**: `v75-2026-05-09-pip-canary`
+- **次セッション最優先**: **PiP の実機検証** (詳細は下記 known issue 参照) — 解決後に Plan 2 (Chrome 拡張本体) へ
+- **保留**: 自由サイジング機能セッション 4 (矩形選択 marquee で範囲リセット) は `docs/private/IDEAS.md` 末尾に退避済
+
+### 🔴 既知の問題 (2026-05-09 セッション末)
+
+**PiP が ユーザー実機で巨大表示・アニメ無効・スタック重なり** という症状が継続。一方 **Playwright で本番環境を直接検証した結果、deploy 済みコードは完全正常**:
+- PiP title canary `"Booklage [v75]"` 出てる
+- console warning `[Booklage PiP v75] injected 447 CSS rules across 2 parent sheets` 出てる
+- `.host` computed style `319.998px × 319.998px` (= 320×320 完璧)
+- CSS は inline `<style>` で 447 rules 注入済 (link じゃなく)
+
+→ **ユーザー側ブラウザ環境固有の問題**。SW unregister + cache 全削除コマンドを試しても回復せず。考えられる原因:
+1. ユーザーの Chrome バージョンが PiP API の挙動が違う build (要確認: `chrome://version`)
+2. Chrome のサイトデータが完全リセットされてない (Settings → Site Settings → booklage.pages.dev → Clear data 試す)
+3. ブラウザ拡張機能 (uBlock 等) が干渉してる
+4. Windows 側の何か (ディスプレイスケーリング etc)
+
+**次セッションの最初**: ユーザーに以下を聞く
+- `chrome://version` でバージョン
+- Chrome の他のプロファイル / シークレット window で再現するか
+- 別ブラウザ (Edge) で再現するか
+- 他の Document PiP サンプル (例: Chrome の公式デモページ) が普通に動くか
+
+これで切り分けすれば、Booklage 固有問題か Chrome/環境問題かが判明する。
+
+### 🎯 2026-05-09 セッション完了内容 (Phase 1 / Plan 1)
+
+**Plan 1 完全実装済 (12 tasks, 13 commits, 361/361 tests, tsc 0 errors, deploy 完了)**:
+- `/save-iframe` postMessage endpoint (Zod schema + IDB write + BroadcastChannel)
+- PiP コンパニオン (320×320 + 5-card 3D records-stack + scan reveal + hover pull-forward + bottom-from slide-in)
+- ボード TopHeader の Pop out ボタン
+- `?focus=<cardId>` smooth scroll + glow halo
+- empty 状態 = PiP 開くたびに必ず empty スタート (per-session ループ)
+- SSR-safe `usePipWindow` (hydration mismatch fix)
+- CSS 注入を `<link>` クローン → cssRules を inline `<style>` 注入に変更 (より確実)
+- v75 SW + canary
+- 関連 spec: `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`
+- 関連 plan: `docs/superpowers/plans/2026-05-09-extension-v0-plan1-booklage-foundation.md`
+
+**ブクマレット (Phase 0) は polish 完了済も実機未検証** (ユーザー側で「後で確認」と保留中)
+
+**重複 URL ポリシー** (memory `project_duplicate_url_policy.md`): Plan 2 で全導線統一実装予定 — Plan 1 では未実装、bookmarklet と /save-iframe で同 URL 多重保存される現状仕様
 
 ### 🎯 今セッション (2026-05-08〜09) の到達点 — 自由サイジング機能セッション 3: 永続化 + リセット UI + 大量の UX polish
 
