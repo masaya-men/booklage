@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, type ReactElement } from 'react'
 import { initDB } from '@/lib/storage/indexeddb'
 import { subscribeBookmarkSaved } from '@/lib/board/channel'
+import { broadcastPipOpen, broadcastPipClosed, subscribePipPresence } from '@/lib/board/pip-presence'
 import { resolveThumbnail } from '@/lib/pip/resolve-thumbnail'
 import { PipEmptyState } from './PipEmptyState'
 import { PipStack, type PipStackCard } from './PipStack'
@@ -50,6 +51,16 @@ export function PipCompanion({ onCardClick }: PipCompanionProps): ReactElement {
       }
     })
     return unsub
+  }, [])
+
+  useEffect(() => {
+    broadcastPipOpen()
+    // Answer pip:query probes while we are mounted — we are the PiP, so we are open.
+    const unsub = subscribePipPresence(() => {}, () => true)
+    return () => {
+      unsub()
+      broadcastPipClosed()
+    }
   }, [])
 
   const handleCardClick = useCallback((cardId: string) => {

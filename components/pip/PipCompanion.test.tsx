@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import { PipCompanion } from './PipCompanion'
+import { broadcastPipOpen, broadcastPipClosed } from '@/lib/board/pip-presence'
 
 let savedHandler: ((msg: { bookmarkId: string }) => void) | null = null
 
@@ -17,6 +18,12 @@ vi.mock('@/lib/board/channel', () => ({
     savedHandler = handler
     return () => { savedHandler = null }
   }),
+}))
+
+vi.mock('@/lib/board/pip-presence', () => ({
+  broadcastPipOpen: vi.fn(),
+  broadcastPipClosed: vi.fn(),
+  subscribePipPresence: vi.fn(() => () => {}),
 }))
 
 describe('PipCompanion', () => {
@@ -43,6 +50,14 @@ describe('PipCompanion', () => {
     await waitFor(() => {
       expect(screen.getByTestId('pip-stack')).toBeTruthy()
     })
+  })
+
+  it('broadcasts pip:open on mount and pip:closed on unmount', () => {
+    const { unmount } = render(<PipCompanion onClose={() => {}} />)
+    expect(broadcastPipOpen).toHaveBeenCalledOnce()
+    expect(broadcastPipClosed).not.toHaveBeenCalled()
+    unmount()
+    expect(broadcastPipClosed).toHaveBeenCalledOnce()
   })
 
 })
