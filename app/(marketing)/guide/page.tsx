@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-import { generateBookmarkletUri } from '@/lib/utils/bookmarklet'
+import { GuideCalloutDragLink } from '@/components/bookmarklet/GuideCalloutDragLink'
 
 export const metadata: Metadata = {
   title: 'Guide',
@@ -9,10 +9,7 @@ export const metadata: Metadata = {
     'Booklage の使い方ガイド — ブックマークレットの設置から、ボード上でのコラージュ操作まで。',
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://booklage.pages.dev'
-
 export default function GuidePage(): React.ReactElement {
-  const bookmarkletUri = generateBookmarkletUri(APP_URL)
   return (
     <>
       <aside className="guide-callout" role="note" aria-label="bookmarklet update notice">
@@ -25,9 +22,7 @@ export default function GuidePage(): React.ReactElement {
           下のリンクをブックマークバーへ <strong>ドラッグ&ドロップ</strong> してください。
         </p>
         <p>
-          <a className="bookmarklet-drag" href={bookmarkletUri} draggable>
-            📌 Booklage に保存
-          </a>
+          <GuideCalloutDragLink />
         </p>
       </aside>
 
