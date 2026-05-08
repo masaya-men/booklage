@@ -47,33 +47,47 @@ export function usePipWindow(): PipWindowApi {
     // (2) Inline-extract cssRules into <style> tags as a fallback for any
     //     style sheet that doesn't have an href (e.g. dev-mode HMR style
     //     blocks). Wrapped in try/catch because cross-origin sheets throw.
-    const linkTags = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-    for (const node of linkTags) {
-      const link = node as HTMLLinkElement
-      if (!link.href) continue
-      const cloned = win.document.createElement('link')
-      cloned.rel = 'stylesheet'
-      cloned.href = link.href
-      if (link.crossOrigin) cloned.crossOrigin = link.crossOrigin
-      win.document.head.appendChild(cloned)
+    // Inline-extract cssRules from EVERY accessible stylesheet (same-origin
+    // including /_next/static/css/* in Next.js prod) and inject as <style>
+    // tags. This is synchronous — by the time PiP body renders, all rules
+    // are already parsed. Avoids the async <link> fetch race that left the
+    // PiP unstyled while Chrome rendered our React Portal output.
+    let totalRules = 0
+    for (const sheet of Array.from(document.styleSheets)) {
+      try {
+        const rules = Array.from(sheet.cssRules)
+        if (rules.length === 0) continue
+        const cssText = rules.map((rule) => rule.cssText).join('\n')
+        const style = win.document.createElement('style')
+        style.setAttribute('data-booklage-pip-css', sheet.href ?? 'inline')
+        style.textContent = cssText
+        win.document.head.appendChild(style)
+        totalRules += rules.length
+      } catch {
+        // CORS-blocked sheet — fall back to <link> clone if it has an href.
+        if (sheet.href) {
+          const link = win.document.createElement('link')
+          link.rel = 'stylesheet'
+          link.href = sheet.href
+          win.document.head.appendChild(link)
+        }
+      }
     }
+    // Also clone all parent <style> blocks (e.g. critical CSS / dev HMR).
     const styleTags = Array.from(document.querySelectorAll('style'))
     for (const node of styleTags) {
       const cloned = win.document.createElement('style')
+      cloned.setAttribute('data-booklage-pip-css', 'parent-style')
       cloned.textContent = node.textContent ?? ''
       win.document.head.appendChild(cloned)
     }
-    for (const sheet of Array.from(document.styleSheets)) {
-      if (sheet.href) continue // already covered by link clones above
-      try {
-        const cssText = Array.from(sheet.cssRules).map((rule) => rule.cssText).join('\n')
-        if (!cssText) continue
-        const style = win.document.createElement('style')
-        style.textContent = cssText
-        win.document.head.appendChild(style)
-      } catch {
-        // CORS-blocked, no-op (covered by link clones for same-origin)
-      }
+    // Surface a debug breadcrumb so we can verify CSS injection in DevTools.
+    // (Use globalThis.console rather than win.console — TS doesn't expose
+    // console on the Window interface returned by requestWindow.)
+    if (typeof console !== 'undefined') {
+      console.info(
+        `[Booklage PiP] injected ${totalRules} CSS rules across ${document.styleSheets.length} parent sheets`,
+      )
     }
 
     // Enforce 320×320 viewport via html/body so layout never gets stretched
