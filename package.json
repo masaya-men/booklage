@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "preview": "next build && wrangler pages dev out",
-    "prepare": "husky"
+    "prepare": "husky",
+    "icons:extension": "node scripts/generate-extension-icons.mjs"
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.5",
