@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "preview": "next build && wrangler pages dev out",
     "prepare": "husky",
-    "icons:extension": "node scripts/generate-extension-icons.mjs"
+    "icons:extension": "node scripts/generate-extension-icons.mjs",
+    "package:extension": "node scripts/package-extension.mjs"
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.5",
