@@ -85,8 +85,9 @@ export function usePipWindow(): PipWindowApi {
     // (Use globalThis.console rather than win.console — TS doesn't expose
     // console on the Window interface returned by requestWindow.)
     if (typeof console !== 'undefined') {
-      console.info(
-        `[Booklage PiP] injected ${totalRules} CSS rules across ${document.styleSheets.length} parent sheets`,
+      // Use console.warn so it bypasses default-level filters that hide info.
+      console.warn(
+        `[Booklage PiP v75] injected ${totalRules} CSS rules across ${document.styleSheets.length} parent sheets`,
       )
     }
 
@@ -95,7 +96,9 @@ export function usePipWindow(): PipWindowApi {
     // our 320×320 content sits centered with a black letterbox.
     win.document.documentElement.style.cssText = 'margin:0;padding:0;background:#000;width:100%;height:100%;overflow:hidden;'
     win.document.body.style.cssText = 'margin:0;padding:0;background:#000;width:100%;height:100%;overflow:hidden;display:grid;place-items:center;'
-    win.document.title = 'Booklage'
+    // v75 canary — if the PiP title contains this string, the latest code is
+    // running. Easier to verify than a console message which can be filtered.
+    win.document.title = 'Booklage [v75]'
 
     win.addEventListener('pagehide', () => setPipWindow(null), { once: true })
     setPipWindow(win)
