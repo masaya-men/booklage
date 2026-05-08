@@ -7,9 +7,60 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master` 単一運用、22 commits ahead of origin/master (未 push)
-- **本番**: `https://booklage.pages.dev` に **PiP カード click → 親タブ focus + slot-machine scroll + 透過度明滅 3 回** が deploy 済 (2026-05-09 セッション 4 時点)。**今セッション (2026-05-09 セッション 5) の Plan 2 work は未 deploy** — 次セッション最初に deploy 推奨
-- **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番)
+- **ブランチ**: `master` 単一運用、~30 commits ahead of origin/master (未 push)
+- **本番**: `https://booklage.pages.dev` に Plan 2 全タスク + ブックマークレット polish が deploy 済 (2026-05-09 セッション 5、6/7 deploy + 多数 iteration)
+- **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
+
+### 🔴 最優先: ブックマークレット popup の非表示化 (2026-05-09 セッション 5 末で持ち越し)
+
+**現在の状態**:
+- ブックマークレット IIFE: popup-only (`window.open('/save?...')`)、要求 200×160 で `bottom-right` に置こうとしているが **Chrome が position と size を override** して画面中央下に ~340×400 の popup を出す。本人がブクマレット押すたびこれを目撃する
+- `/save` ページ (`SaveToast.tsx`): PiP active 検出時 (`queryPipPresence(80)`) は IDB write 後 ~80ms で `window.close()`、PiP inactive 時は従来の 2.1s save toast animation
+- 古いブックマークレットでも /save 側挙動は新しい (popup の URL は変わらない) → **再登録不要で挙動だけ更新可能**
+
+**ユーザー要望 (2026-05-09 23 時頃)**:
+> 「そもそもポップアップを非表示にすることはできないの？最初の bookmarklet は popup なしだった気がする」
+> 「フィードバックがほしいと言って popup を追加してもらった経緯があるが、フィードバックなしも可能だった気がする」
+
+**根本制約 (再確認)**:
+- IDB は {top-level-site, origin} で partitioning 済 → bookmarklet が動く 3rd-party context (例: x.com) からは booklage.pages.dev の 1st-party IDB に直接 write できない
+- 1st-party IDB に write する唯一の方法は **booklage origin で top-level な何かを開く** = popup or new tab
+- iframe at booklage origin in 3rd-party page → partitioning で死。SAA `{all:true}` も Permissions-Policy 拒否で実用上動かないと判明
+- Service Worker も partitioned (3rd-party iframe からは booklage SW が見えない) → SW bridge 不可
+- **= window.open による popup を完全になくすことは Web プラットフォーム上不可能**
+
+**明日試す選択肢 (順番付き)**:
+
+1. **popup の見える時間を最小化 (推奨、コスト低)**
+   - `/save` を PiP の有無に関わらず常に超高速 close (~80ms) にする
+   - PiP inactive 時のフィードバックは parent page (= ブクマレット押した user のタブ) に **DOM-injected toast** を追加: ブクマレット IIFE が `<div>` を user のページに注入、「Booklage に保存しました ✓」表示、2 秒で fade out
+   - 利点: popup は最小限の flash (~100ms 程度)、フィードバックは parent page に出るので popup の visible time を犠牲にしないで済む
+   - 注意: parent page の CSS と衝突しないよう `all:initial` + 高 z-index で隔離。`Shadow DOM` で完全隔離も検討
+
+2. **off-screen popup (中コスト、不確実)**
+   - `left=99999, top=99999` 等で popup を画面外に置く。Chrome が clamp する場合あり (確認要)
+   - `width=1, height=1` で極小化 (ほぼ確実に Chrome の最小値 ~300×300 に inflate される)
+   - Chrome の anti-popup 防御を回避できる確実な方法はない。**実機テスト必須**
+   - もし上手くいけば、見えない popup → 内部で save → close。完全に invisible UX
+
+3. **Chrome 拡張機能を user に推す (本命)**
+   - sideload で完全 silent save (Ctrl+Shift+B + cursor pill)
+   - これは Plan 2 で既に実装済み、user が `chrome://extensions` で読み込むだけ
+   - 拡張 = 本来の正解、bookmarklet = 拡張未インストール user 向けの劣化フォールバック、と整理
+
+**過去の試行 (やっても意味なかったログ — 同じ轍を踏まないため)**:
+- ❌ 240×200 popup を bottom-right に → Chrome 中央に置き直し
+- ❌ 320×320 popup を bottom-right に → Chrome 中央
+- ❌ 200×160 popup を bottom-center → Chrome ほぼ中央 (たまたま位置が合っただけ)
+- ❌ 200×160 popup を bottom-right (PiP デフォルト位置) → Chrome 中央 (PiP 真後ろにならない)
+- ❌ iframe + probe + Storage Access API → SAA は 3rd-party page で auto-grant されず常に拒否 → popup フォールバックに毎回流れる
+- ✅ /save 側で PiP detect → fast-close: これは効果あり (popup の見える時間が ~2.1s → ~80ms に短縮)。継続採用
+
+**次セッション最初にやること**:
+1. ハードリロード or ブラウザ再起動 (古い popup の挙動を refresh)
+2. 上記「明日試す選択肢」の **1 (parent-page toast)** を実装
+3. それでも視覚的にうるさい場合は **3 (拡張機能 sideload で完全解決)** に切り替えてもらう
+4. もしくは parent-page toast を実装した上で 2 (off-screen popup) も試す
 - **2026-05-09 セッション 5 — Plan 2 全タスク完了** (Group 0 → A → B → C → D → E.1+E.2 → F.1+F.2+F.4):
   - Test count: 390 → **411 passing** (+21 unit tests)
   - tsc clean, vitest全green
