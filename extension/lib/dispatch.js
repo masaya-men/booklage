@@ -14,7 +14,12 @@ function makeNonce(prefix) {
   return prefix + Date.now() + Math.random().toString(36).slice(2, 7)
 }
 
-async function extractOgpFromTab(tabId, overrideUrl) {
+async function extractOgpFromTab(tabId, overrideUrl, ogpFromBookmarklet) {
+  // Bookmarklet path: the IIFE already extracted OGP from the live document
+  // (with cookies, post-render). Trust it and skip executeScript entirely —
+  // this avoids a redundant DOM walk and works on pages where the extension
+  // host_permission was somehow not granted.
+  if (ogpFromBookmarklet && ogpFromBookmarklet.url) return ogpFromBookmarklet
   // Save-link path: we have the URL but no DOM context — synthesize a minimal payload.
   if (overrideUrl) {
     let host = overrideUrl
@@ -54,27 +59,26 @@ async function postToOffscreen(envelope, nonce) {
   })
 }
 
-export async function dispatchSave({ trigger, tabId, linkUrl }) {
+export async function dispatchSave({ trigger, tabId, linkUrl, ogpFromBookmarklet, isPipActive }) {
   await ensureOffscreen()
-  const ogp = await extractOgpFromTab(tabId, linkUrl)
+  const ogp = await extractOgpFromTab(tabId, linkUrl, ogpFromBookmarklet)
   const nonce = makeNonce('e')
   const envelope = {
     type: 'booklage:save',
     payload: { ...ogp, nonce },
   }
-  // Tell the content script to show the cursor pill (saving state).
-  // Content scripts can't run on chrome:// pages — failing to deliver is OK,
-  // we'll fall back to OS notifications for those edge cases (only on final result).
-  chrome.tabs.sendMessage(tabId, { type: 'booklage:cursor-pill', state: 'saving' }).catch(() => {})
+  // Cursor pill on the source tab. While PiP is open on a Booklage tab,
+  // the new-card slide-in animation is sufficient feedback — suppress
+  // saving/saved pills to avoid double UI. Errors still surface a pill
+  // because PiP can't report failures.
+  const skipSuccessPill = !!isPipActive
+  if (!skipSuccessPill) {
+    chrome.tabs.sendMessage(tabId, { type: 'booklage:cursor-pill', state: 'saving' }).catch(() => {})
+  }
 
   const result = await postToOffscreen(envelope, nonce)
-  if (result?.ok) {
-    chrome.tabs.sendMessage(tabId, { type: 'booklage:cursor-pill', state: 'saved' }).catch(() => {
-      chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48.png', title: 'Booklage', message: 'Saved' })
-    })
-  } else {
-    chrome.tabs.sendMessage(tabId, { type: 'booklage:cursor-pill', state: 'error' }).catch(() => {
-      chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48.png', title: 'Booklage', message: 'Failed to save' })
-    })
+  const finalState = result?.ok ? 'saved' : 'error'
+  if (finalState === 'error' || !skipSuccessPill) {
+    chrome.tabs.sendMessage(tabId, { type: 'booklage:cursor-pill', state: finalState }).catch(() => {})
   }
 }

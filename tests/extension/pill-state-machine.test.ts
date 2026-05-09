@@ -7,9 +7,9 @@ describe('pillStateView', () => {
     expect(v).toEqual({ label: 'Saving', icon: 'ring', autoHideMs: null })
   })
 
-  it('returns Saved / check / 1200ms for saved', () => {
+  it('returns Saved / check / 1700ms for saved', () => {
     const v = pillStateView('saved')
-    expect(v).toEqual({ label: 'Saved', icon: 'check', autoHideMs: 1200 })
+    expect(v).toEqual({ label: 'Saved', icon: 'check', autoHideMs: 1700 })
   })
 
   it('returns Failed / bang / 2400ms for error', () => {
