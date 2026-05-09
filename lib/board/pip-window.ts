@@ -159,6 +159,22 @@ export function usePipWindow(): PipWindowApi {
     }
   }, [pipWindow])
 
+  // Mirror PiP state onto <html data-booklage-pip>. The Booklage browser
+  // extension reads this marker to skip the cursor pill while PiP is open
+  // (the new card sliding into PiP is feedback enough). Removed on close.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const el = document.documentElement
+    if (pipWindow && !pipWindow.closed) {
+      el.dataset.booklagePip = 'active'
+    } else {
+      delete el.dataset.booklagePip
+    }
+    return () => {
+      delete el.dataset.booklagePip
+    }
+  }, [pipWindow])
+
   return {
     window: pipWindow,
     isSupported,

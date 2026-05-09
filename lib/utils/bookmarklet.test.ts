@@ -107,9 +107,12 @@ describe('generateBookmarkletUri', () => {
     expect(uri).not.toContain('booklage.pages.dev')
   })
 
-  it('produces a URI shorter than 2000 characters', () => {
+  it('produces a URI shorter than 2100 characters', () => {
+    // Chrome accepts ~30k-char javascript: URIs; the 2100 cap is a sanity
+    // ceiling that catches accidental bloat without blocking small features
+    // like the extension hand-off path.
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri.length).toBeLessThan(2000)
+    expect(uri.length).toBeLessThan(2100)
   })
 
   it('contains the /save path reference', () => {
@@ -159,5 +162,27 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toContain('link[rel="icon"]')
     expect(uri).toContain('link[rel="shortcut icon"]')
     expect(uri).toContain('/favicon.ico')
+  })
+
+  it('checks for the Booklage extension marker (data-booklage-extension)', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('booklageExtension')
+  })
+
+  it('hands off to the extension via window.postMessage when present', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    expect(uri).toContain('booklage:save-via-extension')
+    expect(uri).toContain('window.postMessage(')
+  })
+
+  it('hand-off path returns before reaching window.open (extension takes over)', () => {
+    const uri = generateBookmarkletUri('https://booklage.pages.dev')
+    // Extension branch ends in `;return}` BEFORE the popup `window.open(`.
+    const handoffIdx = uri.indexOf('booklage:save-via-extension')
+    const popupIdx = uri.indexOf('window.open(')
+    expect(handoffIdx).toBeGreaterThan(0)
+    expect(popupIdx).toBeGreaterThan(handoffIdx)
+    const between = uri.slice(handoffIdx, popupIdx)
+    expect(between).toContain('return')
   })
 })
