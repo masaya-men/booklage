@@ -5,20 +5,17 @@ import { useSearchParams } from 'next/navigation'
 import { initDB, addBookmark } from '@/lib/storage/indexeddb'
 import { detectUrlType } from '@/lib/utils/url'
 import { postBookmarkSaved } from '@/lib/board/channel'
-import { queryPipPresence } from '@/lib/board/pip-presence'
 import { t } from '@/lib/i18n/t'
 import styles from './SaveToast.module.css'
 
 type State = 'saving' | 'saved' | 'recede' | 'error'
 
-const SAVING_HOLD_MS = 600
-const SAVED_VISIBLE_MS = 1250
-const RECEDE_DURATION_MS = 250
 const ERROR_CLOSE_MS = 2600
-// When PiP is active in another booklage client, the new card slides into
-// PiP — that's the user's feedback. We close the popup as fast as possible
-// after the IDB write to minimise the visual flash of popup-behind-PiP.
-const PIP_FAST_CLOSE_MS = 80
+// Bookmarklet popup is purely a bridge to write IDB in the {booklage,
+// booklage} partition; visible feedback lives in the host-page toast that
+// the bookmarklet IIFE injects. So we close the popup as fast as Chrome
+// will allow after the IDB write completes.
+const FAST_CLOSE_MS = 80
 
 function StaggeredLabel({ text }: { text: string }): ReactElement {
   const chars = useMemo(() => Array.from(text), [text])
@@ -52,11 +49,6 @@ export function SaveToast(): ReactElement {
 
     ;(async (): Promise<void> => {
       try {
-        // Probe PiP presence in parallel with the IDB write so the close
-        // decision is ready by the time save completes. 80ms is generous
-        // for in-realm BroadcastChannel round-trip (<1ms typical).
-        const pipPresencePromise = queryPipPresence(80)
-
         const db = await initDB()
         const bm = await addBookmark(db, {
           url,
@@ -70,26 +62,20 @@ export function SaveToast(): ReactElement {
         })
         postBookmarkSaved({ bookmarkId: bm.id })
 
-        const isPipActive = await pipPresencePromise
-
-        if (isPipActive) {
-          // PiP is showing the user's collage in real-time; the new card
-          // sliding in IS the save feedback. Close the popup ASAP so it
-          // barely shows behind PiP. No toast animation needed.
-          timers.push(setTimeout(() => {
-            try { window.close() } catch { /* browser blocked */ }
-          }, PIP_FAST_CLOSE_MS))
-          return
-        }
-
-        // Fallback: PiP not open. Show the full save-toast animation so the
-        // user gets visible confirmation that the save succeeded.
-        timers.push(setTimeout(() => setState('saved'), SAVING_HOLD_MS))
-        timers.push(setTimeout(() => setState('recede'), SAVING_HOLD_MS + SAVED_VISIBLE_MS))
+        // Always fast-close. The bookmarklet IIFE injects a Shadow-DOM
+        // toast into the user's host page (saving → saved → fade out)
+        // that owns the visible feedback now. The popup is just a
+        // bridge to write IDB in the {booklage, booklage} partition,
+        // so it has no UI responsibility — keep it on screen as briefly
+        // as Chrome will allow. Same closing path whether PiP is open
+        // or not; PiP slide-in animation provides additional feedback
+        // when present, parent toast covers the no-PiP case.
         timers.push(setTimeout(() => {
           try { window.close() } catch { /* browser blocked */ }
-        }, SAVING_HOLD_MS + SAVED_VISIBLE_MS + RECEDE_DURATION_MS))
+        }, FAST_CLOSE_MS))
       } catch {
+        // Hard error path — keep the original error toast so the user
+        // sees the failure even if their host page's toast was ephemeral.
         setState('error')
         timers.push(setTimeout(() => {
           try { window.close() } catch { /* ignore */ }
