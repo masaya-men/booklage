@@ -2,9 +2,10 @@
   position: fixed;
   top: 0; left: 0;
   z-index: 2147483647;
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 12px;
-  height: 40px; min-width: 200px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 0 14px 0 12px;
+  height: 40px;
+  width: max-content;
   border-radius: 20px;
   background: rgba(18, 18, 22, 0.92);
   backdrop-filter: blur(14px) saturate(140%);
