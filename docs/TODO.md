@@ -7,47 +7,54 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master` 単一運用、~33 commits ahead of origin/master (未 push)
-- **本番**: `https://booklage.pages.dev` に **bookmarklet host-page Shadow DOM toast** + **/save 常時 fast-close** + **拡張機能 v0 (sideload 可能)** が deploy 済 (2026-05-10 セッション 6)
+- **ブランチ**: `master` 単一運用、~35 commits ahead of origin/master (未 push)
+- **本番**: `https://booklage.pages.dev` に **bookmarklet→拡張ハンドオフ** + **PiP-aware cursor pill 抑制** + **拡張 cursor-pill アニメ品質向上** が deploy 済 (2026-05-10 セッション 7)
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
-- **ユーザー実機**: 拡張機能 sideload 完了済 (toolbar に B アイコン ON、ピン止め不要)
+- **ユーザー実機**: 拡張機能 sideload 完了済。host_permissions が `<all_urls>` に拡張されたため、再 sideload が必要
 
-### 🔴 最優先 — 残された UX 課題 (2026-05-10 セッション 6 末で持ち越し)
+### 🔴 次セッション最優先 — 実機検証 (2026-05-10 セッション 7 末で持ち越し)
 
-#### 課題 A: bookmarklet popup の右下フラッシュが気になる
+セッション 7 で大きな仕様変更を入れた直後で、**実機テストはまだ不完全**。次セッションで以下を切り分けて検証する。
 
-**現在の挙動**:
-- ブクマレット押すと:
-  1. **右上に Shadow DOM pill**「Booklage に保存中…」 → ~500ms 後 「保存しました ✓」 → 2.2 秒で消える (`lib/utils/bookmarklet.ts` の IIFE が host page DOM に注入、Shadow DOM closed mode で host CSS から完全隔離)
-  2. **右下 (or 中央付近、Chrome が位置決定) に小 popup が一瞬チラッ** ~80ms で `window.close()` (`SaveToast.tsx` の `FAST_CLOSE_MS = 80`)
-  3. PiP 開いてれば新カードがスライドイン
+#### A. 拡張機能の再 sideload + 動作テスト (USER-side、最初に必須)
 
-**ユーザー実機反応 (2026-05-10 朝)**: 「ポップアップがどうしても右下で一瞬フラッシュするのが気になる」
+`<all_urls>` host_permission を加えたため、Chrome は再インストールでないと新権限を承認しない場合がある。
 
-**残選択肢**:
-1. **off-screen popup を試す** (やってない。`left=99999, top=99999`、`left=-9999, top=-9999`、`width=1,height=1`)。Chrome の clamp 動作は実機テストでしか確認できない。試す価値あり。失敗してもコスト小
-2. **拡張機能の使用を user に強く推奨** (本命)。bookmarklet は拡張機能未導入の visitor 用フォールバックと割り切る。Polish 投資をやめる
+1. `chrome://extensions` → Booklage を **削除**
+2. 「パッケージ化されていない拡張機能を読み込む」 → `c:\Users\masay\Desktop\マイコラージュ\extension\` 選択
+3. 権限ダイアログ「すべてのウェブサイト上のすべてのデータを読み取り、変更する」 → 許可
+4. options でショートカット再設定 (Alt+Shift+B 推奨; Twitter は Ctrl+B を奪う)
+5. 任意ページを **F5 リロード** (既存タブの content script は extension reload では更新されない仕様)
+6. 以下 4 系統を切り分け:
+   - **bookmarklet クリック** (拡張あり): popup 一瞬フラッシュ消えるはず ← セッション 7 の本丸
+   - **bookmarklet クリック** (拡張なし環境想定、検証は不可): 既存通り popup + Shadow DOM toast
+   - **拡張ショートカット (Ctrl+Shift+B 等)**: cursor pill (ring → check pop bounce → fade)
+   - **拡張右クリック → Save to Booklage / Save link to Booklage**: 同上 cursor pill
+7. PiP open 状態でショートカット押下 → cursor pill **出ない**、PiP に新カードのみスライドイン
+8. PiP open 状態で error 起こす (chrome:// page 等) → cursor pill error は出る (PiP 経由では失敗が見えないため)
 
-#### 課題 B: 拡張機能の動作未確認 (= **次セッション最優先**)
+#### B. 仕様変更の中身 (実装済み)
 
-**確認済**: sideload 成功 (アイコン出てる、ピン止め不要 = 既に toolbar に常駐)
+- **bookmarklet→拡張ハンドオフ** (`lib/utils/bookmarklet.ts` IIFE):
+  - `<html data-booklage-extension="1">` の marker をチェック
+  - あり → `window.postMessage({type:'booklage:save-via-extension', ogp, nonce})` のみ。popup 開かない、host-page toast 出さない
+  - なし → 既存の popup + Shadow DOM toast fallback
+- **拡張 content script の追加機能** (`extension/content.js`):
+  - `<all_urls>` で marker `data-booklage-extension="1"` を `<html>` に置く
+  - bookmarklet からの postMessage を受けて `chrome.runtime.sendMessage` で background へ転送 (5s nonce dedupe 付き)
+  - booklage.pages.dev タブのみ MutationObserver で `data-booklage-pip` 監視 → background に通知
+- **PiP marker** (`lib/board/pip-window.ts` `usePipWindow`):
+  - PiP open/close で `<html data-booklage-pip="active">` を更新
+- **dispatch.js `isPipActive` フラグ**:
+  - PiP active なら saving/saved の cursor pill 送信を skip
+  - error の cursor pill は常に送る
+- **bookmarklet IIFE 長**: 1830 → 2040 chars (test cap 2000→2100 に緩和)
 
-**未確認 (次セッション first thing)**:
-- `Ctrl+Shift+B` を押した時 → cursor pill だけ出て popup なしの silent save になるか?
-- 右クリック → "Save to Booklage" → 同上
-- 右クリック → "Save link to Booklage" → 同上
-- chrome:// page で `Ctrl+Shift+B` → OS 通知 fallback 出るか?
-- ❗ user 反応「右上のピルも右下の一瞬フラッシュするポップアップもあるままでした」 — これが **bookmarklet クリックの挙動** なのか **拡張機能 Ctrl+Shift+B の挙動** なのか **切り分けが必要**。bookmarklet なら期待通り (popup フラッシュは bookmarklet の特性)。拡張機能でも popup 出るなら **拡張機能のバグ** で要修正
+### 既知の積み残し
 
-**SW devtools でログ追跡方法**: `chrome://extensions` → Booklage → "service worker" link → console で `[booklage]` プレフィックスのログを探す
-
-### 次セッションのフロー (順番)
-
-1. **bookmarklet と拡張機能の挙動切り分け**:
-   - User に「bookmarklet クリック (popup+pill 出る)」と「拡張機能 Ctrl+Shift+B (popup なし期待)」を別々にテストしてもらう
-   - 拡張機能でも popup 出るなら → background.js / dispatch.js のロジック review
-2. **拡張機能が完璧に silent save なら**: bookmarklet polish はやらない、拡張機能を default 推奨にして bookmarklet は disclaimer 付きフォールバックに整理
-3. **拡張機能でも問題出るなら**: Plan 2 Group B/C の review、特に dispatch.js の cursor-pill state machine の動作確認
+- **bookmarklet 経由の cursor pill タイミング**: extension が dispatchSave を起動するまでに数十 ms ある。saving floor (500ms) で吸収されるはずだが実機で要確認
+- **拡張機能未公開 → host_permission が ON なのに Chrome が「未設定」と表示する画面** (options 画面の話?): セッション 7 でユーザー報告あり。enable toggle 自体はキーボード設定なので問題ない、Cmd 設定だけ拡張側で OK
+- **ショートカット衝突**: Twitter は Ctrl+B を奪う。Alt+Shift+B 等の方が安全
 
 ### 過去の試行ログ (同じ轍を避けるため、消すな)
 
@@ -72,50 +79,39 @@
 - 拡張機能の Web Store 提出準備 (Task F.3): user $5 fee + screenshots + description
 - E.3 Playwright sideload E2E (Plan 2 の defer 分)
 
-### 完了済 (2026-05-10 セッション 6)
+### 中期タスク (セッション 7 で発生、別セッションで着手)
 
-| 変更 | commit |
+#### (T1) 拡張設定を Booklage サイトでできるように
+
+現状: 拡張の auto-open PiP / cursor pill fallback position の設定は `chrome://extensions/?id=...` の options ページでしか触れない。一般ユーザーは絶対辿り着けない場所。
+
+設計案:
+- booklage.pages.dev/settings 等のページに「Booklage Extension」セクションを表示 (拡張あり時のみ)
+- web app から `window.postMessage({type:'booklage:set-options', ...})` → content script が listen → `chrome.storage.sync.set(...)`
+- content script が起動時に `chrome.storage.sync.get` の値を web app に流して UI 初期値に反映
+- すべて拡張インストール検知 (data-booklage-extension marker) で表示制御
+
+#### (T2) auto-open PiP wire-up
+
+`docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md` L98 の Phase 1.5 タスク。Document PiP API は user gesture 必須なので「booklage タブで最初の click 時に auto-launch」設計。content script を booklage.pages.dev で 1 回 click を listen → `documentPictureInPicture.requestWindow()` を web app に postMessage で依頼するか、web app 側で chrome.storage を読んで自前 launch するか要決定。
+
+#### (T3) bookmarklet の cursor pill タイミング検証
+
+bookmarklet → postMessage → content script → background → dispatchSave の往復に数十 ms かかる。saving floor 500ms で吸収される前提だが、実機で確認して必要なら content script 側で「ハンドオフ受信時点」に saving pill を即出す処理を追加
+
+### 完了済 (2026-05-10 セッション 7)
+
+| 変更 | 内容 |
 |---|---|
-| bookmarklet IIFE: Shadow DOM toast 注入 (右上 pill) | (このセッション) |
-| /save: 常時 fast-close (~80ms) (parent toast がフィードバック担当) | (同上) |
-| /save: 元の 2.1s 保存 toast animation 削除 | (同上) |
-| SaveToast.test.tsx: PiP active/inactive 両ケース → 新挙動 (always fast-close) に更新 | (同上) |
-- **2026-05-09 セッション 5 — Plan 2 全タスク完了** (Group 0 → A → B → C → D → E.1+E.2 → F.1+F.2+F.4):
-  - Test count: 390 → **411 passing** (+21 unit tests)
-  - tsc clean, vitest全green
-  - **Chrome 拡張 v0 パッケージ完成**: `dist/booklage-extension-0.1.0.zip` (13.3 KB) を sideload / Web Store unlisted 投稿可能な状態に
+| **MV3 import 修正** (`extension/content.js`) | `import` を inline 化 (MV3 content_scripts は ES modules 非対応)、manifest の `type:module` 削除、`notifications` permission 削除 |
+| **host_permissions 拡張** | `["https://booklage.pages.dev/*"]` → `["<all_urls>"]`。任意ページの OGP を `chrome.scripting.executeScript` で抽出可能に |
+| **cursor pill 品質向上** | mouse follow + saving 500ms 最低表示 + saved 1700ms + icon pop bounce + check stroke 0.48s + error shake |
+| **bookmarklet → 拡張ハンドオフ** | `<html data-booklage-extension="1">` marker 設置 → bookmarklet が検知 → postMessage で拡張へ silent save 委譲。popup なし |
+| **PiP-aware pill 抑制** | `usePipWindow` が `<html data-booklage-pip="active">` 更新 → 拡張 content script が MutationObserver で検知 → background へ通知 → dispatchSave が saving/saved 抑制、error は出す |
+| **deploy** | `https://booklage.pages.dev` へ反映済 (commit-message="extension hand-off + PiP-aware pill") |
 
-### 次セッションの最優先 — Plan 2 仕上げ + deploy
-
-#### 1. Plan 2 work を本番 deploy
-- 新しい bookmarklet (`/save-iframe?bookmarklet=1` 経由 silent save)、`/extension/privacy` route、`/guide` callout を一気に本番反映
-- 手順は CLAUDE.md L168〜「本番デプロイのルール」参照: `rtk pnpm build` → `npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-dirty=true`
-- **deploy 後ユーザーに必ず案内**: 「booklage.pages.dev をハードリロードしてください」
-
-#### 2. ブックマークレット再登録 (USER-side)
-新しい bookmarklet IIFE は `/save-iframe?bookmarklet=1` を裏で叩く設計のため、**古い bookmarklet を一度ブックマークバーから削除し、`/guide` 冒頭の callout から新版をドラッグし直す必要がある**。この案内を deploy 案内と一緒に提示する。
-
-#### 3. 拡張機能 sideload (USER-side, Task A.4)
-- `chrome://extensions` を開く → デベロッパーモード ON → 「パッケージ化されていない拡張機能を読み込む」 → `c:\Users\masay\Desktop\マイコラージュ\extension\` を選択
-- アイコンが現れるか確認、popup → Open settings → options 画面が開くか確認
-- 任意ページで `Ctrl+Shift+B` → cursor pill が出て booklage.pages.dev tab に新カードが入るか確認
-- 右クリック → "Save to Booklage" / "Save link to Booklage" も同じ流れで動くか確認
-- chrome://extensions ページで save を試して OS 通知 fallback が出るか確認 (content script は chrome:// に注入されない)
-- 不具合あれば SW devtools (`chrome://extensions` → Booklage → "service worker") を開いてログ追跡
-
-#### 4. Chrome Web Store 投稿 (USER-led, Task F.3)
-- 一回だけ Chrome Web Store Developer 登録料 $5 USD (約 ¥800) を払う必要あり
-- `dist/booklage-extension-0.1.0.zip` を upload
-- 公開タイトル: "Booklage" / 短い説明: manifest の description / 詳しい説明: spec から作成 (要 docs/private/extension-store-description.md 新規 — まだ未作成)
-- Screenshots 1280×800 を 3〜5 枚 (board ページにカードが並んだ状態 + cursor pill が出た状態 + PiP companion 出た状態)
-- Privacy policy URL: `https://booklage.pages.dev/extension/privacy` (deploy 後)
-- **Visibility: Unlisted** (spec §11 — 非公開リンク配布のみ、検索結果には出さない)
-- 提出 → Google レビュー 1〜3 週間
-- レビュー fee は account 作成時の一回限り、その後は同じ account でいくつでも publish 可能
-
-#### 5. E.3 Playwright sideload テスト (defer)
-- `chromium.launchPersistentContext('', { headless: false, args: ['--load-extension=...']})` 構成で extension の sideload + save flow を E2E でカバー
-- Plan 2 では未実装、次フェーズで `tests/e2e/extension-save.spec.ts` を新規作成。複雑なため別セッションで集中対応
+完了済 (2026-05-10 セッション 6): bookmarklet IIFE Shadow DOM toast 注入、`/save` 常時 fast-close、SaveToast.test.tsx 更新。
+完了済 (2026-05-09 セッション 5): Plan 2 全タスク (Group 0 → F)、Chrome 拡張 v0 パッケージ。
 
 ### 残スコープ整理
 
