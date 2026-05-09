@@ -7,60 +7,79 @@
 
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master` 単一運用、~30 commits ahead of origin/master (未 push)
-- **本番**: `https://booklage.pages.dev` に Plan 2 全タスク + ブックマークレット polish が deploy 済 (2026-05-09 セッション 5、6/7 deploy + 多数 iteration)
+- **ブランチ**: `master` 単一運用、~33 commits ahead of origin/master (未 push)
+- **本番**: `https://booklage.pages.dev` に **bookmarklet host-page Shadow DOM toast** + **/save 常時 fast-close** + **拡張機能 v0 (sideload 可能)** が deploy 済 (2026-05-10 セッション 6)
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
+- **ユーザー実機**: 拡張機能 sideload 完了済 (toolbar に B アイコン ON、ピン止め不要)
 
-### 🔴 最優先: ブックマークレット popup の非表示化 (2026-05-09 セッション 5 末で持ち越し)
+### 🔴 最優先 — 残された UX 課題 (2026-05-10 セッション 6 末で持ち越し)
 
-**現在の状態**:
-- ブックマークレット IIFE: popup-only (`window.open('/save?...')`)、要求 200×160 で `bottom-right` に置こうとしているが **Chrome が position と size を override** して画面中央下に ~340×400 の popup を出す。本人がブクマレット押すたびこれを目撃する
-- `/save` ページ (`SaveToast.tsx`): PiP active 検出時 (`queryPipPresence(80)`) は IDB write 後 ~80ms で `window.close()`、PiP inactive 時は従来の 2.1s save toast animation
-- 古いブックマークレットでも /save 側挙動は新しい (popup の URL は変わらない) → **再登録不要で挙動だけ更新可能**
+#### 課題 A: bookmarklet popup の右下フラッシュが気になる
 
-**ユーザー要望 (2026-05-09 23 時頃)**:
-> 「そもそもポップアップを非表示にすることはできないの？最初の bookmarklet は popup なしだった気がする」
-> 「フィードバックがほしいと言って popup を追加してもらった経緯があるが、フィードバックなしも可能だった気がする」
+**現在の挙動**:
+- ブクマレット押すと:
+  1. **右上に Shadow DOM pill**「Booklage に保存中…」 → ~500ms 後 「保存しました ✓」 → 2.2 秒で消える (`lib/utils/bookmarklet.ts` の IIFE が host page DOM に注入、Shadow DOM closed mode で host CSS から完全隔離)
+  2. **右下 (or 中央付近、Chrome が位置決定) に小 popup が一瞬チラッ** ~80ms で `window.close()` (`SaveToast.tsx` の `FAST_CLOSE_MS = 80`)
+  3. PiP 開いてれば新カードがスライドイン
 
-**根本制約 (再確認)**:
-- IDB は {top-level-site, origin} で partitioning 済 → bookmarklet が動く 3rd-party context (例: x.com) からは booklage.pages.dev の 1st-party IDB に直接 write できない
-- 1st-party IDB に write する唯一の方法は **booklage origin で top-level な何かを開く** = popup or new tab
-- iframe at booklage origin in 3rd-party page → partitioning で死。SAA `{all:true}` も Permissions-Policy 拒否で実用上動かないと判明
-- Service Worker も partitioned (3rd-party iframe からは booklage SW が見えない) → SW bridge 不可
-- **= window.open による popup を完全になくすことは Web プラットフォーム上不可能**
+**ユーザー実機反応 (2026-05-10 朝)**: 「ポップアップがどうしても右下で一瞬フラッシュするのが気になる」
 
-**明日試す選択肢 (順番付き)**:
+**残選択肢**:
+1. **off-screen popup を試す** (やってない。`left=99999, top=99999`、`left=-9999, top=-9999`、`width=1,height=1`)。Chrome の clamp 動作は実機テストでしか確認できない。試す価値あり。失敗してもコスト小
+2. **拡張機能の使用を user に強く推奨** (本命)。bookmarklet は拡張機能未導入の visitor 用フォールバックと割り切る。Polish 投資をやめる
 
-1. **popup の見える時間を最小化 (推奨、コスト低)**
-   - `/save` を PiP の有無に関わらず常に超高速 close (~80ms) にする
-   - PiP inactive 時のフィードバックは parent page (= ブクマレット押した user のタブ) に **DOM-injected toast** を追加: ブクマレット IIFE が `<div>` を user のページに注入、「Booklage に保存しました ✓」表示、2 秒で fade out
-   - 利点: popup は最小限の flash (~100ms 程度)、フィードバックは parent page に出るので popup の visible time を犠牲にしないで済む
-   - 注意: parent page の CSS と衝突しないよう `all:initial` + 高 z-index で隔離。`Shadow DOM` で完全隔離も検討
+#### 課題 B: 拡張機能の動作未確認 (= **次セッション最優先**)
 
-2. **off-screen popup (中コスト、不確実)**
-   - `left=99999, top=99999` 等で popup を画面外に置く。Chrome が clamp する場合あり (確認要)
-   - `width=1, height=1` で極小化 (ほぼ確実に Chrome の最小値 ~300×300 に inflate される)
-   - Chrome の anti-popup 防御を回避できる確実な方法はない。**実機テスト必須**
-   - もし上手くいけば、見えない popup → 内部で save → close。完全に invisible UX
+**確認済**: sideload 成功 (アイコン出てる、ピン止め不要 = 既に toolbar に常駐)
 
-3. **Chrome 拡張機能を user に推す (本命)**
-   - sideload で完全 silent save (Ctrl+Shift+B + cursor pill)
-   - これは Plan 2 で既に実装済み、user が `chrome://extensions` で読み込むだけ
-   - 拡張 = 本来の正解、bookmarklet = 拡張未インストール user 向けの劣化フォールバック、と整理
+**未確認 (次セッション first thing)**:
+- `Ctrl+Shift+B` を押した時 → cursor pill だけ出て popup なしの silent save になるか?
+- 右クリック → "Save to Booklage" → 同上
+- 右クリック → "Save link to Booklage" → 同上
+- chrome:// page で `Ctrl+Shift+B` → OS 通知 fallback 出るか?
+- ❗ user 反応「右上のピルも右下の一瞬フラッシュするポップアップもあるままでした」 — これが **bookmarklet クリックの挙動** なのか **拡張機能 Ctrl+Shift+B の挙動** なのか **切り分けが必要**。bookmarklet なら期待通り (popup フラッシュは bookmarklet の特性)。拡張機能でも popup 出るなら **拡張機能のバグ** で要修正
 
-**過去の試行 (やっても意味なかったログ — 同じ轍を踏まないため)**:
-- ❌ 240×200 popup を bottom-right に → Chrome 中央に置き直し
-- ❌ 320×320 popup を bottom-right に → Chrome 中央
-- ❌ 200×160 popup を bottom-center → Chrome ほぼ中央 (たまたま位置が合っただけ)
-- ❌ 200×160 popup を bottom-right (PiP デフォルト位置) → Chrome 中央 (PiP 真後ろにならない)
-- ❌ iframe + probe + Storage Access API → SAA は 3rd-party page で auto-grant されず常に拒否 → popup フォールバックに毎回流れる
-- ✅ /save 側で PiP detect → fast-close: これは効果あり (popup の見える時間が ~2.1s → ~80ms に短縮)。継続採用
+**SW devtools でログ追跡方法**: `chrome://extensions` → Booklage → "service worker" link → console で `[booklage]` プレフィックスのログを探す
 
-**次セッション最初にやること**:
-1. ハードリロード or ブラウザ再起動 (古い popup の挙動を refresh)
-2. 上記「明日試す選択肢」の **1 (parent-page toast)** を実装
-3. それでも視覚的にうるさい場合は **3 (拡張機能 sideload で完全解決)** に切り替えてもらう
-4. もしくは parent-page toast を実装した上で 2 (off-screen popup) も試す
+### 次セッションのフロー (順番)
+
+1. **bookmarklet と拡張機能の挙動切り分け**:
+   - User に「bookmarklet クリック (popup+pill 出る)」と「拡張機能 Ctrl+Shift+B (popup なし期待)」を別々にテストしてもらう
+   - 拡張機能でも popup 出るなら → background.js / dispatch.js のロジック review
+2. **拡張機能が完璧に silent save なら**: bookmarklet polish はやらない、拡張機能を default 推奨にして bookmarklet は disclaimer 付きフォールバックに整理
+3. **拡張機能でも問題出るなら**: Plan 2 Group B/C の review、特に dispatch.js の cursor-pill state machine の動作確認
+
+### 過去の試行ログ (同じ轍を避けるため、消すな)
+
+- ❌ 240×200/320×320 popup を bottom-right に → Chrome が中央に置き直し
+- ❌ 200×160 popup を bottom-center → 一瞬合うが Chrome 不安定
+- ❌ 200×160 popup を bottom-right (PiP デフォルト位置) → Chrome 中央
+- ❌ iframe + probe + Storage Access API → SAA は 3rd-party page で auto-grant されず → popup フォールバックに毎回流れる
+- ❌ Service Worker bridge → SW も top-level-site で partitioned、3rd-party iframe からは booklage SW 見えない
+- ✅ /save 側で fast-close (~80ms) → popup の見える時間 2.1s → 80ms に短縮、継続採用
+- ✅ Shadow DOM 注入 host-page toast (右上) → ホスト CSS から隔離、安定。継続採用
+
+### 根本制約 (再確認用、次セッションでも忘れない)
+
+- **Chrome's storage partitioning (Chrome 115+, Aug 2023)**: BroadcastChannel + IndexedDB + Service Worker が `{top-level-site, origin}` で keying。3rd-party context (e.g., x.com 上の booklage iframe) は 1st-party booklage と完全隔離
+- **唯一の web 標準的回避策**: `window.open()` で booklage origin の top-level タブを開く (= popup) — 必然的に visible
+- **拡張機能だけが例外**: chrome.scripting / chrome.offscreen / host_permissions 経由で partition 例外を享受。よって silent save 実現可能
+- 結論: bookmarklet は popup 必須、拡張機能こそ silent save の本命。これは Web プラットフォームの仕様で覆せない
+
+### 副次タスク (時間あれば)
+
+- bookmarklet 用の手順を /guide に追記 (古い popup 説明を新しい host-page toast 説明に更新)
+- 拡張機能の Web Store 提出準備 (Task F.3): user $5 fee + screenshots + description
+- E.3 Playwright sideload E2E (Plan 2 の defer 分)
+
+### 完了済 (2026-05-10 セッション 6)
+
+| 変更 | commit |
+|---|---|
+| bookmarklet IIFE: Shadow DOM toast 注入 (右上 pill) | (このセッション) |
+| /save: 常時 fast-close (~80ms) (parent toast がフィードバック担当) | (同上) |
+| /save: 元の 2.1s 保存 toast animation 削除 | (同上) |
+| SaveToast.test.tsx: PiP active/inactive 両ケース → 新挙動 (always fast-close) に更新 | (同上) |
 - **2026-05-09 セッション 5 — Plan 2 全タスク完了** (Group 0 → A → B → C → D → E.1+E.2 → F.1+F.2+F.4):
   - Test count: 390 → **411 passing** (+21 unit tests)
   - tsc clean, vitest全green
