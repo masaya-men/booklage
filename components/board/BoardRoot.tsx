@@ -535,8 +535,21 @@ export function BoardRoot() {
     window.localStorage.setItem('booklage:size-level', String(sizeLevel))
   }, [sizeLevel])
 
+  // Fired by Lightbox at the moment .media has landed at the source
+  // card's rect, ~150ms BEFORE the lightbox actually unmounts. Restoring
+  // visibility now means the source card is visible underneath while
+  // .media fades out on top — the cross-fade window that masks the
+  // visual mismatch between .media's <img> and the source card's <img>
+  // (different object-fit, radius). See Lightbox close-tween comment.
+  const handleLightboxSourceShouldShow = useCallback((): void => {
+    setLightboxSourceItemId(null)
+  }, [])
+
   const handleLightboxClose = useCallback((): void => {
     setLightboxItemId(null)
+    // sourceItemId should already be null via the cross-fade callback
+    // above, but clear defensively in case the callback path was skipped
+    // (fallback close, no source card, etc.).
     setLightboxSourceItemId(null)
     setLightboxOriginRect(null)
   }, [])
@@ -891,6 +904,7 @@ export function BoardRoot() {
           item={lightboxItem}
           originRect={lightboxOriginRect}
           sourceCardId={lightboxSourceItemId}
+          onSourceShouldShow={handleLightboxSourceShouldShow}
           onClose={handleLightboxClose}
           nav={lightboxItem ? {
             currentIndex: lightboxIndex,

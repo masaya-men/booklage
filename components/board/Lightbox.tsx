@@ -54,6 +54,14 @@ const CLOSE_TEXT_FADE_DUR = 0.14
 const CLOSE_BACKDROP_FADE_DUR = 0.42
 const CLOSE_BACKDROP_DELAY = 0.15
 const CLOSE_FALLBACK_DUR = 0.3
+// Once .media has landed at the source card's rect, the source card is
+// revealed underneath (still hidden up to this moment) and .media fades
+// out over this window. The cross-fade masks the unavoidable visual
+// mismatch between .media's <img> (object-fit: contain, lightbox-radius)
+// and the source card's <img> (cover, --card-radius) — DOM clone is
+// off the table for AllMarks because it would break embed iframes
+// and the planned multi-playback. The fade IS the visual continuity.
+const CLOSE_CROSSFADE_DUR = 0.16
 
 /** Optional nav controls — when provided, chevron + dots + arrow-key
  *  nav become available. Caller (BoardRoot or SharedView) owns the
@@ -84,10 +92,21 @@ type Props = {
    *  source card has been culled from the DOM (off-screen). (B-#11) */
   readonly sourceCardId?: string | null
   readonly onClose: () => void
+  /** Fired partway through the close tween — right when .media reaches
+   *  the source card's rect — to ask the parent to make the source card
+   *  visible again BEFORE the lightbox unmounts. The parent should clear
+   *  whatever flag was holding source visibility:hidden. The window
+   *  between this call and the trailing onClose is the cross-fade
+   *  window: source card is visible underneath while .media fades out
+   *  on top, so the unavoidable visual mismatch between .media's <img>
+   *  and the source card's <img> is masked by a continuous fade rather
+   *  than a 1-frame swap (= the "明滅" the user reported). Optional
+   *  for back-compat with callers that don't track a source card. */
+  readonly onSourceShouldShow?: () => void
   readonly nav?: LightboxNav
 }
 
-export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props): ReactElement | null {
+export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShouldShow, nav }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -254,11 +273,6 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
         }, 0)
       }
       // .media tweens to the source card's live rect on a flat decel.
-      // BoardRoot's onClose clears `lightboxSourceItemId` in the same
-      // React commit that unmounts the Lightbox, so the source card's
-      // visibility flips back at the exact pixel position .media just
-      // landed on — physical "card placed back into its slot" feel,
-      // no empty-slot flash.
       tl.to(mediaEl, {
         x: dx,
         y: dy,
@@ -275,6 +289,26 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
           ease: 'power2.in',
         }, CLOSE_BACKDROP_DELAY)
       }
+      // Cross-fade at landing: at the exact moment .media reaches the
+      // source rect, ask BoardRoot to make the source card visible
+      // underneath, then fade .media's opacity 1→0 over the next ~150ms.
+      // Source card and .media briefly overlap at the same screen rect
+      // and any styling difference between them (object-fit, radius,
+      // letterboxing) dissolves through the fade rather than appearing
+      // as a 1-frame swap. onComplete (= unmount) fires after the fade
+      // ends. Without this, the user reported a single 「明滅」 at
+      // landing — caused by .media's <img object-fit:contain> being
+      // visually different from the source card's <img object-fit:cover>
+      // at the swap pixel.
+      const landingAt = CLOSE_FRAME_DELAY + CLOSE_FRAME_DUR
+      if (onSourceShouldShow) {
+        tl.call(() => { onSourceShouldShow() }, undefined, landingAt)
+      }
+      tl.to(mediaEl, {
+        opacity: 0,
+        duration: CLOSE_CROSSFADE_DUR,
+        ease: 'power2.in',
+      }, landingAt)
     } else {
       gsap.to(el, {
         scale: 0.96,
