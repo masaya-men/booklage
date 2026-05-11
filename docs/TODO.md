@@ -25,8 +25,8 @@
 - **現状コードは全て「Booklage」 のまま**。 ドメイン取得後に一気に置換予定
 
 ### コード状況 (リブランド前)
-- **ブランチ**: `master` 単一運用、 origin/master に push 済 (2026-05-11 セッション 9 末)
-- **本番**: `https://booklage.pages.dev` に **Lightbox × 固定 (B-#5)** + **モバイル TopHeader 修正 (B-#9)** + **bookmarklet→拡張ハンドオフ** + **PiP-aware cursor pill 抑制** + **拡張 cursor-pill アニメ品質向上** が deploy 済 (2026-05-11 セッション 9)
+- **ブランチ**: `master` 単一運用、 origin/master に push 済 (2026-05-11 セッション 10 中)
+- **本番**: `https://booklage.pages.dev` に **B-#4 完全 close 系の全修正** (Lightbox centering, scale leak fix, playOverlay gradient 除去, close button frame-attach 等) が deploy 済 (2026-05-11 セッション 10)
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
 - **ユーザー実機**: 拡張機能 sideload 完了済、 セッション 9 で 4 系統テスト全 OK 確認済
 
@@ -38,11 +38,26 @@
 - ✅ **B-#6 ESC キー** — 既に実装済を Playwright 確認 (ユーザー OK)
 - ✅ 39 commits push 済 (long-standing 未 push 状態を解消)
 
-### セッション 10 開始時の最優先タスク
+### セッション 10 (2026-05-11) で完了したこと
 
-1. **B-#10 モバイル本格チューニング** (上記 §B-#10 参照) — 列数 3 化 + テキストカード縦伸び抑止
-2. **B-#4 Lightbox サイズ違い解明** (上記 §B-#4 参照) — Tweet video の二段階レンダリング仮説を検証、 ユーザーに「はみ出し」 の正確な意味を確認
-3. その後に B-#1/#2/#3 (サムネ系) → B-#7 (自由サイジング縮小) → B-#8 (PiP scroll 中央)
+B-#4 (Lightbox サイズ違い + 関連 UX) を **6 段階のイテレーション**で根本解決:
+
+1. ✅ **centering 修正**: `<Lightbox>` を canvasWrap から canvas 直下へ移動、 backdrop が canvas 全面に広がる → frame が canvas 中央に正しく centerring
+2. ✅ **TopHeader fade**: lightbox open 時に opacity 0 (× とヘッダー chrome 衝突回避)
+3. ✅ **scale 残留バグ修正**: chevron-nav で frame が永続的に scale 0.86 になるバグを構造除去 (open useLayoutEffect に early-return 追加)。 Playwright 実測 0.86 → 1.0 完全一致
+4. ✅ **envelope 変数化**: `--lightbox-media-max-h: calc(100vh - 2*canvas-margin - 2*chrome-clearance)` で全 media (.frame/.media/iframeWrap/.text/tweetWatchOnX/TweetVideoPlayer wrapper) を統一。 chrome-clearance 72px で nav meter + close button 両方クリア
+5. ✅ **playOverlay gradient 除去**: 「下が明るい / hover で濃さ変わる」 の真因。 0% → 18% black gradient + bottom:56px の段差を完全削除、 disc のみ残置で legibility 確保
+6. ✅ **close button frame-attach**: × を .frame の子に戻し top:0 right:0 に。 viewport によらず lightbox unit に attached、 メディア上端と揃う (Linear / Stripe pattern)。 ユーザー「完璧です」 確認
+
+deploy 数 5 回、 commit 数 6 個、 全イテレーションで Playwright + tsc + vitest 通過。
+
+### セッション 11 開始時の優先順位 (B-#10 はユーザー希望により最後に回す)
+
+1. **B-#11 (新規アイデア)** — ライトボックス open 時、 source card がボード上で空白になる演出 (詳細: §B-#11 参照)
+2. **B-#7 自由サイジング 縮小スムージング**
+3. **B-#8 PiP click → スクロール中央寄せ**
+4. **B-#1/#2/#3 サムネ系** (空白カード fallback / 再取得ボタン / 重複 URL 表示)
+5. **B-#10 モバイル本格チューニング** (ユーザー希望: 最後に回す。 desktop UX を先に詰める)
 
 ---
 
@@ -55,12 +70,7 @@
 1. **サムネ取得失敗時の空白カード** — 最新サイト等でサムネが取れず文字も出ない空白箱になることがある。 fallback でドメイン名 / favicon 大きく / siteName のみで「読めるカード」 に改善
 2. **サムネ再取得ボタン** — 各カードに「再取得」 アクション追加 (右クリックメニュー or hover アクション)
 3. **重複 URL でサムネ等が出ない問題** — 同 URL 重複追加時の表示挙動を確認・修正 (上記「空白カード」 とは別事象、 ユーザーが分けて報告)
-4. **ムードボード ↔ ライトボックス でカードサイズが異なる** — クリックで開いた時とスクロールで同投稿を見た時でサイズ違いあり、 統一する
-    - **セッション 9 末 ユーザー追加情報 (2 スクショ提供済)**: ハムスター動画 (Tweet video、 「Tweets Of Hamster」) の Lightbox を 2 枚提示。 スクショ 1 (細長め、 動画 ~355×750)、 スクショ 2 (やや幅広、 ~381×710) で微妙に異なる。 「クリック時がハムスターのでかい縦の画像の方で、 ムードボードからはみ出している」 という指摘。
-    - **次セッションで確認すべき仮説**:
-      - (a) **Tweet video の二段階レンダリング**: TweetMedia は meta 取得前 → thumbnail を `<img>` で表示、 meta 到着後 → `<video>` 要素 + meta.videoAspectRatio で再 layout。 サイズ jump が発生。 `Lightbox.tsx` L780-790 (TweetMedia)、 L840-852 (wrapperStyle) 周辺
-      - (b) **「はみ出し」 の意味**: 動画が canvas 外 (白い枠) まで出ている? それとも背後の cards に被さって見える程度? → ユーザーに確認 (もし (a) なら、 click 直後の細長 thumb から太 video への jump が「はみ出し感」 を生んでいる可能性)
-      - (c) **canvas 高さと `max-height: 88vh` の不整合**: canvas は viewport - 64px (TopHeader) - 48px (outer-frame margin) = 高さ 88vh より小さい。 媒体に max-height: 88vh は canvas をはみ出す。 修正は `--canvas-max-h` のような変数で内部基準にする手
+4. ~~**ムードボード ↔ ライトボックス でカードサイズが異なる**~~ ✅ セッション 10 完全 close。 真因は (i) canvasWrap 内に backdrop が閉じ込められて TopHeader 半分ずれていた + (ii) chevron-nav 時の scale 0.86 残留バグ + (iii) playOverlay の bottom:56px 段差 + (iv) backdrop 透過で上下輝度差。 6 段階で根本解決、 ユーザー「完璧です」 確認 (2026-05-11)
 
 ### ライトボックス UI
 
@@ -78,7 +88,22 @@
     - ⚠️ TopHeader 全体のデザイン・配置は暫定。 将来 brushup 方向: **ScrollMeter を下配置** (操作性 + Lightbox の表現と統一)。 詳細は memory `project_board_header_brushup.md`
     - **しかし B-#10 (下記) が新たに発覚**: ボード本体のモバイル UX 未対応。 #9 は TopHeader だけの修正で完結ではない、 後続作業あり
 
-### モバイル UX 本格チューニング (B-#10、 セッション 9 末ユーザー報告)
+### Lightbox open 演出: source card を空白化 (B-#11、 セッション 10 末ユーザー要望)
+
+11. **クリックしたカードが Lightbox に「移動」 する演出** — 参考にしたムードボード (destefanis) と同じ感覚。 現状はクリック後もボード上に元カードが居座っており、 backdrop blur 越しに見える。 ユーザー要望:
+    - クリック直後、 source card は **ボード上で空白**になる (= visibility:hidden または opacity:0)
+    - **間は詰めない** (= 他のカードを reflow させない、 空白のスペースをそのまま残す)
+    - 矢印切替で別のブクマに進んだ後、 × で閉じた時、 **最初にクリックしたカード**が元の位置に戻る (chevron 切替先のカードが戻るのではなく、 source の位置に戻る)
+    - つまり source card の identity を Lightbox 開いている間ずっと記憶しておく必要あり
+    - **実装メモ**:
+      - source card の bookmark id は BoardRoot の `lightboxOriginRect` 設定時点で既に判明 (clicked id = lightboxItemId 初期値)
+      - 「**初期 click の id**」 と「**現在 lightbox に表示中の id**」 を分離して管理する必要あり (chevron で変わるのは後者、 前者は close まで不変)
+      - 既存 state `lightboxItemId` は「現在表示中」 用に使われている。 新規 state `lightboxSourceItemId` を追加して初期 click id を保持
+      - card 側で「自分が source か?」 を判定して visibility:hidden 適用 (CardsLayer または個々の Card コンポーネントで判定)
+      - close 時、 close 用 FLIP 戻り先 origin は `lightboxSourceItemId` の最新 rect を使う (chevron 移動先ではない)
+    - **将来 polish**: 空白に「ここに戻ってくる」 感を出すうっすらした placeholder (border のみ等) を入れる選択肢もある、 ただし最初は完全に空白で OK
+
+### モバイル UX 本格チューニング (B-#10、 セッション 9 末ユーザー報告。 ★ユーザー希望で最後に回す)
 
 10. **モバイルでカード列数が多すぎる + テキストカード縦伸び** — iPhone 実機スクショ (セッション 9 末、 縦長 iPhone 13/14 風) で:
     - 列数 5 程度になっていて 1 カードが極狭、 視認性ゼロ
