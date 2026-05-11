@@ -756,6 +756,7 @@ export function BoardRoot() {
           canvasWrap holds the existing absolute-layered scroll/cards stage. */}
       <div className={styles.canvas}>
         <TopHeader
+          hidden={!!lightboxItemId}
           nav={
             <FilterPill
               value={activeFilter}
@@ -857,22 +858,27 @@ export function BoardRoot() {
           {!loading && items.length === 0 && (
             <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
           )}
-          {/* Lightbox lives INSIDE the canvasWrap so its backdrop and
-              FLIP open animation are clipped to the canvas's rounded
-              border-radius. The white outer margin remains visible
-              during lightbox — the rounded stage is preserved. */}
-          <Lightbox
-            item={lightboxItem}
-            originRect={lightboxOriginRect}
-            onClose={handleLightboxClose}
-            nav={lightboxItem ? {
-              currentIndex: lightboxIndex,
-              total: filteredItems.length,
-              onNav: handleLightboxNav,
-              onJump: handleLightboxJump,
-            } : undefined}
-          />
         </div>
+        {/* Lightbox is a sibling of TopHeader + canvasWrap, NOT a child of
+            canvasWrap. This way its backdrop (position: absolute; inset: 0)
+            fills the FULL canvas — including the TopHeader band — so the
+            lightbox visually centers within the entire dark canvas instead
+            of the area below the TopHeader. The canvas's own overflow:hidden
+            + border-radius still clip the backdrop to the rounded stage.
+            TopHeader is faded out while the lightbox is open (see
+            `hidden={!!lightboxItemId}` above) so the close button at the
+            backdrop's top-right corner doesn't collide with header chrome. */}
+        <Lightbox
+          item={lightboxItem}
+          originRect={lightboxOriginRect}
+          onClose={handleLightboxClose}
+          nav={lightboxItem ? {
+            currentIndex: lightboxIndex,
+            total: filteredItems.length,
+            onNav: handleLightboxNav,
+            onJump: handleLightboxJump,
+          } : undefined}
+        />
       </div>
       {/* Modals stay viewport-level so they cover everything including
           the outer margin (different visual treatment from Lightbox). */}

@@ -50,6 +50,18 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
+  // Tracks the identity from the previous render. Hoisted to the top of
+  // the component (out of the nav-transition effect below) so the open
+  // animation effect can also read it, and skip its fallback entry
+  // animation when this is a chevron-nav (in which case the slide
+  // effect handles the entry). Without that skip, the fallback's
+  // `gsap.fromTo(el, { scale: 0.86, opacity: 0 }, { scale: 1, opacity: 1 })`
+  // applies its FROM (scale=0.86) inline before the slide effect kills
+  // the tween mid-frame — and the slide effect's fromTo never sets
+  // `scale`, so the 0.86 stays in the matrix forever. Verified leak
+  // (Playwright measured chev/click ratio = 0.86 exact) — 2026-05-11.
+  const prevIdentityRef = useRef<string | null>(null)
+  const prevNavIndexRef = useRef<number | null>(null)
   useSmoothWheelScroll(textRef, { disabled: !item })
   // closeButtonRef intentionally absent — see "No programmatic auto-focus"
   // comment near the keyboard handler below.
@@ -300,6 +312,23 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     const el = frameRef.current
     const backdrop = backdropRef.current
 
+    // Chevron-nav case: the lightbox is already open and the slide effect
+    // below (the second useLayoutEffect, declared lower in this file) is
+    // about to fire on the same identity change. If we ALSO run the
+    // entry/fallback animation here, the two tweens race on the same DOM
+    // node — and the fallback's `{ scale: 0.86, opacity: 0 }` FROM gets
+    // written inline before the slide effect kills the to-tween, leaving
+    // `scale=0.86` permanently in the transform matrix because the slide
+    // tween never sets `scale`. (Symptom: every card after the first
+    // chevron-nav rendered at 86% size, forever. Measured with Playwright
+    // 2026-05-11: chev/click rect ratio = 0.860 exact.)
+    // The first mount of any identity has prevIdentityRef.current === null
+    // (set by the close cleanup below, or initial useRef default), so this
+    // skip never blocks the genuine open animation.
+    if (prevIdentityRef.current !== null && prevIdentityRef.current !== identity) {
+      return
+    }
+
     // R3F scene mode is currently DISABLED at the activation site
     // because the first end-to-end test left the lightbox stuck on
     // an empty backdrop (likely texture-load CORS failure leaving
@@ -438,8 +467,10 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
   // and the new card emerging from the depth simultaneously — without
   // this clone trick, React's unmount would erase the old DOM the moment
   // identity changes, and only the entering animation would be visible.
-  const prevIdentityRef = useRef<string | null>(null)
-  const prevNavIndexRef = useRef<number | null>(null)
+  // prevIdentityRef + prevNavIndexRef were moved to the top of the component
+  // (alongside backdropRef/frameRef) so the open useLayoutEffect can read
+  // them too. Kept this comment as a breadcrumb in case anyone greps for
+  // "prevIdentityRef" from the original location.
   // Tracks every in-flight snapshot clone so a new identity change can
   // wipe them all out before starting a fresh tween. Without this, fast
   // drag-scrub piles up dozens of snapshots all sliding the same way —

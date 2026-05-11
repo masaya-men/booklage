@@ -14,6 +14,17 @@
   top: 0;
   z-index: 110; /* mirrors BOARD_Z_INDEX.TOOLBAR in lib/board/constants.ts */
   gap: 16px;
+  /* Smooth fade when Lightbox open/close toggles .hidden — feels like the
+     header politely steps aside rather than blinking out. */
+  transition: opacity 0.25s ease;
+}
+
+/* Faded out while the Lightbox is open. We keep the header in the canvas
+   grid (no display:none) so the cards area below doesn't reflow; only
+   opacity + pointer-events change. */
+.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .group {
