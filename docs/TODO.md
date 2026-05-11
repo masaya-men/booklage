@@ -1,16 +1,75 @@
-# Booklage 開発ToDo
+# 開発ToDo (旧 Booklage → リブランド: AllMarks 進行中)
 
 > 完了済みタスクは [TODO_COMPLETED.md](./TODO_COMPLETED.md) に移動済み
 > デザイン参考資料は `docs/private/IDEAS.md`（非公開、gitignored）を参照
 
 ---
 
+## 🔴 月末 (2026-05-31 頃) 必須リマインダー — Claude が次セッション開始時に必ず確認
+
+**ユーザーが「allmarks.app」 ドメインを取得したか確認する。**
+
+- 取得方法: `https://dash.cloudflare.com/` → Domain Registration → allmarks.app → 約 ¥1,600/年
+- 未取得 → 取得を促す (個人開発で月末まで支払い猶予を待っている状態)
+- 取得済 → リブランド実装に進む (詳細は §「AllMarks リブランド」 セクション)
+
+---
+
 ## 現在の状態（次セッションはここから読む）
 
-- **ブランチ**: `master` 単一運用、~35 commits ahead of origin/master (未 push)
+### リブランド進行: Booklage → **AllMarks**
+- **2026-05-11 セッション 8** で名前変更を決定
+- 新ブランド: **AllMarks** / メインドメイン: **allmarks.app** (取得は月末)
+- 詳細 spec: `docs/private/2026-05-11-allmarks-branding-spec.md` (gitignored)
+- リブランド実装計画は spec §5 にまとめ済
+- **現状コードは全て「Booklage」 のまま**。 ドメイン取得後に一気に置換予定
+
+### コード状況 (リブランド前)
+- **ブランチ**: `master` 単一運用、~36 commits ahead of origin/master (未 push)
 - **本番**: `https://booklage.pages.dev` に **bookmarklet→拡張ハンドオフ** + **PiP-aware cursor pill 抑制** + **拡張 cursor-pill アニメ品質向上** が deploy 済 (2026-05-10 セッション 7)
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
 - **ユーザー実機**: 拡張機能 sideload 完了済。host_permissions が `<all_urls>` に拡張されたため、再 sideload が必要
+
+---
+
+## 🐛 未対応バグ・改善 (2026-05-11 セッション 8 でユーザー報告)
+
+実装可能な実用バグ。 優先順位は仮で付与済、 セッション 9 以降で着手。
+
+### 表示・サムネ系
+
+1. **サムネ取得失敗時の空白カード** — 最新サイト等でサムネが取れず文字も出ない空白箱になることがある。 fallback でドメイン名 / favicon 大きく / siteName のみで「読めるカード」 に改善
+2. **サムネ再取得ボタン** — 各カードに「再取得」 アクション追加 (右クリックメニュー or hover アクション)
+3. **重複 URL でサムネ等が出ない問題** — 同 URL 重複追加時の表示挙動を確認・修正 (上記「空白カード」 とは別事象、 ユーザーが分けて報告)
+4. **ムードボード ↔ ライトボックス でカードサイズが異なる** — クリックで開いた時とスクロールで同投稿を見た時でサイズ違いあり、 統一する
+
+### ライトボックス UI
+
+5. **× ボタン位置固定 (投稿サイズに依存しない)** — 投稿サイズで × の場所が変わったり消えたりする現象を修正
+6. **ESC キー対応の確認** — 既に対応済かを `Lightbox.tsx` で確認、 未対応なら追加
+
+### カード操作・PiP
+
+7. **自由サイジング 縮小時の clipping ポイント** — サイズ 3 付近で「がくっ」 と変わる感触あり、 スムーズな縮小に修正
+8. **PiP click → カードへスクロール の見切れ** — カードサイズによって画面外で止まる、 **画面中央付近で止まる scroll に変更** (スムーズ + viewport center alignment)
+
+### レスポンシブ
+
+9. **iPhone (古い機種) で右端が切れる** — 実機レスポンシブ問題、 viewport 設定 / overflow / safe-area-inset を点検
+
+---
+
+## ✨ 新機能アイデア (2026-05-11 セッション 8、 詳細は IDEAS.md)
+
+実装規模が大きい、 または検討が必要なものは `docs/private/IDEAS.md` の `2026-05-11 ユーザー idea 投稿` セクションに記録済。 サマリ:
+
+- X 自動翻訳取り込み + 原文切替 (Lightbox 内)
+- テーマ案: SF 軍事スタイル (ガンプラ / 戦闘機パネル分け / デカール / 墨入れ質感)
+- ギャップスライダー (カード間 gap 無段階) + 背景タイポ
+- PiP 内広告
+- SNS Share ボタン連携 (X / YouTube — 「AllMarks に保存」 ボタン、 もしくは X ブクマ / YouTube 後で見る 連動)
+- ブラウザ完結 AI 自動タグ付け (サーバー送信不可前提)
+- 複数画像 / 動画ホバー切替 (ムードボード + Lightbox)
 
 ### 🔴 次セッション最優先 — 実機検証 (2026-05-10 セッション 7 末で持ち越し)
 
