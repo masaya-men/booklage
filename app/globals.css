@@ -312,9 +312,11 @@ ol {
      the canvas when the user has scrolled past the top rows. With 0.78,
      blurred cards were clearly visible in the lower half while the top
      half (no cards behind) read as solid black — asymmetric brightness.
-     0.88 reduces card show-through enough to make the dim uniform without
-     killing the frosted-glass aesthetic entirely. */
-  --lightbox-backdrop: rgba(0, 0, 0, 0.88);
+     0.55 lets the moodboard read through the frosted-glass dim — destefanis-
+     style "lightbox sits over a still-visible board" rather than blacking
+     the canvas out. The companion blur (Lightbox.module.css) was bumped to
+     14px to keep show-through legible without becoming distracting. */
+  --lightbox-backdrop: rgba(0, 0, 0, 0.55);
 
   /* === Outer-frame design (v17) ===
      白い外周に dark canvas が浮かぶ枠付きデザイン。

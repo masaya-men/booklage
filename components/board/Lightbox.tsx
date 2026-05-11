@@ -197,9 +197,11 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
       const tl = gsap.timeline({
         onComplete: () => onClose(),
       })
-      // power3.in accelerates into the source — feels like the lightbox
-      // is being "yanked back" into the card, mirroring the spring-out
-      // landing of the open animation in reverse.
+      // power2.out: quick departure, gentle deceleration into the source —
+      // mirrors the open animation's expo.out landing so close feels like
+      // a soft return rather than the prior power3.in "snap into card"
+      // (user feedback: 「最後にかちっとはまる」). Duration nudged from
+      // 0.5 → 0.6 so the decelerating tail has room to breathe.
       tl.to(el, {
         x: dx,
         y: dy,
@@ -209,8 +211,8 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
         rotateY: endRotateY,
         filter: 'blur(4px)',
         opacity: 0,
-        duration: 0.5,
-        ease: 'power3.in',
+        duration: 0.6,
+        ease: 'power2.out',
         transformOrigin: '50% 50%',
         transformPerspective: 900,
       }, 0)
@@ -219,7 +221,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
         // visibly returns to the card before the dim disappears.
         tl.to(backdrop, {
           opacity: 0,
-          duration: 0.4,
+          duration: 0.5,
           ease: 'power2.in',
         }, 0.1)
       }
