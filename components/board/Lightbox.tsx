@@ -61,8 +61,8 @@ const OPEN_FALLBACK_DUR = 0.42
 const CLOSE_FRAME_DELAY = 0.1   // wait this long after text starts fading before moving
 const CLOSE_TWEEN_DUR = 0.45    // diagonal travel duration
 const CLOSE_TWEEN_EASE = 'power2.out' // gentle decel into source rect
-const CLOSE_REVEAL_LEAD = 0.06  // reveal source card this many seconds BEFORE landing (safety margin)
-const CLOSE_FADE_DUR = 0.06     // .media opacity fade at the very end, paired with reveal lead
+const CLOSE_REVEAL_LEAD = 0.10  // reveal source card this many seconds BEFORE landing (safety margin)
+const CLOSE_FADE_DUR = 0.10     // .media opacity fade at the very end, paired with reveal lead
 const CLOSE_TEXT_FADE_DUR = 0.14
 const CLOSE_BACKDROP_FADE_DUR = 0.42
 const CLOSE_BACKDROP_DELAY = 0.15
@@ -277,27 +277,28 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, 0)
       }
-      // Pre-tween: align .media's <img> styling to the source card thumb
-      // so at landing the two are pixel-identical and the swap is invisible.
-      // - object-fit: contain → cover  (lightbox shows the full image with
-      //   letterboxing where aspects mismatch; the source card shows it
-      //   cropped to fit. At landing we need cropped.)
-      // - border-radius: lightbox-radius → per-card --card-radius
-      //   (computed the same way CardsLayer does it inline).
-      // Non-image media (iframe/video) skips this — there's no <img> to
-      // re-style, and the safety fade at the end still masks any swap
-      // mismatch for those cases.
+      // Pre-tween: align .media's <img> object-fit to the source card thumb
+      // (cover, not contain) so at small sizes the image fills its container
+      // the same way the card thumbnail does — no letterboxing mismatch.
       const mediaImg = mediaEl.querySelector<HTMLImageElement>(':scope > img')
-      if (mediaImg) {
-        mediaImg.style.objectFit = 'cover'
-        const cardRadius = Math.min(24, Math.min(closeOrigin.width, closeOrigin.height) * 0.075)
-        mediaImg.style.borderRadius = `${cardRadius}px`
-      }
+      if (mediaImg) mediaImg.style.objectFit = 'cover'
+
+      // Compute the source card's natural border-radius using the same
+      // formula CardsLayer applies inline. Read the lightbox's natural
+      // radius from CSS so this auto-tracks any future spec change.
+      const cardRadiusValue = Math.min(24, Math.min(closeOrigin.width, closeOrigin.height) * 0.075)
+      const computedLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 6
 
       // Single diagonal tween — .media travels straight from its natural
-      // rect to the source rect with gentle power2.out decel. No hover,
-      // no 2-phase split (those introduced a "click into place" beat at
-      // the transition).
+      // rect to the source rect with gentle power2.out decel. The onUpdate
+      // callback compensates .media's border-radius for the current scale
+      // every frame so the *visible* corner roundness smoothly transitions
+      // from `--lightbox-media-radius` (start) to the source card's
+      // `--card-radius` (end). Without this compensation, the visible
+      // radius at landing would be lightboxR × endScale (e.g. 6 × 0.2 =
+      // 1.2px) — far smaller than the source card's actual ~12.8px → the
+      // 「びゅんっと変わる」 jump at swap. With it, both ends match exactly
+      // and the in-between radius interpolates smoothly.
       tl.to(mediaEl, {
         x: dx,
         y: dy,
@@ -306,6 +307,19 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         duration: CLOSE_TWEEN_DUR,
         ease: CLOSE_TWEEN_EASE,
         transformOrigin: '50% 50%',
+        onUpdate: function (this: gsap.core.Tween): void {
+          // `ratio` = eased progress 0→1 (matches the actual scale curve)
+          const r = this.ratio
+          const visibleR = computedLightboxRadius + (cardRadiusValue - computedLightboxRadius) * r
+          const curScaleX = 1 + (endScaleX - 1) * r
+          const curScaleY = 1 + (endScaleY - 1) * r
+          // Specify horizontal / vertical radii separately so non-uniform
+          // scale (portrait card vs landscape lightbox, etc.) doesn't
+          // squish the corners into ovals.
+          const safeX = Math.max(0.01, curScaleX)
+          const safeY = Math.max(0.01, curScaleY)
+          mediaEl.style.borderRadius = `${visibleR / safeX}px / ${visibleR / safeY}px`
+        },
       }, CLOSE_FRAME_DELAY)
       if (backdrop) {
         tl.to(backdrop, {
@@ -500,6 +514,15 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       const distance = Math.hypot(dx, dy)
       const dur = OPEN_BASE_DUR + Math.min(distance / OPEN_DIST_DIVISOR, OPEN_DIST_BONUS_MAX)
 
+      // Compute radius compensation values — visible corner roundness
+      // smoothly interpolates from the source card's natural --card-radius
+      // (at t=0) to --lightbox-media-radius (at t=1). DOM border-radius is
+      // visibleR / current_scale at every frame so the *visible* radius
+      // (DOM × scale) hits the right value at both ends regardless of
+      // how aggressive the FLIP scale is.
+      const openCardRadius = Math.min(24, Math.min(originRect.width, originRect.height) * 0.075)
+      const openLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 6
+
       // Initial state set synchronously *outside* the timeline so the
       // browser paints the source-rect frame at t=0 before the tween
       // runs — avoids the GSAP gotcha where set + to at the same
@@ -514,6 +537,16 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         scaleY: startScaleY,
         transformOrigin: '50% 50%',
       })
+      // Border-radius set via direct DOM (slash syntax for non-uniform
+      // X/Y radii isn't supported cleanly by gsap.set). At t=0 the
+      // visible radius equals openCardRadius — same as the source card —
+      // so there's no jarring "lightbox starts with the wrong radius"
+      // first frame.
+      {
+        const safeStartX = Math.max(0.01, startScaleX)
+        const safeStartY = Math.max(0.01, startScaleY)
+        mediaEl.style.borderRadius = `${openCardRadius / safeStartX}px / ${openCardRadius / safeStartY}px`
+      }
       if (textEl) gsap.set(textEl, { opacity: 0 })
       if (closeEl) gsap.set(closeEl, { opacity: 0 })
 
@@ -525,6 +558,15 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         scaleY: 1,
         duration: dur,
         ease: OPEN_EASE,
+        onUpdate: function (this: gsap.core.Tween): void {
+          const r = this.ratio
+          const visibleR = openCardRadius + (openLightboxRadius - openCardRadius) * r
+          const curScaleX = startScaleX + (1 - startScaleX) * r
+          const curScaleY = startScaleY + (1 - startScaleY) * r
+          const safeX = Math.max(0.01, curScaleX)
+          const safeY = Math.max(0.01, curScaleY)
+          mediaEl.style.borderRadius = `${visibleR / safeX}px / ${visibleR / safeY}px`
+        },
       }, 0)
       // Chrome (text panel + close button) appears only after the media
       // is most of the way home — "card lands, then chrome arrives" as
