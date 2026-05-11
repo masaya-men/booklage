@@ -33,10 +33,16 @@
 ### セッション 9 (2026-05-11) で完了したこと
 
 - ✅ **拡張機能実機検証** — 4 系統 (bookmarklet クリック / 拡張ショートカット / 右クリック / PiP 開時) 全 OK 確認
-- ✅ **B-#9 iPhone 右端切れ** — TopHeader に `@media (max-width: 640px)`、 mobile は FilterPill + Share のみ
-- ✅ **B-#5 Lightbox × 位置固定** — `<button .close>` を `.frame` 子から `.backdrop` 直下に移動、 常に backdrop top:16/right:16 固定
-- ✅ **B-#6 ESC キー** — 既に実装済 (`Lightbox.tsx` L207-217) を Playwright 確認
+- ✅ **B-#9 iPhone 右端切れ (TopHeader 部分)** — `@media (max-width: 640px)`、 mobile は FilterPill + Share のみ。 **ただし B-#10 (モバイル本格チューニング) が新規発覚**
+- ✅ **B-#5 Lightbox × 位置固定** — `.backdrop` 直下に移動、 常に backdrop top:16/right:16 固定 (ユーザー OK)
+- ✅ **B-#6 ESC キー** — 既に実装済を Playwright 確認 (ユーザー OK)
 - ✅ 39 commits push 済 (long-standing 未 push 状態を解消)
+
+### セッション 10 開始時の最優先タスク
+
+1. **B-#10 モバイル本格チューニング** (上記 §B-#10 参照) — 列数 3 化 + テキストカード縦伸び抑止
+2. **B-#4 Lightbox サイズ違い解明** (上記 §B-#4 参照) — Tweet video の二段階レンダリング仮説を検証、 ユーザーに「はみ出し」 の正確な意味を確認
+3. その後に B-#1/#2/#3 (サムネ系) → B-#7 (自由サイジング縮小) → B-#8 (PiP scroll 中央)
 
 ---
 
@@ -50,11 +56,16 @@
 2. **サムネ再取得ボタン** — 各カードに「再取得」 アクション追加 (右クリックメニュー or hover アクション)
 3. **重複 URL でサムネ等が出ない問題** — 同 URL 重複追加時の表示挙動を確認・修正 (上記「空白カード」 とは別事象、 ユーザーが分けて報告)
 4. **ムードボード ↔ ライトボックス でカードサイズが異なる** — クリックで開いた時とスクロールで同投稿を見た時でサイズ違いあり、 統一する
+    - **セッション 9 末 ユーザー追加情報 (2 スクショ提供済)**: ハムスター動画 (Tweet video、 「Tweets Of Hamster」) の Lightbox を 2 枚提示。 スクショ 1 (細長め、 動画 ~355×750)、 スクショ 2 (やや幅広、 ~381×710) で微妙に異なる。 「クリック時がハムスターのでかい縦の画像の方で、 ムードボードからはみ出している」 という指摘。
+    - **次セッションで確認すべき仮説**:
+      - (a) **Tweet video の二段階レンダリング**: TweetMedia は meta 取得前 → thumbnail を `<img>` で表示、 meta 到着後 → `<video>` 要素 + meta.videoAspectRatio で再 layout。 サイズ jump が発生。 `Lightbox.tsx` L780-790 (TweetMedia)、 L840-852 (wrapperStyle) 周辺
+      - (b) **「はみ出し」 の意味**: 動画が canvas 外 (白い枠) まで出ている? それとも背後の cards に被さって見える程度? → ユーザーに確認 (もし (a) なら、 click 直後の細長 thumb から太 video への jump が「はみ出し感」 を生んでいる可能性)
+      - (c) **canvas 高さと `max-height: 88vh` の不整合**: canvas は viewport - 64px (TopHeader) - 48px (outer-frame margin) = 高さ 88vh より小さい。 媒体に max-height: 88vh は canvas をはみ出す。 修正は `--canvas-max-h` のような変数で内部基準にする手
 
 ### ライトボックス UI
 
-5. ~~**× ボタン位置固定 (投稿サイズに依存しない)**~~ ✅ セッション 9 完了 — `<button .close>` を `.frame` の子から `.backdrop` の直接の子に移動。 `.backdrop` は canvas いっぱい固定なので × は常に top:16 / right:16 に貼り付く。 Playwright で 4 カード測定: closeFromBackdropTop=16, closeFromBackdropRight=16 で完全一致確認。 mobile column scroll で × が一緒にスクロールアウトする問題も解消。
-6. ~~**ESC キー対応**~~ ✅ 既に対応済 (`Lightbox.tsx` L207-217、 `e.key === 'Escape' && requestClose()`)。 Playwright で 4 カード ESC close 確認済。
+5. ~~**× ボタン位置固定 (投稿サイズに依存しない)**~~ ✅ セッション 9 完了 — `<button .close>` を `.frame` の子から `.backdrop` の直接の子に移動。 `.backdrop` は canvas いっぱい固定なので × は常に top:16 / right:16 に貼り付く。 Playwright で 4 カード測定: closeFromBackdropTop=16, closeFromBackdropRight=16 で完全一致確認。 mobile column scroll で × が一緒にスクロールアウトする問題も解消。 **ユーザー OK 確定 (セッション 9 末)**
+6. ~~**ESC キー対応**~~ ✅ 既に対応済 (`Lightbox.tsx` L207-217、 `e.key === 'Escape' && requestClose()`)。 Playwright で 4 カード ESC close 確認済。 **ユーザー OK 確定 (セッション 9 末)**
 
 ### カード操作・PiP
 
@@ -63,8 +74,29 @@
 
 ### レスポンシブ
 
-9. ~~**iPhone (古い機種) で右端が切れる**~~ ✅ セッション 9 完了 — `TopHeader.module.css` に `@media (max-width: 640px)` 追加。 mobile (≤640px) で ScrollMeter + divider + PopOut/SizePicker/ResetAll を隠し、 FilterPill (左) + Share (右) のみ残す。 root cause は grid `1fr auto auto auto 1fr` の auto 列が中身に合わせて 789px に膨らみ、 親 `.canvas { overflow:hidden }` で右端 clip。 Playwright で iPhone SE/8/12 Pro 全て fit 確認。
+9. ~~**iPhone (古い機種) で右端が切れる (TopHeader 部分)**~~ ✅ セッション 9 完了 — `TopHeader.module.css` に `@media (max-width: 640px)` 追加。 mobile (≤640px) で ScrollMeter + divider + PopOut/SizePicker/ResetAll を隠し、 FilterPill (左) + Share (右) のみ残す。 root cause は grid `1fr auto auto auto 1fr` の auto 列が中身に合わせて 789px に膨らみ、 親 `.canvas { overflow:hidden }` で右端 clip。 Playwright で iPhone SE/8/12 Pro 全て fit 確認。
     - ⚠️ TopHeader 全体のデザイン・配置は暫定。 将来 brushup 方向: **ScrollMeter を下配置** (操作性 + Lightbox の表現と統一)。 詳細は memory `project_board_header_brushup.md`
+    - **しかし B-#10 (下記) が新たに発覚**: ボード本体のモバイル UX 未対応。 #9 は TopHeader だけの修正で完結ではない、 後続作業あり
+
+### モバイル UX 本格チューニング (B-#10、 セッション 9 末ユーザー報告)
+
+10. **モバイルでカード列数が多すぎる + テキストカード縦伸び** — iPhone 実機スクショ (セッション 9 末、 縦長 iPhone 13/14 風) で:
+    - 列数 5 程度になっていて 1 カードが極狭、 視認性ゼロ
+    - テキスト系ブクマ (引用 ASCII `[ ]` 等) が縦に画面外まで無限伸長してる
+    - ユーザー要望:
+      - **デフォルトでモバイルは ~3 列**にする (現状 SizePicker level 3 = 4-5 列、 これを viewport-aware にする)
+      - **ピンチ操作でカード size 変更**したい (将来機能、 今すぐではない)
+      - 「スマホ用のチューニングが必要」 と明言
+    - **実装方針 (次セッションで詰める)**:
+      - **A 案 (即効)**: `lib/board/size-levels.ts` の `sizeLevelToColumnCount` でビューポート幅を参照、 ≤640px なら column を min(3, 元の値) で頭打ち
+      - **B 案 (中程度)**: `BoardRoot.tsx` の `sizeLevel` 初期値ロジックに viewport-aware 分岐を入れ、 mobile 起動時に level 2 (3 列) を default にする (localStorage は維持)
+      - **C 案 (本格)**: モバイル専用 SizeLevel テーブルを `size-levels.ts` に定義、 desktop/mobile 別軸で持つ
+      - 推奨: 最初は **A 案 + テキストカード縦伸び修正** で即効改善、 後で C 案へ
+    - **テキストカード縦伸び問題** (別軸の必要対応):
+      - 該当: `components/board/cards/TextCard.tsx` (たぶん)
+      - 現状: narrow width で text 内容 (引用記号 `[ ]` 等) が縦に展開、 アスペクト比制約なし
+      - 修正: `max-height: <cardWidth * 1.5>` か `aspect-ratio: 1 / 1.5` クランプ + `overflow: hidden` + `text-overflow: ellipsis` (multiline)
+    - **ピンチ操作は将来機能**: 別 issue で扱う、 今回は実装しない
 
 ---
 
