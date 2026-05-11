@@ -49,7 +49,11 @@
    all media types (image, video, iframe, tweet) and the text panel
    share the same envelope. */
 :root {
-  --lightbox-chrome-clearance: 96px;
+  /* 72px = NavMeter visual footprint (24px bottom offset + 12px counter +
+     6px gap + 18px waveform = 60px) + 12px breathing gap. Empirically
+     tuned 2026-05-11: earlier value 96px was too conservative and made
+     vertical media noticeably smaller than user expected. */
+  --lightbox-chrome-clearance: 72px;
   --lightbox-media-max-h: calc(
     100vh
     - var(--canvas-margin, 24px) * 2
@@ -521,11 +525,18 @@
 /* Plain text-only close button. Intentionally NO glass surface, NO
    background, NO border — the bare ✕ is the most refined treatment for
    this corner element (user-confirmed 2026-05-04). Subtle hover dims the
-   character so the affordance is felt but not loud. */
+   character so the affordance is felt but not loud.
+   Horizontal position uses max(24px, 50% - half_frame_max_width) so the
+   ✕ aligns with the frame's right edge when the canvas is wider than
+   the frame's max-width (1240px), and falls back to a 24px inset
+   otherwise. This pulls ✕ in from the canvas far-right corner so it
+   reads as "attached to the lightbox unit" while still keeping its
+   position stable across all post sizes (it doesn't track frame width,
+   only the frame's MAX possible width). */
 .close {
   position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
+  top: var(--space-6);
+  right: max(var(--space-6), calc(50% - 620px));
   z-index: 2;
   appearance: none;
   background: transparent;

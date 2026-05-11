@@ -307,7 +307,14 @@ ol {
   --text-signature: #444444;
   --card-radius: 24px;
   --lightbox-media-radius: 6px;
-  --lightbox-backdrop: rgba(0, 0, 0, 0.78);
+  /* Backdrop opacity 0.88 (bumped from 0.78) so the cards visible behind
+     the blur don't create a noticeable bright band in the bottom half of
+     the canvas when the user has scrolled past the top rows. With 0.78,
+     blurred cards were clearly visible in the lower half while the top
+     half (no cards behind) read as solid black — asymmetric brightness.
+     0.88 reduces card show-through enough to make the dim uniform without
+     killing the frosted-glass aesthetic entirely. */
+  --lightbox-backdrop: rgba(0, 0, 0, 0.88);
 
   /* === Outer-frame design (v17) ===
      白い外周に dark canvas が浮かぶ枠付きデザイン。
