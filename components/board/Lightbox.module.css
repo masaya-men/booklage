@@ -555,10 +555,18 @@
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: opacity var(--duration-fast) var(--ease-in-out);
+  /* Initial opacity 0 — JS shows the button after the open tween settles.
+     Without this, the `transition: opacity` below would fire when JS
+     sets opacity: 0 right after mount, animating CSS-default 1 → 0
+     over var(--duration-fast) at the viewport's top-right corner —
+     the brief 「click した瞬間に右上で明滅」 the user reported. */
+  opacity: 0;
 }
-.close:hover { opacity: 0.6; }
-.close:active { opacity: 0.4; }
+/* Transition only on hover / active states so a real pointer-driven
+   change still fades, but the JS-driven open/close opacity changes
+   don't fight a CSS transition. */
+.close:hover { opacity: 0.6; transition: opacity var(--duration-fast) var(--ease-in-out); }
+.close:active { opacity: 0.4; transition: opacity var(--duration-fast) var(--ease-in-out); }
 /* The lightbox auto-focuses the close button on open (so Esc-equivalent
    keyboard interaction lands here immediately). The browser's default
    focus ring around the bare ✕ reads as an unwanted "selected" box —

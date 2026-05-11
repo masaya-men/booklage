@@ -51,25 +51,18 @@ const OPEN_TEXT_FADE_DELAY_RATIO = 0.55 // text reveal starts at 55% of frame mo
 const OPEN_BACKDROP_FADE_DUR = 0.42
 const OPEN_FALLBACK_DUR = 0.42
 
-// Close is a deliberate 2-phase morph:
-//   Phase 1 (Hover): .media moves from its natural rect to a position
-//     centered on the source card, but ~18% LARGER than the source rect.
-//     Fully opaque throughout, fully covering the (still hidden) source
-//     slot. No transparent overlap during transit — .media is a solid
-//     object travelling, not a ghost passing through the board.
-//   Phase 2 (Land): source card is revealed underneath (now fully
-//     covered by the oversized .media). .media then descends — scale
-//     1.18× → 1.0× of the source rect — while opacity 1 → 0 fades over
-//     the same window. The source card emerges from beneath as .media
-//     softens away, never as a transparent overlap during transit.
-// User-described feel: 「ボード上のカードよりもまだ大きい状態で元あった
-//   場所の真上まで戻る。そこからふわーっと着地しながらすり替わる」.
-const CLOSE_FRAME_DELAY = 0.1
-const CLOSE_HOVER_DUR = 0.34
-const CLOSE_HOVER_SCALE = 1.18 // multiplier on the source-rect scale
-const CLOSE_HOVER_EASE = 'power2.out'
-const CLOSE_LAND_DUR = 0.22
-const CLOSE_LAND_EASE = 'power3.out' // soft ふわっと landing
+// Close — single diagonal tween from natural rect → source card's rect.
+// To make the landing swap pixel-perfect (no blink), we briefly switch
+// .media's <img> styling to match the source card thumb (object-fit:
+// cover + per-card border-radius) so at the moment .media lands at
+// source rect, it looks identical to the source card. A short 60ms
+// opacity fade right at landing covers any residual sub-pixel rounding
+// difference. User-described feel: 「斜めにまっすぐ帰っていく」.
+const CLOSE_FRAME_DELAY = 0.1   // wait this long after text starts fading before moving
+const CLOSE_TWEEN_DUR = 0.45    // diagonal travel duration
+const CLOSE_TWEEN_EASE = 'power2.out' // gentle decel into source rect
+const CLOSE_REVEAL_LEAD = 0.06  // reveal source card this many seconds BEFORE landing (safety margin)
+const CLOSE_FADE_DUR = 0.06     // .media opacity fade at the very end, paired with reveal lead
 const CLOSE_TEXT_FADE_DUR = 0.14
 const CLOSE_BACKDROP_FADE_DUR = 0.42
 const CLOSE_BACKDROP_DELAY = 0.15
@@ -284,17 +277,34 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, 0)
       }
-      // Phase 1 — Hover: .media travels to a position centered on the
-      // source card but slightly LARGER than the source rect. Fully
-      // opaque throughout; the source slot stays fully covered so no
-      // see-through during transit.
+      // Pre-tween: align .media's <img> styling to the source card thumb
+      // so at landing the two are pixel-identical and the swap is invisible.
+      // - object-fit: contain → cover  (lightbox shows the full image with
+      //   letterboxing where aspects mismatch; the source card shows it
+      //   cropped to fit. At landing we need cropped.)
+      // - border-radius: lightbox-radius → per-card --card-radius
+      //   (computed the same way CardsLayer does it inline).
+      // Non-image media (iframe/video) skips this — there's no <img> to
+      // re-style, and the safety fade at the end still masks any swap
+      // mismatch for those cases.
+      const mediaImg = mediaEl.querySelector<HTMLImageElement>(':scope > img')
+      if (mediaImg) {
+        mediaImg.style.objectFit = 'cover'
+        const cardRadius = Math.min(24, Math.min(closeOrigin.width, closeOrigin.height) * 0.075)
+        mediaImg.style.borderRadius = `${cardRadius}px`
+      }
+
+      // Single diagonal tween — .media travels straight from its natural
+      // rect to the source rect with gentle power2.out decel. No hover,
+      // no 2-phase split (those introduced a "click into place" beat at
+      // the transition).
       tl.to(mediaEl, {
         x: dx,
         y: dy,
-        scaleX: endScaleX * CLOSE_HOVER_SCALE,
-        scaleY: endScaleY * CLOSE_HOVER_SCALE,
-        duration: CLOSE_HOVER_DUR,
-        ease: CLOSE_HOVER_EASE,
+        scaleX: endScaleX,
+        scaleY: endScaleY,
+        duration: CLOSE_TWEEN_DUR,
+        ease: CLOSE_TWEEN_EASE,
         transformOrigin: '50% 50%',
       }, CLOSE_FRAME_DELAY)
       if (backdrop) {
@@ -304,25 +314,25 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, CLOSE_BACKDROP_DELAY)
       }
-      // Phase 2 — Land: at the end of Phase 1, .media is hovering over
-      // the source rect at 1.18× scale, fully opaque, covering the
-      // source card slot. Now we (a) reveal the source card underneath
-      // and (b) tween .media's scale 1.18× → 1.0× while opacity 1 → 0.
-      // The source card emerges from beneath the softening, shrinking
-      // .media — never as a transparent overlap during transit, never
-      // as a 1-frame swap at landing. (User: 「すでに用意してあった
-      //  カードとすり替わる」 mental model.)
-      const phase2At = CLOSE_FRAME_DELAY + CLOSE_HOVER_DUR
+
+      // Reveal source card slightly BEFORE .media lands, paired with a
+      // brief .media opacity fade. Because the <img> styling is now
+      // matched (cover + card-radius), source card and .media at landing
+      // are visually identical — the lead time + fade are a safety net
+      // against sub-pixel rounding between scaled .media's rect and the
+      // source card's rect. With matched styling, any residual offset
+      // dissolves through this short overlap rather than appearing as
+      // a 1-frame snap.
+      const landingAt = CLOSE_FRAME_DELAY + CLOSE_TWEEN_DUR
+      const revealAt = Math.max(0, landingAt - CLOSE_REVEAL_LEAD)
       if (onSourceShouldShow) {
-        tl.call(() => { onSourceShouldShow() }, undefined, phase2At)
+        tl.call(() => { onSourceShouldShow() }, undefined, revealAt)
       }
       tl.to(mediaEl, {
-        scaleX: endScaleX,
-        scaleY: endScaleY,
         opacity: 0,
-        duration: CLOSE_LAND_DUR,
-        ease: CLOSE_LAND_EASE,
-      }, phase2At)
+        duration: CLOSE_FADE_DUR,
+        ease: 'power2.in',
+      }, revealAt)
     } else {
       gsap.to(el, {
         scale: 0.96,
