@@ -91,6 +91,13 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
+  // Open/close FLIP morphs *only* the media element (not the entire .frame),
+  // so the visible motion reads as "the source card image grows / shrinks
+  // back" rather than "a whole 2-column lightbox container scales". The
+  // .frame container has no visible chrome (no background/border) so an
+  // untransformed .frame is invisible — only its children show.
+  const mediaRef = useRef<HTMLDivElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
   // Tracks the identity from the previous render. Hoisted to the top of
   // the component (out of the nav-transition effect below) so the open
   // animation effect can also read it, and skip its fallback entry
@@ -208,24 +215,30 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
     const liveSourceRect = liveSourceEl?.getBoundingClientRect() ?? null
     const closeOrigin = liveSourceRect ?? originRect
 
-    if (closeOrigin) {
-      const targetRect = el.getBoundingClientRect()
-      const dx = (closeOrigin.left + closeOrigin.width / 2) - (targetRect.left + targetRect.width / 2)
-      const dy = (closeOrigin.top + closeOrigin.height / 2) - (targetRect.top + targetRect.height / 2)
-      const endScaleX = Math.max(0.05, closeOrigin.width / targetRect.width)
-      const endScaleY = Math.max(0.05, closeOrigin.height / targetRect.height)
+    const mediaEl = mediaRef.current
+    const textEl = textRef.current
+    const closeEl = closeBtnRef.current
 
-      // Kill any in-flight text-fade tween from the open animation so
-      // we can drive the panel from its current opacity (0 or 1) cleanly.
-      const textEl = textRef.current
+    if (closeOrigin && mediaEl) {
+      // Mirror the open: only .media morphs back to the source card's
+      // current rect. Chrome (text + close button) fades out first; the
+      // .frame container itself stays at scale 1 + opacity 1 (it has no
+      // visible chrome, so it contributes nothing to what the user sees).
+      const mediaRect = mediaEl.getBoundingClientRect()
+      const dx = (closeOrigin.left + closeOrigin.width / 2) - (mediaRect.left + mediaRect.width / 2)
+      const dy = (closeOrigin.top + closeOrigin.height / 2) - (mediaRect.top + mediaRect.height / 2)
+      const endScaleX = Math.max(0.05, closeOrigin.width / mediaRect.width)
+      const endScaleY = Math.max(0.05, closeOrigin.height / mediaRect.height)
+
+      // Kill any in-flight open tween on the chrome / media so close
+      // takes over from the current visual state cleanly.
+      gsap.killTweensOf(mediaEl)
       if (textEl) gsap.killTweensOf(textEl)
+      if (closeEl) gsap.killTweensOf(closeEl)
 
       const tl = gsap.timeline({
         onComplete: () => onClose(),
       })
-      // Text panel fades out first so the user reads "this is closing"
-      // before the frame body starts shrinking. Adds a small leading
-      // beat without delaying the actual landing.
       if (textEl) {
         tl.to(textEl, {
           opacity: 0,
@@ -233,21 +246,24 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
           ease: 'power2.in',
         }, 0)
       }
-      // Frame morphs back to the source card's rect, fully opaque the
-      // whole way. BoardRoot's onClose clears `lightboxSourceItemId` in
-      // the same React commit that unmounts the Lightbox, so the source
-      // card's visibility flips back at the exact frame the .frame would
-      // have unmounted — they share the same screen rect, so the swap
-      // looks like the lightbox being placed physically back into its
-      // slot. (Earlier `opacity: 0` here caused the prior "card disappears
-      // mid-close" complaint — removed deliberately.)
-      tl.to(el, {
+      if (closeEl) {
+        tl.to(closeEl, {
+          opacity: 0,
+          duration: CLOSE_TEXT_FADE_DUR,
+          ease: 'power2.in',
+        }, 0)
+      }
+      // .media tweens to the source card's live rect on a flat decel.
+      // BoardRoot's onClose clears `lightboxSourceItemId` in the same
+      // React commit that unmounts the Lightbox, so the source card's
+      // visibility flips back at the exact pixel position .media just
+      // landed on — physical "card placed back into its slot" feel,
+      // no empty-slot flash.
+      tl.to(mediaEl, {
         x: dx,
         y: dy,
         scaleX: endScaleX,
         scaleY: endScaleY,
-        rotateX: 0,
-        rotateY: 0,
         duration: CLOSE_FRAME_DUR,
         ease: CLOSE_EASE,
         transformOrigin: '50% 50%',
@@ -408,38 +424,43 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
       return (): void => { backdropTween?.kill() }
     }
 
-    if (originRect) {
-      const targetRect = el.getBoundingClientRect()
-      const dx = (originRect.left + originRect.width / 2) - (targetRect.left + targetRect.width / 2)
-      const dy = (originRect.top + originRect.height / 2) - (targetRect.top + targetRect.height / 2)
-      const startScaleX = Math.max(0.05, originRect.width / targetRect.width)
-      const startScaleY = Math.max(0.05, originRect.height / targetRect.height)
-      // Distance-aware duration: cards far from center take a touch longer
-      // so the morph never feels rushed across a wide viewport.
+    const mediaEl = mediaRef.current
+    const textEl = textRef.current
+    const closeEl = closeBtnRef.current
+
+    if (originRect && mediaEl) {
+      // FLIP target is the *media* element's natural rect (not the whole
+      // .frame). Visually only .media morphs, so the user reads the open
+      // as "the source card grows into the media slot" — closer to the
+      // destefanis "image clone morphs" feel. .frame is untransformed
+      // and only acts as a layout host (no visible chrome).
+      const mediaRect = mediaEl.getBoundingClientRect()
+      const dx = (originRect.left + originRect.width / 2) - (mediaRect.left + mediaRect.width / 2)
+      const dy = (originRect.top + originRect.height / 2) - (mediaRect.top + mediaRect.height / 2)
+      const startScaleX = Math.max(0.05, originRect.width / mediaRect.width)
+      const startScaleY = Math.max(0.05, originRect.height / mediaRect.height)
       const distance = Math.hypot(dx, dy)
       const dur = OPEN_BASE_DUR + Math.min(distance / OPEN_DIST_DIVISOR, OPEN_DIST_BONUS_MAX)
 
-      const tl = gsap.timeline()
-      tl.set(el, {
+      // Initial state set synchronously *outside* the timeline so the
+      // browser paints the source-rect frame at t=0 before the tween
+      // runs — avoids the GSAP gotcha where set + to at the same
+      // timeline offset can leave the to-tween's from-state captured
+      // pre-set (resulting in no visible morph). useLayoutEffect runs
+      // before paint, so this is flicker-free.
+      gsap.set(el, { opacity: 1 })
+      gsap.set(mediaEl, {
         x: dx,
         y: dy,
         scaleX: startScaleX,
         scaleY: startScaleY,
-        rotateX: 0,
-        rotateY: 0,
-        opacity: 1,
         transformOrigin: '50% 50%',
       })
-      // Hold the right-column text panel hidden during the morph — only
-      // the (squished) media reads as "the card growing", matching a
-      // pure rect-to-rect physical morph. Reveal text after the frame
-      // is most of the way home so the user reads "card lands → text
-      // appears" as two beats instead of one cluttered arrival.
-      const textEl = textRef.current
-      if (textEl) {
-        tl.set(textEl, { opacity: 0 }, 0)
-      }
-      tl.to(el, {
+      if (textEl) gsap.set(textEl, { opacity: 0 })
+      if (closeEl) gsap.set(closeEl, { opacity: 0 })
+
+      const tl = gsap.timeline()
+      tl.to(mediaEl, {
         x: 0,
         y: 0,
         scaleX: 1,
@@ -447,12 +468,23 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
         duration: dur,
         ease: OPEN_EASE,
       }, 0)
+      // Chrome (text panel + close button) appears only after the media
+      // is most of the way home — "card lands, then chrome arrives" as
+      // two distinct beats.
+      const chromeAt = dur * OPEN_TEXT_FADE_DELAY_RATIO
       if (textEl) {
         tl.to(textEl, {
           opacity: 1,
           duration: OPEN_TEXT_FADE_DUR,
           ease: 'power2.out',
-        }, dur * OPEN_TEXT_FADE_DELAY_RATIO)
+        }, chromeAt)
+      }
+      if (closeEl) {
+        tl.to(closeEl, {
+          opacity: 1,
+          duration: OPEN_TEXT_FADE_DUR,
+          ease: 'power2.out',
+        }, chromeAt)
       }
       let backdropTween: gsap.core.Tween | null = null
       if (backdrop) {
@@ -463,13 +495,19 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
         )
       }
       return (): void => {
+        // If the open is interrupted (e.g. chevron-nav fires mid-tween),
+        // snap .media + chrome to their settled state so subsequent
+        // animations (slide, close) start from a sane base.
         tl.kill()
         backdropTween?.kill()
+        gsap.set(mediaEl, { x: 0, y: 0, scaleX: 1, scaleY: 1 })
+        if (textEl) gsap.set(textEl, { opacity: 1 })
+        if (closeEl) gsap.set(closeEl, { opacity: 1 })
       }
     }
 
-    // No-originRect fallback — gentle scale-in, kept opaque to match
-    // the open path's "no opacity drama" character.
+    // No-originRect fallback — gentle scale-in on .frame itself, kept
+    // opaque to match the main path's "no opacity drama" character.
     const tween = gsap.fromTo(
       el,
       { scale: 0.96, opacity: 0 },
@@ -709,6 +747,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
             floating in an empty corner on wide screens, with no visual
             relationship to the lightbox content (user 2026-05-11). */}
         <button
+          ref={closeBtnRef}
           type="button"
           onClick={requestClose}
           className={styles.close}
@@ -716,7 +755,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
         >
           <span className={styles.closeIcon} aria-hidden="true">✕</span>
         </button>
-        <div className={styles.media}>
+        <div ref={mediaRef} className={styles.media}>
           {tweetId
             ? <TweetMedia item={view} meta={tweetMeta} />
             : <LightboxMedia item={view} />}
