@@ -25,10 +25,18 @@
 - **現状コードは全て「Booklage」 のまま**。 ドメイン取得後に一気に置換予定
 
 ### コード状況 (リブランド前)
-- **ブランチ**: `master` 単一運用、~39 commits ahead of origin/master (未 push)
+- **ブランチ**: `master` 単一運用、 origin/master に push 済 (2026-05-11 セッション 9 末)
 - **本番**: `https://booklage.pages.dev` に **Lightbox × 固定 (B-#5)** + **モバイル TopHeader 修正 (B-#9)** + **bookmarklet→拡張ハンドオフ** + **PiP-aware cursor pill 抑制** + **拡張 cursor-pill アニメ品質向上** が deploy 済 (2026-05-11 セッション 9)
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
 - **ユーザー実機**: 拡張機能 sideload 完了済、 セッション 9 で 4 系統テスト全 OK 確認済
+
+### セッション 9 (2026-05-11) で完了したこと
+
+- ✅ **拡張機能実機検証** — 4 系統 (bookmarklet クリック / 拡張ショートカット / 右クリック / PiP 開時) 全 OK 確認
+- ✅ **B-#9 iPhone 右端切れ** — TopHeader に `@media (max-width: 640px)`、 mobile は FilterPill + Share のみ
+- ✅ **B-#5 Lightbox × 位置固定** — `<button .close>` を `.frame` 子から `.backdrop` 直下に移動、 常に backdrop top:16/right:16 固定
+- ✅ **B-#6 ESC キー** — 既に実装済 (`Lightbox.tsx` L207-217) を Playwright 確認
+- ✅ 39 commits push 済 (long-standing 未 push 状態を解消)
 
 ---
 
