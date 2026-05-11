@@ -357,18 +357,24 @@
   top: 0;
   left: 0;
   right: 0;
-  bottom: 56px;
+  bottom: 0;
   display: grid;
   place-items: center;
   border: none;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.18) 100%);
+  /* Fully transparent — the disc itself (rgba 0.55 + soft shadow) carries
+     enough weight to read against any poster. The prior `0% → 18%`
+     top-to-bottom gradient (and its 5% → 28% hover variant) created two
+     visible artefacts inside the video: a darker band toward the middle/
+     lower-third, and a sudden brightness "step" at the 56px-from-bottom
+     line where the overlay used to end. User reported both as "下の方が
+     明るい" / "ホバーで濃さが変わる" — both vanish without the gradient.
+     bottom is 0 now (was 56px to leave native controls clear) because the
+     overlay only renders while !isPlaying — once the user clicks play, the
+     whole overlay unmounts and the native controls have free reign. */
+  background: transparent;
   padding: 0;
   z-index: 1;
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-in-out);
-}
-.playOverlay:hover {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.28) 100%);
 }
 /* Flat editorial disc — Phase A α direction (2026-05-05). LiquidGlass
    refraction was removed because the lens effect read as too rich for
