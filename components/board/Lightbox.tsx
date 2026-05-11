@@ -249,8 +249,14 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       // .frame container itself stays at scale 1 + opacity 1 (it has no
       // visible chrome, so it contributes nothing to what the user sees).
       const mediaRect = mediaEl.getBoundingClientRect()
-      const dx = (closeOrigin.left + closeOrigin.width / 2) - (mediaRect.left + mediaRect.width / 2)
-      const dy = (closeOrigin.top + closeOrigin.height / 2) - (mediaRect.top + mediaRect.height / 2)
+      // Round dx/dy to integer pixels so .media's transformed end position
+      // snaps to the same pixel grid the (un-transformed) source card
+      // renders on. Without this, fractional translate values land 0.3-0.5px
+      // off the source card's actual pixel position → that's the last
+      // remaining "意識して凝視すると一瞬だけ明滅" the user reported.
+      // Scale stays fractional (rounding 0.2 → 0 would collapse .media).
+      const dx = Math.round((closeOrigin.left + closeOrigin.width / 2) - (mediaRect.left + mediaRect.width / 2))
+      const dy = Math.round((closeOrigin.top + closeOrigin.height / 2) - (mediaRect.top + mediaRect.height / 2))
       const endScaleX = Math.max(0.05, closeOrigin.width / mediaRect.width)
       const endScaleY = Math.max(0.05, closeOrigin.height / mediaRect.height)
 
@@ -507,8 +513,13 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       // destefanis "image clone morphs" feel. .frame is untransformed
       // and only acts as a layout host (no visible chrome).
       const mediaRect = mediaEl.getBoundingClientRect()
-      const dx = (originRect.left + originRect.width / 2) - (mediaRect.left + mediaRect.width / 2)
-      const dy = (originRect.top + originRect.height / 2) - (mediaRect.top + mediaRect.height / 2)
+      // Round dx/dy to integer pixels so .media's transformed *start*
+      // position snaps to the source card's actual pixel grid. Symmetric
+      // to the close-tween rounding — keeps the "card grows from where
+      // it was" moment pixel-aligned with the source card the user
+      // remembers clicking. Scale stays fractional.
+      const dx = Math.round((originRect.left + originRect.width / 2) - (mediaRect.left + mediaRect.width / 2))
+      const dy = Math.round((originRect.top + originRect.height / 2) - (mediaRect.top + mediaRect.height / 2))
       const startScaleX = Math.max(0.05, originRect.width / mediaRect.width)
       const startScaleY = Math.max(0.05, originRect.height / mediaRect.height)
       const distance = Math.hypot(dx, dy)
