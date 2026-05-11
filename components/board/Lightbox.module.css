@@ -540,7 +540,12 @@
    ✕ never escapes the canvas. */
 .close {
   position: absolute;
-  top: calc(-1 * var(--space-10));
+  /* top: 0 puts the ✕ at the frame's top edge — which is the media's top
+     edge whenever media is the taller child of the .frame flex row (the
+     common case for vertical videos, photos, embeds). The ✕ then reads
+     as "tied to the corner of the content" rather than floating above
+     it in empty space (user 2026-05-11). */
+  top: 0;
   right: 0;
   z-index: 2;
   appearance: none;
