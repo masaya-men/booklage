@@ -54,14 +54,19 @@ const CLOSE_TEXT_FADE_DUR = 0.14
 const CLOSE_BACKDROP_FADE_DUR = 0.42
 const CLOSE_BACKDROP_DELAY = 0.15
 const CLOSE_FALLBACK_DUR = 0.3
-// Once .media has landed at the source card's rect, the source card is
-// revealed underneath (still hidden up to this moment) and .media fades
-// out over this window. The cross-fade masks the unavoidable visual
-// mismatch between .media's <img> (object-fit: contain, lightbox-radius)
-// and the source card's <img> (cover, --card-radius) — DOM clone is
-// off the table for AllMarks because it would break embed iframes
-// and the planned multi-playback. The fade IS the visual continuity.
-const CLOSE_CROSSFADE_DUR = 0.16
+// Cross-fade window — duration of .media's opacity 1→0 fade-out at the
+// end of close. The fade ends AT the moment .media lands on the source
+// rect (so .media is fully invisible by landing — no rect-overlap
+// mismatch with the source card). The fade STARTS this many seconds
+// before landing, which is when the source card is revealed underneath.
+// With 0.22s, source reveal happens at ~50% of the .media tween's raw
+// time — i.e. while .media is still ~2× the source rect's size and
+// roughly halfway down its trajectory. The user reads it as "source
+// card is already placed; the lightbox ghost shrinks down to it and
+// dissolves". Increase for a longer dissolve, decrease toward 0 for
+// a tighter swap (risk of the underlying visual-mismatch blink coming
+// back at small values).
+const CLOSE_CROSSFADE_DUR = 0.22
 
 /** Optional nav controls — when provided, chevron + dots + arrow-key
  *  nav become available. Caller (BoardRoot or SharedView) owns the
@@ -289,26 +294,26 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, CLOSE_BACKDROP_DELAY)
       }
-      // Cross-fade at landing: at the exact moment .media reaches the
-      // source rect, ask BoardRoot to make the source card visible
-      // underneath, then fade .media's opacity 1→0 over the next ~150ms.
-      // Source card and .media briefly overlap at the same screen rect
-      // and any styling difference between them (object-fit, radius,
-      // letterboxing) dissolves through the fade rather than appearing
-      // as a 1-frame swap. onComplete (= unmount) fires after the fade
-      // ends. Without this, the user reported a single 「明滅」 at
-      // landing — caused by .media's <img object-fit:contain> being
-      // visually different from the source card's <img object-fit:cover>
-      // at the swap pixel.
+      // Pre-landing cross-fade: while .media is still notably larger
+      // than the source rect (and clearly not yet at its destination),
+      // reveal the source card underneath and start fading .media out.
+      // Fade ends *at* landing, so by the time .media reaches the source
+      // rect it's already at opacity 0 — there's never a moment where
+      // both elements share the same rect with full opacity, so the
+      // visual-mismatch blink can't happen. Visually: source card is
+      // placed at its slot first, the lightbox ghost shrinks down to
+      // it and dissolves on the way. Trigger time is derived from
+      // CLOSE_CROSSFADE_DUR so the two stay in lockstep when tuned.
       const landingAt = CLOSE_FRAME_DELAY + CLOSE_FRAME_DUR
+      const crossfadeStartAt = Math.max(0, landingAt - CLOSE_CROSSFADE_DUR)
       if (onSourceShouldShow) {
-        tl.call(() => { onSourceShouldShow() }, undefined, landingAt)
+        tl.call(() => { onSourceShouldShow() }, undefined, crossfadeStartAt)
       }
       tl.to(mediaEl, {
         opacity: 0,
         duration: CLOSE_CROSSFADE_DUR,
         ease: 'power2.in',
-      }, landingAt)
+      }, crossfadeStartAt)
     } else {
       gsap.to(el, {
         scale: 0.96,
