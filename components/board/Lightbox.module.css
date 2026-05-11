@@ -36,6 +36,27 @@
   pointer-events: auto;
 }
 
+/* --- Vertical envelope for the whole lightbox unit ---
+   The lightbox sits inside the full canvas (viewport - 2*canvas-margin
+   tall) and is centered vertically — so its top and bottom margins are
+   ALWAYS symmetric: each equals (canvas_h - media_h) / 2. For both the
+   close button at canvas top (16px offset + ~32px box → ~48px reserved)
+   and the nav meter at canvas bottom (24px offset + ~60px wave + ~12px
+   gap → ~96px reserved) to stay clear of the media, each margin must be
+   at least the LARGER clearance (96px). Hence the envelope subtracts
+   `chrome-clearance * 2` from canvas height — guaranteeing chrome
+   doesn't overlap regardless of viewport size. Variable defined here so
+   all media types (image, video, iframe, tweet) and the text panel
+   share the same envelope. */
+:root {
+  --lightbox-chrome-clearance: 96px;
+  --lightbox-media-max-h: calc(
+    100vh
+    - var(--canvas-margin, 24px) * 2
+    - var(--lightbox-chrome-clearance) * 2
+  );
+}
+
 /* Flex (not grid): media uses its NATURAL width (whatever the
    aspect-ratio wrapper resolves to — 60vw for 16:9, ~50vw for 9:16
    verticals, or the photo's intrinsic width capped to viewport). The
@@ -49,7 +70,7 @@
   justify-content: center;
   gap: 32px;
   max-width: min(94vw, 1240px);
-  max-height: 90vh;
+  max-height: var(--lightbox-media-max-h);
   /* Initial state hidden so the FLIP open animation never flashes a
      mid-reflow frame at viewport center before useLayoutEffect runs.
      gsap.set in the open animation overrides opacity to start the
@@ -64,7 +85,7 @@
     flex-direction: column;
     align-items: stretch;
     gap: 20px;
-    max-height: 92vh;
+    max-height: var(--lightbox-media-max-h);
     overflow-y: auto;
   }
 }
@@ -77,7 +98,7 @@
   overflow: hidden;
   min-width: 0;
   min-height: 0;
-  max-height: 88vh;
+  max-height: var(--lightbox-media-max-h);
   /* position:relative + border-radius were originally added so the
      v48 box-shadow / sweep effects had a rounded host container with
      a clean stacking context. The shadow & sweep are gone now, but
@@ -89,7 +110,7 @@
 }
 .media img {
   max-width: 100%;
-  max-height: 88vh;
+  max-height: var(--lightbox-media-max-h);
   display: block;
   border-radius: var(--lightbox-media-radius);
   object-fit: contain;
@@ -102,24 +123,26 @@
 }
 
 /* Horizontal video (16:9). Width fills available column up to 920px,
-   height capped at 88vh — whichever constraint binds first.
-   position:relative so an absolutely-positioned play overlay sits
-   inside the rounded corners instead of escaping to the lightbox. */
+   height capped at the shared media envelope (clears close button + nav
+   meter) — whichever constraint binds first. position:relative so an
+   absolutely-positioned play overlay sits inside the rounded corners
+   instead of escaping to the lightbox. */
 .iframeWrap16x9 {
   position: relative;
   width: min(920px, 60vw);
   aspect-ratio: 16 / 9;
-  max-height: 88vh;
+  max-height: var(--lightbox-media-max-h);
   background: black;
   border-radius: var(--lightbox-media-radius);
   overflow: hidden;
 }
 /* Vertical video (TikTok / IG Reels / YouTube Shorts). Height-led:
-   take up to 88vh tall, width derived from 9:16 aspect-ratio. Never
-   exceed ~50vw so text panel still fits beside it on wide screens. */
+   take up to the shared media envelope tall, width derived from 9:16
+   aspect-ratio. Never exceed ~50vw so text panel still fits beside it
+   on wide screens. */
 .iframeWrap9x16 {
   position: relative;
-  height: min(88vh, 720px);
+  height: min(var(--lightbox-media-max-h), 720px);
   aspect-ratio: 9 / 16;
   max-width: 50vw;
   background: black;
@@ -200,7 +223,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-height: 88vh;
+  max-height: var(--lightbox-media-max-h);
   overflow-y: auto;
   /* Custom scrollbar — replaces the chunky default browser bar with a
      hairline that matches the dark UI. Hidden until the panel is
@@ -382,7 +405,7 @@
   position: relative;
   display: block;
   max-width: min(920px, 60vw);
-  max-height: 88vh;
+  max-height: var(--lightbox-media-max-h);
   border-radius: var(--lightbox-media-radius);
   overflow: hidden;
   background: black;
@@ -392,7 +415,7 @@
   display: block;
   width: 100%;
   height: auto;
-  max-height: 88vh;
+  max-height: var(--lightbox-media-max-h);
   object-fit: contain;
 }
 .tweetWatchOnXBadge {

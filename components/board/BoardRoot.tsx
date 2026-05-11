@@ -852,9 +852,17 @@ export function BoardRoot() {
               />
             </div>
           </InteractionLayer>
-          {/* Soft fade at canvas top/bottom edges — scroll affordance. */}
-          <div className={styles.fadeTop} aria-hidden="true" />
-          <div className={styles.fadeBottom} aria-hidden="true" />
+          {/* Soft fade at canvas top/bottom edges — scroll affordance.
+              Hidden while the Lightbox is open so the backdrop reads as a
+              uniform dim across the full canvas; otherwise the top fade
+              (where TopHeader used to be) leaves a darker band that breaks
+              the "lightbox centered in a calm field" feel. */}
+          {!lightboxItemId && (
+            <>
+              <div className={styles.fadeTop} aria-hidden="true" />
+              <div className={styles.fadeBottom} aria-hidden="true" />
+            </>
+          )}
           {!loading && items.length === 0 && (
             <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
           )}

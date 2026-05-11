@@ -881,7 +881,10 @@ function TweetVideoPlayer({
   const wrapperStyle: CSSProperties = {
     position: 'relative',
     aspectRatio: aspect,
-    maxHeight: '88vh',
+    // Shared envelope variable from Lightbox.module.css — keeps tweet
+    // videos inside the same close-button + nav-meter clearances as the
+    // CSS-driven iframeWrap and .media cases.
+    maxHeight: 'var(--lightbox-media-max-h)',
     maxWidth: isVertical ? '50vw' : 'min(920px, 60vw)',
     background: 'black',
     borderRadius: 'var(--lightbox-media-radius)',
