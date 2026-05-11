@@ -41,32 +41,39 @@ import styles from './Lightbox.module.css'
 const OPEN_BASE_DUR = 0.5
 const OPEN_DIST_DIVISOR = 2000  // px of travel that buys 1s of bonus
 const OPEN_DIST_BONUS_MAX = 0.2 // …capped at this many extra seconds
-const OPEN_EASE = 'back.out(0.7)' // small overshoot, "spring landing" feel
+// Flat decel, no spring overshoot. The earlier `back.out(0.7)` baseline
+// read as a side-effect rather than character; AllMarks wants a clean
+// arrival. Soften toward `power2.out` for a slower settle, sharpen
+// toward `power4.out` for a more decisive arrival.
+const OPEN_EASE = 'power3.out'
 const OPEN_TEXT_FADE_DUR = 0.28
 const OPEN_TEXT_FADE_DELAY_RATIO = 0.55 // text reveal starts at 55% of frame morph
 const OPEN_BACKDROP_FADE_DUR = 0.42
 const OPEN_FALLBACK_DUR = 0.42
 
-const CLOSE_FRAME_DUR = 0.42
-const CLOSE_EASE = 'power2.out' // gentle decel into source rect
-const CLOSE_FRAME_DELAY = 0.1   // wait this long after text starts fading before shrinking
+// Close is a deliberate 2-phase morph:
+//   Phase 1 (Hover): .media moves from its natural rect to a position
+//     centered on the source card, but ~18% LARGER than the source rect.
+//     Fully opaque throughout, fully covering the (still hidden) source
+//     slot. No transparent overlap during transit — .media is a solid
+//     object travelling, not a ghost passing through the board.
+//   Phase 2 (Land): source card is revealed underneath (now fully
+//     covered by the oversized .media). .media then descends — scale
+//     1.18× → 1.0× of the source rect — while opacity 1 → 0 fades over
+//     the same window. The source card emerges from beneath as .media
+//     softens away, never as a transparent overlap during transit.
+// User-described feel: 「ボード上のカードよりもまだ大きい状態で元あった
+//   場所の真上まで戻る。そこからふわーっと着地しながらすり替わる」.
+const CLOSE_FRAME_DELAY = 0.1
+const CLOSE_HOVER_DUR = 0.34
+const CLOSE_HOVER_SCALE = 1.18 // multiplier on the source-rect scale
+const CLOSE_HOVER_EASE = 'power2.out'
+const CLOSE_LAND_DUR = 0.22
+const CLOSE_LAND_EASE = 'power3.out' // soft ふわっと landing
 const CLOSE_TEXT_FADE_DUR = 0.14
 const CLOSE_BACKDROP_FADE_DUR = 0.42
 const CLOSE_BACKDROP_DELAY = 0.15
 const CLOSE_FALLBACK_DUR = 0.3
-// Cross-fade window — duration of .media's opacity 1→0 fade-out at the
-// end of close. The fade ends AT the moment .media lands on the source
-// rect (so .media is fully invisible by landing — no rect-overlap
-// mismatch with the source card). The fade STARTS this many seconds
-// before landing, which is when the source card is revealed underneath.
-// With 0.22s, source reveal happens at ~50% of the .media tween's raw
-// time — i.e. while .media is still ~2× the source rect's size and
-// roughly halfway down its trajectory. The user reads it as "source
-// card is already placed; the lightbox ghost shrinks down to it and
-// dissolves". Increase for a longer dissolve, decrease toward 0 for
-// a tighter swap (risk of the underlying visual-mismatch blink coming
-// back at small values).
-const CLOSE_CROSSFADE_DUR = 0.22
 
 /** Optional nav controls — when provided, chevron + dots + arrow-key
  *  nav become available. Caller (BoardRoot or SharedView) owns the
@@ -277,14 +284,17 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, 0)
       }
-      // .media tweens to the source card's live rect on a flat decel.
+      // Phase 1 — Hover: .media travels to a position centered on the
+      // source card but slightly LARGER than the source rect. Fully
+      // opaque throughout; the source slot stays fully covered so no
+      // see-through during transit.
       tl.to(mediaEl, {
         x: dx,
         y: dy,
-        scaleX: endScaleX,
-        scaleY: endScaleY,
-        duration: CLOSE_FRAME_DUR,
-        ease: CLOSE_EASE,
+        scaleX: endScaleX * CLOSE_HOVER_SCALE,
+        scaleY: endScaleY * CLOSE_HOVER_SCALE,
+        duration: CLOSE_HOVER_DUR,
+        ease: CLOSE_HOVER_EASE,
         transformOrigin: '50% 50%',
       }, CLOSE_FRAME_DELAY)
       if (backdrop) {
@@ -294,26 +304,25 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, CLOSE_BACKDROP_DELAY)
       }
-      // Pre-landing cross-fade: while .media is still notably larger
-      // than the source rect (and clearly not yet at its destination),
-      // reveal the source card underneath and start fading .media out.
-      // Fade ends *at* landing, so by the time .media reaches the source
-      // rect it's already at opacity 0 — there's never a moment where
-      // both elements share the same rect with full opacity, so the
-      // visual-mismatch blink can't happen. Visually: source card is
-      // placed at its slot first, the lightbox ghost shrinks down to
-      // it and dissolves on the way. Trigger time is derived from
-      // CLOSE_CROSSFADE_DUR so the two stay in lockstep when tuned.
-      const landingAt = CLOSE_FRAME_DELAY + CLOSE_FRAME_DUR
-      const crossfadeStartAt = Math.max(0, landingAt - CLOSE_CROSSFADE_DUR)
+      // Phase 2 — Land: at the end of Phase 1, .media is hovering over
+      // the source rect at 1.18× scale, fully opaque, covering the
+      // source card slot. Now we (a) reveal the source card underneath
+      // and (b) tween .media's scale 1.18× → 1.0× while opacity 1 → 0.
+      // The source card emerges from beneath the softening, shrinking
+      // .media — never as a transparent overlap during transit, never
+      // as a 1-frame swap at landing. (User: 「すでに用意してあった
+      //  カードとすり替わる」 mental model.)
+      const phase2At = CLOSE_FRAME_DELAY + CLOSE_HOVER_DUR
       if (onSourceShouldShow) {
-        tl.call(() => { onSourceShouldShow() }, undefined, crossfadeStartAt)
+        tl.call(() => { onSourceShouldShow() }, undefined, phase2At)
       }
       tl.to(mediaEl, {
+        scaleX: endScaleX,
+        scaleY: endScaleY,
         opacity: 0,
-        duration: CLOSE_CROSSFADE_DUR,
-        ease: 'power2.in',
-      }, crossfadeStartAt)
+        duration: CLOSE_LAND_DUR,
+        ease: CLOSE_LAND_EASE,
+      }, phase2At)
     } else {
       gsap.to(el, {
         scale: 0.96,
