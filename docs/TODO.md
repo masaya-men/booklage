@@ -25,10 +25,10 @@
 - **現状コードは全て「Booklage」 のまま**。 ドメイン取得後に一気に置換予定
 
 ### コード状況 (リブランド前)
-- **ブランチ**: `master` 単一運用、~36 commits ahead of origin/master (未 push)
-- **本番**: `https://booklage.pages.dev` に **bookmarklet→拡張ハンドオフ** + **PiP-aware cursor pill 抑制** + **拡張 cursor-pill アニメ品質向上** が deploy 済 (2026-05-10 セッション 7)
+- **ブランチ**: `master` 単一運用、~38 commits ahead of origin/master (未 push)
+- **本番**: `https://booklage.pages.dev` に **モバイル TopHeader 修正 (B-#9)** + **bookmarklet→拡張ハンドオフ** + **PiP-aware cursor pill 抑制** + **拡張 cursor-pill アニメ品質向上** が deploy 済 (2026-05-11 セッション 9)
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
-- **ユーザー実機**: 拡張機能 sideload 完了済。host_permissions が `<all_urls>` に拡張されたため、再 sideload が必要
+- **ユーザー実機**: 拡張機能 sideload 完了済、 セッション 9 で 4 系統テスト全 OK 確認済
 
 ---
 
@@ -55,7 +55,8 @@
 
 ### レスポンシブ
 
-9. **iPhone (古い機種) で右端が切れる** — 実機レスポンシブ問題、 viewport 設定 / overflow / safe-area-inset を点検
+9. ~~**iPhone (古い機種) で右端が切れる**~~ ✅ セッション 9 完了 — `TopHeader.module.css` に `@media (max-width: 640px)` 追加。 mobile (≤640px) で ScrollMeter + divider + PopOut/SizePicker/ResetAll を隠し、 FilterPill (左) + Share (右) のみ残す。 root cause は grid `1fr auto auto auto 1fr` の auto 列が中身に合わせて 789px に膨らみ、 親 `.canvas { overflow:hidden }` で右端 clip。 Playwright で iPhone SE/8/12 Pro 全て fit 確認。
+    - ⚠️ TopHeader 全体のデザイン・配置は暫定。 将来 brushup 方向: **ScrollMeter を下配置** (操作性 + Lightbox の表現と統一)。 詳細は memory `project_board_header_brushup.md`
 
 ---
 
@@ -71,9 +72,17 @@
 - ブラウザ完結 AI 自動タグ付け (サーバー送信不可前提)
 - 複数画像 / 動画ホバー切替 (ムードボード + Lightbox)
 
-### 🔴 次セッション最優先 — 実機検証 (2026-05-10 セッション 7 末で持ち越し)
+### ✅ 拡張機能 実機検証 — セッション 9 で完了
 
-セッション 7 で大きな仕様変更を入れた直後で、**実機テストはまだ不完全**。次セッションで以下を切り分けて検証する。
+ユーザーが再 sideload + bookmarklet 再ドラッグ + 以下 4 系統テストを実施、 **全 OK 報告 (2026-05-11 セッション 9)**:
+- bookmarklet クリック (拡張あり) → silent save 成立
+- 拡張ショートカット → cursor pill 正常
+- 右クリック → "Save to Booklage" / "Save link to Booklage" → cursor pill 正常
+- PiP open 状態でショートカット → cursor pill 抑制 + PiP にカードのみスライドイン
+
+セッション 7 のハンドオフ + PiP-aware pill 仕様は実機確定。
+
+### (参考) 検証手順アーカイブ — `<all_urls>` host_permission 拡張後の再 sideload
 
 #### A. 拡張機能の再 sideload + 動作テスト (USER-side、最初に必須)
 

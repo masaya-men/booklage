@@ -32,3 +32,19 @@
   background: rgba(255, 255, 255, 0.12);
   justify-self: center;
 }
+
+/* Mobile (≤640px): the desktop grid overflows 320–390px viewports by ~400–500px,
+   clipping Share/SizePicker/ResetAll/PopOut behind the canvas right edge. Until
+   the header gets its proper mobile redesign (ScrollMeter likely moves to the
+   bottom to match the Lightbox), keep FilterPill (left) + Share (right) only. */
+@media (max-width: 640px) {
+  .header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .divider { display: none; }
+  .group[data-group="instrument"] { display: none; }
+  .group[data-group="actions"] > :not([data-testid="share-pill"]) {
+    display: none;
+  }
+}
