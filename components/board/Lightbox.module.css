@@ -532,17 +532,16 @@
    background, NO border — the bare ✕ is the most refined treatment for
    this corner element (user-confirmed 2026-05-04). Subtle hover dims the
    character so the affordance is felt but not loud.
-   Horizontal position uses max(24px, 50% - half_frame_max_width) so the
-   ✕ aligns with the frame's right edge when the canvas is wider than
-   the frame's max-width (1240px), and falls back to a 24px inset
-   otherwise. This pulls ✕ in from the canvas far-right corner so it
-   reads as "attached to the lightbox unit" while still keeping its
-   position stable across all post sizes (it doesn't track frame width,
-   only the frame's MAX possible width). */
+   Anchored to .frame's top-right corner with a small upward offset, so
+   the ✕ floats just above the frame's top edge and aligns with the
+   frame's right edge — visually "attached" to the lightbox unit
+   regardless of viewport width. The frame's bounded max-width
+   (min(94vw, 1240px)) and max-height (envelope variable) guarantee the
+   ✕ never escapes the canvas. */
 .close {
   position: absolute;
-  top: var(--space-6);
-  right: max(var(--space-6), calc(50% - 620px));
+  top: calc(-1 * var(--space-10));
+  right: 0;
   z-index: 2;
   appearance: none;
   background: transparent;

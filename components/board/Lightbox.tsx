@@ -671,6 +671,25 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
         </>
       )}
       <div ref={frameRef} className={styles.frame}>
+        {/* Close button is now a child of .frame, anchored to its top-right
+            corner (offset slightly above and outside via CSS). This makes
+            the ✕ visually "attached" to the lightbox unit — the user reads
+            it as "this ✕ closes this modal", which is the Linear / Stripe /
+            Pinterest pattern. Frame's max-width + max-height are bounded
+            (min(94vw, 1240px) horizontally, envelope variable vertically),
+            so the ✕ never escapes the canvas regardless of viewport size
+            or post content. The earlier "sibling of .frame in backdrop"
+            placement (session 9) was reverted because it left the ✕
+            floating in an empty corner on wide screens, with no visual
+            relationship to the lightbox content (user 2026-05-11). */}
+        <button
+          type="button"
+          onClick={requestClose}
+          className={styles.close}
+          aria-label={t('board.lightbox.close')}
+        >
+          <span className={styles.closeIcon} aria-hidden="true">✕</span>
+        </button>
         <div className={styles.media}>
           {tweetId
             ? <TweetMedia item={view} meta={tweetMeta} />
@@ -690,20 +709,6 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
           </a>
         </div>
       </div>
-      {/* Close button is a sibling of .frame, not a child. Its absolute
-          position then anchors to .backdrop (canvas-sized) instead of
-          .frame (which shrinks/grows with media type), so the ✕ always
-          sits at the same canvas corner regardless of post size — and
-          stays put while the user scrolls the mobile column inside
-          .frame. */}
-      <button
-        type="button"
-        onClick={requestClose}
-        className={styles.close}
-        aria-label={t('board.lightbox.close')}
-      >
-        <span className={styles.closeIcon} aria-hidden="true">✕</span>
-      </button>
     </div>
     </>
   )
