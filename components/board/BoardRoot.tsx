@@ -535,15 +535,39 @@ export function BoardRoot() {
     window.localStorage.setItem('booklage:size-level', String(sizeLevel))
   }, [sizeLevel])
 
+  // Track which card is mid-settle so CardsLayer can run a one-shot
+  // landing animation on it. Cleared after the animation's natural
+  // duration (~360ms) so the card returns to its normal idle state.
+  const [lightboxSettlingId, setLightboxSettlingId] = useState<string | null>(null)
+  const settlingTimerRef = useRef<number | null>(null)
+
   // Fired by Lightbox at the moment .media has landed at the source
   // card's rect, ~150ms BEFORE the lightbox actually unmounts. Restoring
   // visibility now means the source card is visible underneath while
   // .media fades out on top — the cross-fade window that masks the
   // visual mismatch between .media's <img> and the source card's <img>
   // (different object-fit, radius). See Lightbox close-tween comment.
+  //
+  // ALSO: trigger a one-shot "settle" animation on the source card so
+  // the unavoidable browser-level swap micro-blink (GPU layer transition,
+  // texture rasterization) is absorbed as the first frame of an
+  // intentional landing motion rather than read as a glitch. (User
+  // requested 2026-05-12: turn the residual "明滅" into characterful
+  // arrival rather than chase further micro-fixes.)
   const handleLightboxSourceShouldShow = useCallback((): void => {
+    const settlingId = lightboxSourceItemId
     setLightboxSourceItemId(null)
-  }, [])
+    if (settlingId) {
+      setLightboxSettlingId(settlingId)
+      if (settlingTimerRef.current !== null) {
+        window.clearTimeout(settlingTimerRef.current)
+      }
+      settlingTimerRef.current = window.setTimeout(() => {
+        setLightboxSettlingId((prev) => prev === settlingId ? null : prev)
+        settlingTimerRef.current = null
+      }, 380) // matches the settle @keyframes duration in globals.css + small slack
+    }
+  }, [lightboxSourceItemId])
 
   const handleLightboxClose = useCallback((): void => {
     setLightboxItemId(null)
@@ -873,6 +897,7 @@ export function BoardRoot() {
                 onCardResizeEnd={handleCardResizeEnd}
                 onCardResetSize={handleCardResetSize}
                 sourceCardId={lightboxSourceItemId}
+                settlingCardId={lightboxSettlingId}
               />
             </div>
           </InteractionLayer>
