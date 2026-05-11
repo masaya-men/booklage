@@ -619,17 +619,3 @@ ol {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
-/* One-shot landing motion applied to the source card immediately after
-   the lightbox closes (= when sourceCardId is cleared). The card briefly
-   starts slightly oversize + dimmer, then back.out-eases to its idle
-   state. Purpose: absorb the unavoidable browser-level swap micro-blink
-   (GPU layer transition / texture re-rasterization at the moment .media
-   unmounts and the source card paints in its place) as the first frame
-   of an intentional landing motion rather than reading it as a glitch.
-   Pairs with BoardRoot.handleLightboxSourceShouldShow + CardsLayer's
-   settlingCardId prop (cleared by a settling timer after ~380ms). */
-@keyframes booklage-settle {
-  0%   { transform: scale(1.025); opacity: 0.88; }
-  100% { transform: scale(1);     opacity: 1; }
-}

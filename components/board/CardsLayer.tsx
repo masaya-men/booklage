@@ -91,12 +91,6 @@ type CardsLayerProps = {
    *  of the layout does not jitter, and the slot stays available as the
    *  visual home for the close-FLIP return. (B-#11)  */
   readonly sourceCardId?: string | null
-  /** Card that just became visible again as the lightbox closed. Receives
-   *  a one-shot `booklage-settle` animation so the unavoidable browser
-   *  swap micro-blink (GPU layer transition / texture re-rasterization)
-   *  is absorbed as the first frame of an intentional landing motion.
-   *  Cleared by BoardRoot's settling timer after the animation finishes. */
-  readonly settlingCardId?: string | null
 }
 
 export function CardsLayer({
@@ -118,7 +112,6 @@ export function CardsLayer({
   onCardResizeEnd,
   onCardResetSize,
   sourceCardId,
-  settlingCardId,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -450,11 +443,7 @@ export function CardsLayer({
               zIndex: dragState?.bookmarkId === it.bookmarkId ? 1000 : undefined,
               opacity: newlyAddedIds.has(it.bookmarkId) ? 0 : 1,
               visibility: sourceCardId === it.bookmarkId ? 'hidden' : undefined,
-              animation: newlyAddedIds.has(it.bookmarkId)
-                ? 'booklage-entrance-a 400ms ease-out forwards'
-                : settlingCardId === it.bookmarkId
-                  ? 'booklage-settle 320ms cubic-bezier(0.34, 1.4, 0.64, 1) forwards'
-                  : undefined,
+              animation: newlyAddedIds.has(it.bookmarkId) ? 'booklage-entrance-a 400ms ease-out forwards' : undefined,
               ['--card-radius' as string]: `${Math.min(24, Math.min(p.w, p.h) * 0.075)}px`,
             }}
           >
