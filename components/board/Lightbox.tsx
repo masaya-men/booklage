@@ -495,14 +495,16 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
         )
       }
       return (): void => {
-        // If the open is interrupted (e.g. chevron-nav fires mid-tween),
-        // snap .media + chrome to their settled state so subsequent
-        // animations (slide, close) start from a sane base.
+        // Just kill tweens — do NOT snap .media / chrome back to a
+        // settled state here. This cleanup also fires on close (when
+        // identity flips to null right before unmount), and any
+        // gsap.set here paints one frame of "reset to natural size"
+        // between the close tween's landing and the actual unmount —
+        // visible as a flash. Chevron-during-open is rare enough that
+        // letting the slide effect deal with the small mid-tween
+        // .media is acceptable.
         tl.kill()
         backdropTween?.kill()
-        gsap.set(mediaEl, { x: 0, y: 0, scaleX: 1, scaleY: 1 })
-        if (textEl) gsap.set(textEl, { opacity: 1 })
-        if (closeEl) gsap.set(closeEl, { opacity: 1 })
       }
     }
 
