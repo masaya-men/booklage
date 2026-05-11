@@ -8,8 +8,8 @@
   inset: 0;
   z-index: 300;
   background: var(--lightbox-backdrop);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(var(--lightbox-backdrop-blur, 8px));
+  -webkit-backdrop-filter: blur(var(--lightbox-backdrop-blur, 8px));
   opacity: 0;
   pointer-events: none;
   display: grid;

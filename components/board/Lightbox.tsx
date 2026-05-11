@@ -23,6 +23,38 @@ import {
 } from '@/lib/utils/url'
 import styles from './Lightbox.module.css'
 
+// =====================================================================
+// Open / close animation tunables — tweak freely. Seconds unless noted.
+//
+// Goal: pure rect-to-rect spring morph (no tilt, no motion blur). The
+// frame stays fully opaque the whole way; the text panel fades in after
+// the frame settles (open) and out before the frame shrinks back (close).
+// On close the frame lands at the source card's live rect with the source
+// card's visibility restored at the same frame as unmount → "card placed
+// physically back" feel, no empty-slot flash. (B-#11 polish 2026-05-11)
+//
+// AllMarks character knobs (deliberately distinct from the destefanis
+// reference): slight back.out spring overshoot on open + heavier 8px
+// backdrop blur (vs reference 6px). Soften OPEN_EASE → 'power3.out' if
+// you want flat decel; sharpen CLOSE_EASE → 'power3.out' for snappier.
+// =====================================================================
+const OPEN_BASE_DUR = 0.5
+const OPEN_DIST_DIVISOR = 2000  // px of travel that buys 1s of bonus
+const OPEN_DIST_BONUS_MAX = 0.2 // …capped at this many extra seconds
+const OPEN_EASE = 'back.out(0.7)' // small overshoot, "spring landing" feel
+const OPEN_TEXT_FADE_DUR = 0.28
+const OPEN_TEXT_FADE_DELAY_RATIO = 0.55 // text reveal starts at 55% of frame morph
+const OPEN_BACKDROP_FADE_DUR = 0.42
+const OPEN_FALLBACK_DUR = 0.42
+
+const CLOSE_FRAME_DUR = 0.42
+const CLOSE_EASE = 'power2.out' // gentle decel into source rect
+const CLOSE_FRAME_DELAY = 0.1   // wait this long after text starts fading before shrinking
+const CLOSE_TEXT_FADE_DUR = 0.14
+const CLOSE_BACKDROP_FADE_DUR = 0.42
+const CLOSE_BACKDROP_DELAY = 0.15
+const CLOSE_FALLBACK_DUR = 0.3
+
 /** Optional nav controls — when provided, chevron + dots + arrow-key
  *  nav become available. Caller (BoardRoot or SharedView) owns the
  *  index state and loop logic; Lightbox just forwards user gestures. */
@@ -178,59 +210,61 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
 
     if (closeOrigin) {
       const targetRect = el.getBoundingClientRect()
-      const targetCenterX = targetRect.left + targetRect.width / 2
-      const targetCenterY = targetRect.top + targetRect.height / 2
-      const originCenterX = closeOrigin.left + closeOrigin.width / 2
-      const originCenterY = closeOrigin.top + closeOrigin.height / 2
-      const dx = originCenterX - targetCenterX
-      const dy = originCenterY - targetCenterY
-      const sx = closeOrigin.width / targetRect.width
-      const sy = closeOrigin.height / targetRect.height
-      const endScaleX = Math.max(0.05, sx)
-      const endScaleY = Math.max(0.05, sy)
-      const TILT_MAX = 8
-      const TILT_DIST = 600
-      const distNorm = Math.min(1, Math.hypot(dx, dy) / TILT_DIST)
-      const endRotateY = -(Math.sign(dx) || 0) * TILT_MAX * distNorm
-      const endRotateX = (Math.sign(dy) || 0) * TILT_MAX * distNorm * 0.7
+      const dx = (closeOrigin.left + closeOrigin.width / 2) - (targetRect.left + targetRect.width / 2)
+      const dy = (closeOrigin.top + closeOrigin.height / 2) - (targetRect.top + targetRect.height / 2)
+      const endScaleX = Math.max(0.05, closeOrigin.width / targetRect.width)
+      const endScaleY = Math.max(0.05, closeOrigin.height / targetRect.height)
+
+      // Kill any in-flight text-fade tween from the open animation so
+      // we can drive the panel from its current opacity (0 or 1) cleanly.
+      const textEl = textRef.current
+      if (textEl) gsap.killTweensOf(textEl)
 
       const tl = gsap.timeline({
         onComplete: () => onClose(),
       })
-      // power2.out: quick departure, gentle deceleration into the source —
-      // mirrors the open animation's expo.out landing so close feels like
-      // a soft return rather than the prior power3.in "snap into card"
-      // (user feedback: 「最後にかちっとはまる」). Duration nudged from
-      // 0.5 → 0.6 so the decelerating tail has room to breathe.
+      // Text panel fades out first so the user reads "this is closing"
+      // before the frame body starts shrinking. Adds a small leading
+      // beat without delaying the actual landing.
+      if (textEl) {
+        tl.to(textEl, {
+          opacity: 0,
+          duration: CLOSE_TEXT_FADE_DUR,
+          ease: 'power2.in',
+        }, 0)
+      }
+      // Frame morphs back to the source card's rect, fully opaque the
+      // whole way. BoardRoot's onClose clears `lightboxSourceItemId` in
+      // the same React commit that unmounts the Lightbox, so the source
+      // card's visibility flips back at the exact frame the .frame would
+      // have unmounted — they share the same screen rect, so the swap
+      // looks like the lightbox being placed physically back into its
+      // slot. (Earlier `opacity: 0` here caused the prior "card disappears
+      // mid-close" complaint — removed deliberately.)
       tl.to(el, {
         x: dx,
         y: dy,
         scaleX: endScaleX,
         scaleY: endScaleY,
-        rotateX: endRotateX,
-        rotateY: endRotateY,
-        filter: 'blur(4px)',
-        opacity: 0,
-        duration: 0.6,
-        ease: 'power2.out',
+        rotateX: 0,
+        rotateY: 0,
+        duration: CLOSE_FRAME_DUR,
+        ease: CLOSE_EASE,
         transformOrigin: '50% 50%',
-        transformPerspective: 900,
-      }, 0)
+      }, CLOSE_FRAME_DELAY)
       if (backdrop) {
-        // Backdrop fade trails the frame slightly so the lightbox
-        // visibly returns to the card before the dim disappears.
         tl.to(backdrop, {
           opacity: 0,
-          duration: 0.5,
+          duration: CLOSE_BACKDROP_FADE_DUR,
           ease: 'power2.in',
-        }, 0.1)
+        }, CLOSE_BACKDROP_DELAY)
       }
     } else {
       gsap.to(el, {
-        scale: 0.86,
+        scale: 0.96,
         opacity: 0,
-        duration: 0.3,
-        ease: 'power3.in',
+        duration: CLOSE_FALLBACK_DUR,
+        ease: 'power2.in',
         onComplete: () => onClose(),
       })
     }
@@ -376,32 +410,14 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
 
     if (originRect) {
       const targetRect = el.getBoundingClientRect()
-      const targetCenterX = targetRect.left + targetRect.width / 2
-      const targetCenterY = targetRect.top + targetRect.height / 2
-      const originCenterX = originRect.left + originRect.width / 2
-      const originCenterY = originRect.top + originRect.height / 2
-      const dx = originCenterX - targetCenterX
-      const dy = originCenterY - targetCenterY
-      const sx = originRect.width / targetRect.width
-      const sy = originRect.height / targetRect.height
-      // Non-uniform scale: start frame matches the card's exact rect so the
-      // motion reads as "this card grew into the lightbox" instead of "a
-      // smaller box appeared inside the card and grew out". Brief intra-tween
-      // content stretch is hidden under the opacity 0→1 fade and motion blur.
-      const startScaleX = Math.max(0.05, sx)
-      const startScaleY = Math.max(0.05, sy)
-      // Direction-aware 3D tilt: the lightbox leans TOWARD the card's
-      // origin direction, so a card in the top-left makes the lightbox
-      // start tilted up-and-left, and the tilt unwinds as it travels to
-      // center. The maximum magnitude is small (≤ 8°) — enough to read
-      // as "this object has weight and is swinging into place" without
-      // looking gimmicky. Sign matches the FLIP delta direction so the
-      // lean visually points at the source card.
-      const TILT_MAX = 8
-      const TILT_DIST = 600 // px at which tilt saturates
-      const distNorm = Math.min(1, Math.hypot(dx, dy) / TILT_DIST)
-      const startRotateY = -(dx / Math.max(1, Math.abs(dx) || 1)) * TILT_MAX * distNorm
-      const startRotateX = (dy / Math.max(1, Math.abs(dy) || 1)) * TILT_MAX * distNorm * 0.7
+      const dx = (originRect.left + originRect.width / 2) - (targetRect.left + targetRect.width / 2)
+      const dy = (originRect.top + originRect.height / 2) - (targetRect.top + targetRect.height / 2)
+      const startScaleX = Math.max(0.05, originRect.width / targetRect.width)
+      const startScaleY = Math.max(0.05, originRect.height / targetRect.height)
+      // Distance-aware duration: cards far from center take a touch longer
+      // so the morph never feels rushed across a wide viewport.
+      const distance = Math.hypot(dx, dy)
+      const dur = OPEN_BASE_DUR + Math.min(distance / OPEN_DIST_DIVISOR, OPEN_DIST_BONUS_MAX)
 
       const tl = gsap.timeline()
       tl.set(el, {
@@ -409,54 +425,41 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
         y: dy,
         scaleX: startScaleX,
         scaleY: startScaleY,
-        rotateX: startRotateX,
-        rotateY: startRotateY,
-        // Motion blur — the lightbox content reads as smeared while
-        // travelling, sharpens as it lands. Bumped from 5 to 7 px in
-        // 2026-05-05 α tune so the speed read survives the now-longer
-        // settle phase below.
-        filter: 'blur(7px)',
-        opacity: 0,
-        transformOrigin: '50% 50%',
-        transformPerspective: 900,
-      })
-      // Layered timing — modern satisfying-reveal pattern (Apple HIG,
-      // Linear, Vercel): backdrop envelopes slowly, opacity comes in
-      // mid-pace, motion blur dissolves over a slightly longer arc, and
-      // the transform settle takes the longest with the most aggressive
-      // deceleration. Each layer lands at its own beat so the eye reads
-      // a continuous arrival instead of a single snap.
-      tl.to(el, {
+        rotateX: 0,
+        rotateY: 0,
         opacity: 1,
-        duration: 0.45,
-        ease: 'power3.out',
-      }, 0)
-      tl.to(el, {
-        filter: 'blur(0px)',
-        duration: 0.55,
-        ease: 'power3.out',
-      }, 0)
+        transformOrigin: '50% 50%',
+      })
+      // Hold the right-column text panel hidden during the morph — only
+      // the (squished) media reads as "the card growing", matching a
+      // pure rect-to-rect physical morph. Reveal text after the frame
+      // is most of the way home so the user reads "card lands → text
+      // appears" as two beats instead of one cluttered arrival.
+      const textEl = textRef.current
+      if (textEl) {
+        tl.set(textEl, { opacity: 0 }, 0)
+      }
       tl.to(el, {
         x: 0,
         y: 0,
         scaleX: 1,
         scaleY: 1,
-        rotateX: 0,
-        rotateY: 0,
-        // expo.out: very aggressive deceleration — most of the travel
-        // happens in the first third, then it eases dramatically into
-        // place. Reads as "weighted object arriving" rather than
-        // "element fading into position". 0.85 s gives the eye time
-        // to track the journey without dragging.
-        duration: 0.85,
-        ease: 'expo.out',
+        duration: dur,
+        ease: OPEN_EASE,
       }, 0)
+      if (textEl) {
+        tl.to(textEl, {
+          opacity: 1,
+          duration: OPEN_TEXT_FADE_DUR,
+          ease: 'power2.out',
+        }, dur * OPEN_TEXT_FADE_DELAY_RATIO)
+      }
       let backdropTween: gsap.core.Tween | null = null
       if (backdrop) {
         backdropTween = gsap.fromTo(
           backdrop,
           { opacity: 0 },
-          { opacity: 1, duration: 0.45, ease: 'power2.out' },
+          { opacity: 1, duration: OPEN_BACKDROP_FADE_DUR, ease: 'power2.out' },
         )
       }
       return (): void => {
@@ -465,10 +468,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props
       }
     }
 
+    // No-originRect fallback — gentle scale-in, kept opaque to match
+    // the open path's "no opacity drama" character.
     const tween = gsap.fromTo(
       el,
-      { scale: 0.86, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 0.42, ease: 'power3.out' },
+      { scale: 0.96, opacity: 0 },
+      { scale: 1, opacity: 1, duration: OPEN_FALLBACK_DUR, ease: 'power2.out' },
     )
     return (): void => { tween.kill() }
     // originRect is intentionally read once at mount via the identity dep —
