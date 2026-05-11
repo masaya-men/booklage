@@ -25,8 +25,8 @@
 - **現状コードは全て「Booklage」 のまま**。 ドメイン取得後に一気に置換予定
 
 ### コード状況 (リブランド前)
-- **ブランチ**: `master` 単一運用、 origin/master に push 済 (2026-05-11 セッション 11 中)
-- **本番**: `https://booklage.pages.dev` に **B-#4 + B-#11 まで** deploy 済 (Lightbox centering, scale leak fix, playOverlay gradient 除去, close button frame-attach, source-card hide on lightbox open)
+- **ブランチ**: `master` 単一運用、 origin/master に push 済 (2026-05-12 セッション 12 中)
+- **本番**: `https://booklage.pages.dev` に **B-#11 + Lightbox open/close 仕上げ** まで deploy 済 (pure rect spring morph、 整数 snap translate、 動的 border-radius 補正、 cross-fade 着地)
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
 - **ユーザー実機**: 拡張機能 sideload 完了済、 セッション 9 で 4 系統テスト全 OK 確認済
 
@@ -61,13 +61,33 @@ deploy 数 5 回、 commit 数 6 個、 全イテレーションで Playwright +
 
 tsc + vitest (405) 全 pass。 Playwright B-#11 PASS。 既存 5 件 (board-b0 / lightbox-flow) は **pre-existing test rot** (hardcoded `DB_VERSION=9` だが実 schema は 11、 HEAD baseline と同じ failure)、 別 issue 扱い。
 
-### セッション 12 開始時の優先順位 (B-#10 はユーザー希望により最後に回す)
+### セッション 12 (2026-05-12) で完了したこと
 
-1. **B-#7 自由サイジング 縮小スムージング**
+✅ **Lightbox open/close 仕上げ** — B-#11 完成後、 ユーザーと細かいフィードバックループで詰めた:
+
+1. **Backdrop tuning**: opacity 0.88 → 0.5、 blur 12px → 8px。 `--lightbox-backdrop-blur` を CSS var で外出し
+2. **Open: clean rect spring morph** — tilt / blur / multi-tween 全削除。 `power3.out` でスプリング感ゼロのクリーン到着。 距離応算 duration 維持
+3. **.media のみ morph** に変更 (frame 全体 morph から)。 `.frame` は無 chrome の layout host、 中身だけが「カードから成長 → media slot 着地」 として見える destefanis 同等視覚
+4. **`.close` ボタン CSS の `transition: opacity` を base から削除** → :hover/:active のみに scope。 open 直後の右上 200ms フェード明滅消失
+5. **Close: 斜め直線 single tween** (2-phase hover-then-land 案は試したが「カチッとはまる」 感で revert)。 `.media img` の object-fit を contain → cover に変えて source card thumb と styling alignment
+6. **Border-radius scale 補正** — close/open の `onUpdate` で毎フレーム動的計算: `DOM_radius = visibleR / current_scale` (X/Y 別個指定で oval 防止)。 着地 visible が source card の `--card-radius` と pixel-perfect 一致
+7. **Sub-pixel integer-snap** — close/open の dx/dy を `Math.round` で整数化。 transform 着地位置が source card のレンダリング格子に乗る
+8. **Settle landing 演出** — 試したが バグ発生で revert (1 commit revert)。 現状は「**意識的に凝視した時にのみ感じる微小な明滅**」 を ブラウザ実装由来の物理限界として受容
+
+**調整ノブ** (`components/board/Lightbox.tsx` 冒頭 + `app/globals.css`):
+- `OPEN_BASE_DUR`, `OPEN_EASE`, `OPEN_TEXT_FADE_DELAY_RATIO` — 開く挙動
+- `CLOSE_TWEEN_DUR`, `CLOSE_TWEEN_EASE`, `CLOSE_REVEAL_LEAD`, `CLOSE_FADE_DUR` — 閉じる挙動
+- `--lightbox-backdrop`, `--lightbox-backdrop-blur` — 暗幕
+
+tsc + vitest (405) + B-#11 e2e PASS。 commits 計 ~10 個、 deploys 計 ~10 回、 全段階で fact-based 検証。
+
+### セッション 13 開始時の優先順位 (B-#10 はユーザー希望により最後に回す)
+
+1. **B-#7 自由サイジング 縮小スムージング** ← **次セッション最優先**
 2. **B-#8 PiP click → スクロール中央寄せ**
 3. **B-#1/#2/#3 サムネ系** (空白カード fallback / 再取得ボタン / 重複 URL 表示)
 4. **B-#10 モバイル本格チューニング** (ユーザー希望: 最後に回す。 desktop UX を先に詰める)
-5. (任意) **e2e test rot 整理** — board-b0 / lightbox-flow の `DB_VERSION=9` を versionless open に修正、 lightbox-flow の `[data-state="saved"]` 待ちを別手段に変更
+5. (任意) **e2e test rot 整理** — board-b0 / lightbox-flow の `DB_VERSION=9` を versionless open に修正
 
 ---
 
