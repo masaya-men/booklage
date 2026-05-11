@@ -40,13 +40,22 @@ type Props = {
   readonly item: BoardItem | ShareCard | null
   /** Clicked card's screen rect at the moment of pointer-up. Used to seed
    *  the FLIP (First-Last-Invert-Play) open animation so the lightbox grows
-   *  from where the card actually was, instead of the viewport center. */
+   *  from where the card actually was, instead of the viewport center.
+   *  Stays pinned to the originally-clicked card across chevron-nav (B-#11)
+   *  so close always tweens back to the source card — never to whichever
+   *  card the user happened to be viewing when they hit close. */
   readonly originRect: DOMRect | null
+  /** Bookmark id of the originally clicked card. Used by the close tween
+   *  to look up the card's *current* DOM rect via [data-bookmark-id], so
+   *  the close animation tracks pan/scroll that happened during the open
+   *  session. originRect (above) is the click-time fallback for when the
+   *  source card has been culled from the DOM (off-screen). (B-#11) */
+  readonly sourceCardId?: string | null
   readonly onClose: () => void
   readonly nav?: LightboxNav
 }
 
-export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElement | null {
+export function Lightbox({ item, originRect, sourceCardId, onClose, nav }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -157,16 +166,26 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
     gsap.killTweensOf(el)
     if (backdrop) gsap.killTweensOf(backdrop)
 
-    if (originRect) {
+    // Prefer the source card's *current* DOM rect so the close FLIP tracks
+    // any pan/scroll that happened while the lightbox was open. Falls back
+    // to the click-time originRect when the source card has been culled
+    // (off-screen) — and finally to the scale-only fade below. (B-#11)
+    const liveSourceEl = sourceCardId
+      ? document.querySelector<HTMLElement>(`[data-bookmark-id="${sourceCardId}"]`)
+      : null
+    const liveSourceRect = liveSourceEl?.getBoundingClientRect() ?? null
+    const closeOrigin = liveSourceRect ?? originRect
+
+    if (closeOrigin) {
       const targetRect = el.getBoundingClientRect()
       const targetCenterX = targetRect.left + targetRect.width / 2
       const targetCenterY = targetRect.top + targetRect.height / 2
-      const originCenterX = originRect.left + originRect.width / 2
-      const originCenterY = originRect.top + originRect.height / 2
+      const originCenterX = closeOrigin.left + closeOrigin.width / 2
+      const originCenterY = closeOrigin.top + closeOrigin.height / 2
       const dx = originCenterX - targetCenterX
       const dy = originCenterY - targetCenterY
-      const sx = originRect.width / targetRect.width
-      const sy = originRect.height / targetRect.height
+      const sx = closeOrigin.width / targetRect.width
+      const sy = closeOrigin.height / targetRect.height
       const endScaleX = Math.max(0.05, sx)
       const endScaleY = Math.max(0.05, sy)
       const TILT_MAX = 8
@@ -213,7 +232,7 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
         onComplete: () => onClose(),
       })
     }
-  }, [onClose, originRect])
+  }, [onClose, originRect, sourceCardId])
 
   // Escape key closes
   useEffect(() => {

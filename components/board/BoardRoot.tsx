@@ -79,10 +79,16 @@ export function BoardRoot() {
   const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState<boolean>(false)
   const [hoveredBookmarkId, setHoveredBookmarkId] = useState<string | null>(null)
   const [lightboxItemId, setLightboxItemId] = useState<string | null>(null)
+  // Identity of the card that originally opened the lightbox. Stays
+  // pinned to the first click even when chevron-nav swaps the displayed
+  // item — so close always returns the lightbox to where it came from,
+  // and the source card is the one held blank on the board (B-#11).
+  const [lightboxSourceItemId, setLightboxSourceItemId] = useState<string | null>(null)
   // Captured at click time so Lightbox can grow from the card's exact screen
-  // position (FLIP). Cleared on close. Plain DOMRect — never reactive past
-  // open, so a stale rect after pan/scroll is fine: it only seeds the open
-  // animation, the close animation does not use it.
+  // position (FLIP). Cleared on close. Plain DOMRect — fallback origin for
+  // the close tween when the source card is no longer in the DOM (e.g.
+  // culled off-screen). The Lightbox now prefers a live DOMRect looked up
+  // via `data-bookmark-id` on close so pan/scroll during open are honoured.
   const [lightboxOriginRect, setLightboxOriginRect] = useState<DOMRect | null>(null)
   const [newlyAddedIds, setNewlyAddedIds] = useState<ReadonlySet<string>>(new Set())
   const [shareComposerOpen, setShareComposerOpen] = useState<boolean>(false)
@@ -503,6 +509,7 @@ export function BoardRoot() {
   const handleCardClick = useCallback((bookmarkId: string, originRect: DOMRect): void => {
     setLightboxOriginRect(originRect)
     setLightboxItemId(bookmarkId)
+    setLightboxSourceItemId(bookmarkId)
   }, [])
 
   // Right-click on a card → soft-delete. Pre-launch convenience: no
@@ -530,6 +537,7 @@ export function BoardRoot() {
 
   const handleLightboxClose = useCallback((): void => {
     setLightboxItemId(null)
+    setLightboxSourceItemId(null)
     setLightboxOriginRect(null)
   }, [])
 
@@ -547,13 +555,15 @@ export function BoardRoot() {
     if (filteredItems.length === 0 || lightboxIndex < 0) return
     const next = ((lightboxIndex + dir) % filteredItems.length + filteredItems.length) % filteredItems.length
     setLightboxItemId(filteredItems[next]?.bookmarkId ?? null)
-    setLightboxOriginRect(null)
+    // Source id and origin rect are NOT touched here — close always
+    // returns to the originally clicked card regardless of how many
+    // chevron-navs the user performed in between (B-#11).
   }, [filteredItems, lightboxIndex])
 
   const handleLightboxJump = useCallback((index: number): void => {
     if (index < 0 || index >= filteredItems.length) return
     setLightboxItemId(filteredItems[index]?.bookmarkId ?? null)
-    setLightboxOriginRect(null)
+    // Source id / origin rect preserved — see handleLightboxNav (B-#11).
   }, [filteredItems])
 
   const handleDropOrder = useCallback(
@@ -849,6 +859,7 @@ export function BoardRoot() {
                 onCardResize={handleCardResize}
                 onCardResizeEnd={handleCardResizeEnd}
                 onCardResetSize={handleCardResetSize}
+                sourceCardId={lightboxSourceItemId}
               />
             </div>
           </InteractionLayer>
@@ -879,6 +890,7 @@ export function BoardRoot() {
         <Lightbox
           item={lightboxItem}
           originRect={lightboxOriginRect}
+          sourceCardId={lightboxSourceItemId}
           onClose={handleLightboxClose}
           nav={lightboxItem ? {
             currentIndex: lightboxIndex,

@@ -82,6 +82,15 @@ type CardsLayerProps = {
   /** Fired when the user clicks the per-card "reset size" affordance.
    *  The parent clears the IDB flag for this bookmark. */
   readonly onCardResetSize: (bookmarkId: string) => void
+  /** When the lightbox is open, the card with this id is the one that
+   *  opened it (the "source"). It is held visibility:hidden on the board
+   *  for the duration of the lightbox session so the user sees a calm
+   *  blank slot where their click originated — matching destefanis-style
+   *  moodboards where the click "becomes" the lightbox. Reflow is
+   *  intentionally suppressed (visibility, not display:none) so the rest
+   *  of the layout does not jitter, and the slot stays available as the
+   *  visual home for the close-FLIP return. (B-#11)  */
+  readonly sourceCardId?: string | null
 }
 
 export function CardsLayer({
@@ -102,6 +111,7 @@ export function CardsLayer({
   onCardResize,
   onCardResizeEnd,
   onCardResetSize,
+  sourceCardId,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -419,6 +429,7 @@ export function CardsLayer({
             ref={(el): void => {
               cardRefs.current[it.bookmarkId] = el
             }}
+            data-bookmark-id={it.bookmarkId}
             onPointerDown={(e: PointerEvent<HTMLDivElement>): void => handleReorderPointerDown(e, it.bookmarkId)}
             onPointerEnter={(): void => onHoverChange(it.bookmarkId)}
             onPointerLeave={(): void => onHoverChange(null)}
@@ -428,9 +439,10 @@ export function CardsLayer({
               left: 0,
               width: `${p.w}px`,
               height: `${p.h}px`,
-              pointerEvents: 'auto',
+              pointerEvents: sourceCardId === it.bookmarkId ? 'none' : 'auto',
               zIndex: dragState?.bookmarkId === it.bookmarkId ? 1000 : undefined,
               opacity: newlyAddedIds.has(it.bookmarkId) ? 0 : 1,
+              visibility: sourceCardId === it.bookmarkId ? 'hidden' : undefined,
               animation: newlyAddedIds.has(it.bookmarkId) ? 'booklage-entrance-a 400ms ease-out forwards' : undefined,
               ['--card-radius' as string]: `${Math.min(24, Math.min(p.w, p.h) * 0.075)}px`,
             }}
