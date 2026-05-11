@@ -25,8 +25,8 @@
 - **現状コードは全て「Booklage」 のまま**。 ドメイン取得後に一気に置換予定
 
 ### コード状況 (リブランド前)
-- **ブランチ**: `master` 単一運用、~38 commits ahead of origin/master (未 push)
-- **本番**: `https://booklage.pages.dev` に **モバイル TopHeader 修正 (B-#9)** + **bookmarklet→拡張ハンドオフ** + **PiP-aware cursor pill 抑制** + **拡張 cursor-pill アニメ品質向上** が deploy 済 (2026-05-11 セッション 9)
+- **ブランチ**: `master` 単一運用、~39 commits ahead of origin/master (未 push)
+- **本番**: `https://booklage.pages.dev` に **Lightbox × 固定 (B-#5)** + **モバイル TopHeader 修正 (B-#9)** + **bookmarklet→拡張ハンドオフ** + **PiP-aware cursor pill 抑制** + **拡張 cursor-pill アニメ品質向上** が deploy 済 (2026-05-11 セッション 9)
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
 - **ユーザー実機**: 拡張機能 sideload 完了済、 セッション 9 で 4 系統テスト全 OK 確認済
 
@@ -45,8 +45,8 @@
 
 ### ライトボックス UI
 
-5. **× ボタン位置固定 (投稿サイズに依存しない)** — 投稿サイズで × の場所が変わったり消えたりする現象を修正
-6. **ESC キー対応の確認** — 既に対応済かを `Lightbox.tsx` で確認、 未対応なら追加
+5. ~~**× ボタン位置固定 (投稿サイズに依存しない)**~~ ✅ セッション 9 完了 — `<button .close>` を `.frame` の子から `.backdrop` の直接の子に移動。 `.backdrop` は canvas いっぱい固定なので × は常に top:16 / right:16 に貼り付く。 Playwright で 4 カード測定: closeFromBackdropTop=16, closeFromBackdropRight=16 で完全一致確認。 mobile column scroll で × が一緒にスクロールアウトする問題も解消。
+6. ~~**ESC キー対応**~~ ✅ 既に対応済 (`Lightbox.tsx` L207-217、 `e.key === 'Escape' && requestClose()`)。 Playwright で 4 カード ESC close 確認済。
 
 ### カード操作・PiP
 

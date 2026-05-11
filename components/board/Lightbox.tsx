@@ -658,15 +658,21 @@ export function Lightbox({ item, originRect, onClose, nav }: Props): ReactElemen
             {t('board.lightbox.openSource')} →
           </a>
         </div>
-        <button
-          type="button"
-          onClick={requestClose}
-          className={styles.close}
-          aria-label={t('board.lightbox.close')}
-        >
-          <span className={styles.closeIcon} aria-hidden="true">✕</span>
-        </button>
       </div>
+      {/* Close button is a sibling of .frame, not a child. Its absolute
+          position then anchors to .backdrop (canvas-sized) instead of
+          .frame (which shrinks/grows with media type), so the ✕ always
+          sits at the same canvas corner regardless of post size — and
+          stays put while the user scrolls the mobile column inside
+          .frame. */}
+      <button
+        type="button"
+        onClick={requestClose}
+        className={styles.close}
+        aria-label={t('board.lightbox.close')}
+      >
+        <span className={styles.closeIcon} aria-hidden="true">✕</span>
+      </button>
     </div>
     </>
   )
