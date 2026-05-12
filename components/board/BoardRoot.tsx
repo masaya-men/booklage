@@ -17,6 +17,7 @@ import {
 import type { BoardFilter, CardPosition, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
+import { RevalidationQueue, defaultFetcher, shouldRevalidate } from '@/lib/board/revalidate'
 import { subscribeBookmarkSaved } from '@/lib/board/channel'
 import { detectUrlType, extractTweetId } from '@/lib/utils/url'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
@@ -70,6 +71,7 @@ export function BoardRoot() {
     resetCustomWidth,
     resetAllCustomWidths,
     reload,
+    persistLinkStatus,
   } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
@@ -743,6 +745,49 @@ export function BoardRoot() {
       for (const t of timers) clearTimeout(t)
     }
   }, [reload])
+
+  // Viewport-driven revalidation: when a card enters the viewport, check
+  // whether its link is still alive if it hasn't been checked for 30+ days
+  // (or never). Uses a separate IntersectionObserver instance — no
+  // interference with other observers (PiP presence, etc.).
+  useEffect(() => {
+    if (!items.length) return
+    const queue = new RevalidationQueue({
+      fetcher: defaultFetcher,
+      onResult: async (id, r) => {
+        const now = Date.now()
+        if (r.kind === 'alive') {
+          await persistLinkStatus(id, 'alive', now)
+        } else if (r.kind === 'gone') {
+          await persistLinkStatus(id, 'gone', now)
+        }
+        // unknown → no state change (will retry next viewport entry)
+      },
+    })
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const now = Date.now()
+        for (const e of entries) {
+          if (!e.isIntersecting) continue
+          const id = (e.target as HTMLElement).dataset.bookmarkId
+          if (!id) continue
+          const item = items.find((it) => it.bookmarkId === id)
+          if (!item) continue
+          if (shouldRevalidate(item.lastCheckedAt, now)) {
+            queue.enqueue(id, item.url)
+          }
+        }
+      },
+      { rootMargin: '200px' },
+    )
+
+    for (const it of items) {
+      const el = document.querySelector(`[data-bookmark-id="${it.bookmarkId}"]`)
+      if (el) observer.observe(el)
+    }
+    return () => observer.disconnect()
+  }, [items, persistLinkStatus])
 
   const sidebarCounts = useMemo(() => {
     const active = items.filter((i) => !i.isDeleted)

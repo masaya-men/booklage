@@ -16,6 +16,7 @@ import {
   clearAllCustomCardWidths,
   persistPhotos as persistPhotosDb,
   persistMediaSlots as persistMediaSlotsDb,
+  updateBookmarkHealth,
   type BookmarkRecord,
   type CardRecord,
 } from './indexeddb'
@@ -56,6 +57,10 @@ export type BoardItem = {
    *  ケースがある。 photos field は読み取り fallback 用に併存 (旧 v12 records)。
    *  undefined → photos / thumbnail にフォールバック (= 旧挙動)。 */
   readonly mediaSlots?: readonly MediaSlot[]
+  /** v14: リンク健全性ステータス。 undefined = 'unknown'。 */
+  readonly linkStatus?: 'alive' | 'gone' | 'unknown'
+  /** v14: 最後に link 健全性を再 scrape した Unix ms。 undefined = 未チェック。 */
+  readonly lastCheckedAt?: number
 }
 
 type DbLike = IDBPDatabase<unknown>
@@ -123,6 +128,8 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     hasVideo: b.hasVideo,
     photos: b.photos,
     mediaSlots: b.mediaSlots,
+    linkStatus: b.linkStatus,
+    lastCheckedAt: b.lastCheckedAt,
   }
 }
 
@@ -173,6 +180,9 @@ export function useBoardData(): {
   resetAllCustomWidths: () => Promise<readonly string[]>
   /** @deprecated Use persistFreePosition instead. Will be removed after full pivot. */
   persistCardPosition: (cardId: string, pos: CardPosition) => Promise<void>
+  /** Persist link health status from viewport revalidation or the refetch button.
+   *  Updates both in-memory items and IDB atomically. */
+  persistLinkStatus: (bookmarkId: string, status: 'alive' | 'gone' | 'unknown', lastCheckedAt: number) => Promise<void>
 } {
   const [items, setItems] = useState<BoardItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -515,6 +525,21 @@ export function useBoardData(): {
     )
   }, [])
 
+  const persistLinkStatus = useCallback(
+    async (bookmarkId: string, status: 'alive' | 'gone' | 'unknown', lastCheckedAt: number): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      setItems((prev) =>
+        prev.map((it) => (it.bookmarkId === bookmarkId ? { ...it, linkStatus: status, lastCheckedAt } : it)),
+      )
+      await updateBookmarkHealth(db as Parameters<typeof updateBookmarkHealth>[0], bookmarkId, {
+        linkStatus: status,
+        lastCheckedAt,
+      })
+    },
+    [],
+  )
+
   // Temporary shim, removed in Task 13 (updates BoardRoot.tsx callsites at lines ~109 and ~142).
   // Maps CardPosition to FreePosition defaults so BoardRoot keeps compiling.
   const persistCardPosition = useCallback(
@@ -555,5 +580,6 @@ export function useBoardData(): {
     resetCustomWidth,
     resetAllCustomWidths,
     persistCardPosition,
+    persistLinkStatus,
   }
 }

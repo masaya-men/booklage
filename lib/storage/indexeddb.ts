@@ -957,6 +957,20 @@ export async function updateBookmarkOrderBatch(
   await tx.done
 }
 
+/**
+ * Patch a bookmark's linkStatus + lastCheckedAt. No-op when the bookmark
+ * is not found. Used by viewport revalidation and the refetch button.
+ */
+export async function updateBookmarkHealth(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  patch: { linkStatus?: 'alive' | 'gone' | 'unknown'; lastCheckedAt?: number },
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+  await db.put('bookmarks', { ...existing, ...patch })
+}
+
 // ---------------------------------------------------------------------------
 // Bulk queries
 // ---------------------------------------------------------------------------
