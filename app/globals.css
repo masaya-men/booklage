@@ -333,17 +333,19 @@ ol {
   --card-hover-swap-easing: ease-out;
   --card-hover-lift-brightness: 1.08;
 
-  /* === lightbox text mask reveal (I-07-#5) ===
-     Lightbox open / nav 後、 テキストパネル全体を 1 ブロックで
-     mask-reveal-up する演出。 media FLIP 着地と同時に発火 (pause 0)、
-     stagger は使わない (1 要素)。 数値だけ書き換えれば全 board で
-     挙動同期。 GSAP は秒単位なので duration / pause は秒で記述
-     (parseFloat で読む)。 */
-  --lightbox-text-reveal-duration: 0.7s;
+  /* === lightbox text reveal (I-07-#5, destefanis-aligned) ===
+     destefanis 本家 (twitter-bookmarks-grid) の `.lightbox-info` 仕様に
+     完全準拠: わずかな translateY (8px) + opacity を 400ms ease で
+     reveal。 card animation の **中盤** から開始してオーバーラップさせる
+     ことで「カードが止まってから text が出るまでのストップ」 を消す。
+     clip-path mask は撤去。 pause は card 中点からの追加オフセット
+     (0 = card 中点から即発火、 正の値で更に遅らせる)。
+     GSAP は秒単位なので duration / pause は秒で記述 (parseFloat で読む)。 */
+  --lightbox-text-reveal-duration: 0.4s;
   --lightbox-text-reveal-stagger: 0s;
   --lightbox-text-reveal-pause: 0s;
-  --lightbox-text-reveal-translate-y: 32px;
-  --lightbox-text-reveal-easing: power3.out;
+  --lightbox-text-reveal-translate-y: 8px;
+  --lightbox-text-reveal-easing: power2.out;
 
   --lightbox-media-radius: 6px;
   /* Backdrop opacity 0.88 (bumped from 0.78) so the cards visible behind

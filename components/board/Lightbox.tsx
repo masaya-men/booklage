@@ -109,8 +109,9 @@ function collectStageEls(textEl: HTMLElement): HTMLElement[] {
   return [textEl]
 }
 
-// Helper: stage 要素群を初期状態 (不可視) にセット。 reduce-motion 時は
-// mask + translate を省略、 opacity のみ 0 にする。
+// Helper: text panel を初期状態 (不可視) にセット。 destefanis 準拠で
+// translateY + opacity のみ、 clip-path mask は撤去。 reduce-motion 時は
+// translate も省略、 opacity のみ 0 にする。
 function setStageInitialState(els: HTMLElement[], translateY: number, prefersReduce: boolean): void {
   if (els.length === 0) return
   if (prefersReduce) {
@@ -119,14 +120,12 @@ function setStageInitialState(els: HTMLElement[], translateY: number, prefersRed
     gsap.set(els, {
       opacity: 0,
       y: translateY,
-      clipPath: 'inset(100% 0 0 0)',
     })
   }
 }
 
-// Helper: stage 要素群を順次 reveal する timeline を組む。
-// timeline に追加する形なので、 既存 open / nav timeline の末尾に
-// 差し込んで使う。
+// Helper: text panel を reveal する tween を timeline に追加する。
+// destefanis 準拠で translateY + opacity のみ、 clip-path mask は撤去。
 function appendRevealTimeline(
   tl: gsap.core.Timeline,
   els: HTMLElement[],
@@ -140,7 +139,6 @@ function appendRevealTimeline(
     : {
         opacity: 1,
         y: 0,
-        clipPath: 'inset(0 0 0 0)',
         duration: tokens.duration,
         ease: tokens.easing,
         stagger: tokens.stagger,
@@ -406,10 +404,9 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       gsap.killTweensOf(mediaEl)
       if (textEl) {
         gsap.killTweensOf(textEl)
-        // I-07-#5: stage 要素の進行中 reveal tween も止める。
-        // text パネル全体の opacity fade 後、 stage 要素の translateY や
-        // clip-path が中途半端な状態で残ったまま unmount しても close 中は
-        // textEl の opacity 0 で隠れているので視覚的に問題ない。
+        // I-07-#5: 進行中の text reveal tween も止める (collectStageEls は
+        // textEl 自身を返す)。 textEl 自体の killTweensOf と冗長気味だが、
+        // helper 経由で一貫させたいので残す。
         const stageEls = collectStageEls(textEl)
         if (stageEls.length > 0) gsap.killTweensOf(stageEls)
       }
@@ -750,10 +747,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           mediaEl.style.borderRadius = `${visibleR / safeX}px / ${visibleR / safeY}px`
         },
       }, 0)
-      // I-07-#5: stage reveal timeline. textEl は既に opacity 1 で
-      // 子の stage 要素が不可視状態。 media FLIP 着地 (= dur 経過) +
-      // pause 経過後に stage 1/2/3 順次 reveal を発火。
-      const textStartAt = dur + revealTokens.pause
+      // I-07-#5 destefanis-aligned: text reveal は media tween の **中盤**
+      // から overlap 開始。 destefanis 本家 (transition-delay 0.25s vs
+      // spring 0.45-0.7s) と同じ overlap で、 「カードが止まってから text が
+      // 出るまでのストップ」 を消す。 pause token はゼロが既定、 正の値で
+      // 中盤からの追加遅延が可能。
+      const textStartAt = dur * 0.5 + revealTokens.pause
       appendRevealTimeline(tl, stageEls, revealTokens, textStartAt, prefersReduce)
       // close ボタンは従来通り chromeAt で素フェード in (text と別系統)。
       const chromeAt = dur * OPEN_TEXT_FADE_DELAY_RATIO
