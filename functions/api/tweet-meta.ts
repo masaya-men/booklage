@@ -69,7 +69,7 @@ export async function onRequest(context: PagesContext): Promise<Response> {
 
     const data: unknown = await res.json()
     return jsonResponse(data, 200, {
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400',
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
