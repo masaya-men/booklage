@@ -68,6 +68,93 @@ const CLOSE_BACKDROP_FADE_DUR = 0.42
 const CLOSE_BACKDROP_DELAY = 0.15
 const CLOSE_FALLBACK_DUR = 0.3
 
+// =====================================================================
+// I-07-#5: Lightbox text mask-reveal-up.
+// CSS デザイントークン (--lightbox-text-reveal-*) を root から読み、
+// GSAP timeline 用の数値 / string に変換。 デフォルト値は spec 同期。
+// =====================================================================
+type RevealTokens = {
+  readonly duration: number      // seconds
+  readonly stagger: number       // seconds
+  readonly pause: number         // seconds
+  readonly translateY: number    // px
+  readonly easing: string        // gsap easing name
+}
+
+function readRevealTokens(): RevealTokens {
+  if (typeof window === 'undefined') {
+    return { duration: 0.5, stagger: 0.15, pause: 0.15, translateY: 18, easing: 'power3.out' }
+  }
+  const root = getComputedStyle(document.documentElement)
+  const parse = (name: string, fallback: number): number => {
+    const raw = root.getPropertyValue(name).trim()
+    if (!raw) return fallback
+    const n = parseFloat(raw)
+    return Number.isFinite(n) ? n : fallback
+  }
+  const easing = root.getPropertyValue('--lightbox-text-reveal-easing').trim() || 'power3.out'
+  return {
+    duration: parse('--lightbox-text-reveal-duration', 0.5),
+    stagger: parse('--lightbox-text-reveal-stagger', 0.15),
+    pause: parse('--lightbox-text-reveal-pause', 0.15),
+    translateY: parse('--lightbox-text-reveal-translate-y', 18),
+    easing,
+  }
+}
+
+// Helper: stage 要素を text panel から集める。 DOM 順 (document order) を
+// querySelectorAll が保証するので、 `data-reveal-stage="1"` → `"2"` → `"3"`
+// の順に並ぶ前提。 stage 2 / 3 が無いカードは要素自体が DOM に存在しないため
+// 自動的に NodeList から落ちる → GSAP stagger が要素数分しか offset を刻まない
+// → 欠損 stage の特殊処理は不要。
+function collectStageEls(textEl: HTMLElement): HTMLElement[] {
+  return Array.from(textEl.querySelectorAll<HTMLElement>('[data-reveal-stage]'))
+}
+
+// Helper: stage 要素群を初期状態 (不可視) にセット。 reduce-motion 時は
+// mask + translate を省略、 opacity のみ 0 にする。
+function setStageInitialState(els: HTMLElement[], translateY: number, prefersReduce: boolean): void {
+  if (els.length === 0) return
+  if (prefersReduce) {
+    gsap.set(els, { opacity: 0 })
+  } else {
+    gsap.set(els, {
+      opacity: 0,
+      y: translateY,
+      clipPath: 'inset(100% 0 0 0)',
+    })
+  }
+}
+
+// Helper: stage 要素群を順次 reveal する timeline を組む。
+// timeline に追加する形なので、 既存 open / nav timeline の末尾に
+// 差し込んで使う。
+function appendRevealTimeline(
+  tl: gsap.core.Timeline,
+  els: HTMLElement[],
+  tokens: RevealTokens,
+  startAt: number,
+  prefersReduce: boolean,
+): void {
+  if (els.length === 0) return
+  const props = prefersReduce
+    ? { opacity: 1, duration: tokens.duration, ease: tokens.easing, stagger: tokens.stagger }
+    : {
+        opacity: 1,
+        y: 0,
+        clipPath: 'inset(0 0 0 0)',
+        duration: tokens.duration,
+        ease: tokens.easing,
+        stagger: tokens.stagger,
+      }
+  tl.to(els, props, startAt)
+}
+
+function getPrefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 /** Optional nav controls — when provided, chevron + dots + arrow-key
  *  nav become available. Caller (BoardRoot or SharedView) owns the
  *  index state and loop logic; Lightbox just forwards user gestures. */
