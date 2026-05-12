@@ -3,6 +3,7 @@ import { DB_NAME, DB_VERSION, FLOAT_ROTATION_RANGE } from '@/lib/constants'
 import type { UrlType } from '@/lib/utils/url'
 import { generateCardDimensions } from '@/lib/canvas/card-sizing'
 import { MIN_CARD_WIDTH, presetToCardWidth, DEFAULT_CARD_WIDTH } from '@/lib/board/size-migration'
+import type { MediaSlot } from '@/lib/embed/types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +75,11 @@ export interface BookmarkRecord {
    *  syndication API、 Bluesky なら public API から取得 (取得失敗時は
    *  undefined のまま、 既存単一画像表示に fallback)。 */
   photos?: readonly string[]
+  /** v13: 動画+画像 mix tweet 対応の統一 media 配列。 mediaDetails の API
+   *  順序通り。 単一画像も単一動画も複数画像も mix も全てこの 1 配列で表現。
+   *  v12 の photos field は読み取り fallback として併存 (新規書き込みなし)、
+   *  将来別 spec で完全廃止予定。 */
+  mediaSlots?: readonly MediaSlot[]
 }
 
 /** Mood record (v9) — replaces the legacy folder concept. Stored in `moods` store. */
@@ -487,6 +493,13 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
       // path treats as "no multi-image data" — no cursor sweep needed.
       // Bumping the schema version still serves as a tripwire so future
       // migrations can assume the field is observable when oldVersion >= 12.
+
+      // ── v12 → v13: introduce optional mediaSlots[] field on bookmarks (no-op
+      // rewrite). Existing rows have `mediaSlots: undefined`, which the read
+      // path treats as "no unified-slot data; fall back to photos[]/derived
+      // fields" — no cursor sweep needed. Bumping the schema version still
+      // serves as a tripwire so future migrations can assume the field is
+      // observable when oldVersion >= 13.
     },
   })
 }
@@ -739,6 +752,46 @@ export async function persistPhotos(
   }
 
   const updated: BookmarkRecord = { ...existing, photos: next }
+  await db.put('bookmarks', updated)
+}
+
+/**
+ * Persist a bookmark's mediaSlots array (unified media model for mix-tweet
+ * support, v13). Pass an empty array to clear the field back to undefined
+ * (returns the bookmark to legacy photos[]/derived display). No-op when the
+ * deep equality check matches the existing array (avoids re-render storms
+ * for idempotent backfills). Companion to persistPhotos() — once the
+ * cleanup spec retires photos[], persistPhotos() will be removed.
+ */
+export async function persistMediaSlots(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  mediaSlots: readonly MediaSlot[],
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+
+  const next = mediaSlots.length === 0 ? undefined : mediaSlots
+  const cur = existing.mediaSlots
+  if (
+    (cur === undefined && next === undefined) ||
+    (cur !== undefined &&
+      next !== undefined &&
+      cur.length === next.length &&
+      cur.every((s: MediaSlot, i: number) => {
+        const n = next[i]
+        return (
+          s.type === n.type &&
+          s.url === n.url &&
+          s.videoUrl === n.videoUrl &&
+          s.aspect === n.aspect
+        )
+      }))
+  ) {
+    return
+  }
+
+  const updated: BookmarkRecord = { ...existing, mediaSlots: next }
   await db.put('bookmarks', updated)
 }
 

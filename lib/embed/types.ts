@@ -1,5 +1,21 @@
 // lib/embed/types.ts
 
+/** A single addressable piece of media inside a post (X tweet / Bluesky / etc).
+ *  Tweets surface a video first then photos; Bluesky surfaces up to 4 photos.
+ *  Order matches the upstream API response and is the canonical board / Lightbox
+ *  carousel order. */
+export type MediaSlot = {
+  readonly type: 'video' | 'photo'
+  /** photo: the image URL. video: the poster (still frame) URL. */
+  readonly url: string
+  /** Defined only when type === 'video'. Highest-bitrate mp4 stream URL ready
+   *  to feed into a `<video src>`. */
+  readonly videoUrl?: string
+  /** Defined only when type === 'video'. Natural width / height of the video
+   *  (used by TweetVideoPlayer to letterbox-free fit). */
+  readonly aspect?: number
+}
+
 /** Twitter syndication API response (subset we use). */
 export type TweetMeta = {
   readonly id: string
