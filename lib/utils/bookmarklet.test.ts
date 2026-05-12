@@ -107,12 +107,12 @@ describe('generateBookmarkletUri', () => {
     expect(uri).not.toContain('booklage.pages.dev')
   })
 
-  it('produces a URI shorter than 2100 characters', () => {
-    // Chrome accepts ~30k-char javascript: URIs; the 2100 cap is a sanity
+  it('produces a URI shorter than 2200 characters', () => {
+    // Chrome accepts ~30k-char javascript: URIs; this cap is a sanity
     // ceiling that catches accidental bloat without blocking small features
-    // like the extension hand-off path.
+    // like the extension hand-off path and the relative-URL resolver helper.
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
-    expect(uri.length).toBeLessThan(2100)
+    expect(uri.length).toBeLessThan(2200)
   })
 
   it('contains the /save path reference', () => {
