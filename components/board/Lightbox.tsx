@@ -927,20 +927,22 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
                 imageIdx={tweetImageIdx}
               />
             : <LightboxMedia item={view} />}
+          {/* I-07-#4 follow-up: multi-image dots live INSIDE .media as
+              an absolutely-positioned child, centered horizontally on
+              the media column (= the image itself), placed in the
+              chrome-clearance zone just below the media envelope.
+              `.media` keeps overflow:visible so the dots aren't clipped
+              by it — descendant img/iframe/video each carry their own
+              border-radius so removing .media's overflow clip is
+              visually identical (per the .media comment block). */}
+          {tweetId && tweetPhotos.length > 1 && (
+            <LightboxImageDots
+              count={tweetPhotos.length}
+              currentIdx={tweetImageIdx}
+              onJump={setTweetImageIdx}
+            />
+          )}
         </div>
-        {/* I-07-#4: multi-image dots live at .frame level (sibling of
-            .media) — absolutely positioned in the chrome-clearance zone
-            just below the media envelope. Rendering them inside .media
-            via a flex column wrapper (the old .tweetMediaCarousel) made
-            the carousel exceed .media's max-height and got the image's
-            top edge AND the dots clipped by overflow:hidden. */}
-        {tweetId && tweetPhotos.length > 1 && (
-          <LightboxImageDots
-            count={tweetPhotos.length}
-            currentIdx={tweetImageIdx}
-            onJump={setTweetImageIdx}
-          />
-        )}
         <div ref={textRef} className={styles.text}>
           {tweetId
             ? <TweetText item={view} meta={tweetMeta} />

@@ -99,7 +99,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  /* overflow: visible so the absolutely-positioned multi-image dots
+     (I-07) can render in the chrome-clearance zone below this column
+     without being clipped. img / iframeWrap / video poster children
+     each carry their own border-radius + overflow:hidden so removing
+     this clip here is visually identical to before. */
+  overflow: visible;
   min-width: 0;
   min-height: 0;
   max-height: var(--lightbox-media-max-h);
@@ -718,19 +723,21 @@
   pointer-events: none;
 }
 
-/* I-07-#4: Lightbox multi-image dots — absolutely positioned in the
- * chrome-clearance zone below the .frame so they never compete with
- * the .media envelope or get clipped by .media's overflow:hidden.
- * Chip-style background ensures legibility against any backdrop. */
+/* I-07-#4 follow-up: Lightbox multi-image dots — child of .media,
+ * absolutely positioned in the chrome-clearance zone just below the
+ * media envelope, horizontally centered on the .media column (= the
+ * image itself). .media has overflow:visible so this chip is never
+ * clipped. Chip-style background ensures legibility against any
+ * backdrop. Sizing toned down per user feedback (12px → 8px). */
 .lightboxImageDots {
   position: absolute;
-  bottom: -36px;
+  bottom: -28px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: 8px;
+  padding: 6px 10px;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -739,15 +746,14 @@
 }
 
 .lightboxImageDot {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.4);
   border: none;
   cursor: pointer;
   padding: 0;
-  /* Hit area extends 6px outward from the visible dot, matching the
-   * 24×24 minimum click target per project convention. */
+  /* Hit area extends 8px outward → 24×24 click target for the 8px dot. */
   position: relative;
   transition: background 150ms ease-out, transform 150ms ease-out;
 }
@@ -755,12 +761,12 @@
 .lightboxImageDot::before {
   content: '';
   position: absolute;
-  inset: -6px;
+  inset: -8px;
 }
 
 .lightboxImageDot[data-active='true'] {
   background: rgba(255, 255, 255, 0.95);
-  transform: scale(1.2);
+  transform: scale(1.4);
 }
 
 .lightboxImageDot:hover:not([data-active='true']) {
