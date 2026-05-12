@@ -206,12 +206,19 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     setTweetSlotIdx(0)
   }, [view?.bookmarkId])
 
-  // Mix-tweet auto-pause: when the user navigates between slots, pause any
-  // <video> currently rendered inside .media. The TweetVideoPlayer's own
-  // unmount cleanup is unreliable here (React may reuse the DOM node), so
-  // we walk .media for live <video> elements and call pause() explicitly.
-  // currentTime is intentionally NOT touched, so returning to the slot
-  // resumes from where the user left off. (spec §5-2)
+  // Mix-tweet defensive pause-sweep: after every slot change, scan .media for
+  // any <video> still present and pause it. For video→photo transitions
+  // React has already unmounted the <video> by the time this effect runs
+  // (so the sweep is a no-op — the browser also tears down the stream on
+  // unmount), but for the rare same-slot re-render path (e.g. tweetMeta
+  // arrives late and triggers a parent re-render while the user is on a
+  // video slot) this prevents a momentary double-play.
+  //
+  // Known limitation (spec §10 open problem): `key={slot-${slotIdx}}` on
+  // <TweetVideoPlayer> forces remount on slot change, so currentTime is
+  // reset when navigating away and back. Solving "戻ったら続きから" needs a
+  // keep-mounted-hidden strategy or a restorable currentTime ref — out of
+  // scope for this Task; tracked in plan §Open Items.
   useEffect(() => {
     const media = mediaRef.current
     if (!media) return
