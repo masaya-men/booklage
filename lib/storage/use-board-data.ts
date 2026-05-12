@@ -14,6 +14,7 @@ import {
   persistCustomCardWidth,
   clearCustomCardWidth,
   clearAllCustomCardWidths,
+  persistPhotos as persistPhotosDb,
   type BookmarkRecord,
   type CardRecord,
 } from './indexeddb'
@@ -45,6 +46,10 @@ export type BoardItem = {
    *  treated as "do not show overlay" so we don't put a play icon on a
    *  still photo. */
   readonly hasVideo?: boolean
+  /** All photo URLs for multi-image posts (X tweets with up to 4 images,
+   *  Bluesky posts with up to 4 images). photos[0] equals thumbnail. Empty
+   *  / undefined → single-image card with no hover swap. I-07 Phase 1. */
+  readonly photos?: readonly string[]
 }
 
 type DbLike = IDBPDatabase<unknown>
@@ -110,6 +115,7 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     tags: b.tags ?? [],
     displayMode: b.displayMode ?? null,
     hasVideo: b.hasVideo,
+    photos: b.photos,
   }
 }
 
@@ -137,6 +143,9 @@ export function useBoardData(): {
    *  already what we'd write (avoids a setItems re-render storm).
    */
   persistVideoFlag: (bookmarkId: string, hasVideo: boolean) => Promise<void>
+  /** Persist the multi-image photo URL array for a bookmark. Pass an empty
+   *  array to clear back to single-image. I-07 Phase 1. */
+  persistPhotos: (bookmarkId: string, photos: readonly string[]) => Promise<void>
   persistTags: (bookmarkId: string, tags: readonly string[]) => Promise<void>
   persistDisplayMode: (bookmarkId: string, displayMode: BoardItem['displayMode']) => Promise<void>
   reload: () => Promise<void>
@@ -357,6 +366,25 @@ export function useBoardData(): {
     [],
   )
 
+  const persistPhotos = useCallback(
+    async (bookmarkId: string, photos: readonly string[]): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      await persistPhotosDb(
+        db as Parameters<typeof persistPhotosDb>[0],
+        bookmarkId,
+        photos,
+      )
+      const next = photos.length === 0 ? undefined : photos
+      setItems((prev) =>
+        prev.map((it) =>
+          it.bookmarkId === bookmarkId ? { ...it, photos: next } : it,
+        ),
+      )
+    },
+    [],
+  )
+
   const persistTags = useCallback(
     async (bookmarkId: string, tags: readonly string[]): Promise<void> => {
       const db = dbRef.current
@@ -478,6 +506,7 @@ export function useBoardData(): {
     persistMeasuredAspect,
     persistThumbnail,
     persistVideoFlag,
+    persistPhotos,
     persistTags,
     persistDisplayMode,
     reload,

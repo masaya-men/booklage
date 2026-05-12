@@ -711,6 +711,38 @@ export async function persistCustomCardWidth(
 }
 
 /**
+ * Persist a multi-image bookmark's photo URL array. Pass an empty array to
+ * clear the photos field back to undefined (returns the bookmark to
+ * single-image display). No-ops if the bookmark doesn't exist or the new
+ * array deep-equals the existing one (avoids triggering re-renders for
+ * idempotent backfills). I-07 Phase 1.
+ */
+export async function persistPhotos(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  photos: readonly string[],
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+
+  const next = photos.length === 0 ? undefined : photos
+  const existingArr = existing.photos
+  // Deep equality check — same array values → skip write
+  if (
+    (existingArr === undefined && next === undefined) ||
+    (existingArr !== undefined &&
+      next !== undefined &&
+      existingArr.length === next.length &&
+      existingArr.every((u: string, i: number) => u === next[i]))
+  ) {
+    return
+  }
+
+  const updated: BookmarkRecord = { ...existing, photos: next }
+  await db.put('bookmarks', updated)
+}
+
+/**
  * Clear the `customCardWidth` flag for a single bookmark. The stored
  * `cardWidth` is left intact (cheap, harmless) — it just stops being
  * honored once the flag is false. Used by the per-card "reset size"

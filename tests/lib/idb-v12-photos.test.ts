@@ -76,3 +76,68 @@ describe('IDB v12: photos field on BookmarkRecord', () => {
     expect(read?.photos).toBeUndefined()
   })
 })
+
+describe('persistPhotos', () => {
+  it('writes photos to bookmark and skips when array deep-equals existing', async () => {
+    const { persistPhotos } = await import('@/lib/storage/indexeddb')
+    const opened = await initDB()
+    db = opened as unknown as IDBPDatabase<unknown>
+
+    await opened.put('bookmarks', {
+      id: 'b-photos',
+      url: 'https://x.com/u/status/1',
+      title: 'T',
+      savedAt: Date.now(),
+      orderIndex: 0,
+      cardWidth: 240,
+      tags: [],
+    })
+
+    await persistPhotos(opened, 'b-photos', [
+      'https://pbs.twimg.com/a.jpg',
+      'https://pbs.twimg.com/b.jpg',
+    ])
+    let r = await opened.get('bookmarks', 'b-photos')
+    expect(r?.photos).toEqual([
+      'https://pbs.twimg.com/a.jpg',
+      'https://pbs.twimg.com/b.jpg',
+    ])
+
+    // Idempotent: same array should not re-write (read-modify-write skips)
+    const writeBefore = JSON.stringify(r)
+    await persistPhotos(opened, 'b-photos', [
+      'https://pbs.twimg.com/a.jpg',
+      'https://pbs.twimg.com/b.jpg',
+    ])
+    r = await opened.get('bookmarks', 'b-photos')
+    expect(JSON.stringify(r)).toBe(writeBefore)
+  })
+
+  it('clears photos when passed empty array', async () => {
+    const { persistPhotos } = await import('@/lib/storage/indexeddb')
+    const opened = await initDB()
+    db = opened as unknown as IDBPDatabase<unknown>
+
+    await opened.put('bookmarks', {
+      id: 'b-clear',
+      url: 'https://x.com/u/status/1',
+      title: 'T',
+      savedAt: Date.now(),
+      orderIndex: 0,
+      cardWidth: 240,
+      tags: [],
+      photos: ['x'],
+    })
+
+    await persistPhotos(opened, 'b-clear', [])
+    const r = await opened.get('bookmarks', 'b-clear')
+    expect(r?.photos).toBeUndefined()
+  })
+
+  it('no-ops for non-existent bookmark', async () => {
+    const { persistPhotos } = await import('@/lib/storage/indexeddb')
+    const opened = await initDB()
+    db = opened as unknown as IDBPDatabase<unknown>
+    await expect(persistPhotos(opened, 'no-such-id', ['x'])).resolves.toBeUndefined()
+  })
+})
