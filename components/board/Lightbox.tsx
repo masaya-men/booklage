@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ComponentType, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
 import type { BoardItem } from '@/lib/storage/use-board-data'
-import type { TikTokPlayback, TweetMeta, MediaSlot } from '@/lib/embed/types'
+import type { TikTokPlayback, TweetMeta } from '@/lib/embed/types'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
 import { fetchTikTokPlayback } from '@/lib/embed/tiktok-meta'
 import { t } from '@/lib/i18n/t'
@@ -109,14 +109,14 @@ type Props = {
    *  for back-compat with callers that don't track a source card. */
   readonly onSourceShouldShow?: () => void
   readonly nav?: LightboxNav
-  /** v13: called with (bookmarkId, mediaSlots[]) whenever a tweet meta fetch
-   *  reveals slot data, so the board can render the correct hover swap
-   *  next time the user is on the board. Pass through from
-   *  useBoardData().persistMediaSlots. Fire-and-forget. */
-  readonly persistMediaSlots?: (bookmarkId: string, mediaSlots: readonly MediaSlot[]) => Promise<void>
+  /** I-07 Phase 1: called with (bookmarkId, photos[]) whenever a
+   *  tweet meta fetch reveals a multi-image post, so the board card can
+   *  show hover swap next time the user is on the board. Pass through
+   *  from useBoardData().persistPhotos. */
+  readonly persistPhotos?: (bookmarkId: string, photos: readonly string[]) => Promise<void>
 }
 
-export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShouldShow, nav, persistMediaSlots }: Props): ReactElement | null {
+export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShouldShow, nav, persistPhotos }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -171,59 +171,35 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     void fetchTweetMeta(tweetId).then((meta) => {
       if (cancelled) return
       setTweetMeta(meta)
-      // Phase C backfill: write mediaSlots[] to IDB so the board card
-      // can render the correct hover swap + dot indicator next mount.
-      // Fire-and-forget: no await, errors ignored. The persist helper
-      // is idempotent so repeat fetches don't churn IDB.
-      if (meta?.mediaSlots && meta.mediaSlots.length > 0 && view?.bookmarkId && persistMediaSlots) {
-        void persistMediaSlots(view.bookmarkId, meta.mediaSlots)
+      // I-07: backfill IDB so the board card can do hover swap next time.
+      // Fire-and-forget: no await, errors ignored.
+      if (meta?.photoUrls && meta.photoUrls.length > 1 && view?.bookmarkId && persistPhotos) {
+        const existing = view.photos ?? []
+        const same = existing.length === meta.photoUrls.length
+          && existing.every((u, i) => u === meta.photoUrls![i])
+        if (!same) {
+          void persistPhotos(view.bookmarkId, meta.photoUrls)
+        }
       }
     })
     return (): void => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tweetId])
 
-  // I-07 + mix-tweet: unified slot array driving both .media render and the
-  // dot indicator. Resolution order: TweetMeta.mediaSlots (fresh from
-  // syndication) → BoardItem.mediaSlots (IDB-persisted) → BoardItem.photos
-  // (legacy v12 fallback, widened to photo slots) → empty (single-image /
-  // text-only paths handle this).
-  const tweetSlots: readonly MediaSlot[] = (() => {
-    if (tweetMeta?.mediaSlots && tweetMeta.mediaSlots.length > 0) return tweetMeta.mediaSlots
-    if (view?.mediaSlots && view.mediaSlots.length > 0) return view.mediaSlots
-    const legacy = view?.photos ?? []
-    return legacy.map((url): MediaSlot => ({ type: 'photo', url }))
-  })()
-
-  // Current slot index — drives both the .media render and the dots.
-  // Renamed from tweetImageIdx (Phase 1) because the carousel may now point
-  // at a video slot, not just a photo.
-  const [tweetSlotIdx, setTweetSlotIdx] = useState<number>(0)
+  // I-07: image carousel index — lifted from TweetMedia so the Lightbox-
+  // level keydown handler can drive it via ↑ / ↓.
+  const [tweetImageIdx, setTweetImageIdx] = useState<number>(0)
   useEffect(() => {
-    setTweetSlotIdx(0)
+    setTweetImageIdx(0)
   }, [view?.bookmarkId])
 
-  // Mix-tweet defensive pause-sweep: after every slot change, scan .media for
-  // any <video> still present and pause it. For video→photo transitions
-  // React has already unmounted the <video> by the time this effect runs
-  // (so the sweep is a no-op — the browser also tears down the stream on
-  // unmount), but for the rare same-slot re-render path (e.g. tweetMeta
-  // arrives late and triggers a parent re-render while the user is on a
-  // video slot) this prevents a momentary double-play.
-  //
-  // Known limitation (spec §10 open problem): `key={slot-${slotIdx}}` on
-  // <TweetVideoPlayer> forces remount on slot change, so currentTime is
-  // reset when navigating away and back. Solving "戻ったら続きから" needs a
-  // keep-mounted-hidden strategy or a restorable currentTime ref — out of
-  // scope for this Task; tracked in plan §Open Items.
-  useEffect(() => {
-    const media = mediaRef.current
-    if (!media) return
-    const videos = media.querySelectorAll('video')
-    videos.forEach((v) => {
-      if (!v.paused) v.pause()
-    })
-  }, [tweetSlotIdx])
+  // Photos source of truth at the Lightbox level — used by the frame-level
+  // dot indicator render (I-07-#4: dots live OUTSIDE .media so the photo
+  // can fill the media envelope without overflow clipping). Mirrors the
+  // resolution order used inside TweetMedia (meta first, then IDB backfill).
+  const tweetPhotos: readonly string[] = (tweetMeta?.photoUrls?.length ?? 0) > 0
+    ? tweetMeta!.photoUrls!
+    : (view?.photos ?? [])
 
   // Lazy-load the R3F flip scene module on idle. This keeps the
   // ~250 KB three.js + @react-three/fiber payload OUT of the initial
@@ -444,15 +420,18 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        // Mix-tweet: nav cycles through slots (video or photo). Falls back
-        // to no-op when the current tweet has zero or one slot.
-        if (tweetSlots.length <= 1) return
+        // I-07: image carousel nav inside multi-image tweets. Falls
+        // back to a no-op when the current item is not a multi-image
+        // tweet (the photo array length check handles this), letting
+        // the browser's default scroll behavior run.
+        const photos = tweetMeta?.photoUrls ?? view?.photos ?? []
+        if (photos.length <= 1) return
         e.preventDefault()
         e.stopPropagation()
         if (e.key === 'ArrowDown') {
-          setTweetSlotIdx((idx) => Math.min(tweetSlots.length - 1, idx + 1))
+          setTweetImageIdx((idx) => Math.min(photos.length - 1, idx + 1))
         } else {
-          setTweetSlotIdx((idx) => Math.max(0, idx - 1))
+          setTweetImageIdx((idx) => Math.max(0, idx - 1))
         }
         return
       }
@@ -464,7 +443,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     }
     window.addEventListener('keydown', onKey)
     return (): void => window.removeEventListener('keydown', onKey)
-  }, [identity, nav, tweetSlots])
+  }, [identity, nav, tweetMeta, view?.photos])
 
   // Mouse wheel nav. Both vertical (deltaY) and horizontal (deltaX) are
   // accepted — trackpad two-finger swipe and traditional wheel both work.
@@ -945,8 +924,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
             ? <TweetMedia
                 item={view}
                 meta={tweetMeta}
-                slots={tweetSlots}
-                slotIdx={tweetSlotIdx}
+                imageIdx={tweetImageIdx}
               />
             : <LightboxMedia item={view} />}
           {/* I-07-#4 follow-up: multi-image dots live INSIDE .media as
@@ -957,11 +935,11 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
               by it — descendant img/iframe/video each carry their own
               border-radius so removing .media's overflow clip is
               visually identical (per the .media comment block). */}
-          {tweetId && tweetSlots.length > 1 && (
+          {tweetId && tweetPhotos.length > 1 && (
             <LightboxImageDots
-              slots={tweetSlots}
-              currentIdx={tweetSlotIdx}
-              onJump={setTweetSlotIdx}
+              count={tweetPhotos.length}
+              currentIdx={tweetImageIdx}
+              onJump={setTweetImageIdx}
             />
           )}
         </div>
@@ -1073,68 +1051,52 @@ function DefaultText({
   )
 }
 
-/** Left-column media for a tweet, driven by the unified mediaSlots[] array.
- *  Each slot renders either an inline `<TweetVideoPlayer>` (type='video') or a
- *  plain `<img>` (type='photo'). When the user swaps slot index, the parent
- *  Lightbox's effect (see "auto-pause on slot change") forces any playing
- *  video to pause before unmount.
+/** Left-column media for a tweet: inline mp4 video, photo, or large body
+ *  text (text-only tweets). Falls back to the bookmark thumbnail before
+ *  metadata loads so the slot never appears empty.
  *
- *  Falls back to legacy code paths for non-slot inputs:
- *    - meta.videoUrl exists but slots is empty → single-video tweet (rare:
- *      mediaSlots resolution failed but meta still has a videoUrl)
- *    - photos only via meta.photoUrl → single-image tweet
- *    - meta.text → text-only tweet
- *
- *  Note: dots are rendered at the .frame level (sibling of .media), NOT
- *  inside this component — see I-07-#4 fix.
- */
+ *  Video playback routes through `/api/tweet-video` (a Pages Function) to
+ *  side-step the Twitter CDN's cross-origin Referer/Origin block — see
+ *  functions/api/tweet-video.ts. The custom big play button overlay
+ *  appears only before first play; once the user starts the clip,
+ *  native bottom controls take over for pause/seek/volume. */
 function TweetMedia({
   item,
   meta,
-  slots,
-  slotIdx,
+  imageIdx,
 }: {
   readonly item: LightboxItem
   readonly meta: TweetMeta | null
-  readonly slots: readonly MediaSlot[]
-  readonly slotIdx: number
+  readonly imageIdx: number
 }): ReactNode {
-  // Slot-driven path (v13): a non-empty slots array fully determines media.
-  if (slots.length > 0) {
-    const slot = slots[Math.min(slotIdx, slots.length - 1)]
-    if (slot.type === 'video' && slot.videoUrl) {
-      // Construct a synthetic meta that points TweetVideoPlayer at this slot's
-      // mp4 + poster + aspect, irrespective of which slot meta.videoUrl points
-      // to. (For pure-video tweets these match anyway.)
-      const slotMeta: TweetMeta = {
-        ...(meta ?? {
-          id: '',
-          text: '',
-          hasPhoto: false,
-          hasVideo: true,
-          hasPoll: false,
-          hasQuotedTweet: false,
-          authorName: '',
-          authorHandle: '',
-        }),
-        videoUrl: slot.videoUrl,
-        videoPosterUrl: slot.url,
-        videoAspectRatio: slot.aspect,
-      }
-      return <TweetVideoPlayer key={`slot-${slotIdx}`} item={item} meta={slotMeta} />
-    }
-    if (slot.type === 'photo') {
-      return <img src={slot.url} alt={item.title} />
-    }
-  }
+  // Carousel index is lifted to the Lightbox parent so the window-level
+  // keydown handler (↑/↓) can drive it. I-07 Phase 1.
+  //
+  // Note: multi-image dots are rendered at the .frame level (sibling of
+  // .media), NOT inside this component. Wrapping img + dots in a flex
+  // column here caused the carousel total height to exceed .media's
+  // max-height envelope (708 + gap 12 + dots 20 = 740 vs envelope 708),
+  // and .media's align-items:center + overflow:hidden split the 32px
+  // overflow to 16px top / 16px bottom — clipping the image's top edge
+  // AND most of the dots. See I-07-#4 fix (2026-05-12).
 
-  // Legacy fallbacks — slots was empty (e.g. text-only tweet, or meta failed
-  // to resolve and the bookmark also has no photos[]).
   if (meta?.videoUrl) {
     return <TweetVideoPlayer item={item} meta={meta} />
   }
-  if (meta?.photoUrl ?? item.thumbnail) {
-    return <img src={meta?.photoUrl ?? item.thumbnail!} alt={item.title} />
+
+  // Source of truth for photos: meta.photoUrls (fresh from syndication)
+  // first, then item.photos (IDB-persisted backfill) as fallback. Either
+  // can lead.
+  const photos = (meta?.photoUrls?.length ?? 0) > 0
+    ? meta!.photoUrls!
+    : (item.photos ?? [])
+  const hasMultiple = photos.length > 1
+  const photoUrl = hasMultiple
+    ? photos[imageIdx]
+    : (meta?.photoUrl ?? item.thumbnail)
+
+  if (photoUrl) {
+    return <img src={photoUrl} alt={item.title} />
   }
   if (meta?.text) {
     return <p className={styles.tweetTextOnly}>{meta.text}</p>
@@ -1144,38 +1106,29 @@ function TweetMedia({
 
 /** Dot indicator for Lightbox carousel. Larger and more clickable than the
  *  board-side card dots — these are the primary nav mechanism (along with
- *  keyboard ↑↓). Video slots render as a ▶ triangle to communicate
- *  "this slot contains a video" without us needing a separate badge.
- *  I-07 Phase 1 + mix-tweet (v13). */
+ *  keyboard ↑↓). I-07 Phase 1. */
 function LightboxImageDots({
-  slots,
+  count,
   currentIdx,
   onJump,
 }: {
-  readonly slots: readonly MediaSlot[]
+  readonly count: number
   readonly currentIdx: number
   readonly onJump: (idx: number) => void
 }): ReactNode {
   return (
-    <div className={styles.lightboxImageDots} role="tablist" aria-label="メディア切替">
-      {slots.map((slot, i) => (
+    <div className={styles.lightboxImageDots} role="tablist" aria-label="画像切替">
+      {Array.from({ length: count }).map((_, i) => (
         <button
           key={i}
           type="button"
           role="tab"
           aria-selected={i === currentIdx}
-          aria-label={slot.type === 'video'
-            ? `動画 ${i + 1} / ${slots.length}`
-            : `画像 ${i + 1} / ${slots.length}`}
+          aria-label={`画像 ${i + 1} / ${count}`}
           data-active={i === currentIdx ? 'true' : 'false'}
-          data-slot-type={slot.type}
           className={styles.lightboxImageDot}
           onClick={(): void => onJump(i)}
-        >
-          {slot.type === 'video' && (
-            <span className={styles.lightboxImageDotVideoIcon} aria-hidden="true" />
-          )}
-        </button>
+        />
       ))}
     </div>
   )

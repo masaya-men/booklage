@@ -1,6 +1,5 @@
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { ShareCard } from './types'
-import type { MediaSlot } from '@/lib/embed/types'
 
 export type LightboxItem = {
   readonly url: string
@@ -15,10 +14,6 @@ export type LightboxItem = {
    *  4, Bluesky up to 4). photos[0] equals thumbnail. Undefined or
    *  zero-length when single-image or video-only. I-07 Phase 1. */
   readonly photos?: readonly string[]
-  /** Board-side only: v13 unified media slot array. mediaSlots[0] may be a
-   *  video poster for mix tweets. Undefined → fall through to photos /
-   *  thumbnail (= 旧挙動). */
-  readonly mediaSlots?: readonly MediaSlot[]
 }
 
 function isBoardItem(item: BoardItem | ShareCard): item is BoardItem {
@@ -35,7 +30,6 @@ export function normalizeItem(item: BoardItem | ShareCard): LightboxItem {
       kind: 'board',
       bookmarkId: item.bookmarkId,
       photos: item.photos,
-      mediaSlots: item.mediaSlots,
     }
   }
   return {

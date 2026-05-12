@@ -297,58 +297,28 @@ LoPo Claude (別 session) には次セッション開始時に引き継ぎメッ
 - 参照ゼロのため見た目変化なし、 Phase 2 で順次置換予定
 - tsc + vitest 425 全 PASS、 本番 deploy 済
 
-### セッション 16 (2026-05-12) で完了したこと
+### セッション 16 開始時の優先順位 (spec 2 つ実装計画化 + Phase 2-6)
 
-✅ **mediaSlots[] 統一型 + 3 段防御 backfill セット実装** — 2 plan を subagent-driven で完全実装。 17 タスク + 2 件 final review fixup、 計 20 commits。 本番 deploy + tsc + vitest 445 + Playwright 4/4 グリーン。
+1. **タスク 1 (動画+画像 mix tweet) の実装計画化** — writing-plans skill で `docs/superpowers/specs/2026-05-12-mixed-media-tweet-design.md` から implementation plan を作成
+2. **タスク 2 (複数画像 backfill) の実装計画化** — writing-plans skill で `docs/superpowers/specs/2026-05-12-multi-image-backfill-design.md` から implementation plan を作成
+3. **タスク 1 + 2 の実装** (subagent-driven 推奨) — mediaSlots[] 統一型 + 3 段防御 backfill をセットで実装、 本番 deploy + 実機検証
+4. **I-07-#2 hover 切替演出のリッチ化** — cross-fade / blur / zoom-pan polish 候補 (デザイン polish)
+5. **I-07-#5 Lightbox テキストパネル mask-reveal-up 風アニメ** — デザイン polish (destefanis 本家挙動要確認)
+6. **I-07 Phase 2 (Bluesky 複数画像)** — mediaSlots[] 統一型を Bluesky にも適用
+7. **AllMarks sizing 哲学移行 (Phase 2-6)** — rem → px 化 + clamp+vw 化 + アプリ内 text size 設定
+8. **B-#8 PiP click → スクロール中央寄せ**
+9. **B-#1/#2/#3 サムネ系** (空白カード fallback / 再取得ボタン / 重複 URL 表示)
+10. **B-#7 自由サイジング** (案 B か案 D 再チューニング)
+11. **B-#12 拡大時 viewport overflow 破綻**
+12. **B-#10 モバイル本格チューニング** (後回し継続)
+13. (任意) **e2e test rot 整理** — board-b0 / lightbox-flow の `DB_VERSION=9` を versionless open に修正
 
-主な成果物:
-- **IDB v13 schema**: `BookmarkRecord.mediaSlots?: readonly MediaSlot[]` 追加 + `persistMediaSlots()` ([lib/storage/indexeddb.ts](../lib/storage/indexeddb.ts))。 v12 → v13 は no-op migration、 既存ロー (photos[] のみ) は読み取り fallback で動く
-- **MediaSlot 型**: 全消費者 7 箇所で 1 つの型定義を共有 ([lib/embed/types.ts](../lib/embed/types.ts))
-- **parseTweetData() refactor**: mediaSlots-first に書き換え、 派生 field (photoUrl/photoUrls/videoUrl/videoPosterUrl/videoAspectRatio/hasPhoto/hasVideo) を mediaSlots から計算。 silent-drop semantics 確定 (mp4 なし video スロットは emit しない、 hasVideo=false)
-- **ImageCard hover swap**: mediaSlots-aware ([components/board/cards/ImageCard.tsx](../components/board/cards/ImageCard.tsx))。 動画スロット dot に `--media-slot-video-tint: rgba(255, 107, 107, 0.55)` の薄赤アクセント (UI 承認待ち暫定値)
-- **Lightbox carousel**: tweetSlotIdx state + per-type render + auto-pause sweep。 LightboxImageDots に ▶ (video) / ● (photo) 形状区別 (UI 承認待ち)
-- **3 段防御 backfill**:
-  - **Phase A**: SaveIframeClient で extension 経路の保存直後 fire-and-forget syndication fetch
-  - **Phase B**: BoardRoot 既存 sequential loop を新 `lib/board/backfill-queue.ts` (parallel:3 + 200ms + AbortController) + `lib/board/tweet-backfill.ts` (thumbnail+hasVideo+mediaSlots 統合 persist) ベースに完全置換
-  - **Phase C**: Lightbox open 時 backfill を persistMediaSlots 化
-- **Cloudflare proxy cache**: max-age 1h → 24h で invocation budget を 10x 削減
-- **E2E**: `board-mixed-media.spec.ts` (3 case) + `board-backfill.spec.ts` (1 case)
-- **Post-review fixup**: BoardRoot の dead `persistPhotos` destructure 削除 + PiP `resolve-thumbnail.ts` のサムネ優先順を `videoPosterUrl ?? photoUrl` に統一
+### セッション 15 終了時の handoff (2026-05-12 深夜)
 
-#### 設計上の意図的調整 (spec から逸脱、 plan に明記)
-
-- bookmarklet popup 経路 (拡張機能 OFF) は `FAST_CLOSE_MS=80ms` で window unload するため Phase A fetch が kill される。 Phase A は extension 経路のみ実装、 popup 経路は Phase B 任せ
-- mix tweet のサムネ優先順位は `videoPosterUrl ?? photoUrl` に変更 (旧 BoardRoot loop は `photoUrl ?? videoPosterUrl`)。 X 本家挙動と一致する UX 改善
-- `key={slot-${slotIdx}}` strategy で動画スロット間移動時に currentTime がリセットされる (spec §10 の open problem、 keep-mounted-hidden 戦略は別 spec で)
-
-#### ユーザー実機確認待ち
-
-本番 `https://booklage.pages.dev` をハードリロードして以下を検証:
-1. **mix tweet** (例: `https://x.com/men_masaya/status/1842217368673759498`): ボードカード hover で動画 poster ↔ photo 切替、 動画 dot が薄赤、 Lightbox で ↑↓ / dot クリックで carousel、 動画再生中切替で auto-pause、 戻りで paused 状態 (currentTime リセットは既知制約)
-2. **既存 X 複数画像ブクマ (Phase B)**: hover → 5 秒以内に dot 行が現れ hover swap 効くようになる
-3. **新規保存 (Phase A, extension 経路)**: 保存直後 board hover でドット即出 (Phase A が裏で完了)
-4. **UI 承認**: 動画 tint 色 (`rgba(255, 107, 107, 0.55)`) + ▶ dot 形状 (CSS 三角)。 不満があれば値だけ微調整
-
-### セッション 17 開始時の優先順位
-
-1. **ユーザー実機検証フィードバック反映** — 上記 4 点の UI 微調整 / バグ修正
-2. **I-07-#2 hover 切替演出のリッチ化** — cross-fade / blur / zoom-pan polish 候補
-3. **I-07-#5 Lightbox テキストパネル mask-reveal-up 風アニメ** — destefanis 本家挙動要確認
-4. **I-07 Phase 2 (Bluesky 複数画像)** — mediaSlots[] 統一型を Bluesky 対応に拡張
-5. **AllMarks sizing 哲学移行 (Phase 2-6)** — rem → px 化 + clamp+vw 化 + アプリ内 text size 設定
-6. **B-#8 PiP click → スクロール中央寄せ**
-7. **B-#1/#2/#3 サムネ系** (空白カード fallback / 再取得ボタン / 重複 URL 表示)
-8. **B-#7 自由サイジング** (案 B か案 D 再チューニング)
-9. **B-#12 拡大時 viewport overflow 破綻**
-10. **B-#10 モバイル本格チューニング** (後回し継続)
-11. (任意) **e2e test rot 整理** — board-b0 / lightbox-flow の `DB_VERSION=9` を versionless open に修正
-
-### セッション 16 終了時の handoff (2026-05-12)
-
-- branch `feat/mediaslots-mix-tweet-backfill` に 20 commits、 本番 deploy 済 (`https://booklage.pages.dev`)
-- master へのマージはユーザー実機確認 OK 後
-- 次セッションは「セッション 16 のユーザー実機確認結果」 から再開
-- 開始時の最初の発言: 「mediaSlots 実装の本番確認結果」 + 良し悪し報告で OK
+- spec 2 つ作成 + sizing Phase 1 token 投入、 working tree クリーン
+- 本番 (booklage.pages.dev) は I-07 Phase 1 + sizing Phase 1 (見た目変化ゼロ) 反映済
+- 次セッションは spec 2 つを実装計画 (writing-plans) に落とすところから
+- 開始時の最初の発言: 「セッション 15 の spec 2 つを writing-plans で実装プランに落として」 で OK
 
 ---
 

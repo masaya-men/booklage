@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { DisplayMode } from '@/lib/board/types'
-import type { MediaSlot } from '@/lib/embed/types'
 import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
 import styles from './ImageCard.module.css'
 
@@ -38,25 +37,24 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   // the rogue printed icon underneath.
   const isReel = urlType === 'instagram' && isInstagramReel(item.url)
 
-  // I-07 + mix-tweet: prefer mediaSlots[] (v13) when present; fall back to
-  // photos[] (v12 legacy records) by widening each URL into a synthetic
-  // photo slot. Single-element / undefined results suppress dots + hover
-  // swap (= 既存挙動).
-  const slots: readonly MediaSlot[] = item.mediaSlots
-    ?? (item.photos ?? []).map((url): MediaSlot => ({ type: 'photo', url }))
-  const hasMultiple = slots.length > 1
-  const displayedSrc = hasMultiple ? slots[imageIdx].url : item.thumbnail
+  // I-07 Phase 1: hover-position image swap for multi-image posts.
+  // photos[0] equals thumbnail; for single-photo (or undefined) items
+  // hasMultiple is false and displayedSrc falls through to item.thumbnail —
+  // identical to the prior behaviour. State is local to ImageCard so
+  // pointermove doesn't trigger a parent re-render storm.
+  const photos = item.photos ?? []
+  const hasMultiple = photos.length > 1
+  const displayedSrc = hasMultiple ? photos[imageIdx] : item.thumbnail
 
   const handlePointerMove = useCallback(
     (e: PointerEvent<HTMLDivElement>): void => {
       if (!hasMultiple) return
       if (!preloadedRef.current) {
-        // Lazy preload slots[1..N-1].url. slots[0] is already in the DOM <img>.
-        // For video slots this preloads the poster image; the mp4 itself is
-        // only fetched when the user opens the Lightbox and clicks play.
-        for (let i = 1; i < slots.length; i++) {
+        // Fire-and-forget: kick off Image() for photos[1..N-1]. photos[0] is
+        // already in the DOM <img>.
+        for (let i = 1; i < photos.length; i++) {
           const img = new Image()
-          img.src = slots[i].url
+          img.src = photos[i]
         }
         preloadedRef.current = true
       }
@@ -66,11 +64,11 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
       if (rect.width <= 0) return
       const raw = (e.clientX - rect.left) / rect.width
       const ratio = raw < 0 ? 0 : raw > 1 ? 1 : raw
-      const rawIdx = Math.floor(ratio * slots.length)
-      const idx = rawIdx >= slots.length ? slots.length - 1 : rawIdx < 0 ? 0 : rawIdx
+      const rawIdx = Math.floor(ratio * photos.length)
+      const idx = rawIdx >= photos.length ? photos.length - 1 : rawIdx < 0 ? 0 : rawIdx
       setImageIdx((prev) => (prev === idx ? prev : idx))
     },
-    [hasMultiple, slots],
+    [hasMultiple, photos],
   )
 
   const handlePointerLeave = useCallback((): void => {
@@ -128,12 +126,11 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
       {isReel && <div className={styles.tintInstagramReel} aria-hidden="true" />}
       {hasMultiple && (
         <div className={styles.multiImageDots} aria-hidden="true">
-          {slots.map((s, i) => (
+          {photos.map((_, i) => (
             <span
               key={i}
               data-testid="multi-image-dot"
               data-active={i === imageIdx ? 'true' : 'false'}
-              data-slot-type={s.type}
               className={styles.multiImageDot}
             />
           ))}

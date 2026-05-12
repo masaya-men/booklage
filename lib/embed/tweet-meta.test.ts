@@ -44,9 +44,6 @@ describe('parseTweetData', () => {
         type: 'video',
         media_url_https: 'https://pbs.twimg.com/media/poster.jpg',
         original_info: { width: 1080, height: 1920 },
-        video_info: {
-          variants: [{ content_type: 'video/mp4', bitrate: 1500000, url: 'https://video.twimg.com/v.mp4' }],
-        },
       }],
     }
     const meta = parseTweetData(raw)

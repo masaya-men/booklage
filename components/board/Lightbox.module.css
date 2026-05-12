@@ -768,35 +768,3 @@
 .lightboxImageDot:hover:not([data-active='true']) {
   background: rgba(255, 255, 255, 0.85);
 }
-
-/* Mix-tweet video slot indicator — replaces the round dot with an inline
- * ▶ triangle so the user can spot "this slot is a video" at a glance.
- * The CSS-triangle approach keeps the bare-DOM-button hit-area pattern
- * intact (24×24 via ::before extension) without introducing an SVG. */
-.lightboxImageDot[data-slot-type='video'] {
-  background: transparent;
-  box-shadow: none;
-}
-.lightboxImageDot[data-slot-type='video'] .lightboxImageDotVideoIcon {
-  display: block;
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 8px solid rgba(255, 255, 255, 0.7);
-  /* 1.5px optical shift right so the triangle's perceived centroid sits
-   * over the original 6px dot's center. */
-  transform: translateX(1px);
-  transition: border-left-color 200ms ease-out, transform 200ms ease-out;
-}
-.lightboxImageDot[data-slot-type='video'][data-active='true'] {
-  /* Active state — match the photo-dot scale so the active marker reads
-   * uniformly across types. */
-  transform: scale(1.6);
-}
-.lightboxImageDot[data-slot-type='video'][data-active='true'] .lightboxImageDotVideoIcon {
-  border-left-color: rgba(255, 255, 255, 0.98);
-}
-.lightboxImageDot[data-slot-type='video']:hover:not([data-active='true']) .lightboxImageDotVideoIcon {
-  border-left-color: rgba(255, 255, 255, 0.92);
-}

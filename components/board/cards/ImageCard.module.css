@@ -77,15 +77,3 @@
   background: rgba(255, 255, 255, 0.95);
   transform: scale(1.2);
 }
-
-/* Mix-tweet (v13) — video slot dots carry a subtle accent so the user can tell
- * "this card also contains a video" without us putting an explicit play badge
- * on the thumbnail (per feedback_minimal_card_affordances). Active state keeps
- * the universal white look for visual coherence with photo slots. */
-.imageCard {
-  --media-slot-video-tint: rgba(255, 107, 107, 0.55);
-}
-
-.multiImageDot[data-slot-type='video'][data-active='false'] {
-  background: var(--media-slot-video-tint);
-}

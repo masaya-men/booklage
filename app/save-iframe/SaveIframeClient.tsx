@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, type ReactElement } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { initDB, addBookmark, persistMediaSlots } from '@/lib/storage/indexeddb'
-import { detectUrlType, extractTweetId } from '@/lib/utils/url'
-import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
+import { initDB, addBookmark } from '@/lib/storage/indexeddb'
+import { detectUrlType } from '@/lib/utils/url'
 import { postBookmarkSaved } from '@/lib/board/channel'
 import {
   parseSaveMessage,
@@ -109,21 +108,6 @@ export function SaveIframeClient(): ReactElement {
         })
         postBookmarkSaved({ bookmarkId: bm.id })
         reply({ type: 'booklage:save:result', nonce: payload.nonce, ok: true, bookmarkId: bm.id })
-
-        // Phase A: fire-and-forget syndication fetch for X tweets so the
-        // newly saved bookmark already has mediaSlots[] populated before
-        // the user lands on the board. Offscreen iframe persists across
-        // tab closes, so we don't need to block the reply on this.
-        if (detectUrlType(payload.url) === 'tweet') {
-          const tweetId = extractTweetId(payload.url)
-          if (tweetId) {
-            void fetchTweetMeta(tweetId).then((meta) => {
-              if (meta?.mediaSlots && meta.mediaSlots.length > 0) {
-                void persistMediaSlots(db, bm.id, meta.mediaSlots)
-              }
-            }).catch(() => { /* swallow — Phase B catches next mount */ })
-          }
-        }
       } catch (err) {
         reply({
           type: 'booklage:save:result',

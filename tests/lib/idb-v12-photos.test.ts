@@ -18,14 +18,14 @@ afterEach(() => {
 })
 
 describe('IDB v12: photos field on BookmarkRecord', () => {
-  it('DB_VERSION is at least 12 (photos feature introduced at v12)', () => {
-    expect(DB_VERSION).toBeGreaterThanOrEqual(12)
+  it('DB_VERSION is 12', () => {
+    expect(DB_VERSION).toBe(12)
   })
 
-  it('initDB opens at current version and bookmarks store accepts photos field', async () => {
+  it('initDB opens at v12 and bookmarks store accepts photos field', async () => {
     const opened = await initDB()
     db = opened as unknown as IDBPDatabase<unknown>
-    expect(opened.version).toBe(DB_VERSION)
+    expect(opened.version).toBe(12)
 
     const bookmark = {
       id: 'b1',
@@ -69,7 +69,7 @@ describe('IDB v12: photos field on BookmarkRecord', () => {
 
     const opened = await initDB()
     db = opened as unknown as IDBPDatabase<unknown>
-    expect(opened.version).toBe(DB_VERSION)
+    expect(opened.version).toBe(12)
     const read = (await (db as IDBPDatabase<unknown>).get('bookmarks', 'b-legacy')) as
       | Record<string, unknown>
       | undefined

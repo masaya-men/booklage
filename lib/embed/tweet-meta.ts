@@ -1,4 +1,4 @@
-import type { TweetMeta, MediaSlot } from './types'
+import type { TweetMeta } from './types'
 
 /**
  * Booklage's CORS-friendly proxy for `cdn.syndication.twimg.com`.
@@ -75,68 +75,31 @@ export function parseTweetData(raw: unknown): TweetMeta | null {
   if (!r.id_str || (!r.text && !r.full_text)) return null
 
   const text = r.full_text ?? r.text ?? ''
+  const photos = r.photos ?? []
+  const photo = photos[0]
+  const photoUrls = photos.map((p) => p.url)
+  const video = r.mediaDetails?.find((m) => m.type === 'video')
   const isPoll = r.card?.name?.includes('poll') ?? false
-
-  // Build mediaSlots from mediaDetails (the canonical API order). When
-  // mediaDetails is absent (older syndication payload shape), fall back to
-  // the simpler `photos` array.
-  const mediaSlots: MediaSlot[] = []
-  if (r.mediaDetails && r.mediaDetails.length > 0) {
-    for (const m of r.mediaDetails) {
-      if (m.type === 'video') {
-        const videoUrl = pickBestMp4(m.video_info?.variants)
-        if (!videoUrl || !m.media_url_https) continue  // silent drop — see test
-        const aspect = m.original_info
-          ? m.original_info.width / m.original_info.height
-          : undefined
-        mediaSlots.push({
-          type: 'video',
-          url: m.media_url_https,
-          videoUrl,
-          aspect,
-        })
-      } else if (m.type === 'photo' && m.media_url_https) {
-        mediaSlots.push({ type: 'photo', url: m.media_url_https })
-      }
-      // Unknown types silently skipped.
-    }
-  } else if (r.photos && r.photos.length > 0) {
-    for (const p of r.photos) {
-      mediaSlots.push({ type: 'photo', url: p.url })
-    }
-  }
-
-  // Derived legacy fields — kept for backward compatibility with existing
-  // callers (ImageCard / Lightbox / BoardRoot backfill). To be deprecated in
-  // a later cleanup spec once all reads migrate to mediaSlots.
-  const firstPhoto = mediaSlots.find((s) => s.type === 'photo')
-  const firstVideo = mediaSlots.find((s) => s.type === 'video')
-  const photoUrls = mediaSlots.filter((s) => s.type === 'photo').map((s) => s.url)
-
-  // photoAspectRatio: keep using `photos[0].width/height` if available, else
-  // omit. parseTweetData's older callers used this as a thumbnail aspect
-  // hint and we can keep that intact without taxing the mediaSlots design.
-  const photoAspect = r.photos?.[0]
-    ? r.photos[0].width / r.photos[0].height
-    : undefined
+  const videoUrl = pickBestMp4(video?.video_info?.variants)
 
   return {
     id: r.id_str,
     text,
-    hasPhoto: Boolean(firstPhoto),
-    hasVideo: Boolean(firstVideo),
+    hasPhoto: Boolean(photo),
+    hasVideo: Boolean(video),
     hasPoll: isPoll,
     hasQuotedTweet: Boolean(r.quoted_tweet),
-    photoAspectRatio: photoAspect,
-    videoAspectRatio: firstVideo?.aspect,
-    photoUrl: firstPhoto?.url,
+    photoAspectRatio: photo ? photo.width / photo.height : undefined,
+    videoAspectRatio: video?.original_info
+      ? video.original_info.width / video.original_info.height
+      : undefined,
+    photoUrl: photo?.url,
     photoUrls,
-    videoPosterUrl: firstVideo?.url,
-    videoUrl: firstVideo?.videoUrl,
+    videoPosterUrl: video?.media_url_https,
+    videoUrl,
     authorName: r.user?.name ?? '',
     authorHandle: r.user?.screen_name ?? '',
     authorAvatar: r.user?.profile_image_url_https,
     createdAt: r.created_at,
-    mediaSlots,
   }
 }
