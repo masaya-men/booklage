@@ -110,6 +110,18 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
       {/* Reel-only tint dims the area where IG's printed play icon usually
           sits, neutralising it without adding our own loud overlay. */}
       {isReel && <div className={styles.tintInstagramReel} aria-hidden="true" />}
+      {hasMultiple && (
+        <div className={styles.multiImageDots} aria-hidden="true">
+          {photos.map((_, i) => (
+            <span
+              key={i}
+              data-testid="multi-image-dot"
+              data-active={i === imageIdx ? 'true' : 'false'}
+              className={styles.multiImageDot}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

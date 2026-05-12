@@ -114,3 +114,42 @@ describe('ImageCard — multi-image hover swap', () => {
     expect(img.getAttribute('src')).toBe('https://example.com/0.jpg')
   })
 })
+
+describe('ImageCard — dot indicator', () => {
+  it('renders N dots when photos.length > 1', () => {
+    render(<ImageCard item={baseItem} displayMode="visual" cardWidth={240} cardHeight={240} />)
+    const dots = screen.getAllByTestId('multi-image-dot')
+    expect(dots).toHaveLength(4)
+  })
+
+  it('first dot is active by default; pointer-move activates corresponding dot', () => {
+    const { container } = render(
+      <ImageCard item={baseItem} displayMode="visual" cardWidth={240} cardHeight={240} />,
+    )
+    const card = container.firstChild as HTMLElement
+    card.getBoundingClientRect = (): DOMRect => ({
+      left: 0, top: 0, right: 240, bottom: 240,
+      width: 240, height: 240, x: 0, y: 0, toJSON: () => ({}),
+    } as DOMRect)
+
+    let dots = screen.getAllByTestId('multi-image-dot')
+    expect(dots[0].dataset.active).toBe('true')
+
+    fireEvent.pointerMove(card, { clientX: 200, clientY: 100 })  // → idx 3
+    dots = screen.getAllByTestId('multi-image-dot')
+    expect(dots[3].dataset.active).toBe('true')
+    expect(dots[0].dataset.active).toBe('false')
+  })
+
+  it('does NOT render dots when single photo', () => {
+    const single: BoardItem = { ...baseItem, photos: ['only.jpg'] }
+    render(<ImageCard item={single} displayMode="visual" cardWidth={240} cardHeight={240} />)
+    expect(screen.queryAllByTestId('multi-image-dot')).toHaveLength(0)
+  })
+
+  it('does NOT render dots when photos undefined', () => {
+    const none: BoardItem = { ...baseItem, photos: undefined }
+    render(<ImageCard item={none} displayMode="visual" cardWidth={240} cardHeight={240} />)
+    expect(screen.queryAllByTestId('multi-image-dot')).toHaveLength(0)
+  })
+})

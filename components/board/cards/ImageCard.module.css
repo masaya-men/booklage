@@ -42,3 +42,38 @@
     transparent 60%
   );
 }
+
+/* I-07: multi-image hover dots. Hover-revealed at the card's bottom edge,
+ * showing the photo count and current index. pointer-events: none so the
+ * card's hover zone is not interrupted. */
+.multiImageDots {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  z-index: 5;
+}
+
+.imageCard:hover .multiImageDots {
+  opacity: 1;
+}
+
+.multiImageDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  transition: background 150ms ease-out, transform 150ms ease-out;
+}
+
+.multiImageDot[data-active='true'] {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.2);
+}
