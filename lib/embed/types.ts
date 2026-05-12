@@ -46,6 +46,11 @@ export type TweetMeta = {
   readonly authorAvatar?: string
   readonly authorName: string
   readonly authorHandle: string
+  /** v13: 統一 media 配列。 mediaDetails 順序通りで video / photo を含む。 photoUrl /
+   *  photoUrls / videoUrl 等は本 field からの派生で計算され、 後方互換のため引き続き
+   *  公開される (数ヶ月後別 spec で deprecate)。 mix tweet では length > 1 かつ
+   *  type='video' と type='photo' が混在する。 */
+  readonly mediaSlots?: readonly MediaSlot[]
   /** Tweet creation timestamp in ISO 8601 (e.g. "2026-05-02T22:07:00Z"). */
   readonly createdAt?: string
 }
