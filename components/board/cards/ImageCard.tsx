@@ -19,6 +19,11 @@ const ASPECT_EPSILON = 0.005
 export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const imgRef = useRef<HTMLImageElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  // I-07: lazy-preload all photos on first hover. After the user enters
+  // the card once, subsequent swaps hit the browser HTTP cache instantly.
+  // Eager preload at board mount is intentionally avoided to protect PiP
+  // and Lightbox bandwidth.
+  const preloadedRef = useRef<boolean>(false)
   const [imageIdx, setImageIdx] = useState<number>(0)
 
   const urlType = detectUrlType(item.url)
@@ -44,6 +49,15 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const handlePointerMove = useCallback(
     (e: PointerEvent<HTMLDivElement>): void => {
       if (!hasMultiple) return
+      if (!preloadedRef.current) {
+        // Fire-and-forget: kick off Image() for photos[1..N-1]. photos[0] is
+        // already in the DOM <img>.
+        for (let i = 1; i < photos.length; i++) {
+          const img = new Image()
+          img.src = photos[i]
+        }
+        preloadedRef.current = true
+      }
       const el = cardRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
@@ -54,7 +68,7 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
       const idx = rawIdx >= photos.length ? photos.length - 1 : rawIdx < 0 ? 0 : rawIdx
       setImageIdx((prev) => (prev === idx ? prev : idx))
     },
-    [hasMultiple, photos.length],
+    [hasMultiple, photos],
   )
 
   const handlePointerLeave = useCallback((): void => {
