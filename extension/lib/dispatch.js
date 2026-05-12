@@ -35,15 +35,18 @@ async function extractOgpFromTab(tabId, overrideUrl, ogpFromBookmarklet) {
     func: () => {
       const m = (s) => { const e = document.querySelector(s); return e ? e.getAttribute('content') || '' : '' }
       const k = (s) => { const e = document.querySelector(s); return e ? e.getAttribute('href') || '' : '' }
+      const r = (h, b) => {
+        if (!h) return ''
+        if (/^https?:\/\//i.test(h)) return h
+        if (h.startsWith('//')) return `https:${h}`
+        try { return new URL(h, b).href } catch { return '' }
+      }
       const url = location.href
       const title = m('meta[property="og:title"]') || document.title || url
-      const image = m('meta[property="og:image"]') || m('meta[name="twitter:image"]') || ''
+      const image = r(m('meta[property="og:image"]') || m('meta[name="twitter:image"]') || '', url)
       const description = (m('meta[property="og:description"]') || m('meta[name="description"]') || '').slice(0, 200)
       const siteName = m('meta[property="og:site_name"]') || location.hostname
-      let favicon = k('link[rel="icon"]') || k('link[rel="shortcut icon"]') || '/favicon.ico'
-      if (favicon && !/^https?:/.test(favicon)) {
-        try { favicon = new URL(favicon, url).href } catch { favicon = '' }
-      }
+      const favicon = r(k('link[rel="icon"]') || k('link[rel="shortcut icon"]') || '/favicon.ico', url)
       return { url, title, image, description, siteName, favicon }
     },
   })

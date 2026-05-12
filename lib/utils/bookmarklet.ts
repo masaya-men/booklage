@@ -1,3 +1,5 @@
+import { resolveMaybeRelative } from './url-resolve'
+
 export interface OgpData {
   readonly title: string
   readonly image: string
@@ -19,17 +21,12 @@ export function extractOgpFromDocument(doc: Document): OgpData {
 
   const url = doc.location.href
   const title = meta('meta[property="og:title"]') || doc.title || url
-  const image = meta('meta[property="og:image"]') || meta('meta[name="twitter:image"]') || ''
+  const rawImage = meta('meta[property="og:image"]') || meta('meta[name="twitter:image"]') || ''
+  const image = resolveMaybeRelative(rawImage, url)
   const description = (meta('meta[property="og:description"]') || meta('meta[name="description"]') || '').slice(0, 200)
   const siteName = meta('meta[property="og:site_name"]') || doc.location.hostname
-  let favicon = link('link[rel="icon"]') || link('link[rel="shortcut icon"]') || '/favicon.ico'
-  if (favicon && !/^https?:/.test(favicon)) {
-    try {
-      favicon = new URL(favicon, doc.location.href).href
-    } catch {
-      favicon = ''
-    }
-  }
+  const rawFavicon = link('link[rel="icon"]') || link('link[rel="shortcut icon"]') || '/favicon.ico'
+  const favicon = resolveMaybeRelative(rawFavicon, url)
 
   return { title, image, description, siteName, favicon, url }
 }
@@ -65,7 +62,7 @@ export function extractOgpFromDocument(doc: Document): OgpData {
  *
  * Keep this in sync with extractOgpFromDocument.
  */
-const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,m=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},k=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},u=l.href,t=m('meta[property="og:title"]')||d.title||u,i=m('meta[property="og:image"]')||m('meta[name="twitter:image"]')||'',ds=(m('meta[property="og:description"]')||m('meta[name="description"]')||'').slice(0,200),sn=m('meta[property="og:site_name"]')||l.hostname,f=k('link[rel="icon"]')||k('link[rel="shortcut icon"]')||'/favicon.ico';if(f&&!/^https?:/.test(f)){try{f=new URL(f,u).href}catch(e){f=''}}if(d.documentElement&&d.documentElement.dataset&&d.documentElement.dataset.booklageExtension==='1'){var nc='b'+Date.now()+Math.random().toString(36).slice(2,7);window.postMessage({type:'booklage:save-via-extension',ogp:{url:u,title:t,image:i,description:ds,siteName:sn,favicon:f},nonce:nc},'*');return}var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f}),W=200,H=160;window.open('__APP_URL__/save?'+p.toString(),'booklage-save','width='+W+',height='+H+',left='+Math.max(0,screen.availWidth-W-20)+',top='+Math.max(0,screen.availHeight-H-20)+',toolbar=0,menubar=0,location=0,status=0,resizable=0,scrollbars=0');var h=d.createElement('div');h.style.cssText='all:initial;position:fixed;top:16px;right:16px;z-index:2147483647';d.body.appendChild(h);var sh=h.attachShadow?h.attachShadow({mode:'closed'}):h,P=d.createElement('div');P.style.cssText='padding:10px 16px;border-radius:20px;background:rgba(18,18,22,.92);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 24px rgba(0,0,0,.32);font:500 13px system-ui,sans-serif;color:rgba(255,255,255,.94);opacity:0;transition:opacity .2s';P.textContent='Booklage に保存中…';sh.appendChild(P);setTimeout(function(){P.style.opacity='1'},20);setTimeout(function(){P.textContent='Booklage に保存しました ✓'},500);setTimeout(function(){P.style.opacity='0'},2200);setTimeout(function(){try{d.body.removeChild(h)}catch(e){}},2500)})();`
+const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,m=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},k=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},r=function(h,b){if(!h)return'';if(/^https?:\\/\\//i.test(h))return h;if(h.indexOf('//')===0)return'https:'+h;try{return new URL(h,b).href}catch(e){return''}},u=l.href,t=m('meta[property="og:title"]')||d.title||u,i=r(m('meta[property="og:image"]')||m('meta[name="twitter:image"]')||'',u),ds=(m('meta[property="og:description"]')||m('meta[name="description"]')||'').slice(0,200),sn=m('meta[property="og:site_name"]')||l.hostname,f=r(k('link[rel="icon"]')||k('link[rel="shortcut icon"]')||'/favicon.ico',u);if(d.documentElement&&d.documentElement.dataset&&d.documentElement.dataset.booklageExtension==='1'){var nc='b'+Date.now()+Math.random().toString(36).slice(2,7);window.postMessage({type:'booklage:save-via-extension',ogp:{url:u,title:t,image:i,description:ds,siteName:sn,favicon:f},nonce:nc},'*');return}var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f}),W=200,H=160;window.open('__APP_URL__/save?'+p.toString(),'booklage-save','width='+W+',height='+H+',left='+Math.max(0,screen.availWidth-W-20)+',top='+Math.max(0,screen.availHeight-H-20)+',toolbar=0,menubar=0,location=0,status=0,resizable=0,scrollbars=0');var h=d.createElement('div');h.style.cssText='all:initial;position:fixed;top:16px;right:16px;z-index:2147483647';d.body.appendChild(h);var sh=h.attachShadow?h.attachShadow({mode:'closed'}):h,P=d.createElement('div');P.style.cssText='padding:10px 16px;border-radius:20px;background:rgba(18,18,22,.92);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 24px rgba(0,0,0,.32);font:500 13px system-ui,sans-serif;color:rgba(255,255,255,.94);opacity:0;transition:opacity .2s';P.textContent='Booklage に保存中…';sh.appendChild(P);setTimeout(function(){P.style.opacity='1'},20);setTimeout(function(){P.textContent='Booklage に保存しました ✓'},500);setTimeout(function(){P.style.opacity='0'},2200);setTimeout(function(){try{d.body.removeChild(h)}catch(e){}},2500)})();`
 
 /**
  * Generate the `javascript:` URI for the Booklage bookmarklet.
