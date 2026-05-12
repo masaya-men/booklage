@@ -969,14 +969,6 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           {tweetId
             ? <TweetText item={view} meta={tweetMeta} />
             : <DefaultText item={view} host={host} />}
-          <a
-            href={view.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.sourceLink}
-          >
-            {t('board.lightbox.openSource')} →
-          </a>
         </div>
       </div>
     </div>
@@ -1055,20 +1047,40 @@ function DefaultText({
     const { byline, caption, meta } = cleanInstagramText(item)
     return (
       <>
-        <h1 id="lightbox-title" className={styles.bylineHeading}>
+        <h1 id="lightbox-title" className={styles.bylineHeading} data-reveal-stage="1">
           {byline ? `${byline} on Instagram` : 'Instagram'}
         </h1>
-        <p className={styles.captionBody}>{caption}</p>
-        {meta && <div className={styles.meta}><span>{meta}</span></div>}
+        <p className={styles.captionBody} data-reveal-stage="2">{caption}</p>
+        <div className={styles.metaCtaGroup} data-reveal-stage="3">
+          {meta && <div className={styles.meta}><span>{meta}</span></div>}
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.sourceLink}
+          >
+            {t('board.lightbox.openSource')} →
+          </a>
+        </div>
       </>
     )
   }
 
   return (
     <>
-      <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
-      {item.description && <p className={styles.description}>{item.description}</p>}
-      <div className={styles.meta}>{host && <span>{host}</span>}</div>
+      <h1 id="lightbox-title" className={styles.title} data-reveal-stage="1">{item.title}</h1>
+      {item.description && <p className={styles.description} data-reveal-stage="2">{item.description}</p>}
+      <div className={styles.metaCtaGroup} data-reveal-stage="3">
+        <div className={styles.meta}>{host && <span>{host}</span>}</div>
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.sourceLink}
+        >
+          {t('board.lightbox.openSource')} →
+        </a>
+      </div>
     </>
   )
 }
@@ -1350,7 +1362,7 @@ function TweetText({
   return (
     <>
       {(authorName || authorHandle || meta?.authorAvatar) && (
-        <div className={styles.tweetAuthor}>
+        <div className={styles.tweetAuthor} data-reveal-stage="1">
           {meta?.authorAvatar && (
             <img
               src={meta.authorAvatar}
@@ -1364,7 +1376,17 @@ function TweetText({
           </div>
         </div>
       )}
-      <p className={styles.tweetBody}>{text}</p>
+      <p className={styles.tweetBody} data-reveal-stage="2">{text}</p>
+      <div className={styles.metaCtaGroup} data-reveal-stage="3">
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.sourceLink}
+        >
+          {t('board.lightbox.openSource')} →
+        </a>
+      </div>
     </>
   )
 }
