@@ -529,6 +529,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
   useEffect(() => {
     if (!identity) return
     const onKey = (e: KeyboardEvent): void => {
+      if (closingRef.current) return
       const ae = document.activeElement
       const tag = ae?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
@@ -564,6 +565,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
   useEffect(() => {
     if (!identity || !nav) return
     const onWheel = (e: WheelEvent): void => {
+      // Skip while a close tween is in progress: the user has committed to
+      // dismissing this lightbox, so any wheel they fire in the next ~500ms
+      // is residual scroll intent for the board, not nav within the
+      // lightbox. Without this guard the wheel handler would invoke
+      // nav.onNav() and a flash of next/prev card animation slips in.
+      if (closingRef.current) return
       const dx = e.deltaX
       const dy = e.deltaY
       const dominant = Math.abs(dx) > Math.abs(dy) ? dx : dy
