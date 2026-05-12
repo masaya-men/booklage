@@ -193,6 +193,14 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     setTweetImageIdx(0)
   }, [view?.bookmarkId])
 
+  // Photos source of truth at the Lightbox level — used by the frame-level
+  // dot indicator render (I-07-#4: dots live OUTSIDE .media so the photo
+  // can fill the media envelope without overflow clipping). Mirrors the
+  // resolution order used inside TweetMedia (meta first, then IDB backfill).
+  const tweetPhotos: readonly string[] = (tweetMeta?.photoUrls?.length ?? 0) > 0
+    ? tweetMeta!.photoUrls!
+    : (view?.photos ?? [])
+
   // Lazy-load the R3F flip scene module on idle. This keeps the
   // ~250 KB three.js + @react-three/fiber payload OUT of the initial
   // bundle — first paint is unaffected — and prefetches it during the
@@ -917,10 +925,22 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
                 item={view}
                 meta={tweetMeta}
                 imageIdx={tweetImageIdx}
-                onImageIdxChange={setTweetImageIdx}
               />
             : <LightboxMedia item={view} />}
         </div>
+        {/* I-07-#4: multi-image dots live at .frame level (sibling of
+            .media) — absolutely positioned in the chrome-clearance zone
+            just below the media envelope. Rendering them inside .media
+            via a flex column wrapper (the old .tweetMediaCarousel) made
+            the carousel exceed .media's max-height and got the image's
+            top edge AND the dots clipped by overflow:hidden. */}
+        {tweetId && tweetPhotos.length > 1 && (
+          <LightboxImageDots
+            count={tweetPhotos.length}
+            currentIdx={tweetImageIdx}
+            onJump={setTweetImageIdx}
+          />
+        )}
         <div ref={textRef} className={styles.text}>
           {tweetId
             ? <TweetText item={view} meta={tweetMeta} />
@@ -1042,15 +1062,21 @@ function TweetMedia({
   item,
   meta,
   imageIdx,
-  onImageIdxChange,
 }: {
   readonly item: LightboxItem
   readonly meta: TweetMeta | null
   readonly imageIdx: number
-  readonly onImageIdxChange: (idx: number) => void
 }): ReactNode {
   // Carousel index is lifted to the Lightbox parent so the window-level
   // keydown handler (↑/↓) can drive it. I-07 Phase 1.
+  //
+  // Note: multi-image dots are rendered at the .frame level (sibling of
+  // .media), NOT inside this component. Wrapping img + dots in a flex
+  // column here caused the carousel total height to exceed .media's
+  // max-height envelope (708 + gap 12 + dots 20 = 740 vs envelope 708),
+  // and .media's align-items:center + overflow:hidden split the 32px
+  // overflow to 16px top / 16px bottom — clipping the image's top edge
+  // AND most of the dots. See I-07-#4 fix (2026-05-12).
 
   if (meta?.videoUrl) {
     return <TweetVideoPlayer item={item} meta={meta} />
@@ -1068,18 +1094,7 @@ function TweetMedia({
     : (meta?.photoUrl ?? item.thumbnail)
 
   if (photoUrl) {
-    return (
-      <div className={styles.tweetMediaCarousel}>
-        <img src={photoUrl} alt={item.title} />
-        {hasMultiple && (
-          <LightboxImageDots
-            count={photos.length}
-            currentIdx={imageIdx}
-            onJump={onImageIdxChange}
-          />
-        )}
-      </div>
-    )
+    return <img src={photoUrl} alt={item.title} />
   }
   if (meta?.text) {
     return <p className={styles.tweetTextOnly}>{meta.text}</p>
