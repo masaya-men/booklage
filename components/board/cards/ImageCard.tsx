@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { DisplayMode } from '@/lib/board/types'
 import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
@@ -18,6 +18,9 @@ const ASPECT_EPSILON = 0.005
 
 export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const imgRef = useRef<HTMLImageElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [imageIdx, setImageIdx] = useState<number>(0)
+
   const urlType = detectUrlType(item.url)
   // Instagram-reel-only treatment: soften the JPEG-baked play icon that
   // Instagram bakes into the og:image so it doesn't visually compete with
@@ -28,6 +31,35 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   // what tells the user "this is a video"; the tint just neutralises
   // the rogue printed icon underneath.
   const isReel = urlType === 'instagram' && isInstagramReel(item.url)
+
+  // I-07 Phase 1: hover-position image swap for multi-image posts.
+  // photos[0] equals thumbnail; for single-photo (or undefined) items
+  // hasMultiple is false and displayedSrc falls through to item.thumbnail —
+  // identical to the prior behaviour. State is local to ImageCard so
+  // pointermove doesn't trigger a parent re-render storm.
+  const photos = item.photos ?? []
+  const hasMultiple = photos.length > 1
+  const displayedSrc = hasMultiple ? photos[imageIdx] : item.thumbnail
+
+  const handlePointerMove = useCallback(
+    (e: PointerEvent<HTMLDivElement>): void => {
+      if (!hasMultiple) return
+      const el = cardRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      if (rect.width <= 0) return
+      const raw = (e.clientX - rect.left) / rect.width
+      const ratio = raw < 0 ? 0 : raw > 1 ? 1 : raw
+      const rawIdx = Math.floor(ratio * photos.length)
+      const idx = rawIdx >= photos.length ? photos.length - 1 : rawIdx < 0 ? 0 : rawIdx
+      setImageIdx((prev) => (prev === idx ? prev : idx))
+    },
+    [hasMultiple, photos.length],
+  )
+
+  const handlePointerLeave = useCallback((): void => {
+    setImageIdx((prev) => (prev === 0 ? prev : 0))
+  }, [])
 
   // Re-measure intrinsic aspect from natural width/height once the thumbnail
   // loads. This corrects stale aspectRatio values written by previous
@@ -59,13 +91,18 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
     : styles.thumb
 
   return (
-    <div className={styles.imageCard}>
-      {item.thumbnail && (
+    <div
+      ref={cardRef}
+      className={styles.imageCard}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+    >
+      {displayedSrc && (
         <img
           ref={imgRef}
           className={thumbClass}
-          src={item.thumbnail}
-          alt=""
+          src={displayedSrc}
+          alt={item.title}
           draggable={false}
           loading="lazy"
         />
