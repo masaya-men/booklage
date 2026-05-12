@@ -169,6 +169,13 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     return (): void => { cancelled = true }
   }, [tweetId])
 
+  // I-07: image carousel index — lifted from TweetMedia so the Lightbox-
+  // level keydown handler can drive it via ↑ / ↓.
+  const [tweetImageIdx, setTweetImageIdx] = useState<number>(0)
+  useEffect(() => {
+    setTweetImageIdx(0)
+  }, [view?.bookmarkId])
+
   // Lazy-load the R3F flip scene module on idle. This keeps the
   // ~250 KB three.js + @react-three/fiber payload OUT of the initial
   // bundle — first paint is unaffected — and prefetches it during the
@@ -381,18 +388,37 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
   // hijacking text editing within an embed. Esc handler intentionally
   // does NOT skip on input focus — close should always work.
   useEffect(() => {
-    if (!identity || !nav) return
+    if (!identity) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
       const ae = document.activeElement
       const tag = ae?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        // I-07: image carousel nav inside multi-image tweets. Falls
+        // back to a no-op when the current item is not a multi-image
+        // tweet (the photo array length check handles this), letting
+        // the browser's default scroll behavior run.
+        const photos = tweetMeta?.photoUrls ?? view?.photos ?? []
+        if (photos.length <= 1) return
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.key === 'ArrowDown') {
+          setTweetImageIdx((idx) => Math.min(photos.length - 1, idx + 1))
+        } else {
+          setTweetImageIdx((idx) => Math.max(0, idx - 1))
+        }
+        return
+      }
+
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      if (!nav) return
       e.stopPropagation()
       nav.onNav(e.key === 'ArrowLeft' ? -1 : 1)
     }
     window.addEventListener('keydown', onKey)
     return (): void => window.removeEventListener('keydown', onKey)
-  }, [identity, nav])
+  }, [identity, nav, tweetMeta, view])
 
   // Mouse wheel nav. Both vertical (deltaY) and horizontal (deltaX) are
   // accepted — trackpad two-finger swipe and traditional wheel both work.
@@ -870,7 +896,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         </button>
         <div ref={mediaRef} className={styles.media}>
           {tweetId
-            ? <TweetMedia item={view} meta={tweetMeta} />
+            ? <TweetMedia
+                item={view}
+                meta={tweetMeta}
+                imageIdx={tweetImageIdx}
+                onImageIdxChange={setTweetImageIdx}
+              />
             : <LightboxMedia item={view} />}
         </div>
         <div ref={textRef} className={styles.text}>
@@ -993,17 +1024,16 @@ function DefaultText({
 function TweetMedia({
   item,
   meta,
+  imageIdx,
+  onImageIdxChange,
 }: {
   readonly item: LightboxItem
   readonly meta: TweetMeta | null
+  readonly imageIdx: number
+  readonly onImageIdxChange: (idx: number) => void
 }): ReactNode {
-  // Carousel state: index into the photos array for this tweet. Resets to
-  // 0 whenever the underlying item changes (chevron-nav between cards).
-  // I-07 Phase 1.
-  const [imageIdx, setImageIdx] = useState<number>(0)
-  useEffect(() => {
-    setImageIdx(0)
-  }, [item.bookmarkId])
+  // Carousel index is lifted to the Lightbox parent so the window-level
+  // keydown handler (↑/↓) can drive it. I-07 Phase 1.
 
   if (meta?.videoUrl) {
     return <TweetVideoPlayer item={item} meta={meta} />
@@ -1028,7 +1058,7 @@ function TweetMedia({
           <LightboxImageDots
             count={photos.length}
             currentIdx={imageIdx}
-            onJump={setImageIdx}
+            onJump={onImageIdxChange}
           />
         )}
       </div>
