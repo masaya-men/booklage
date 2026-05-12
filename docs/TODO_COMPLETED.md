@@ -220,6 +220,114 @@
 
 ---
 
+## セッション 19 (2026-05-13) — I-07-#5 Lightbox テキスト reveal アニメ
+
+### 全体の流れ
+
+Phase A 忠実コピー路線の最後の細部、 Lightbox テキストパネルの reveal アニメ。 ユーザー意思で導入決定 (destefanis 本家確認は当初スキップ)。 brainstorming で 5 軸決定 → spec / plan 書き → subagent-driven で 9 task 実装 → 本番 deploy。 deploy 後のユーザー体感フィードバックを 3 回受けて polish iteration、 最終的に **destefanis 完全準拠 + 数値調整版** で着地。
+
+### Phase 1: 初版実装 (9 task, subagent-driven-development)
+
+**brainstorming で決定 (5 軸)**:
+- 構造: 3 段 stagger (見出し → 本文 → meta+CTA)
+- mechanism: translateY + clip-path + opacity 同時
+- start: media FLIP 着地 + 150ms 一呼吸
+- duration: 500ms / stagger: 150ms / power3.out
+- prefers-reduced-motion: opacity-only fallback
+
+**実装の構造**:
+- `app/globals.css :root` に 5 デザイントークン追加 (`--lightbox-text-reveal-*`)
+- `components/board/Lightbox.module.css` に `.metaCtaGroup` wrapper class 追加
+- `components/board/Lightbox.tsx` で:
+  - JSX に `data-reveal-stage` 属性を 9 箇所追加 (3 text component × 3 stage)
+  - `sourceLink` を main render から各 text component 内 (`metaCtaGroup` 内) に移動
+  - file-level helper 5 関数追加 (`readRevealTokens` / `collectStageEls` / `setStageInitialState` / `appendRevealTimeline` / `getPrefersReducedMotion`) + `RevealTokens` 型
+  - open useLayoutEffect の textEl 素 fade を stage 単位の mask reveal に置換
+  - close handler に stage tween kill を追加
+  - nav useLayoutEffect の onComplete で reveal を再発火
+
+**実装 commit (9 本)**:
+- `49fe137` feat(tokens): add lightbox text mask-reveal-up tunable vars
+- `7397e8b` feat(lightbox): add .metaCtaGroup wrapper class for stage 3 reveal
+- `0ac69ea` feat(lightbox): add data-reveal-stage markers + move sourceLink into text components
+- `971c688` feat(lightbox): add reveal token reader + stage helpers
+- `43d40b3` feat(lightbox): replace text fade with 3-stage mask-reveal-up on open
+- `703e19e` fix(lightbox): kill in-flight stage reveal tweens on close
+- `da87e15` feat(lightbox): re-fire mask-reveal-up on nav slide landing
+
+各 task は subagent (haiku / sonnet 使い分け) → spec compliance review → code quality review → 次 task の 2-stage 検証で実装。 全 task で tsc clean / 453 vitest pass。
+
+### Phase 2: polish iterations (ユーザー体感フィードバックで 3 回回す)
+
+**iteration 1 (v1 deploy 直後の fb)**: ユーザー報告 「がたっがたっと不格好に出てきている、 段落で区切らず全部まとめて出してしまっていい、 テキストのアニメーションがほとんど感じられない」
+
+原因分析: 18px × 3 要素 × 150ms 間隔 stagger で各要素の動きが小さく断続的に重なって gata-gata に感じる。 翻って動きが薄味。
+
+対応 (`b9f1213`): 構造を 1 ブロック化、 数値強化:
+- duration 0.5s → 0.7s
+- translateY 18px → 32px
+- pause 0.15s → 0s (即発火)
+- stagger 0.15s → 0s (1 要素なので無効)
+- `collectStageEls` を `[textEl]` を返す形に書き換え、 JSX から `data-reveal-stage` 属性を 9 箇所削除
+
+**iteration 2 (v2 deploy 後の fb)**: 「カードがライトボックスに配置されてからテキストが出るまで ストップが残っている」、 また 「参考 (destefanis) をしっかり確認してほしい」
+
+destefanis 本家 (GitHub `destefanis/twitter-bookmarks-grid`) のソース実読:
+- text 専用アニメは `.lightbox-info` の CSS transition (opacity + translateY **8px**、 duration **0.4s ease**、 `transition-delay: 0.25s`)
+- card は Motion One spring (0.45-0.7s) で click 位置から center へ morph
+- 重要: **text reveal は card animation の最中** (transition-delay 0.25s から開始 = spring の 35-55% 時点) に発火。 card と text がオーバーラップするので 「カードが止まってから text が出るまでの隙」 が存在しない
+- clip-path mask は **使っていない** (translateY + opacity のみ)
+
+対応 (`59c7087`): destefanis 完全準拠の値に揃え:
+- duration 0.7s → 0.4s
+- translateY 32px → 8px
+- easing power3.out → power2.out
+- start タイミング `dur + pause` → `dur * 0.5 + pause` (card 中盤から overlap)
+- `setStageInitialState` と `appendRevealTimeline` から clip-path 撤去 (translateY + opacity のみ)
+- close handler の stage kill コメントを clip-path 撤去後の文脈に更新
+
+**iteration 3 (v3 deploy 後の fb)**: 「もうちょっとだけアニメーションが動いていることを感じたい」 (= 上品 + 動いている感のバランスを少し動き寄りに)
+
+対応 (`53e4040`): destefanis から微増:
+- translateY 8px → **16px**
+- duration 0.4s → **0.6s**
+- start タイミング (`dur * 0.5` overlap) は維持 → ストップは復活しない
+- easing / pause / stagger は変えない
+
+→ ユーザー OK 「良い感じでした」。
+
+### 副次的な学び / 検証
+
+- destefanis source 実読は memory の `reference_destefanis_visual_spec.md` の lightbox 章 (line 55-59) を補完: text reveal の挙動は本家でも CSS transition のみ・ overlap・ 8px と、 minimalist 路線
+- collectStageEls が `[textEl]` を返す形になったので、 `data-reveal-stage` 属性は不要に。 もし将来 stage 復活させたい場合は JSX に attr を戻し helper を querySelectorAll 形に戻すだけで restore 可能
+- ユーザー体感重視のチューニングは spec の数値固定では届かない 領域 → CSS token 化しておいて 1 行ずつ deploy 試行のサイクルが効く
+
+### 触ったファイル
+
+- `app/globals.css` (line 336-347 周辺) — 5 トークン追加 → 値調整 3 回
+- `components/board/Lightbox.module.css` — `.metaCtaGroup` 追加
+- `components/board/Lightbox.tsx` — file-level helpers + open / nav / close useLayoutEffect の text reveal、 JSX の sourceLink 配置変更
+
+### spec / plan
+
+- spec: `docs/superpowers/specs/2026-05-12-text-mask-reveal-design.md`
+- plan: `docs/superpowers/plans/2026-05-12-text-mask-reveal-up.md`
+
+### 確定値 (本番反映済)
+
+```css
+--lightbox-text-reveal-duration: 0.6s;
+--lightbox-text-reveal-stagger: 0s;
+--lightbox-text-reveal-pause: 0s;
+--lightbox-text-reveal-translate-y: 16px;
+--lightbox-text-reveal-easing: power2.out;
+```
+
+start タイミング (open): `dur * 0.5 + pause` (= media FLIP 着地の中盤、 overlap)
+nav: slide 着地後に `gsap.timeline({ delay: pause })` で reveal 発火
+
+---
+
 ## 完了済バグ (旧 §未対応バグ から移管)
 
 - ~~**B-#4 ムードボード ↔ ライトボックス でカードサイズが異なる**~~ ✅ セッション 10 完全 close (上記セッション 10 narrative 参照)

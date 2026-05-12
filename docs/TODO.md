@@ -20,12 +20,13 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の本番状態 (2026-05-12 セッション 18 末)
+### 直近の本番状態 (2026-05-13 セッション 19 末)
 
-- master HEAD: I-07-#1 (save 時 backfill) 検証完了 + I-07-#2 (hover クロスフェード + brightness lift) 実装 + 本番 deploy 済
-- `https://booklage.pages.dev` = v13 build (IDB v13、 mediaSlots + 380ms クロスフェード + 8% brightness lift)
-- ユーザー実機: **本番で動作確認済** (hover swap 380ms cross-fade + lift OK)
-- 3 つの CSS デザイントークン (`--card-hover-swap-duration` / `-easing` / `-lift-brightness`) で後から数値変更可能
+- master HEAD: I-07-#5 (Lightbox text reveal) 実装 + 3 polish iterations + 本番 deploy 済
+- `https://booklage.pages.dev` = v13 build (IDB v13、 mediaSlots + hover swap polish + text reveal)
+- ユーザー実機: **本番で動作確認済** (destefanis-aligned overlap、 16px / 0.6s / power2.out)
+- 5 つの CSS デザイントークン (`--lightbox-text-reveal-*`) で後から数値変更可能
+- text reveal 開始タイミング: media tween の中盤から (`dur * 0.5 + pause`) で overlap、 「カードが止まってから text が出るまでのストップ」 を排除
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 
@@ -76,10 +77,6 @@ CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてありま
 
 - **B-#13 TopHeader brushup** (memory `project_board_header_brushup.md` 参照)
    - 暫定配置、 将来 brushup 方向: **ScrollMeter を下配置** (Lightbox の表現と統一)
-
-### I-07 Phase 1 改善案件 (セッション 14 末ユーザー報告)
-
-- **I-07-#5 Lightbox テキストパネル mask-reveal-up アニメ** — destefanis 本家挙動要確認
 
 ---
 
