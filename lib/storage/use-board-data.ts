@@ -184,6 +184,16 @@ export function useBoardData(): {
       const db = (await initDB()) as unknown as DbLike
       if (cancelled) return
       dbRef.current = db
+      // One-shot cleanup: heal legacy relative thumbnails to absolute.
+      // Idempotent and cheap when nothing needs fixing.
+      try {
+        const { backfillRelativeThumbnails } = await import('./backfill-relative-thumbnails')
+        const n = await backfillRelativeThumbnails(db as Parameters<typeof backfillRelativeThumbnails>[0])
+        if (n > 0) console.info('[booklage] healed', n, 'relative thumbnails')
+      } catch (e) {
+        console.warn('[booklage] backfill failed (non-fatal):', e)
+      }
+      if (cancelled) return
       const bookmarks = await getAllBookmarks(db as Parameters<typeof getAllBookmarks>[0])
       const cards = (await db.getAll('cards')) as CardRecord[]
       const cardByBookmark = new Map<string, CardRecord>()
