@@ -20,12 +20,12 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の本番状態 (2026-05-12 セッション 17 末)
+### 直近の本番状態 (2026-05-12 セッション 18 末)
 
-- master HEAD: 動画 tweet FLIP 修正 + 縦動画 aspect 修正 + ▶ dot 統一を反映済
+- master HEAD: 動画 tweet FLIP 修正 + 縦動画 aspect 修正 + ▶ dot 統一 + save 時 backfill 検証 (テスト追加のみ)
 - `https://booklage.pages.dev` = v13 build (IDB v13、 mediaSlots あり)
 - ユーザー実機: **全機能動作確認済** (動画 tweet open/close アニメ ✅ / 縦動画 aspect 保持 ✅ / ▶ dot サイズ統一 ✅ / mix tweet hover swap ✅ / auto-pause ✅)
-- セッション 17 で作業習慣 brushup (TODO 縮減 / CURRENT_GOAL.md 新設 / memory トリガー化) も同時実施
+- セッション 18 で I-07-#1 (save 時 backfill) の動作裏付けテスト追加 → 完了扱いに
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 
@@ -79,7 +79,6 @@ CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてありま
 
 ### I-07 Phase 1 改善案件 (セッション 14 末ユーザー報告)
 
-- **I-07-#1 save 時 backfill** — Lightbox open 不要化 (UX 改善大)
 - **I-07-#2 hover 切替演出のリッチ化** — cross-fade / blur / zoom-pan / GSAP micro animation
 - **I-07-#5 Lightbox テキストパネル mask-reveal-up アニメ** — destefanis 本家挙動要確認
 

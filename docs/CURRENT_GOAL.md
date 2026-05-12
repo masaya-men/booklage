@@ -1,24 +1,19 @@
-# 次セッションのゴール (= セッション 18)
+# 次セッションのゴール (= セッション 19)
 
 > このファイルは Claude が維持する。 セッション開始時に Claude が読み、 ユーザーに「これで進めますか」 と 1 行確認。
 
 ---
 
-## ゴール候補 (ユーザーが選ぶ、 または Claude から提案)
+## ゴール候補
 
-セッション 17 で動画 tweet FLIP + ▶ dot 統一 + 作業習慣 brushup までやり切った。 動画 tweet 系の不具合は全部解消。 次の優先度は以下から選ぶ:
+セッション 18 で I-07-#1 (save 時 backfill) は実装済 + 動作裏付けテスト追加で完了。 次の優先度:
 
-**A. I-07-#1 save 時 backfill** (UX 改善大、 効果見えやすい)
-- 新規 X tweet 保存時に syndication API を 1 回叩いて mediaSlots を IDB に書き込む
-- 結果: 初回ボード mount 時に既存ブクマも含めて hover swap / ▶ dot が即出る
-- 現状は Lightbox 開かないと mediaSlots backfill されない
-- 実装場所: `app/save-iframe/SaveIframeClient.tsx` の save 直後、 fire-and-forget で fetchTweetMeta + persistMediaSlots
-
-**B. I-07-#2 hover 切替演出のリッチ化** (デザイン polish)
+**B. I-07-#2 hover 切替演出のリッチ化** (デザイン polish、 推奨)
 - 板上カードを hover してマウス位置で画像切替するときの演出を強化
-- 候補: cross-fade / blur transition / zoom-pan-pan / GSAP micro animation timeline
+- 候補: cross-fade / blur transition / zoom-pan / GSAP micro animation timeline
 - 現状は単純 src swap で味気ない
 - 実装場所: `components/board/cards/ImageCard.tsx`
+- 規模感: 100-200 行 (CSS + JS) + 視覚承認 gate
 
 **C. I-07-#5 Lightbox テキストパネル mask-reveal-up アニメ** (Phase A 忠実コピー方針)
 - Lightbox 右側のテキストパネルが open 時に下から上にスライドして reveal
@@ -32,21 +27,20 @@
 
 **E. AllMarks sizing 哲学移行 Phase 2-6** (`docs/specs/2026-05-12-sizing-migration-spec.md`)
 - 既存 rem ベース text を px 化、 UI 要素を clamp + vw 化
-- ノート PC〜ウルトラワイドまで pixel-perfect 同じ密度で届ける
 
 ## 推奨
 
-A を提案。 理由: ユーザー実機で「現状ボード再 mount しないと dot 出ない」 → 「保存直後から見える」 へ大きな UX 改善になる、 実装も 50 行程度で小さい、 schema 変更なしで安全。
+B を提案。 理由: ユーザーが日常的に体感する hover 切替の質感が上がる、 視覚演出は Phase A 忠実コピー路線とも整合 (destefanis 系の micro animation polish 寄り)、 schema 変更なしで安全。
 
 ## 前提・注意
 
-- 本番状態: master HEAD に動画 tweet FLIP 修正 + 縦動画 aspect 修正 + ▶ dot 統一が反映済
-- IDB v13、 schema bump はもう不要 (mediaSlots は v13 に追加済)
-- 次回 schema bump 系は `feedback_irreversible_pause` + `project_idb_irreversibility` のトリガーに従う
+- 本番状態: master HEAD に save 時 backfill 検証テスト追加 (production code 変更なし)
+- IDB v13、 schema bump はもう不要
+- B は視覚演出なので Claude 単独で完成判断しない。 数値・カーブ調整は実機 screenshot をユーザーに見せて承認 gate (.claude/rules/ui-design.md)
 - ローカル dev 検証必須 (`pnpm dev` + Playwright) → 本番 deploy の順序を厳守
 
 ## 完了したら
 
-1. TODO.md §未対応バグ から該当 entry を消す
+1. TODO.md §I-07 Phase 1 から該当 entry を消す
 2. TODO_COMPLETED.md に narrative 追記
 3. CURRENT_GOAL.md を次のタスクで上書き

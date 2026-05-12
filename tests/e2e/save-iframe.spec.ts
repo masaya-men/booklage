@@ -47,6 +47,100 @@ test.describe('/save-iframe postMessage flow', () => {
     expect((result as { nonce: string }).nonce).toBe('test-nonce-1')
   })
 
+  test('Phase A: save-time backfill writes mediaSlots to IDB for a tweet URL', async ({ page, context }) => {
+    // Mock the syndication proxy so the fire-and-forget fetch resolves
+    // deterministically. Payload mixes 1 video + 1 photo to exercise both
+    // mediaSlot branches in a single assertion.
+    await context.route('**/api/tweet-meta?**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id_str: '99999',
+          text: 'mix tweet',
+          user: { name: 'U', screen_name: 'u' },
+          mediaDetails: [
+            {
+              type: 'video',
+              media_url_https: 'https://pbs.twimg.com/poster.jpg',
+              original_info: { width: 1280, height: 720 },
+              video_info: {
+                variants: [
+                  { content_type: 'video/mp4', bitrate: 832000, url: 'https://video.twimg.com/v.mp4' },
+                ],
+              },
+            },
+            {
+              type: 'photo',
+              media_url_https: 'https://pbs.twimg.com/a.jpg',
+              original_info: { width: 800, height: 600 },
+            },
+          ],
+        }),
+      })
+    })
+
+    await page.goto('/save-iframe')
+    await page.waitForSelector('[data-testid="save-iframe-mounted"]', { state: 'attached' })
+
+    await page.evaluate(() => {
+      const w = globalThis as { __BOOKLAGE_ALLOWED_ORIGINS__?: string[] }
+      w.__BOOKLAGE_ALLOWED_ORIGINS__ = [window.location.origin]
+    })
+
+    const resultPromise = page.evaluate(() => {
+      return new Promise<unknown>((resolve, reject) => {
+        const timer = window.setTimeout(() => reject(new Error('result timeout')), 5000)
+        const listener = (ev: MessageEvent): void => {
+          if ((ev.data as { type?: string } | null)?.type === 'booklage:save:result') {
+            window.clearTimeout(timer)
+            window.removeEventListener('message', listener)
+            resolve(ev.data)
+          }
+        }
+        window.addEventListener('message', listener)
+      })
+    })
+
+    await page.evaluate(() => {
+      window.postMessage({
+        type: 'booklage:save',
+        payload: {
+          url: 'https://x.com/u/status/99999',
+          title: 'Mix Tweet',
+          description: 'desc',
+          image: 'https://pbs.twimg.com/poster.jpg',
+          favicon: 'https://x.com/favicon.ico',
+          siteName: 'X',
+          nonce: 'tweet-save-1',
+        },
+      }, window.location.origin)
+    })
+
+    const result = (await resultPromise) as { ok: boolean; bookmarkId: string }
+    expect(result.ok).toBe(true)
+    const bookmarkId = result.bookmarkId
+
+    // Poll IDB until the fire-and-forget syndication fetch lands. 5s is
+    // generous to absorb route-mock latency + IDB transaction overhead.
+    await expect.poll(async () => {
+      return await page.evaluate(async (id) => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const req = indexedDB.open('booklage-db', 13)
+          req.onsuccess = () => resolve(req.result)
+          req.onerror = () => reject(req.error)
+        })
+        const tx = db.transaction('bookmarks', 'readonly')
+        const get = tx.objectStore('bookmarks').get(id)
+        const bm = await new Promise<{ mediaSlots?: { type: string }[] } | undefined>((resolve, reject) => {
+          get.onsuccess = () => resolve(get.result as never)
+          get.onerror = () => reject(get.error)
+        })
+        return bm?.mediaSlots?.map((s) => s.type) ?? []
+      }, bookmarkId)
+    }, { timeout: 5000, intervals: [100, 200, 400, 800] }).toEqual(['video', 'photo'])
+  })
+
   test('answers booklage:probe with current pipActive state', async ({ page }) => {
     await page.goto('/save-iframe?bookmarklet=1')
     await page.waitForSelector('[data-testid="save-iframe-mounted"]', { state: 'attached' })

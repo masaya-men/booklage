@@ -5,6 +5,18 @@
 
 ---
 
+## セッション 18 (2026-05-12) — I-07-#1 save 時 backfill 検証完了
+
+**判明**: 該当機能はセッション 17 の reapply merge (`2b5f1f3`) で既に master に入っていた。 [SaveIframeClient.tsx:113-126](app/save-iframe/SaveIframeClient.tsx#L113-L126) で fire-and-forget `fetchTweetMeta` → `persistMediaSlots` 実装済。 CURRENT_GOAL.md と TODO.md が古いまま active 扱いで残っていた。
+
+**実施**: 動作裏付けが弱かったので Playwright e2e テストを追加して verify-only で完了扱いに:
+- `tests/e2e/save-iframe.spec.ts` に「Phase A: save-time backfill writes mediaSlots to IDB for a tweet URL」 追加
+- /api/tweet-meta を route mock (video + photo の mix tweet payload)
+- save message post → save:result 受信 → IDB を 5s poll → mediaSlots が `['video', 'photo']` で persist 済を確認
+- 3/3 e2e PASS / 453 unit PASS / tsc clean
+
+**結果**: 保存ボタン押下直後にボードを開いた時点で、 既に mediaSlots が IDB に書き込まれている保証ができた (▶ dot / 複数画像 dot が初回 mount から表示される)。
+
 ## セッション 17 (2026-05-12) — mediaSlots safety net + 動画 tweet FLIP 修正 + 作業習慣 brushup
 
 **前半: mediaSlots safety net + 再 deploy**
