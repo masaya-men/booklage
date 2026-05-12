@@ -789,6 +789,27 @@ export function BoardRoot() {
     return () => observer.disconnect()
   }, [items, persistLinkStatus])
 
+  // Manual refetch — bypasses the 30-day age guard on user request.
+  // Calls defaultFetcher directly (no queue) and immediately persists
+  // the result. Also heals a stale thumbnail when the scraper returns
+  // a better image URL.
+  const manualRevalidate = useCallback(
+    async (bookmarkId: string, url: string): Promise<void> => {
+      const r = await defaultFetcher(url)
+      const now = Date.now()
+      if (r.kind === 'gone') {
+        await persistLinkStatus(bookmarkId, 'gone', now)
+      } else if (r.kind === 'alive') {
+        await persistLinkStatus(bookmarkId, 'alive', now)
+        if (r.data?.image) {
+          await persistThumbnail(bookmarkId, r.data.image, true)
+        }
+      }
+      // 'unknown' → no state change (transient network error — user can retry)
+    },
+    [persistLinkStatus, persistThumbnail],
+  )
+
   const sidebarCounts = useMemo(() => {
     const active = items.filter((i) => !i.isDeleted)
     const deleted = items.filter((i) => i.isDeleted)
@@ -912,6 +933,7 @@ export function BoardRoot() {
                 onCardResizeEnd={handleCardResizeEnd}
                 onCardResetSize={handleCardResetSize}
                 sourceCardId={lightboxSourceItemId}
+                onRevalidate={manualRevalidate}
               />
             </div>
           </InteractionLayer>
