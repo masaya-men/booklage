@@ -15,6 +15,11 @@ export type TweetMeta = {
    *  (which is the common case — X is a SPA and og:image is not in
    *  the static <head>). */
   readonly photoUrl?: string
+  /** All photo URLs for multi-image tweets (X allows up to 4). photoUrls[0]
+   *  always equals photoUrl when present. Empty array for text-only or
+   *  video-only tweets. Persisted to IDB.photos for board-side hover swap.
+   *  (I-07) */
+  readonly photoUrls?: readonly string[]
   /** Video poster image URL (still frame). Same purpose as photoUrl but for
    *  video tweets. Falls back to a representative frame from mediaDetails. */
   readonly videoPosterUrl?: string

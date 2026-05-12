@@ -75,7 +75,9 @@ export function parseTweetData(raw: unknown): TweetMeta | null {
   if (!r.id_str || (!r.text && !r.full_text)) return null
 
   const text = r.full_text ?? r.text ?? ''
-  const photo = r.photos?.[0]
+  const photos = r.photos ?? []
+  const photo = photos[0]
+  const photoUrls = photos.map((p) => p.url)
   const video = r.mediaDetails?.find((m) => m.type === 'video')
   const isPoll = r.card?.name?.includes('poll') ?? false
   const videoUrl = pickBestMp4(video?.video_info?.variants)
@@ -92,6 +94,7 @@ export function parseTweetData(raw: unknown): TweetMeta | null {
       ? video.original_info.width / video.original_info.height
       : undefined,
     photoUrl: photo?.url,
+    photoUrls,
     videoPosterUrl: video?.media_url_https,
     videoUrl,
     authorName: r.user?.name ?? '',
