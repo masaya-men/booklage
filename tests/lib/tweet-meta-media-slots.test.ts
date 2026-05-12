@@ -130,5 +130,9 @@ describe('parseTweetData — mediaSlots (mix tweet)', () => {
     }
     const meta = parseTweetData(raw)
     expect(meta?.mediaSlots).toEqual([{ type: 'photo', url: 'https://pbs.twimg.com/a.jpg' }])
+    // Silent-drop locks in: hasVideo = false even when raw mediaDetails had a
+    // video entry, because the slot itself was dropped (no playable mp4).
+    expect(meta?.hasVideo).toBe(false)
+    expect(meta?.hasPhoto).toBe(true)
   })
 })
