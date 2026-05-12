@@ -71,26 +71,59 @@ test.beforeEach(async ({ page }) => {
 test('board hover swaps thumb across video poster → photo1 → photo2', async ({ page }) => {
   const card = page.locator(`[data-bookmark-id="${MIX_BOOKMARK_ID}"]`)
   await expect(card).toBeVisible()
-  const img = card.locator('img').first()
   const box = await card.boundingBox()
   if (!box) throw new Error('card has no boundingBox')
 
-  // Move pointer to leftmost third → expect poster (slot 0).
+  const layers = card.locator('img')
+  await expect(layers).toHaveCount(3)
+
+  // Move pointer to leftmost third → slot 0 (video poster) active.
   await page.mouse.move(box.x + box.width * 0.1, box.y + box.height / 2)
-  await expect(img).toHaveAttribute('src', /poster\.jpg/)
+  await expect(layers.nth(0)).toHaveAttribute('data-active', 'true')
+  await expect(layers.nth(1)).not.toHaveAttribute('data-active', 'true')
+  await expect(layers.nth(2)).not.toHaveAttribute('data-active', 'true')
 
-  // Middle third → photo a.
+  // Middle third → slot 1 (photo a) active.
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2)
-  await expect(img).toHaveAttribute('src', /a\.jpg/)
+  await expect(layers.nth(1)).toHaveAttribute('data-active', 'true')
+  await expect(layers.nth(0)).not.toHaveAttribute('data-active', 'true')
 
-  // Right third → photo b.
+  // Right third → slot 2 (photo b) active.
   await page.mouse.move(box.x + box.width * 0.9, box.y + box.height / 2)
-  await expect(img).toHaveAttribute('src', /b\.jpg/)
+  await expect(layers.nth(2)).toHaveAttribute('data-active', 'true')
+  await expect(layers.nth(1)).not.toHaveAttribute('data-active', 'true')
+
+  // Layer srcs are stable across hover (one img per slot).
+  await expect(layers.nth(0)).toHaveAttribute('src', /poster\.jpg/)
+  await expect(layers.nth(1)).toHaveAttribute('src', /a\.jpg/)
+  await expect(layers.nth(2)).toHaveAttribute('src', /b\.jpg/)
 
   // 3 dots present, video slot has data-slot-type='video'.
   const dots = card.getByTestId('multi-image-dot')
   await expect(dots).toHaveCount(3)
   await expect(dots.first()).toHaveAttribute('data-slot-type', 'video')
+})
+
+test('hover applies brightness lift filter to the active layer only', async ({ page }) => {
+  const card = page.locator(`[data-bookmark-id="${MIX_BOOKMARK_ID}"]`)
+  await expect(card).toBeVisible()
+  const box = await card.boundingBox()
+  if (!box) throw new Error('card has no boundingBox')
+
+  // Without hover, no brightness filter is applied.
+  const cleanFilter = await card.locator('img').nth(0).evaluate(
+    (el) => window.getComputedStyle(el).filter,
+  )
+  expect(cleanFilter).toMatch(/^(none|)$/)
+
+  // Hover the card. The active layer (slot 0 by default) should now have
+  // a brightness filter applied via :hover.
+  await page.mouse.move(box.x + box.width * 0.1, box.y + box.height / 2)
+  await expect(card.locator('img[data-active="true"]')).toHaveCount(1)
+  const liftedFilter = await card.locator('img[data-active="true"]').evaluate(
+    (el) => window.getComputedStyle(el).filter,
+  )
+  expect(liftedFilter).toContain('brightness')
 })
 
 test('Lightbox carousel: arrow keys + dot click cycle through slots', async ({ page }) => {

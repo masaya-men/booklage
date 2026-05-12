@@ -3,6 +3,15 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { ImageCard } from '@/components/board/cards/ImageCard'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 
+/** Post-I-07-#2: ImageCard renders all slots as stacked <img> layers.
+ *  Tests inspect the single layer with data-active="true". */
+function activeImg(): HTMLImageElement {
+  const imgs = screen.getAllByRole('img', { hidden: true })
+  const active = imgs.find((img) => img.getAttribute('data-active') === 'true')
+  if (!active) throw new Error('no active img layer found')
+  return active as HTMLImageElement
+}
+
 const baseItem: BoardItem = {
   bookmarkId: 'b1',
   cardId: 'c1',
@@ -30,7 +39,7 @@ const baseItem: BoardItem = {
 describe('ImageCard — multi-image hover swap', () => {
   it('shows photos[0] initially', () => {
     render(<ImageCard item={baseItem} displayMode="visual" cardWidth={240} cardHeight={240} />)
-    const img = screen.getByRole('img', { hidden: true })
+    const img = activeImg()
     expect(img.getAttribute('src')).toBe('https://example.com/0.jpg')
   })
 
@@ -46,7 +55,7 @@ describe('ImageCard — multi-image hover swap', () => {
 
     // pointerX = 235 → ratio = 235/240 ≈ 0.98 → floor(0.98 * 4) = 3
     fireEvent.pointerMove(card, { clientX: 235, clientY: 100 })
-    const img = screen.getByRole('img', { hidden: true })
+    const img = activeImg()
     expect(img.getAttribute('src')).toBe('https://example.com/3.jpg')
   })
 
@@ -61,7 +70,7 @@ describe('ImageCard — multi-image hover swap', () => {
     } as DOMRect)
 
     fireEvent.pointerMove(card, { clientX: 72, clientY: 100 })
-    const img = screen.getByRole('img', { hidden: true })
+    const img = activeImg()
     expect(img.getAttribute('src')).toBe('https://example.com/1.jpg')
   })
 
@@ -76,12 +85,10 @@ describe('ImageCard — multi-image hover swap', () => {
     } as DOMRect)
 
     fireEvent.pointerMove(card, { clientX: 200, clientY: 100 })
-    let img = screen.getByRole('img', { hidden: true })
-    expect(img.getAttribute('src')).not.toBe('https://example.com/0.jpg')
+    expect(activeImg().getAttribute('src')).not.toBe('https://example.com/0.jpg')
 
     fireEvent.pointerLeave(card)
-    img = screen.getByRole('img', { hidden: true })
-    expect(img.getAttribute('src')).toBe('https://example.com/0.jpg')
+    expect(activeImg().getAttribute('src')).toBe('https://example.com/0.jpg')
   })
 
   it('does NOT swap for single-photo items', () => {
@@ -95,7 +102,7 @@ describe('ImageCard — multi-image hover swap', () => {
       width: 240, height: 240, x: 0, y: 0, toJSON: () => ({}),
     } as DOMRect)
     fireEvent.pointerMove(card, { clientX: 200, clientY: 100 })
-    const img = screen.getByRole('img', { hidden: true })
+    const img = activeImg()
     expect(img.getAttribute('src')).toBe('https://example.com/only.jpg')
   })
 
@@ -110,7 +117,7 @@ describe('ImageCard — multi-image hover swap', () => {
       width: 240, height: 240, x: 0, y: 0, toJSON: () => ({}),
     } as DOMRect)
     fireEvent.pointerMove(card, { clientX: 200, clientY: 100 })
-    const img = screen.getByRole('img', { hidden: true })
+    const img = activeImg()
     expect(img.getAttribute('src')).toBe('https://example.com/0.jpg')
   })
 })

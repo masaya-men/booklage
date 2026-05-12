@@ -10,12 +10,33 @@
 }
 
 .thumb {
+  /* I-07-#2: each MediaSlot renders as its own absolutely-positioned
+   * layer. Only the layer with data-active="true" is opaque; the rest
+   * sit at opacity 0 and cross-fade in/out via the shared duration token. */
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
   user-select: none;
   -webkit-user-drag: none;
+  opacity: 0;
+  transition:
+    opacity var(--card-hover-swap-duration) var(--card-hover-swap-easing),
+    filter var(--card-hover-swap-duration) var(--card-hover-swap-easing);
+}
+
+.thumb[data-active='true'] {
+  opacity: 1;
+}
+
+/* destefanis-style affordance: hover gently brightens the active layer.
+ * Excluded for Instagram Reel cards because their .thumbInstagramReel
+ * baseline filter (brightness 0.86) and our lift would compose into a
+ * muddled mid-brightness that fights the radial tint. */
+.imageCard:hover .thumb[data-active='true']:not(.thumbInstagramReel) {
+  filter: brightness(var(--card-hover-lift-brightness));
 }
 
 /* Instagram-reel-only treatment. Instagram bakes a branded play icon

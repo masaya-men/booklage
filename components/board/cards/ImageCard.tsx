@@ -20,11 +20,6 @@ const ASPECT_EPSILON = 0.005
 export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const imgRef = useRef<HTMLImageElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
-  // I-07: lazy-preload all photos on first hover. After the user enters
-  // the card once, subsequent swaps hit the browser HTTP cache instantly.
-  // Eager preload at board mount is intentionally avoided to protect PiP
-  // and Lightbox bandwidth.
-  const preloadedRef = useRef<boolean>(false)
   const [imageIdx, setImageIdx] = useState<number>(0)
 
   const urlType = detectUrlType(item.url)
@@ -45,21 +40,10 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const slots: readonly MediaSlot[] = item.mediaSlots
     ?? (item.photos ?? []).map((url): MediaSlot => ({ type: 'photo', url }))
   const hasMultiple = slots.length > 1
-  const displayedSrc = hasMultiple ? slots[imageIdx].url : item.thumbnail
 
   const handlePointerMove = useCallback(
     (e: PointerEvent<HTMLDivElement>): void => {
       if (!hasMultiple) return
-      if (!preloadedRef.current) {
-        // Lazy preload slots[1..N-1].url. slots[0] is already in the DOM <img>.
-        // For video slots this preloads the poster image; the mp4 itself is
-        // only fetched when the user opens the Lightbox and clicks play.
-        for (let i = 1; i < slots.length; i++) {
-          const img = new Image()
-          img.src = slots[i].url
-        }
-        preloadedRef.current = true
-      }
       const el = cardRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
@@ -70,7 +54,7 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
       const idx = rawIdx >= slots.length ? slots.length - 1 : rawIdx < 0 ? 0 : rawIdx
       setImageIdx((prev) => (prev === idx ? prev : idx))
     },
-    [hasMultiple, slots],
+    [hasMultiple, slots.length],
   )
 
   const handlePointerLeave = useCallback((): void => {
@@ -113,15 +97,31 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
     >
-      {displayedSrc && (
-        <img
-          ref={imgRef}
-          className={thumbClass}
-          src={displayedSrc}
-          alt={item.title}
-          draggable={false}
-          loading="lazy"
-        />
+      {slots.length > 0 ? (
+        slots.map((slot, i) => (
+          <img
+            key={slot.url}
+            ref={i === 0 ? imgRef : undefined}
+            className={thumbClass}
+            src={slot.url}
+            alt={item.title}
+            draggable={false}
+            loading="lazy"
+            data-active={i === imageIdx ? 'true' : undefined}
+          />
+        ))
+      ) : (
+        item.thumbnail && (
+          <img
+            ref={imgRef}
+            className={thumbClass}
+            src={item.thumbnail}
+            alt={item.title}
+            draggable={false}
+            loading="lazy"
+            data-active="true"
+          />
+        )
       )}
       {/* Reel-only tint dims the area where IG's printed play icon usually
           sits, neutralising it without adding our own loud overlay. */}
