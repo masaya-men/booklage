@@ -80,6 +80,13 @@ export interface BookmarkRecord {
    *  v12 の photos field は読み取り fallback として併存 (新規書き込みなし)、
    *  将来別 spec で完全廃止予定。 */
   mediaSlots?: readonly MediaSlot[]
+  /** v14: リンク健全性ステータス。 undefined = 'unknown'。
+   *  viewport-driven revalidation で 404/410/接続失敗 を検出すると 'gone' に変わる。
+   *  再取得ボタン or 全件再 check で 'alive' に戻ることもある。 */
+  linkStatus?: 'alive' | 'gone' | 'unknown'
+  /** v14: 最後に link 健全性を再 scrape した Unix ms。 undefined = 未チェック。
+   *  viewport 入場時に Date.now() - lastCheckedAt > 30 日なら再 check 候補。 */
+  lastCheckedAt?: number
 }
 
 /** Mood record (v9) — replaces the legacy folder concept. Stored in `moods` store. */
@@ -566,6 +573,13 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
       // fields" — no cursor sweep needed. Bumping the schema version still
       // serves as a tripwire so future migrations can assume the field is
       // observable when oldVersion >= 13.
+
+      // ── v13 → v14: introduce optional linkStatus + lastCheckedAt fields on
+      // bookmarks (no-op rewrite). Existing rows have both fields undefined,
+      // which the read path treats as 'unknown'/never-checked — no cursor
+      // sweep needed. Bumping the schema version still serves as a tripwire
+      // so future migrations can assume the fields are observable when
+      // oldVersion >= 14.
     },
   })
   // Reaching this point means the upgrade completed without being blocked,

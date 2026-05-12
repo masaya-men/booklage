@@ -18,13 +18,13 @@ afterEach(() => {
 })
 
 describe('IDB v13: mediaSlots field on BookmarkRecord', () => {
-  it('DB_VERSION is 13', () => {
-    expect(DB_VERSION).toBe(13)
+  it('DB_VERSION is at least 13 (mediaSlots feature introduced at v13)', () => {
+    expect(DB_VERSION).toBeGreaterThanOrEqual(13)
   })
 
-  it('initDB opens at v13 and bookmarks store accepts mediaSlots field', async () => {
+  it('initDB opens at current version and bookmarks store accepts mediaSlots field', async () => {
     db = await initDB() as unknown as IDBPDatabase<unknown>
-    expect(db.version).toBe(13)
+    expect(db.version).toBe(DB_VERSION)
     expect(DB_NAME).toBe('booklage-db')
 
     const bookmark: BookmarkRecord = {

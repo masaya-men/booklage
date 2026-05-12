@@ -18,7 +18,7 @@ export const FLOAT_ROTATION_RANGE = 3
 export const DB_NAME = 'booklage-db'
 
 /** IndexedDB schema version */
-export const DB_VERSION = 13
+export const DB_VERSION = 14
 
 /** Card size presets (width in pixels) — used by IndexedDB card seeds */
 export const CARD_SIZES = {
