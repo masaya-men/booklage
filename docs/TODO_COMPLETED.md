@@ -5,14 +5,40 @@
 
 ---
 
-## セッション 17 (2026-05-12) — mediaSlots safety net + 再 deploy
+## セッション 17 (2026-05-12) — mediaSlots safety net + 動画 tweet FLIP 修正 + 作業習慣 brushup
 
+**前半: mediaSlots safety net + 再 deploy**
 - IDB `blocked`/`blocking` handler 実装 + 5s auto-reload + 30s cooldown
 - launch 前恒久対策 spec 作成: `docs/specs/2026-05-12-idb-launch-readiness.md`
 - feature branch `feat/mediaslots-mix-tweet-backfill` を master に no-ff merge (commit `88a097b`)
 - 本番 deploy → 動画 tweet のアニメ bug + ▶ dot サイズ問題判明
 - rollback 試行 → IDB v13 → v12 ダウングレード不可で再ロックアウト → v13 再 deploy で復旧
-- セッション末: TODO.md 縮減 + CURRENT_GOAL.md 新設 + memory トリガー化 (作業習慣 brushup)
+
+**中盤: 作業習慣 brushup (TODO 肥大 / memory トリガー不在の構造修正)**
+- TODO.md を 2102 行 → 157 行に縮減 (active backlog のみ)
+- セッション 9-16 narrative + 完了済バグを TODO_COMPLETED.md に archive
+- `docs/CURRENT_GOAL.md` 新設 (5-10 行、 Claude が維持、 セッション開始時に最初に読む)
+- CLAUDE.md 「アイデアは TODO に追記」 → 「アイデアは IDEAS.md、 TODO 軽く」 に修正
+- memory: `feedback_follow_plan` を IF/THEN トリガー形に書き直し
+- memory: 新規 3 件 (`feedback_user_urgency_override`, `feedback_irreversible_pause`, `project_idb_irreversibility`)
+- memory: stale 1 件削除 (`project_progress.md` MVP Week 1 時代)
+
+**後半: 動画 tweet FLIP 修正 + 縦動画 aspect 修正 + ▶ dot 統一**
+- Playwright probe + 一時 instrumentation で root cause 確定: `TweetVideoPlayer` wrapper が explicit width なし → `.media` rect が 0×0 → FLIP startScale = Infinity
+- 修正案 1: 横動画は `width: min(920px, 60vw, max-h × aspect)` 明示、 縦動画は `height: min(max-h, 50vw / aspect)` 明示 (片方明示でもう片方は CSS aspectRatio が自動導出 → 黒帯なし)
+- ▶ dot サイズ縮小 (Lightbox 10×8 → 6×5、 ● dot 6×6 と統一)
+- ボード動画 dot を red-tint → ▶ 三角に統一 (CSS `::after`、 JSX 変更なし)
+- `tests/e2e/lightbox-video-flip-regression.spec.ts` 新規 (3 assertions: 横 FLIP / transform 適用 / 縦 aspect 維持)
+- 全 e2e PASS、 tsc clean、 ユーザー実機「完璧」 確認
+
+**commits**:
+- `d74566d` feat(idb): blocked/blocking handlers safety net
+- `9ce0696` docs(spec): IDB 公開前恒久対策
+- `88a097b` Merge feat/mediaslots-mix-tweet-backfill
+- `e1b289e` docs(workflow): slim TODO.md + introduce CURRENT_GOAL.md
+- `db5XXXX` docs(workflow): Claude owns doc maintenance (continued brushup)
+- `b3XXXXX` fix(lightbox): restore FLIP open animation for video tweets + unify ▶ dots
+- `XXXXXXX` fix(lightbox): vertical-video wrapper preserves aspect (no side black bars)
 
 ## セッション 16 (2026-05-12) — mediaSlots 統一型 + 3 段防御 backfill 実装 (事故あり)
 

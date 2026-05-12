@@ -20,35 +20,16 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### セッション 17 (2026-05-12) の到達点と事故
+### 直近の本番状態 (2026-05-12 セッション 17 末)
 
-1. **mediaSlots 統一型 + 3 段防御 backfill** を `feat/mediaslots-mix-tweet-backfill` で実装、 セッション 16 で本番 deploy 試行 → **board に何も表示されない事故** (v12 → v13 IDB upgrade が別タブの旧接続にブロックされ無限待機)
-2. セッション 16 末で master を 525b9a2 に rollback、 ユーザー Chrome 完全終了 → IDB 接続解放 → 旧 build (v12) でブクマ復活
-3. セッション 17 で安全策 (IDB `blocked`/`blocking` handler + 5s auto-reload + 30s cooldown) を追加して再 merge + 再 deploy
-4. ユーザー実機検証で **動画 tweet の Lightbox open/close アニメーションが不発**、 ▶ dot 大きすぎ、 ボード上の動画 dot 表現未統一 が判明
-5. 急いで rollback を試みたら **IDB v13 → v12 のダウングレード不可で再度ブクマ表示不能**になり、 v13 build に再 deploy で復旧
-6. **教訓**: schema bump 系 deploy は不可逆 (`docs/specs/2026-05-12-idb-launch-readiness.md` で恒久対策 3 本柱を spec 化、 launch 前に必須)
+- master HEAD: 動画 tweet FLIP 修正 + 縦動画 aspect 修正 + ▶ dot 統一を反映済
+- `https://booklage.pages.dev` = v13 build (IDB v13、 mediaSlots あり)
+- ユーザー実機: **全機能動作確認済** (動画 tweet open/close アニメ ✅ / 縦動画 aspect 保持 ✅ / ▶ dot サイズ統一 ✅ / mix tweet hover swap ✅ / auto-pause ✅)
+- セッション 17 で作業習慣 brushup (TODO 縮減 / CURRENT_GOAL.md 新設 / memory トリガー化) も同時実施
 
-### 本番状態 (2026-05-12 末)
+### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 
-- master HEAD: `2b5f1f3` (Reapply Merge mediaSlots branch)
-- `https://booklage.pages.dev` = v13 build (IDB v13 互換、 mediaSlots あり)
-- ユーザー実機: ブクマ全件表示 OK、 mix tweet hover swap / ▶ dot / auto-pause OK、 ただし**動画 tweet のオープン/クローズ アニメ不発**
-
-### 次セッション開始時の優先順位
-
-1. **動画 tweet の Lightbox アニメ bug 修正** (最優先、 ローカル dev 実機検証 + Playwright 回帰テスト追加してから deploy)
-   - 仮説: `TweetVideoPlayer` の wrapper が explicit width なしで intrinsic 依存 → `.media` の rect が card と近すぎて FLIP が無効化される
-   - 検証: `pnpm dev` で localhost、 Playwright で video / photo / mix / text の 4 種類の open/close を計測
-2. **▶ dot サイズを ● dot に揃える + ボード上の動画 dot 表現も ▶ に統一**
-   - Lightbox: `Lightbox.module.css` の `.lightboxImageDot[data-slot-type='video']` の border サイズを縮小 (現在 8×10px 相当 → 6×6px 相当)
-   - ボード: `ImageCard.module.css` の `.multiImageDot[data-slot-type='video']` を red-tint から ▶ 形に置換
-3. **I-07 Phase 1 改善案件** (セッション 14 末ユーザー報告から残:)
-   - I-07-#1: save 時 backfill (Lightbox open 不要化) — UX 改善余地大
-   - I-07-#2: hover 切替演出のリッチ化 (cross-fade / blur / zoom-pan)
-   - I-07-#5: Lightbox 右テキストパネル mask-reveal-up アニメ
-4. **AllMarks sizing 哲学移行 Phase 2-6** (`docs/specs/2026-05-12-sizing-migration-spec.md`)
-5. **未対応バグ** (下記 §未対応バグ から優先度判断)
+CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてあります。 詳細は下記 §未対応バグ + I-07 改善案件 から優先度判断。
 
 ### リブランド進行: Booklage → AllMarks
 
@@ -96,24 +77,11 @@
 - **B-#13 TopHeader brushup** (memory `project_board_header_brushup.md` 参照)
    - 暫定配置、 将来 brushup 方向: **ScrollMeter を下配置** (Lightbox の表現と統一)
 
-### Lightbox
-
-- **B-#14 動画 tweet open/close アニメ不発** (セッション 17 新規)
-   - 仮説: `TweetVideoPlayer` wrapper の intrinsic 依存問題
-   - 上記「次セッション最優先」 で扱う
-
 ### I-07 Phase 1 改善案件 (セッション 14 末ユーザー報告)
 
 - **I-07-#1 save 時 backfill** — Lightbox open 不要化 (UX 改善大)
 - **I-07-#2 hover 切替演出のリッチ化** — cross-fade / blur / zoom-pan / GSAP micro animation
-- **I-07-#3 動画+画像 mix tweet 対応** — セッション 15 spec、 セッション 16 で実装 (今セッション再 deploy 済)
 - **I-07-#5 Lightbox テキストパネル mask-reveal-up アニメ** — destefanis 本家挙動要確認
-
-### ▶ dot 表現統一 (セッション 17 新規)
-
-- Lightbox ▶ dot サイズ縮小
-- ボード ▶ 統一 (現在は red-tint background のみ)
-- 上記「次セッション優先順位」 #2 で扱う
 
 ---
 
