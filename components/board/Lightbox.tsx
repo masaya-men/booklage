@@ -1147,9 +1147,9 @@ function TweetMedia({
 
 /** Dot indicator for Lightbox carousel. Larger and more clickable than the
  *  board-side card dots — these are the primary nav mechanism (along with
- *  keyboard ↑↓). I-07 Phase 1.
- *  v13: accepts `slots` array instead of `count` so Task 7 can add per-type
- *  aria-label and ▶ variant CSS without touching the callsite again. */
+ *  keyboard ↑↓). Video slots render as a ▶ triangle to communicate
+ *  "this slot contains a video" without us needing a separate badge.
+ *  I-07 Phase 1 + mix-tweet (v13). */
 function LightboxImageDots({
   slots,
   currentIdx,
@@ -1161,17 +1161,24 @@ function LightboxImageDots({
 }): ReactNode {
   return (
     <div className={styles.lightboxImageDots} role="tablist" aria-label="メディア切替">
-      {slots.map((_slot, i) => (
+      {slots.map((slot, i) => (
         <button
           key={i}
           type="button"
           role="tab"
           aria-selected={i === currentIdx}
-          aria-label={`スロット ${i + 1} / ${slots.length}`}
+          aria-label={slot.type === 'video'
+            ? `動画 ${i + 1} / ${slots.length}`
+            : `画像 ${i + 1} / ${slots.length}`}
           data-active={i === currentIdx ? 'true' : 'false'}
+          data-slot-type={slot.type}
           className={styles.lightboxImageDot}
           onClick={(): void => onJump(i)}
-        />
+        >
+          {slot.type === 'video' && (
+            <span className={styles.lightboxImageDotVideoIcon} aria-hidden="true" />
+          )}
+        </button>
       ))}
     </div>
   )
