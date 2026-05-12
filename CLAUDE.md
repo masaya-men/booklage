@@ -114,25 +114,29 @@ npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-
 
 ---
 
-## セッション管理 — TODO は軽く、 アイデアは別ファイル
+## セッション管理 — Claude がドキュメントを維持、 ユーザーは話すだけ
 
 ### ファイルの役割分担 (重要)
 
-| ファイル | 役割 | サイズ目安 |
-|---------|------|----------|
-| `docs/CURRENT_GOAL.md` | 今このセッションのゴール (毎回更新) | 5〜10 行 |
-| `docs/TODO.md` | アクティブな backlog のみ | 200 行以内 |
-| `docs/TODO_COMPLETED.md` | 完了済タスク・過去 narrative の archive | 増えてよい |
-| `docs/private/IDEAS.md` | アイデア・将来構想・代替案・戦略 (gitignored) | 増えてよい |
+| ファイル | 役割 | サイズ目安 | 維持責任 |
+|---------|------|----------|---------|
+| `docs/CURRENT_GOAL.md` | 次セッションでやること (5〜10 行) | 5〜10 行 | **Claude** (セッション終了時に書く) |
+| `docs/TODO.md` | アクティブな backlog のみ | 200 行以内 | **Claude** (自発更新) |
+| `docs/TODO_COMPLETED.md` | 完了済タスク・過去 narrative の archive | 増えてよい | **Claude** (自発更新) |
+| `docs/private/IDEAS.md` | アイデア・将来構想・代替案・戦略 (gitignored) | 増えてよい | **Claude** (ユーザー発話を聴いて追記) |
 
-### 開始時
-1. `docs/CURRENT_GOAL.md` を読む (= 今セッションの単一ゴール)
+**ユーザーはこれらのファイルを書く必要なし**。 普通に発話するだけで、 Claude が適切な場所に文書化する。
+
+### 開始時 (Claude の動き)
+1. `docs/CURRENT_GOAL.md` を読む (= 前セッションで残した「次やる」 メモ)
 2. `docs/TODO.md` を読む (= active backlog の全体像)
 3. 該当タスクに関連する spec / plan を必要に応じて読む
+4. ユーザーに「セッション 18 開始時の最初の発言」 として **CURRENT_GOAL の内容を 1 行要約 + 続行確認**を出す
+5. ユーザーが「OK」 or 別方向指示 → そのまま進行
 
 詳細なワークフローは `.claude/rules/session-workflow.md` を参照。
 
-### 会話中の記録 — 場所を選んで書く
+### 会話中の記録 — 場所を選んで Claude が自動で書く
 - **アイデア・将来構想・代替案・戦略** → `docs/private/IDEAS.md`
    - TODO.md に書かない (= TODO 肥大の元)
 - **新しい未対応バグ / 改善 (実装可能な実用バグ)** → `docs/TODO.md` §未対応バグ
@@ -140,9 +144,16 @@ npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-
    - TODO.md には ✅ 残さない (= 完了は archive に出す)
 - **設計判断 / 方針確定** → 該当 spec ファイル or `docs/specs/` に新規 spec
 
+### 終了時 (Claude の動き)
+1. このセッションの完了を `docs/TODO_COMPLETED.md` に narrative で追記
+2. TODO.md の「現在の状態」 セクションを最新化
+3. `docs/CURRENT_GOAL.md` を **次セッション用に上書き**: ゴール 1 行 + やること 3〜5 個
+4. commit (TODO 更新 + CURRENT_GOAL 更新を 1 commit)
+5. ユーザーにコピペ用の引継ぎメッセージを出す
+
 ### 重要ドキュメント
 
-- `docs/CURRENT_GOAL.md` — 今このセッション (毎回最初に読む)
+- `docs/CURRENT_GOAL.md` — 次セッションでやること (毎回最初に読む)
 - `docs/TODO.md` — active backlog (毎セッション必読)
 - `docs/TODO_COMPLETED.md` — 完了 archive (必要時)
 - `docs/private/IDEAS.md` — アイデア (gitignored、 必要時)
@@ -150,7 +161,7 @@ npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-
 - `docs/specs/` — 確定済み設計仕様
 
 ### TODO.md が膨らんできたら
-**200 行を超えたら**完了 entry / 古い narrative を `TODO_COMPLETED.md` に移動する。 これは Claude が自発的にやる。
+**200 行を超えたら**完了 entry / 古い narrative を `TODO_COMPLETED.md` に移動する。 Claude が自発的にやる、 ユーザーに確認しない。
 
 ### コンパクション時
 When compacting, always preserve: 現在のタスク、 変更中のファイルパス、 `docs/CURRENT_GOAL.md` と `docs/TODO.md` の「現在の状態」 内容。
