@@ -943,6 +943,20 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
 
     // Entering animation on the real (newly mounted) frame.
     gsap.killTweensOf(el)
+
+    // I-07-#5: 新カードの stage 要素を初期化 (不可視) し、 slide 完了後に
+    // reveal timeline を発火させる。 連打 (rapid) で slide が短縮されても
+    // pause + reveal は token 値そのまま — 連打中は slide が次々に
+    // 立ち上がり、 ここまで来ない (前 useLayoutEffect 発火で kill される)
+    // ので reveal は最後の slide 完了時にしか走らない。
+    const newTextEl = textRef.current
+    const revealTokens = readRevealTokens()
+    const prefersReduce = getPrefersReducedMotion()
+    const newStageEls = newTextEl ? collectStageEls(newTextEl) : []
+    // 進行中 reveal を kill (前カード残骸対策)
+    if (newStageEls.length > 0) gsap.killTweensOf(newStageEls)
+    setStageInitialState(newStageEls, revealTokens.translateY, prefersReduce)
+
     gsap.fromTo(
       el,
       {
@@ -959,6 +973,13 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         opacity: 1,
         duration: DUR,
         ease: 'power4.out',
+        onComplete: () => {
+          // slide 着地後 + pause を待って reveal 発火。
+          // gsap.delayedCall は内部でフレームに乗るので、 識別子変化や
+          // 次 slide が来た場合は次の useLayoutEffect で kill される。
+          const tl = gsap.timeline({ delay: revealTokens.pause })
+          appendRevealTimeline(tl, newStageEls, revealTokens, 0, prefersReduce)
+        },
       },
     )
   }, [identity, nav])
