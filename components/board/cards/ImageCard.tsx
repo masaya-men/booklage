@@ -5,6 +5,7 @@ import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { DisplayMode } from '@/lib/board/types'
 import type { MediaSlot } from '@/lib/embed/types'
 import { detectUrlType, isInstagramReel } from '@/lib/utils/url'
+import { MinimalCard } from './MinimalCard'
 import styles from './ImageCard.module.css'
 
 type Props = {
@@ -21,6 +22,16 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
   const imgRef = useRef<HTMLImageElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [imageIdx, setImageIdx] = useState<number>(0)
+  const [hasError, setHasError] = useState<boolean>(false)
+
+  // Reset error state when the item's URL changes (e.g. card re-used for different bookmark)
+  useEffect(() => {
+    setHasError(false)
+  }, [item.url])
+
+  const handleImgError = useCallback((): void => {
+    setHasError(true)
+  }, [])
 
   const urlType = detectUrlType(item.url)
   // Instagram-reel-only treatment: soften the JPEG-baked play icon that
@@ -97,7 +108,9 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
     >
-      {slots.length > 0 ? (
+      {hasError ? (
+        <MinimalCard item={item} />
+      ) : slots.length > 0 ? (
         slots.map((slot, i) => (
           <img
             key={slot.url}
@@ -108,6 +121,7 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
             draggable={false}
             loading="lazy"
             data-active={i === imageIdx ? 'true' : undefined}
+            onError={handleImgError}
           />
         ))
       ) : (
@@ -120,13 +134,14 @@ export function ImageCard({ item, persistMeasuredAspect }: Props): ReactNode {
             draggable={false}
             loading="lazy"
             data-active="true"
+            onError={handleImgError}
           />
         )
       )}
       {/* Reel-only tint dims the area where IG's printed play icon usually
           sits, neutralising it without adding our own loud overlay. */}
-      {isReel && <div className={styles.tintInstagramReel} aria-hidden="true" />}
-      {hasMultiple && (
+      {!hasError && isReel && <div className={styles.tintInstagramReel} aria-hidden="true" />}
+      {!hasError && hasMultiple && (
         <div className={styles.multiImageDots} aria-hidden="true">
           {slots.map((s, i) => (
             <span
