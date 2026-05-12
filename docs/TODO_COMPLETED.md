@@ -5,7 +5,9 @@
 
 ---
 
-## セッション 18 (2026-05-12) — I-07-#1 save 時 backfill 検証完了
+## セッション 18 (2026-05-12) — I-07-#1 save 時 backfill 検証 + I-07-#2 hover swap polish
+
+### 前半: I-07-#1 save 時 backfill 検証完了
 
 **判明**: 該当機能はセッション 17 の reapply merge (`2b5f1f3`) で既に master に入っていた。 [SaveIframeClient.tsx:113-126](app/save-iframe/SaveIframeClient.tsx#L113-L126) で fire-and-forget `fetchTweetMeta` → `persistMediaSlots` 実装済。 CURRENT_GOAL.md と TODO.md が古いまま active 扱いで残っていた。
 
@@ -16,6 +18,34 @@
 - 3/3 e2e PASS / 453 unit PASS / tsc clean
 
 **結果**: 保存ボタン押下直後にボードを開いた時点で、 既に mediaSlots が IDB に書き込まれている保証ができた (▶ dot / 複数画像 dot が初回 mount から表示される)。
+
+### 後半: I-07-#2 hover swap polish (クロスフェード + brightness lift)
+
+**ブレインストーミング**: 4 方向 (instant / cross-fade / blur / scale+fade) を Visual Companion でモック比較 → **クロスフェード** 採用。 速度 (130 / 220 / 380ms) → **380ms** 採用 (じっとり余韻系)。 destefanis 由来の `:hover filter: brightness(1.08)` lift も併用合意。
+
+**実装**:
+- `app/globals.css :root` に 3 デザイントークン追加 (`--card-hover-swap-duration: 380ms` / `--card-hover-swap-easing: ease-out` / `--card-hover-lift-brightness: 1.08`)
+- `components/board/cards/ImageCard.module.css` を絶対配置レイヤースタック構造に書き換え。 active layer のみ opacity 1、 残りは opacity 0、 共通 token で cross-fade + filter transition
+- `components/board/cards/ImageCard.tsx` を `slots.map(...)` 形に書き換え (各 slot に `<img data-active={...}>`)。 `preloadedRef` + 手動 `new Image()` preload ループは削除 (`loading="lazy"` で ブラウザ任せ)
+- `tests/e2e/board-mixed-media.spec.ts` の hover swap assertion を src 比較 → data-active 比較 に書き換え。 brightness lift 用の新 e2e assertion 1 件追加
+- `tests/lib/multi-image-hover.test.tsx` を複数 layer に合わせて `activeImg()` ヘルパー導入で書き換え
+- Instagram Reel カードは `:not(.thumbInstagramReel)` で lift スキップ (baseline brightness 0.86 と干渉回避)
+
+**spec / plan**:
+- spec: `docs/superpowers/specs/2026-05-12-hover-swap-polish-design.md`
+- plan: `docs/superpowers/plans/2026-05-12-hover-swap-polish.md`
+- Future-readiness 章で B1 multi-video playback との互換性確認済
+
+**結果**: tsc clean / 453 unit PASS / 27+4 e2e PASS / ユーザー本番実機で hover の感触 OK。 デザイントークン化により、 後から数値調整したい時は globals.css の 3 行を書き換えるだけ。
+
+**commits**:
+- `XXXXXXX` test(save-iframe): verify Phase A save-time mediaSlots backfill
+- `XXXXXXX` docs(spec): I-07-#2 hover swap polish + brightness lift
+- `XXXXXXX` docs(spec): note hover swap layered arch enables future multi-playback
+- `XXXXXXX` docs(plan): I-07-#2 hover swap polish implementation plan
+- `XXXXXXX` feat(tokens): add card hover micro-interaction CSS vars
+- `XXXXXXX` feat(board): cross-fade hover swap + destefanis brightness lift
+
 
 ## セッション 17 (2026-05-12) — mediaSlots safety net + 動画 tweet FLIP 修正 + 作業習慣 brushup
 

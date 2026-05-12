@@ -6,19 +6,14 @@
 
 ## ゴール候補
 
-セッション 18 で I-07-#1 (save 時 backfill) は実装済 + 動作裏付けテスト追加で完了。 次の優先度:
+セッション 18 で I-07-#1 (save 時 backfill 検証) + I-07-#2 (hover クロスフェード + brightness lift) を実装・deploy 完了。 次の優先度:
 
-**B. I-07-#2 hover 切替演出のリッチ化** (デザイン polish、 推奨)
-- 板上カードを hover してマウス位置で画像切替するときの演出を強化
-- 候補: cross-fade / blur transition / zoom-pan / GSAP micro animation timeline
-- 現状は単純 src swap で味気ない
-- 実装場所: `components/board/cards/ImageCard.tsx`
-- 規模感: 100-200 行 (CSS + JS) + 視覚承認 gate
-
-**C. I-07-#5 Lightbox テキストパネル mask-reveal-up アニメ** (Phase A 忠実コピー方針)
+**C. I-07-#5 Lightbox テキストパネル mask-reveal-up アニメ** (Phase A 忠実コピー方針、 推奨)
 - Lightbox 右側のテキストパネルが open 時に下から上にスライドして reveal
-- destefanis 本家が同じ演出をしているか要確認 (Phase A 忠実コピー優先)
+- destefanis 本家が同じ演出をしているか **要事前確認** (Phase A 忠実コピー優先)
 - 実装場所: `components/board/Lightbox.tsx` (textRef 周り)
+- 規模感: 100-150 行 (GSAP + CSS) + 視覚承認 gate
+- destefanis 側に同等の演出があるか確認してから設計に入る
 
 **D. B-#1/#2/#3 サムネ系** (実用バグ、 ユーザー報告残)
 - B-#1 サムネ取得失敗時の空白カード → fallback で読めるカード
@@ -30,14 +25,14 @@
 
 ## 推奨
 
-B を提案。 理由: ユーザーが日常的に体感する hover 切替の質感が上がる、 視覚演出は Phase A 忠実コピー路線とも整合 (destefanis 系の micro animation polish 寄り)、 schema 変更なしで安全。
+C を提案。 destefanis に同等演出があれば Phase A 忠実コピーとして実装、 無ければ「無し」 (= 現状維持) で完了扱い。 セッション 18 の hover swap polish と並んで Lightbox 系の最後のミクロな polish になる。 destefanis 本家を一度確認するだけで方針確定するので、 セッション開始時に最初に確認。
 
 ## 前提・注意
 
-- 本番状態: master HEAD に save 時 backfill 検証テスト追加 (production code 変更なし)
+- 本番状態: master HEAD に hover swap polish 反映済、 `https://booklage.pages.dev` v13 build
 - IDB v13、 schema bump はもう不要
-- B は視覚演出なので Claude 単独で完成判断しない。 数値・カーブ調整は実機 screenshot をユーザーに見せて承認 gate (.claude/rules/ui-design.md)
-- ローカル dev 検証必須 (`pnpm dev` + Playwright) → 本番 deploy の順序を厳守
+- C は視覚演出なので Claude 単独で完成判断しない。 GSAP timeline の curve / duration は実機 screenshot をユーザーに見せて承認 gate
+- ローカル dev で hover 系の確認したい場合は IDB に test data 不在 → 本番で確認推奨 (セッション 18 学び)
 
 ## 完了したら
 
