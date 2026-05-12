@@ -186,6 +186,18 @@ test('I-07-#2: hover swap renders cross-fade via data-active toggle', async ({ p
 
 ---
 
+## Future-readiness — 多動画同時再生 (B1 primary feature) との互換性
+
+memory `project_booklage_vision_multiplayback` 記載の「**板上で複数動画 / 音声を同時にミックス再生する**」 機能は、 今の hover swap polish 設計と **直交関係** で衝突しない。 むしろ layered architecture が後方互換に有利:
+
+- **layer 置換可能性**: 各 slot は絶対配置の独立 child として並ぶ。 video slot を board 上で実際に再生したくなった時、 該当 layer を `<img>` → `<video>` に差し替えるだけで済む。 opacity ベースのクロスフェードは `<video>` 要素でも同じく機能するので、 「画像 ↔ 動画再生中」 の transition も統一の token で扱える
+- **直交する関心事**: 本 spec の 3 トークン (`--card-hover-swap-duration` / `-easing` / `-lift-brightness`) は遷移の **見た目** のみを制御。 「再生するかしないか」 / 「いつ再生開始するか」 / 「音をミックスするか」 はこの spec の範囲外で、 IntersectionObserver による viewport-entry 判定や WebAudio ベースのミキサーは別 spec で被せる構造
+- **属性差は別 spec で**: `loading="lazy"` (img) ↔ `preload="metadata"` / `none` (video) の属性差は inline 再生機能を作る spec 側で吸収する
+
+つまり今は静止画ベースで cross-fade + lift を入れ、 B1 で multi-video playback を追加するとき layer の中身を入れ替えれば良い。 今回の設計を後でリファクタする必要はない。
+
+---
+
 ## スコープ外 (今回やらない)
 
 - **動画 slot と画像 slot で演出を変える** — IDEAS.md に退避 (将来 polish 余地)
