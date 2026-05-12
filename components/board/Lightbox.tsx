@@ -109,14 +109,14 @@ type Props = {
    *  for back-compat with callers that don't track a source card. */
   readonly onSourceShouldShow?: () => void
   readonly nav?: LightboxNav
-  /** I-07 Phase 1: called with (bookmarkId, photos[]) whenever a
-   *  tweet meta fetch reveals a multi-image post, so the board card can
-   *  show hover swap next time the user is on the board. Pass through
-   *  from useBoardData().persistPhotos. */
-  readonly persistPhotos?: (bookmarkId: string, photos: readonly string[]) => Promise<void>
+  /** v13: called with (bookmarkId, mediaSlots[]) whenever a tweet meta fetch
+   *  reveals slot data, so the board can render the correct hover swap
+   *  next time the user is on the board. Pass through from
+   *  useBoardData().persistMediaSlots. Fire-and-forget. */
+  readonly persistMediaSlots?: (bookmarkId: string, mediaSlots: readonly MediaSlot[]) => Promise<void>
 }
 
-export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShouldShow, nav, persistPhotos }: Props): ReactElement | null {
+export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShouldShow, nav, persistMediaSlots }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -171,15 +171,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     void fetchTweetMeta(tweetId).then((meta) => {
       if (cancelled) return
       setTweetMeta(meta)
-      // I-07: backfill IDB so the board card can do hover swap next time.
-      // Fire-and-forget: no await, errors ignored.
-      if (meta?.photoUrls && meta.photoUrls.length > 1 && view?.bookmarkId && persistPhotos) {
-        const existing = view.photos ?? []
-        const same = existing.length === meta.photoUrls.length
-          && existing.every((u, i) => u === meta.photoUrls![i])
-        if (!same) {
-          void persistPhotos(view.bookmarkId, meta.photoUrls)
-        }
+      // Phase C backfill: write mediaSlots[] to IDB so the board card
+      // can render the correct hover swap + dot indicator next mount.
+      // Fire-and-forget: no await, errors ignored. The persist helper
+      // is idempotent so repeat fetches don't churn IDB.
+      if (meta?.mediaSlots && meta.mediaSlots.length > 0 && view?.bookmarkId && persistMediaSlots) {
+        void persistMediaSlots(view.bookmarkId, meta.mediaSlots)
       }
     })
     return (): void => { cancelled = true }

@@ -62,6 +62,7 @@ export function BoardRoot() {
     persistMeasuredAspect,
     persistThumbnail,
     persistPhotos,
+    persistMediaSlots,
     persistVideoFlag,
     persistSoftDelete,
     persistCustomWidth,
@@ -913,7 +914,7 @@ export function BoardRoot() {
             onNav: handleLightboxNav,
             onJump: handleLightboxJump,
           } : undefined}
-          persistPhotos={persistPhotos}
+          persistMediaSlots={persistMediaSlots}
         />
       </div>
       {/* Modals stay viewport-level so they cover everything including
