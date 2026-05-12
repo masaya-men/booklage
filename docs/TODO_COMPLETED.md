@@ -336,3 +336,50 @@ nav: slide 着地後に `gsap.timeline({ delay: pause })` で reveal 発火
 - ~~**B-#9 iPhone 右端切れ (TopHeader)**~~ ✅ セッション 9 完了
 - ~~**B-#11 Lightbox open 演出: source card 空白化**~~ ✅ セッション 11 完了
 - ~~**I-07-#4 Lightbox dot 切れバグ**~~ ✅ セッション 14 末 (commit `4e26a4d`)
+
+## セッション 20 (2026-05-13) — カード健全性機構 (B-#1/#2 + Lightbox close wheel) + IDB v14
+
+### ユーザー報告の出発点
+
+セッション 19 が CURRENT_GOAL に B-#1/#2/#3 「サムネ系 UX バグ 3 本」 を残して終了。 ユーザーから 4 件の具体的 URL (Instagram reel / labs.noomoagency.com / codepen.io full / pitperform.eu) が 「表示うまくいかない」 と提示され、 加えて Lightbox を ×/Esc で閉じた後の wheel で隣カードへの遷移アニメが一瞬走る bug 報告。
+
+### 真因 3 種類が混在していた
+
+(調査 commit 不要だが、 設計を整理した spec が `docs/superpowers/specs/2026-05-13-card-metadata-health-design.md`)
+
+1. **scraper bug** (2/4): noomo / pitperform は og:image が `/OpenGraph.jpg` 等の相対 URL。 4 つの scraper 経路 (Worker functions/api/ogp.ts / extension/lib/ogp.js / extension/lib/dispatch.js inline / lib/utils/bookmarklet.ts の extractOgpFromDocument + BOOKMARKLET_SOURCE IIFE) のどれも og:image を絶対化していなかった。 favicon は解決していたのに image だけ素通し。
+2. **データ薄い** (2/4): Instagram (bot 弾き) / CodePen full (メタタグ不在) は title も image も取れない。 TextCard が hostname だけ出していたが視覚的に弱い。
+3. **Lightbox bug**: `components/board/Lightbox.tsx` の wheel + arrow handler が `closingRef.current` を見ておらず、 close tween (~500ms) 中も `nav.onNav()` を発火していた。
+
+### ユーザーとの設計対話で見えた追加要件
+
+「ブクマ先がなくなった時 (投稿削除、 ウェブサイト削除) にもそれが分かる状態に」 + 「リンク切れ自動 tag で削除はかどる」 という提案。 1 万件でも重くないかの試算 → viewport-driven + 30 日経年 + 並列度 3 で年間 ~3000 req/ユーザー、 Cloudflare 無料枠 100k/日に対して影響軽微。
+
+「タグ」 ではなく `BoardFilter` 型に `'dead'` 追加で fold ( internal の `tags` は mood ID 配列で混入は不適切)。 UX 上は 「リンク切れ N 件」 の system filter として mood リスト下に表示。
+
+### 実装プラン (11 task)
+
+`docs/superpowers/plans/2026-05-13-card-metadata-health.md`。 subagent-driven で 1 task ずつ implementer 分離 + spec/quality review。
+
+1. `lib/utils/url-resolve.ts` 共通ヘルパー (resolveMaybeRelative) + 6 vitest
+2. `functions/api/ogp.ts` 修正 (Worker 経路の og:image 絶対化 + twitter:image fallback)
+3. extension + bookmarklet 経路 3 箇所修正 (extractOgpFromDocument / BOOKMARKLET_SOURCE IIFE / dispatch.js inline)。 BOOKMARKLET IIFE の URI 長 cap を 2100→2200 に bump
+4. `components/board/Lightbox.tsx` の wheel + arrow listener に `closingRef.current` guard
+5. **IDB v13→v14 schema bump** — `BookmarkRecord` に `linkStatus?: 'alive'|'gone'|'unknown'` と `lastCheckedAt?: number` 追加 (additive のみ、 v11/v12/v13 と同じ no-op upgrade pattern)。 4 件の v14 migration test 追加 + v13 既存 test を `toBeGreaterThanOrEqual` パターンに future-proof
+6. `lib/storage/backfill-relative-thumbnails.ts` — 起動時 1 回限りの idempotent cleanup。 thumbnail が `/` `./` `//` 始まりの record を sweep して absolute 化。 use-board-data の初期化 useEffect に dynamic import で wiring
+7. `lib/board/revalidate.ts` — `shouldRevalidate(lastCheckedAt, now)` + `RevalidationQueue` (maxConcurrent 3、 id dedup) + `defaultFetcher` (`/api/ogp` 叩いて 404/410=gone, error=unknown)。 BoardRoot に IntersectionObserver wiring (rootMargin 200px) で viewport 入場 + 経年 30 日のカードを queue.enqueue
+8. `components/board/cards/MinimalCard.tsx` + `pickCard` routing 拡張 (`hasUsableMetadata` チェック) + ImageCard の `onError` で MinimalCard fallback
+9. `components/board/cards/RefetchButton.tsx` — hover-revealed ↻ ボタン (32×32px memory feedback_large_pointer 準拠)。 spin / ✓ / idle の 3 state、 連打抑止。 BoardRoot `manualRevalidate` callback で `defaultFetcher` 直接呼び (queue 経由しない)、 alive 時に `persistThumbnail(_, true)` で stale サムネ自動修復
+10. `lib/board/filter.ts` に `'dead'` branch + `BoardFilter` 型拡張 + `tests/lib/filter-dead.test.ts`。 FilterPill UI に 「リンク切れ N」 system entry (count=0 時は非表示)。 `data-link-status='gone'` 属性 + `app/globals.css` で opacity 0.55 + grayscale(60%) + ::after 「リンク切れ」 赤バッジ。 BoardRoot.handleCardClick で gone カードの Lightbox 開きをガード
+
+### Task 12 (全件再チェック設定 UI) は次セッションへ繰越
+
+設定パネル自体が現プロジェクトに未実装。 viewport revalidation + 手動 refetch button で日常運用は充分カバー、 「いま全件チェック」 は将来の設定 UI 実装と合わせて別 spec で扱う方針。
+
+### 教訓
+
+- IDB v14 bump はもう確定 (deploy 後不可逆)。 セッション 17 の lockout 教訓 (`project_idb_irreversibility`) を踏まえ additive only に徹底
+- subagent-driven 9 dispatch (impl 1 + review 1 〜 1+2 セット) で全 task 完走。 minor 指摘 (JSDoc 冗長 / bookmarklet URI cap) は inline で即対処、 important 指摘 (observer 再構築 perf) は実害なしで次セッション送り
+- code reviewer は時々 「sync cluster の文脈」 を誤解する。 extension/lib/ogp.js + dispatch.js の sync と BOOKMARKLET_SOURCE の sync は別クラスター (前者は MV3 V8、 後者は ES5-safe で訪問者ブラウザ任意) を識別する必要あり
+- 「進めて」 「OK」 は agreed steps 実行の意味であり (memory `feedback_user_urgency_override`)、 IDB schema bump のような 「不可逆 + 当初 spec 範囲」 は迷わず実行。 ただし deploy 自体は user 確認を仰ぐ (memory `feedback_irreversible_pause`)
+

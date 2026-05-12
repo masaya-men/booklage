@@ -20,13 +20,15 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の本番状態 (2026-05-13 セッション 19 末)
+### 直近の状態 (2026-05-13 セッション 20 末 — deploy 待ち)
 
-- master HEAD: I-07-#5 (Lightbox text reveal) 実装 + 3 polish iterations + 本番 deploy 済
-- `https://booklage.pages.dev` = v13 build (IDB v13、 mediaSlots + hover swap polish + text reveal)
-- ユーザー実機: **本番で動作確認済** (destefanis-aligned overlap、 16px / 0.6s / power2.out)
-- 5 つの CSS デザイントークン (`--lightbox-text-reveal-*`) で後から数値変更可能
-- text reveal 開始タイミング: media tween の中盤から (`dur * 0.5 + pause`) で overlap、 「カードが止まってから text が出るまでのストップ」 を排除
+- master HEAD: `3b83b43` = カード健全性機構 (Task 1-11) + Lightbox close wheel guard
+- **IDB schema v14** (`linkStatus` + `lastCheckedAt` フィールド追加 — additive only)
+- 4 URL bug 全解決見込: noomo/pitperform は scraper 修正 (相対 og:image 絶対化) で正常 thumbnail / Instagram + CodePen は MinimalCard (大 favicon + hostname) で identifiable に
+- Lightbox close 中 wheel/arrow 抑止で隣カード遷移アニメ flash 解消
+- リンク切れ自動検出 (viewport 30 日 + 経年で再 scrape、 404/410 で gone マーク) + 「リンク切れ」 system filter (count バッジ付き) + gone カード視覚降格 (薄グレー + 「リンク切れ」 ラベル + 外部遷移ブロック) + 手動再取得ボタン (hover ↻)
+- 全 484 vitest + tsc + build clean
+- **deploy 未実施** — IDB v14 が不可逆なので user 確認待ち
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 
@@ -47,9 +49,9 @@ CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてありま
 
 ### 表示・サムネ系
 
-- **B-#1 サムネ取得失敗時の空白カード** — 最新サイト等でサムネが取れず文字も出ない空白箱になることがある。 fallback でドメイン名 / favicon 大きく / siteName のみで「読めるカード」 に改善
-- **B-#2 サムネ再取得ボタン** — 各カードに「再取得」 アクション追加 (右クリックメニュー or hover アクション)
-- **B-#3 重複 URL でサムネ等が出ない問題** — 同 URL 重複追加時の表示挙動を確認・修正
+- **B-#3 重複 URL でサムネ等が出ない問題** — 同 URL 重複追加時の表示挙動を確認・修正 (セッション 20 では真因未調査、 個別 session で着手)
+- **MinimalCard polish** — 64px favicon が S サイズ (160px) で大きく見える可能性。 Visual Companion でモック比較してサイズ判定 (セッション 20 で実装後、 視覚調整は次回)
+- **Task 12: 全件再 check 設定 UI** — viewport revalidation で日常運用は OK だが、 ユーザーが 「いま全件チェック」 を 1 クリックで kick できる設定パネル。 設定パネル自体が未実装なので別 spec 立ち上げ要
 
 ### カード操作・PiP
 
