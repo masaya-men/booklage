@@ -781,12 +781,15 @@
   display: block;
   width: 0;
   height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 8px solid rgba(255, 255, 255, 0.7);
-  /* 1.5px optical shift right so the triangle's perceived centroid sits
+  /* Sized to match the 6×6 round photo-dot so the indicator row reads as
+   * uniform marks of comparable visual weight, just shape-coded by media
+   * type (round = photo, triangle = video). */
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-left: 5px solid rgba(255, 255, 255, 0.7);
+  /* 0.5px optical shift right so the triangle's perceived centroid sits
    * over the original 6px dot's center. */
-  transform: translateX(1px);
+  transform: translateX(0.5px);
   transition: border-left-color 200ms ease-out, transform 200ms ease-out;
 }
 .lightboxImageDot[data-slot-type='video'][data-active='true'] {

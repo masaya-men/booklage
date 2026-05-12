@@ -1232,6 +1232,18 @@ function TweetVideoPlayer({
   // forcing every clip into a 16:9 or 9:16 bucket. Caps come from viewport.
   const aspect = meta.videoAspectRatio ?? 16 / 9
   const isVertical = aspect < 1
+  // Explicit width matching maxWidth is REQUIRED for the FLIP open animation
+  // to capture a non-zero .media rect at useLayoutEffect time. Without an
+  // explicit width, the wrapper falls back to <video>'s intrinsic 300×150,
+  // but in a flex container with min-width:0 ancestors the wrapper can
+  // collapse to 0×0 before <video> metadata loads — making startScale =
+  // originRect.width / 0 = Infinity and breaking the FLIP morph.
+  // (Session 17 bug: previously the OLD render path showed <img src=poster>
+  // first and swapped to <TweetVideoPlayer> after meta arrived, so .media
+  // always had a real img-intrinsic rect at open time. The mediaSlots
+  // refactor renders TweetVideoPlayer immediately when slot[0] is video,
+  // exposing this latent layout dependency.)
+  const wrapperWidth = isVertical ? '50vw' : 'min(920px, 60vw)'
   const wrapperStyle: CSSProperties = {
     position: 'relative',
     aspectRatio: aspect,
@@ -1239,7 +1251,8 @@ function TweetVideoPlayer({
     // videos inside the same close-button + nav-meter clearances as the
     // CSS-driven iframeWrap and .media cases.
     maxHeight: 'var(--lightbox-media-max-h)',
-    maxWidth: isVertical ? '50vw' : 'min(920px, 60vw)',
+    width: wrapperWidth,
+    maxWidth: wrapperWidth,
     background: 'black',
     borderRadius: 'var(--lightbox-media-radius)',
     overflow: 'hidden',
