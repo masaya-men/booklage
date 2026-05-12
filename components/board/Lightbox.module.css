@@ -723,52 +723,48 @@
   pointer-events: none;
 }
 
-/* I-07-#4 follow-up: Lightbox multi-image dots — child of .media,
+/* I-07-#4 follow-up v2: Lightbox multi-image dots — child of .media,
  * absolutely positioned in the chrome-clearance zone just below the
- * media envelope, horizontally centered on the .media column (= the
- * image itself). .media has overflow:visible so this chip is never
- * clipped. Chip-style background ensures legibility against any
- * backdrop. Sizing toned down per user feedback (12px → 8px). */
+ * media envelope, horizontally centered on the .media column. No chip
+ * wrapper — bare dots with a light box-shadow for legibility against
+ * any backdrop. Generous gap so click hit areas don't overlap. */
 .lightboxImageDots {
   position: absolute;
-  bottom: -28px;
+  bottom: -22px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
-  gap: 8px;
-  padding: 6px 10px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 24px;
 }
 
 .lightboxImageDot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.55);
   border: none;
   cursor: pointer;
   padding: 0;
-  /* Hit area extends 8px outward → 24×24 click target for the 8px dot. */
+  /* Soft shadow ensures the dot reads on light or dark backgrounds
+   * without needing a chip wrapper. */
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  /* Hit area extends 9px outward → 24×24 click target for the 6px dot. */
   position: relative;
-  transition: background 150ms ease-out, transform 150ms ease-out;
+  transition: background 200ms ease-out, transform 200ms ease-out;
 }
 
 .lightboxImageDot::before {
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: -9px;
 }
 
 .lightboxImageDot[data-active='true'] {
-  background: rgba(255, 255, 255, 0.95);
-  transform: scale(1.4);
+  background: rgba(255, 255, 255, 0.98);
+  transform: scale(1.6);
 }
 
 .lightboxImageDot:hover:not([data-active='true']) {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.85);
 }
