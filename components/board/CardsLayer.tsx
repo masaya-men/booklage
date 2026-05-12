@@ -436,6 +436,7 @@ export function CardsLayer({
               cardRefs.current[it.bookmarkId] = el
             }}
             data-bookmark-id={it.bookmarkId}
+            data-link-status={it.linkStatus ?? undefined}
             onPointerDown={(e: PointerEvent<HTMLDivElement>): void => handleReorderPointerDown(e, it.bookmarkId)}
             onPointerEnter={(): void => onHoverChange(it.bookmarkId)}
             onPointerLeave={(): void => onHoverChange(null)}

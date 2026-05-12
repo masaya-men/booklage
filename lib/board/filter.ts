@@ -11,6 +11,9 @@ export function applyFilter(items: ReadonlyArray<BoardItem>, filter: BoardFilter
   if (filter === 'archive') {
     return items.filter((it) => it.isDeleted)
   }
+  if (filter === 'dead') {
+    return items.filter((it) => !it.isDeleted && it.linkStatus === 'gone')
+  }
   // template literal: `mood:${id}`
   const moodId = filter.slice(5)
   return items.filter((it) => !it.isDeleted && it.tags.includes(moodId))

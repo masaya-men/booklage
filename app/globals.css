@@ -660,3 +660,28 @@ ol {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+/* ── Dead-link card state ───────────────────────────────────── */
+/* Applied via data-link-status='gone' on the outer card wrapper in
+   CardsLayer.tsx.  Visually demotes broken-link cards so they are
+   easy to spot and easy to delete, without blocking drag / resize. */
+
+[data-link-status='gone'] {
+  opacity: 0.55;
+  filter: grayscale(60%);
+}
+
+[data-link-status='gone']::after {
+  content: 'リンク切れ';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  background: rgba(180, 60, 60, 0.85);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  z-index: 5;
+  pointer-events: none;
+}

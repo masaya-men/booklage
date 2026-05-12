@@ -75,7 +75,7 @@ export type FrameRatio =
 
 export type DisplayMode = 'visual' | 'editorial' | 'native'
 
-export type BoardFilter = 'all' | 'inbox' | 'archive' | `mood:${string}`
+export type BoardFilter = 'all' | 'inbox' | 'archive' | 'dead' | `mood:${string}`
 
 export type BoardConfig = {
   readonly frameRatio: FrameRatio

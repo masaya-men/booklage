@@ -512,10 +512,14 @@ export function BoardRoot() {
 
 
   const handleCardClick = useCallback((bookmarkId: string, originRect: DOMRect): void => {
+    // Block Lightbox open for gone (dead-link) cards — the content is
+    // unreachable so opening the Lightbox would only show a broken embed.
+    const clickedItem = items.find((it) => it.bookmarkId === bookmarkId)
+    if (clickedItem?.linkStatus === 'gone') return
     setLightboxOriginRect(originRect)
     setLightboxItemId(bookmarkId)
     setLightboxSourceItemId(bookmarkId)
-  }, [])
+  }, [items])
 
   // Right-click on a card → soft-delete. Pre-launch convenience: no
   // confirmation dialog (the user wanted the fastest possible delete
@@ -817,6 +821,7 @@ export function BoardRoot() {
       all: active.length,
       inbox: active.filter((i) => i.tags.length === 0).length,
       archive: deleted.length,
+      dead: active.filter((i) => i.linkStatus === 'gone').length,
     }
   }, [items])
 

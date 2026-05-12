@@ -10,21 +10,23 @@ type Props = {
   readonly value: BoardFilter
   readonly onChange: (f: BoardFilter) => void
   readonly moods: ReadonlyArray<MoodRecord>
-  readonly counts: { readonly all: number; readonly inbox: number; readonly archive: number }
+  readonly counts: { readonly all: number; readonly inbox: number; readonly archive: number; readonly dead: number }
 }
 
 function label(f: BoardFilter, moods: ReadonlyArray<MoodRecord>): string {
   if (f === 'all') return t('board.filter.all')
   if (f === 'inbox') return t('board.filter.inbox')
   if (f === 'archive') return t('board.filter.archive')
+  if (f === 'dead') return 'DEAD LINKS'
   const moodId = f.slice(5)
   return moods.find((m) => m.id === moodId)?.name ?? '—'
 }
 
-function countFor(f: BoardFilter, counts: { all: number; inbox: number; archive: number }): string {
+function countFor(f: BoardFilter, counts: { all: number; inbox: number; archive: number; dead: number }): string {
   if (f === 'all') return String(counts.all).padStart(3, '0')
   if (f === 'inbox') return String(counts.inbox).padStart(3, '0')
   if (f === 'archive') return String(counts.archive).padStart(3, '0')
+  if (f === 'dead') return String(counts.dead).padStart(3, '0')
   return '---'
 }
 
@@ -87,6 +89,17 @@ export function FilterPill({ value, onChange, moods, counts }: Props): ReactElem
             {t('board.filter.archive')}
             <span style={{ marginLeft: 'auto', color: 'var(--text-meta)' }}>{counts.archive}</span>
           </button>
+          {counts.dead > 0 && (
+            <button
+              type="button"
+              className={`${styles.item} ${styles.deadItem} ${value === 'dead' ? styles.active : ''}`.trim()}
+              onClick={() => select('dead')}
+            >
+              <span className={styles.deadDot} />
+              リンク切れ
+              <span style={{ marginLeft: 'auto', color: 'rgba(220,80,80,0.85)' }}>{counts.dead}</span>
+            </button>
+          )}
           {moods.length > 0 && (
             <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 4px' }} />
           )}
