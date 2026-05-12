@@ -418,7 +418,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     }
     window.addEventListener('keydown', onKey)
     return (): void => window.removeEventListener('keydown', onKey)
-  }, [identity, nav, tweetMeta, view])
+  }, [identity, nav, tweetMeta, view?.photos])
 
   // Mouse wheel nav. Both vertical (deltaY) and horizontal (deltaX) are
   // accepted — trackpad two-finger swipe and traditional wheel both work.
