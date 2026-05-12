@@ -324,6 +324,15 @@ ol {
   --text-muted: #555555;
   --text-signature: #444444;
   --card-radius: 24px;
+
+  /* === card hover micro-interaction (I-07-#2) ===
+     Cross-fade duration + easing shared by the multi-slot hover swap
+     (opacity transition on layered <img>s) AND the destefanis-style
+     :hover brightness lift. Tunable in one place. */
+  --card-hover-swap-duration: 380ms;
+  --card-hover-swap-easing: ease-out;
+  --card-hover-lift-brightness: 1.08;
+
   --lightbox-media-radius: 6px;
   /* Backdrop opacity 0.88 (bumped from 0.78) so the cards visible behind
      the blur don't create a noticeable bright band in the bottom half of
