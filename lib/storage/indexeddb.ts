@@ -69,6 +69,11 @@ export interface BookmarkRecord {
    *  misleading the user about a still photo.
    *  Stored as an optional field so existing IDB rows need no migration. */
   hasVideo?: boolean
+  /** v12: 複数画像投稿で取得した全画像 URL の配列。 photos[0] は thumbnail と
+   *  一致。 1 枚しかない投稿 / 未対応 SNS では undefined。 X tweet なら
+   *  syndication API、 Bluesky なら public API から取得 (取得失敗時は
+   *  undefined のまま、 既存単一画像表示に fallback)。 */
+  photos?: readonly string[]
 }
 
 /** Mood record (v9) — replaces the legacy folder concept. Stored in `moods` store. */
@@ -476,6 +481,12 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
       // path treats as `false` — no cursor sweep needed. Bumping the
       // schema version still serves as a tripwire so future migrations
       // can assume the field exists when oldVersion >= 11.
+
+      // ── v11 → v12: introduce optional photos[] field on bookmarks (no-op
+      // rewrite). Existing rows have `photos: undefined`, which the read
+      // path treats as "no multi-image data" — no cursor sweep needed.
+      // Bumping the schema version still serves as a tripwire so future
+      // migrations can assume the field is observable when oldVersion >= 12.
     },
   })
 }
