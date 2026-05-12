@@ -334,15 +334,15 @@ ol {
   --card-hover-lift-brightness: 1.08;
 
   /* === lightbox text mask reveal (I-07-#5) ===
-     Lightbox open 時のテキストパネル mask-reveal-up 演出。
-     media FLIP 着地 + pause 経過後、 見出し / 本文 / (meta+CTA) を
-     duration 持続・stagger 間隔で順次 reveal。 後から数値だけ
-     1 行書き換えれば全 board で挙動同期。 GSAP は秒単位なので
-     duration / stagger / pause は秒で記述する (parseFloat で読む)。 */
-  --lightbox-text-reveal-duration: 0.5s;
-  --lightbox-text-reveal-stagger: 0.15s;
-  --lightbox-text-reveal-pause: 0.15s;
-  --lightbox-text-reveal-translate-y: 18px;
+     Lightbox open / nav 後、 テキストパネル全体を 1 ブロックで
+     mask-reveal-up する演出。 media FLIP 着地と同時に発火 (pause 0)、
+     stagger は使わない (1 要素)。 数値だけ書き換えれば全 board で
+     挙動同期。 GSAP は秒単位なので duration / pause は秒で記述
+     (parseFloat で読む)。 */
+  --lightbox-text-reveal-duration: 0.7s;
+  --lightbox-text-reveal-stagger: 0s;
+  --lightbox-text-reveal-pause: 0s;
+  --lightbox-text-reveal-translate-y: 32px;
   --lightbox-text-reveal-easing: power3.out;
 
   --lightbox-media-radius: 6px;

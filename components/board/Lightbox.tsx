@@ -102,13 +102,11 @@ function readRevealTokens(): RevealTokens {
   }
 }
 
-// Helper: stage 要素を text panel から集める。 DOM 順 (document order) を
-// querySelectorAll が保証するので、 `data-reveal-stage="1"` → `"2"` → `"3"`
-// の順に並ぶ前提。 stage 2 / 3 が無いカードは要素自体が DOM に存在しないため
-// 自動的に NodeList から落ちる → GSAP stagger が要素数分しか offset を刻まない
-// → 欠損 stage の特殊処理は不要。
+// I-07-#5 revised: テキストパネル全体を 1 ブロックで reveal するため、
+// textEl 自身を単一の tween target として返す。 段階 stagger は撤去
+// (体感が gata-gata した user feedback により方針転換 2026-05-12)。
 function collectStageEls(textEl: HTMLElement): HTMLElement[] {
-  return Array.from(textEl.querySelectorAll<HTMLElement>('[data-reveal-stage]'))
+  return [textEl]
 }
 
 // Helper: stage 要素群を初期状態 (不可視) にセット。 reduce-motion 時は
@@ -1165,11 +1163,11 @@ function DefaultText({
     const { byline, caption, meta } = cleanInstagramText(item)
     return (
       <>
-        <h1 id="lightbox-title" className={styles.bylineHeading} data-reveal-stage="1">
+        <h1 id="lightbox-title" className={styles.bylineHeading}>
           {byline ? `${byline} on Instagram` : 'Instagram'}
         </h1>
-        <p className={styles.captionBody} data-reveal-stage="2">{caption}</p>
-        <div className={styles.metaCtaGroup} data-reveal-stage="3">
+        <p className={styles.captionBody}>{caption}</p>
+        <div className={styles.metaCtaGroup}>
           {meta && <div className={styles.meta}><span>{meta}</span></div>}
           <a
             href={item.url}
@@ -1186,9 +1184,9 @@ function DefaultText({
 
   return (
     <>
-      <h1 id="lightbox-title" className={styles.title} data-reveal-stage="1">{item.title}</h1>
-      {item.description && <p className={styles.description} data-reveal-stage="2">{item.description}</p>}
-      <div className={styles.metaCtaGroup} data-reveal-stage="3">
+      <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
+      {item.description && <p className={styles.description}>{item.description}</p>}
+      <div className={styles.metaCtaGroup}>
         <div className={styles.meta}>{host && <span>{host}</span>}</div>
         <a
           href={item.url}
@@ -1480,7 +1478,7 @@ function TweetText({
   return (
     <>
       {(authorName || authorHandle || meta?.authorAvatar) && (
-        <div className={styles.tweetAuthor} data-reveal-stage="1">
+        <div className={styles.tweetAuthor}>
           {meta?.authorAvatar && (
             <img
               src={meta.authorAvatar}
@@ -1494,8 +1492,8 @@ function TweetText({
           </div>
         </div>
       )}
-      <p className={styles.tweetBody} data-reveal-stage="2">{text}</p>
-      <div className={styles.metaCtaGroup} data-reveal-stage="3">
+      <p className={styles.tweetBody}>{text}</p>
+      <div className={styles.metaCtaGroup}>
         <a
           href={item.url}
           target="_blank"
