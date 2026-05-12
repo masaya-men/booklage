@@ -109,9 +109,14 @@ type Props = {
    *  for back-compat with callers that don't track a source card. */
   readonly onSourceShouldShow?: () => void
   readonly nav?: LightboxNav
+  /** I-07 Phase 1: called with (bookmarkId, photos[]) whenever a
+   *  tweet meta fetch reveals a multi-image post, so the board card can
+   *  show hover swap next time the user is on the board. Pass through
+   *  from useBoardData().persistPhotos. */
+  readonly persistPhotos?: (bookmarkId: string, photos: readonly string[]) => Promise<void>
 }
 
-export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShouldShow, nav }: Props): ReactElement | null {
+export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShouldShow, nav, persistPhotos }: Props): ReactElement | null {
   const backdropRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -164,9 +169,21 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     }
     let cancelled = false
     void fetchTweetMeta(tweetId).then((meta) => {
-      if (!cancelled) setTweetMeta(meta)
+      if (cancelled) return
+      setTweetMeta(meta)
+      // I-07: backfill IDB so the board card can do hover swap next time.
+      // Fire-and-forget: no await, errors ignored.
+      if (meta?.photoUrls && meta.photoUrls.length > 1 && view?.bookmarkId && persistPhotos) {
+        const existing = view.photos ?? []
+        const same = existing.length === meta.photoUrls.length
+          && existing.every((u, i) => u === meta.photoUrls![i])
+        if (!same) {
+          void persistPhotos(view.bookmarkId, meta.photoUrls)
+        }
+      }
     })
     return (): void => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tweetId])
 
   // I-07: image carousel index — lifted from TweetMedia so the Lightbox-
