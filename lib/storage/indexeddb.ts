@@ -222,12 +222,78 @@ function randomPosition(): { x: number; y: number } {
 // Database initialization
 // ---------------------------------------------------------------------------
 
+// ⚠️ TEMPORARY SAFETY NET (session 17, 2026-05-12).
+// These handlers exist purely to recover from session 16's disaster
+// (v12→v13 upgrade stuck behind a stale tab connection during deploy).
+// The proper long-term fix is to prevent this scenario entirely:
+// stop bumping the schema once mature, use Service Worker
+// skipWaiting + clientsClaim to evict stale chunks on deploy, and
+// add an IDB export/import feature so users can back up their own data.
+// Delete this safety net before public launch once the above are in place.
+
+const BLOCKED_RELOAD_KEY = 'booklage:idb-blocked-reload-at'
+const BLOCKED_RELOAD_DELAY_MS = 5_000
+const BLOCKED_RELOAD_COOLDOWN_MS = 30_000
+
+/** Handler for the `blocked` callback: another tab holds the previous
+ *  version open and is preventing our upgrade. Schedules an auto-reload
+ *  after a short delay so the user does not stare at an infinite loader.
+ *  A sessionStorage cooldown prevents an endless reload loop when the
+ *  conflicting tab is still around after we come back. */
+export function handleDBBlocked(
+  currentVersion: number,
+  blockedVersion: number | null,
+): void {
+  console.warn(
+    '[booklage] IDB upgrade blocked by another tab at version',
+    currentVersion,
+    '(this tab wants',
+    blockedVersion,
+    ') — auto-reloading in',
+    BLOCKED_RELOAD_DELAY_MS / 1000,
+    's.',
+  )
+  if (typeof window === 'undefined') return
+
+  const last = Number(window.sessionStorage.getItem(BLOCKED_RELOAD_KEY) ?? 0)
+  if (Number.isFinite(last) && Date.now() - last < BLOCKED_RELOAD_COOLDOWN_MS) {
+    console.error(
+      '[booklage] IDB still blocked after a recent auto-reload — skipping reload to avoid a loop. Close all Booklage tabs and restart the browser.',
+    )
+    return
+  }
+  window.sessionStorage.setItem(BLOCKED_RELOAD_KEY, String(Date.now()))
+  window.setTimeout(() => window.location.reload(), BLOCKED_RELOAD_DELAY_MS)
+}
+
+/** Handler for the `blocking` callback: this tab's connection is blocking
+ *  a newer version from opening elsewhere. Close our connection so the
+ *  other tab can complete its upgrade. */
+export function handleDBBlocking(
+  currentVersion: number,
+  blockedVersion: number | null,
+  event: IDBVersionChangeEvent,
+): void {
+  console.warn(
+    '[booklage] IDB blocking upgrade in another tab — closing this connection at version',
+    currentVersion,
+    'to allow upgrade to',
+    blockedVersion,
+  )
+  const target = event.target
+  if (target && typeof (target as IDBDatabase).close === 'function') {
+    ;(target as IDBDatabase).close()
+  }
+}
+
 /**
  * Open (or create) the IndexedDB database with the application schema.
  * @returns The opened IDBPDatabase instance
  */
 export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
-  return openDB<BooklageDB>(DB_NAME, DB_VERSION, {
+  const db = await openDB<BooklageDB>(DB_NAME, DB_VERSION, {
+    blocked: handleDBBlocked,
+    blocking: handleDBBlocking,
     upgrade(db, oldVersion, _newVersion, transaction) {
       // ── v0 → v1: initial schema ──
       if (oldVersion < 1) {
@@ -502,6 +568,13 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
       // observable when oldVersion >= 13.
     },
   })
+  // Reaching this point means the upgrade completed without being blocked,
+  // so clear the auto-reload cooldown marker. A future blocked event will
+  // get its full retry budget again.
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(BLOCKED_RELOAD_KEY)
+  }
+  return db
 }
 
 // ---------------------------------------------------------------------------
