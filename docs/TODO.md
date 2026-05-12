@@ -17,6 +17,37 @@
 
 ## 現在の状態（次セッションはここから読む）
 
+### 🚨 セッション 16 (2026-05-12) 末の事故と現状
+
+**何が起きたか**: mediaSlots 統一型 + 3 段防御 backfill のセット実装 (両 plan 17 タスク + fixup 2 件、 計 21 commits) を `feat/mediaslots-mix-tweet-backfill` branch で実装し本番 deploy。 その結果、 ユーザー実機で **board にブクマが 1 件も表示されない**状態が発生。
+
+**原因の特定**: v12 → v13 schema bump 中に既存 v12 接続 (前回開いていたタブ等の残留 connection) が close されないまま残存 → 新接続が `onblocked` 状態で永久待機 → board が無限ローディング状態。
+
+**復旧経緯**:
+1. `await navigator.storage.estimate()` で `usage: 4524232` (約 4.5 MB) 確認 = **IDB データは消失せず無事だった**
+2. `master` (525b9a2) を本番に rollback deploy → 旧 build (v12 expect) を配信
+3. ユーザーが Chrome 完全終了 + 再起動 + 新規 1 タブで booklage.pages.dev/board を開く → 既存 connection 完全解放、 旧 build (v12) が問題なく開く → **ブクマ復活**
+
+**設計責任の自覚 (Claude)**:
+- IDB `onblocked` event ハンドラを実装していなかった (graceful recovery の経路がない)
+- 本番 deploy 前にローカル dev で v12 → v13 upgrade を実機検証していなかった
+- 大規模 deploy (両 plan セット) を staging 兼 本番で一気にやった判断が大胆すぎた
+
+**現状 (2026-05-12 末)**:
+- 本番 `https://booklage.pages.dev` は **master の旧 build (mediaSlots なし、 セッション 15 末状態)** を配信中
+- feature branch `feat/mediaslots-mix-tweet-backfill` は origin に push 済、 21 commits、 **未 merge**
+- ユーザーの IDB は v12 のまま、 既存ブクマ全件無事
+- ユーザーへ feature branch の処理 (A: 破棄 / B: 安全策追加して再挑戦 / C: 当面塩漬け) の判断を仰ぐ状態
+
+**次セッションへの教訓 (schema bump 系 deploy の手順)**:
+1. ローカル dev (`pnpm dev`) で **本物のブクマを数十件入れた状態** で v12 → v13 upgrade を実機検証してから本番 deploy
+2. schema bump 系の変更は **単独 commit / 単独 deploy** で隔離、 他機能と混ぜない
+3. **`onblocked` event handler を `initDB()` で必ず実装**:
+   - 競合接続検出時に「他のタブを閉じてからリロードしてください」 のオーバーレイ表示
+   - もしくは強制的に既存接続を close する仕組み
+4. **Service Worker の skipWaiting + clientsClaim** を schema bump 系のときに発動させて、 旧 build chunk のキャッシュ汚染を防ぐ
+5. **IndexedDB export (JSON dump) 機能を将来必須**: schema bump 前にユーザーがバックアップを取れる UI を用意
+
 ### リブランド進行: Booklage → **AllMarks**
 - **2026-05-11 セッション 8** で名前変更を決定
 - 新ブランド: **AllMarks** / メインドメイン: **allmarks.app** (取得は月末)
@@ -24,9 +55,9 @@
 - リブランド実装計画は spec §5 にまとめ済
 - **現状コードは全て「Booklage」 のまま**。 ドメイン取得後に一気に置換予定
 
-### コード状況 (リブランド前)
-- **ブランチ**: `master` 単一運用、 セッション 15 で **動画+画像 mix tweet 対応 spec + 複数画像 backfill spec 作成 + sizing Phase 1 基盤 token 投入** (2026-05-12)
-- **本番**: `https://booklage.pages.dev` に **I-07 Phase 1 (X 複数画像 hover + Lightbox carousel)** + sizing Phase 1 基盤 token (見た目変化ゼロ) まで deploy 済
+### コード状況 (リブランド前、 セッション 16 rollback 後)
+- **ブランチ**: `master` 単一運用 (mediaSlots feature は `feat/mediaslots-mix-tweet-backfill` に隔離)
+- **本番**: `https://booklage.pages.dev` に **master state (I-07 Phase 1 + sizing Phase 1)** を配信中
 - **Service Worker**: `v96-2026-05-09-slot-easing-opacity-blink` (本番、未 bump)
 - **ユーザー実機**: 拡張機能 sideload 完了済、 セッション 9 で 4 系統テスト全 OK 確認済。 セッション 14 末は本番 URL 上で I-07 Phase 1 のユーザー実機検証待ち
 
