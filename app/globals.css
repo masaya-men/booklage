@@ -341,10 +341,10 @@ ol {
      clip-path mask は撤去。 pause は card 中点からの追加オフセット
      (0 = card 中点から即発火、 正の値で更に遅らせる)。
      GSAP は秒単位なので duration / pause は秒で記述 (parseFloat で読む)。 */
-  --lightbox-text-reveal-duration: 0.4s;
+  --lightbox-text-reveal-duration: 0.6s;
   --lightbox-text-reveal-stagger: 0s;
   --lightbox-text-reveal-pause: 0s;
-  --lightbox-text-reveal-translate-y: 8px;
+  --lightbox-text-reveal-translate-y: 16px;
   --lightbox-text-reveal-easing: power2.out;
 
   --lightbox-media-radius: 6px;
