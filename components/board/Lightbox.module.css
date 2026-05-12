@@ -525,6 +525,17 @@
 
 .favicon { width: 16px; height: 16px; border-radius: 3px; }
 
+/* I-07-#5: stage 3 wrapper for meta + sourceLink reveal as one group.
+   レイアウト中立 — 親 .text の column flex 内に普通の block として座る。
+   既存 .text の `gap: 14px` がこの wrapper にも適用されるので、
+   wrapper 自身は children を gap 14px の column flex で並べて
+   wrapper 外と内で同じ縦間隔を保つ。 */
+.metaCtaGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .sourceLink {
   color: var(--text-body);
   text-decoration: underline;
