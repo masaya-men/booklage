@@ -29,8 +29,8 @@ test.beforeEach(async ({ page }) => {
       tx.objectStore('bookmarks').put({
         id: 'b-video-regression',
         url: 'https://x.com/u/status/1001',
-        title: 'video tweet',
-        description: 'video tweet for FLIP regression',
+        title: 'video tweet (horizontal 16:9)',
+        description: 'horizontal video tweet for FLIP regression',
         thumbnail: 'https://pbs.twimg.com/poster.jpg',
         favicon: '',
         siteName: 'X',
@@ -80,6 +80,37 @@ test.beforeEach(async ({ page }) => {
         x: 500, y: 80,
         rotation: 0, scale: 1, zIndex: 1,
         gridIndex: 1, isManuallyPlaced: false,
+        width: 240, height: 180,
+      })
+      // Vertical video tweet (9:16 — YouTube Shorts / X vertical clip).
+      // Regression for the "side black bars" issue: width must follow the
+      // video's natural aspect, not 50vw.
+      tx.objectStore('bookmarks').put({
+        id: 'b-video-vertical',
+        url: 'https://x.com/u/status/1003',
+        title: 'vertical video tweet (9:16)',
+        description: 'vertical video tweet — must not letterbox sideways',
+        thumbnail: 'https://pbs.twimg.com/poster-vert.jpg',
+        favicon: '',
+        siteName: 'X',
+        type: 'tweet',
+        savedAt: new Date().toISOString(),
+        ogpStatus: 'fetched',
+        tags: [],
+        cardWidth: 240,
+        sizePreset: 'S',
+        orderIndex: 2,
+        mediaSlots: [
+          { type: 'video', url: 'https://pbs.twimg.com/poster-vert.jpg', videoUrl: 'https://v/vert.mp4', aspect: 9 / 16 },
+        ],
+      })
+      tx.objectStore('cards').put({
+        id: 'c-video-vertical',
+        bookmarkId: 'b-video-vertical',
+        folderId: '',
+        x: 760, y: 80,
+        rotation: 0, scale: 1, zIndex: 1,
+        gridIndex: 2, isManuallyPlaced: false,
         width: 240, height: 180,
       })
     }
@@ -160,4 +191,29 @@ test('video-tweet Lightbox: FLIP transform is applied (scale != 1) right after o
     expect(scaleX).toBeGreaterThan(0.05)
     expect(scaleX).toBeLessThan(0.95) // mid-FLIP, not at scale 1 yet
   }
+})
+
+test('vertical-video Lightbox: preserves 9:16 aspect (no side black bars)', async ({ page }) => {
+  await page.locator('[data-bookmark-id="b-video-vertical"]').click()
+  await page.waitForSelector('[data-testid="lightbox"]')
+  // Let the open tween settle so .media reflects its final layout rect,
+  // not the FLIP start scale.
+  await page.waitForTimeout(800)
+
+  const rect = await page.evaluate(() => {
+    const lb = document.querySelector('[data-testid="lightbox"]')
+    const media = lb?.querySelector('[class*="media"]')
+    if (!media) return null
+    const r = media.getBoundingClientRect()
+    return { w: r.width, h: r.height }
+  })
+
+  expect(rect).not.toBeNull()
+  // Vertical 9:16 → height MUST be the longer dimension. If the wrapper
+  // were stuck at 50vw width, ratio would be ~1.0 or wider (black bars).
+  expect(rect!.h).toBeGreaterThan(rect!.w)
+  // Within ±5% of 9/16 = 0.5625
+  const ratio = rect!.w / rect!.h
+  expect(ratio).toBeGreaterThan(0.50)
+  expect(ratio).toBeLessThan(0.62)
 })

@@ -1232,31 +1232,50 @@ function TweetVideoPlayer({
   // forcing every clip into a 16:9 or 9:16 bucket. Caps come from viewport.
   const aspect = meta.videoAspectRatio ?? 16 / 9
   const isVertical = aspect < 1
-  // Explicit width matching maxWidth is REQUIRED for the FLIP open animation
-  // to capture a non-zero .media rect at useLayoutEffect time. Without an
-  // explicit width, the wrapper falls back to <video>'s intrinsic 300×150,
-  // but in a flex container with min-width:0 ancestors the wrapper can
-  // collapse to 0×0 before <video> metadata loads — making startScale =
-  // originRect.width / 0 = Infinity and breaking the FLIP morph.
-  // (Session 17 bug: previously the OLD render path showed <img src=poster>
-  // first and swapped to <TweetVideoPlayer> after meta arrived, so .media
-  // always had a real img-intrinsic rect at open time. The mediaSlots
-  // refactor renders TweetVideoPlayer immediately when slot[0] is video,
-  // exposing this latent layout dependency.)
-  const wrapperWidth = isVertical ? '50vw' : 'min(920px, 60vw)'
-  const wrapperStyle: CSSProperties = {
-    position: 'relative',
-    aspectRatio: aspect,
-    // Shared envelope variable from Lightbox.module.css — keeps tweet
-    // videos inside the same close-button + nav-meter clearances as the
-    // CSS-driven iframeWrap and .media cases.
-    maxHeight: 'var(--lightbox-media-max-h)',
-    width: wrapperWidth,
-    maxWidth: wrapperWidth,
-    background: 'black',
-    borderRadius: 'var(--lightbox-media-radius)',
-    overflow: 'hidden',
-  }
+  // One explicit dimension is REQUIRED for the FLIP open animation to
+  // capture a non-zero .media rect at useLayoutEffect time. Without one,
+  // the wrapper falls back to <video>'s intrinsic 300×150 and in a flex
+  // container with min-width:0 ancestors can collapse to 0×0 before
+  // metadata loads — making startScale = originRect.width / 0 = Infinity.
+  // (Session 17 bug: the OLD render path showed <img src=poster> first
+  // and swapped to <TweetVideoPlayer> after meta arrived, so .media had
+  // a real img-intrinsic rect at open time. The mediaSlots refactor
+  // renders TweetVideoPlayer immediately when slot[0] is video, exposing
+  // this latent layout dependency.)
+  //
+  // To preserve aspect ratio for both horizontal AND vertical videos:
+  // - Horizontal (aspect ≥ 1): set explicit WIDTH bounded by horizontal
+  //   envelope and by maxHeight × aspect (so tall horizontals don't
+  //   exceed the vertical envelope). Browser derives height via
+  //   aspectRatio.
+  // - Vertical (aspect < 1): set explicit HEIGHT bounded by maxHeight
+  //   and by 50vw / aspect (so vertical videos don't get cut off on
+  //   narrow viewports). Browser derives width via aspectRatio.
+  // This keeps the wrapper at the video's natural aspect — no side
+  // black bars on vertical videos (regression reported by user).
+  const wrapperStyle: CSSProperties = isVertical
+    ? {
+        position: 'relative',
+        aspectRatio: aspect,
+        // Height-led: cap at the shared media envelope or what fits in 50vw width.
+        height: `min(var(--lightbox-media-max-h), calc(50vw / ${aspect}))`,
+        maxHeight: 'var(--lightbox-media-max-h)',
+        maxWidth: '50vw',
+        background: 'black',
+        borderRadius: 'var(--lightbox-media-radius)',
+        overflow: 'hidden',
+      }
+    : {
+        position: 'relative',
+        aspectRatio: aspect,
+        // Width-led: cap at horizontal envelope or what fits in maxHeight × aspect.
+        width: `min(920px, 60vw, calc(var(--lightbox-media-max-h) * ${aspect}))`,
+        maxHeight: 'var(--lightbox-media-max-h)',
+        maxWidth: 'min(920px, 60vw)',
+        background: 'black',
+        borderRadius: 'var(--lightbox-media-radius)',
+        overflow: 'hidden',
+      }
   const proxiedSrc = `/api/tweet-video?url=${encodeURIComponent(meta.videoUrl ?? '')}`
   const handleOverlayClick = (): void => {
     setHasInteracted(true)
