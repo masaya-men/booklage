@@ -2,6 +2,19 @@ interface PagesContext {
   request: Request
 }
 
+// Local copy — Pages Functions can't import from @/lib.
+// Mirror of lib/utils/url-resolve.ts — keep in sync.
+function resolveMaybeRelative(href: string, baseUrl: string): string {
+  if (!href) return ''
+  if (/^https?:\/\//i.test(href)) return href
+  if (href.startsWith('//')) return `https:${href}`
+  try {
+    return new URL(href, baseUrl).href
+  } catch {
+    return ''
+  }
+}
+
 function extractMeta(html: string, property: string): string {
   const ogMatch = html.match(
     new RegExp(
@@ -47,14 +60,14 @@ function extractFavicon(html: string, baseUrl: string): string {
   const match = html.match(
     /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']*)["']/i,
   )
-  if (match) {
-    const href = match[1]
-    if (href.startsWith('http')) return href
-    if (href.startsWith('//')) return `https:${href}`
-    const origin = new URL(baseUrl).origin
-    return `${origin}${href.startsWith('/') ? '' : '/'}${href}`
+  const raw = match?.[1] ?? ''
+  const resolved = resolveMaybeRelative(raw, baseUrl)
+  if (resolved) return resolved
+  try {
+    return `${new URL(baseUrl).origin}/favicon.ico`
+  } catch {
+    return ''
   }
-  return `${new URL(baseUrl).origin}/favicon.ico`
 }
 
 function jsonResponse(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -94,11 +107,12 @@ export async function onRequest(context: PagesContext): Promise<Response> {
 
     const html = await res.text()
 
+    const rawImage = extractMeta(html, 'og:image') || extractMeta(html, 'twitter:image')
     const data = {
       title: extractMeta(html, 'og:title') || extractTitle(html),
       description:
         extractMeta(html, 'og:description') || extractMeta(html, 'description'),
-      image: extractMeta(html, 'og:image'),
+      image: resolveMaybeRelative(rawImage, url),
       siteName: extractMeta(html, 'og:site_name'),
       favicon: extractFavicon(html, url),
       url,
