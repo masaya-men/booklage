@@ -717,7 +717,13 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         const safeStartY = Math.max(0.01, startScaleY)
         mediaEl.style.borderRadius = `${openCardRadius / safeStartX}px / ${openCardRadius / safeStartY}px`
       }
-      if (textEl) gsap.set(textEl, { opacity: 0 })
+      // I-07-#5: textPanel は stage 要素単位で mask-reveal-up する。
+      // textEl 自身は opacity 1 のまま、 子の stage 要素を不可視にしておく。
+      const revealTokens = readRevealTokens()
+      const prefersReduce = getPrefersReducedMotion()
+      const stageEls = textEl ? collectStageEls(textEl) : []
+      if (textEl) gsap.set(textEl, { opacity: 1 })
+      setStageInitialState(stageEls, revealTokens.translateY, prefersReduce)
       if (closeEl) gsap.set(closeEl, { opacity: 0 })
 
       const tl = gsap.timeline()
@@ -738,17 +744,13 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           mediaEl.style.borderRadius = `${visibleR / safeX}px / ${visibleR / safeY}px`
         },
       }, 0)
-      // Chrome (text panel + close button) appears only after the media
-      // is most of the way home — "card lands, then chrome arrives" as
-      // two distinct beats.
+      // I-07-#5: stage reveal timeline. textEl は既に opacity 1 で
+      // 子の stage 要素が不可視状態。 media FLIP 着地 (= dur 経過) +
+      // pause 経過後に stage 1/2/3 順次 reveal を発火。
+      const textStartAt = dur + revealTokens.pause
+      appendRevealTimeline(tl, stageEls, revealTokens, textStartAt, prefersReduce)
+      // close ボタンは従来通り chromeAt で素フェード in (text と別系統)。
       const chromeAt = dur * OPEN_TEXT_FADE_DELAY_RATIO
-      if (textEl) {
-        tl.to(textEl, {
-          opacity: 1,
-          duration: OPEN_TEXT_FADE_DUR,
-          ease: 'power2.out',
-        }, chromeAt)
-      }
       if (closeEl) {
         tl.to(closeEl, {
           opacity: 1,
