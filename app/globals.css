@@ -117,6 +117,24 @@ ol {
 /* ── Design Tokens ─────────────────────────────────────────── */
 
 :root {
+  /* ── Sizing Foundation (Phase 1 — 2026-05-12) ──
+     全プロジェクト共通の sizing 哲学 (~/.claude/design-philosophy-sizing.md v2) の
+     受け皿。 アンカー viewport = 1489 (開発者 CSS 幅)、 単位は px ベース、
+     text token は新 --fs-* シリーズ。 既存 --text-* (color) とは完全別 namespace。
+     Phase 1 はこの token を入れるだけ、 参照は Phase 2 で順次置換。
+     Phase 3 で clamp(MIN_PX, N_VW, BASE_PX) 化 (BASE = base = 開発者画面 px)。 */
+  font-size: 16px;                  /* ブラウザ font 設定 (経路 b) への保険 */
+  --container-max: 1489px;          /* 大画面で要素拡大せず余白拡大の上限 */
+  --text-scale-multiplier: 1;       /* Phase 6 用予約、 token 側は今は無視 */
+
+  /* font-size token (Phase 1 では px 即値、 Phase 3 で clamp+vw 化) */
+  --fs-micro:   9px;
+  --fs-caption: 11px;
+  --fs-body:    13px;
+  --fs-sub:     15px;
+  --fs-heading: 18px;
+  --fs-display: 22px;
+
   /* ── Base Colors (Dark Mode Default) ── */
   --color-bg-primary: #0a0a0f;
   --color-bg-secondary: #12121a;
