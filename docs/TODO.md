@@ -37,7 +37,9 @@
 - 本番 `https://booklage.pages.dev` は **master の旧 build (mediaSlots なし、 セッション 15 末状態)** を配信中
 - feature branch `feat/mediaslots-mix-tweet-backfill` は origin に push 済、 21 commits、 **未 merge**
 - ユーザーの IDB は v12 のまま、 既存ブクマ全件無事
-- ユーザーへ feature branch の処理 (A: 破棄 / B: 安全策追加して再挑戦 / C: 当面塩漬け) の判断を仰ぐ状態
+- **ユーザーは新機能 (mediaSlots / mix tweet 対応) を実機で試したい意向**
+
+**ユーザー判断 (セッション 16 末で確定)**: 上記 A/B/C の選択肢を提示したところ、 ユーザーは「**新機能を試したい**」 とのこと。 = **B (安全策を追加してから再挑戦)** の方針で確定。 次セッションでこれに着手。
 
 **次セッションへの教訓 (schema bump 系 deploy の手順)**:
 1. ローカル dev (`pnpm dev`) で **本物のブクマを数十件入れた状態** で v12 → v13 upgrade を実機検証してから本番 deploy
@@ -47,6 +49,86 @@
    - もしくは強制的に既存接続を close する仕組み
 4. **Service Worker の skipWaiting + clientsClaim** を schema bump 系のときに発動させて、 旧 build chunk のキャッシュ汚染を防ぐ
 5. **IndexedDB export (JSON dump) 機能を将来必須**: schema bump 前にユーザーがバックアップを取れる UI を用意
+
+---
+
+### 📋 セッション 17 開始時の優先順位 (mediaSlots 再挑戦の安全策実装)
+
+**ゴール**: feature branch `feat/mediaslots-mix-tweet-backfill` を安全に本番反映できる状態にしてから merge + deploy。 ユーザーが新機能 (mix tweet hover swap, ▶ dot, 3 段防御 backfill) を実機で試せるようにする。
+
+#### 1. 安全策の実装 (新規 commit を feature branch に追加)
+
+**1-1. `initDB()` に `onblocked` handler を追加**
+
+`lib/storage/indexeddb.ts:229` の `initDB()` の `openDB()` callback に `blocked` ハンドラを追加:
+
+```ts
+return openDB<BooklageDB>(DB_NAME, DB_VERSION, {
+  upgrade(db, oldVersion, _newVersion, transaction) { ... },
+  blocked(currentVersion, blockedVersion, event) {
+    // 他のタブが古い version で IDB を持っている → upgrade できない
+    // UI 側で警告 + 自動 reload trigger
+    console.warn('IDB upgrade blocked:', { currentVersion, blockedVersion })
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('booklage:db-blocked', {
+        detail: { currentVersion, blockedVersion },
+      }))
+    }
+  },
+  blocking(currentVersion, blockedVersion, event) {
+    // このタブが他のタブの upgrade を block している → 自タブをすぐ close
+    console.warn('IDB blocking newer version:', { currentVersion, blockedVersion })
+    // 既存接続を即時 close して、 他タブの upgrade を許可
+    event.target instanceof IDBDatabase && event.target.close()
+  },
+})
+```
+
+**1-2. board UI 側で blocked event を listen + ユーザー向けオーバーレイ**
+
+`components/board/BoardRoot.tsx` (もしくは新規 component) で `booklage:db-blocked` を listen し、 「他のタブを閉じて再読み込みしてください」 のオーバーレイを表示。 タイムアウト後に自動 `location.reload()` も検討。
+
+**1-3. unit test**: `tests/lib/idb-blocked.test.ts` で blocked / blocking handler の呼び出しを mock 検証。
+
+**1-4. 安全策 commit**: 「feat(idb): onblocked/blocking handlers + UI overlay for graceful version mismatch」 として 1 commit。
+
+#### 2. ローカル dev で v12 → v13 upgrade の実機検証 (本番 deploy 前必須)
+
+手順:
+1. `pnpm dev` で `localhost:3000` 起動 (master state、 v12)
+2. ブクマレットで実際に X tweet を **30 件以上**ブクマ
+3. dev server を一旦停止
+4. `git checkout feat/mediaslots-mix-tweet-backfill` (v13 を含む build)
+5. `pnpm dev` で再起動
+6. localhost:3000 のタブを開く → v12 → v13 upgrade が走る
+7. 確認:
+   - 既存ブクマ全件表示されること (no-op migration なので消えないはず)
+   - mix tweet の hover swap (動画 ↔ photo 切替) が動くこと
+   - Lightbox の ▶ / ● dot が出ること
+   - 動画再生中に slot 切替で auto-pause すること
+   - Phase B backfill loop で既存 v12 ブクマに mediaSlots が backfill されること
+   - 「他のタブを開いていた状態で reload」 のシミュレートで `blocked` event が発火し UI オーバーレイが出ること
+
+**全部 OK の確証を取ってから本番 deploy。 不安があれば 1 件でも修正して再検証する。**
+
+#### 3. 段階的な本番 deploy
+
+3-1. まず **`master` に feature branch を merge** (rebase or squash、 21 commits + 安全策 1 commit を 1 つにまとめる選択肢あり)
+3-2. `pnpm build` で本番 build
+3-3. **deploy 直前にユーザーに告知**: 「これから新 build を本番に上げます。 もし board に何も表示されなくなったら Chrome を完全終了 → 再起動してください」
+3-4. `wrangler pages deploy out/ --project-name=booklage --branch=master --commit-message="..."` で deploy
+3-5. ユーザーにハードリロード + Chrome 再起動 (念のため) 依頼
+3-6. 実機検証 + 不具合があれば即時 rollback
+
+#### 4. 開始時のひと言
+
+ユーザーが次セッション開始時に発する最初のメッセージは:
+> 「セッション 16 末の事故振り返り + 安全策追加 + mediaSlots 再 deploy」
+
+または短縮:
+> 「mediaSlots 安全策入れて再 deploy」
+
+これでこのセクションに即着手。
 
 ### リブランド進行: Booklage → **AllMarks**
 - **2026-05-11 セッション 8** で名前変更を決定
