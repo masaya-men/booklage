@@ -3,6 +3,7 @@ import { DB_NAME, DB_VERSION, FLOAT_ROTATION_RANGE } from '@/lib/constants'
 import type { UrlType } from '@/lib/utils/url'
 import { generateCardDimensions } from '@/lib/canvas/card-sizing'
 import { MIN_CARD_WIDTH, presetToCardWidth, DEFAULT_CARD_WIDTH } from '@/lib/board/size-migration'
+import type { MediaSlot } from '@/lib/embed/types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +75,11 @@ export interface BookmarkRecord {
    *  syndication API、 Bluesky なら public API から取得 (取得失敗時は
    *  undefined のまま、 既存単一画像表示に fallback)。 */
   photos?: readonly string[]
+  /** v13: 動画+画像 mix tweet 対応の統一 media 配列。 mediaDetails の API
+   *  順序通り。 単一画像も単一動画も複数画像も mix も全てこの 1 配列で表現。
+   *  v12 の photos field は読み取り fallback として併存 (新規書き込みなし)、
+   *  将来別 spec で完全廃止予定。 */
+  mediaSlots?: readonly MediaSlot[]
 }
 
 /** Mood record (v9) — replaces the legacy folder concept. Stored in `moods` store. */
@@ -216,12 +222,78 @@ function randomPosition(): { x: number; y: number } {
 // Database initialization
 // ---------------------------------------------------------------------------
 
+// ⚠️ TEMPORARY SAFETY NET (session 17, 2026-05-12).
+// These handlers exist purely to recover from session 16's disaster
+// (v12→v13 upgrade stuck behind a stale tab connection during deploy).
+// The proper long-term fix is to prevent this scenario entirely:
+// stop bumping the schema once mature, use Service Worker
+// skipWaiting + clientsClaim to evict stale chunks on deploy, and
+// add an IDB export/import feature so users can back up their own data.
+// Delete this safety net before public launch once the above are in place.
+
+const BLOCKED_RELOAD_KEY = 'booklage:idb-blocked-reload-at'
+const BLOCKED_RELOAD_DELAY_MS = 5_000
+const BLOCKED_RELOAD_COOLDOWN_MS = 30_000
+
+/** Handler for the `blocked` callback: another tab holds the previous
+ *  version open and is preventing our upgrade. Schedules an auto-reload
+ *  after a short delay so the user does not stare at an infinite loader.
+ *  A sessionStorage cooldown prevents an endless reload loop when the
+ *  conflicting tab is still around after we come back. */
+export function handleDBBlocked(
+  currentVersion: number,
+  blockedVersion: number | null,
+): void {
+  console.warn(
+    '[booklage] IDB upgrade blocked by another tab at version',
+    currentVersion,
+    '(this tab wants',
+    blockedVersion,
+    ') — auto-reloading in',
+    BLOCKED_RELOAD_DELAY_MS / 1000,
+    's.',
+  )
+  if (typeof window === 'undefined') return
+
+  const last = Number(window.sessionStorage.getItem(BLOCKED_RELOAD_KEY) ?? 0)
+  if (Number.isFinite(last) && Date.now() - last < BLOCKED_RELOAD_COOLDOWN_MS) {
+    console.error(
+      '[booklage] IDB still blocked after a recent auto-reload — skipping reload to avoid a loop. Close all Booklage tabs and restart the browser.',
+    )
+    return
+  }
+  window.sessionStorage.setItem(BLOCKED_RELOAD_KEY, String(Date.now()))
+  window.setTimeout(() => window.location.reload(), BLOCKED_RELOAD_DELAY_MS)
+}
+
+/** Handler for the `blocking` callback: this tab's connection is blocking
+ *  a newer version from opening elsewhere. Close our connection so the
+ *  other tab can complete its upgrade. */
+export function handleDBBlocking(
+  currentVersion: number,
+  blockedVersion: number | null,
+  event: IDBVersionChangeEvent,
+): void {
+  console.warn(
+    '[booklage] IDB blocking upgrade in another tab — closing this connection at version',
+    currentVersion,
+    'to allow upgrade to',
+    blockedVersion,
+  )
+  const target = event.target
+  if (target && typeof (target as IDBDatabase).close === 'function') {
+    ;(target as IDBDatabase).close()
+  }
+}
+
 /**
  * Open (or create) the IndexedDB database with the application schema.
  * @returns The opened IDBPDatabase instance
  */
 export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
-  return openDB<BooklageDB>(DB_NAME, DB_VERSION, {
+  const db = await openDB<BooklageDB>(DB_NAME, DB_VERSION, {
+    blocked: handleDBBlocked,
+    blocking: handleDBBlocking,
     upgrade(db, oldVersion, _newVersion, transaction) {
       // ── v0 → v1: initial schema ──
       if (oldVersion < 1) {
@@ -487,8 +559,22 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
       // path treats as "no multi-image data" — no cursor sweep needed.
       // Bumping the schema version still serves as a tripwire so future
       // migrations can assume the field is observable when oldVersion >= 12.
+
+      // ── v12 → v13: introduce optional mediaSlots[] field on bookmarks (no-op
+      // rewrite). Existing rows have `mediaSlots: undefined`, which the read
+      // path treats as "no unified-slot data; fall back to photos[]/derived
+      // fields" — no cursor sweep needed. Bumping the schema version still
+      // serves as a tripwire so future migrations can assume the field is
+      // observable when oldVersion >= 13.
     },
   })
+  // Reaching this point means the upgrade completed without being blocked,
+  // so clear the auto-reload cooldown marker. A future blocked event will
+  // get its full retry budget again.
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(BLOCKED_RELOAD_KEY)
+  }
+  return db
 }
 
 // ---------------------------------------------------------------------------
@@ -739,6 +825,46 @@ export async function persistPhotos(
   }
 
   const updated: BookmarkRecord = { ...existing, photos: next }
+  await db.put('bookmarks', updated)
+}
+
+/**
+ * Persist a bookmark's mediaSlots array (unified media model for mix-tweet
+ * support, v13). Pass an empty array to clear the field back to undefined
+ * (returns the bookmark to legacy photos[]/derived display). No-op when the
+ * deep equality check matches the existing array (avoids re-render storms
+ * for idempotent backfills). Companion to persistPhotos() — once the
+ * cleanup spec retires photos[], persistPhotos() will be removed.
+ */
+export async function persistMediaSlots(
+  db: IDBPDatabase<BooklageDB>,
+  bookmarkId: string,
+  mediaSlots: readonly MediaSlot[],
+): Promise<void> {
+  const existing = await db.get('bookmarks', bookmarkId)
+  if (!existing) return
+
+  const next = mediaSlots.length === 0 ? undefined : mediaSlots
+  const cur = existing.mediaSlots
+  if (
+    (cur === undefined && next === undefined) ||
+    (cur !== undefined &&
+      next !== undefined &&
+      cur.length === next.length &&
+      cur.every((s: MediaSlot, i: number) => {
+        const n = next[i]
+        return (
+          s.type === n.type &&
+          s.url === n.url &&
+          s.videoUrl === n.videoUrl &&
+          s.aspect === n.aspect
+        )
+      }))
+  ) {
+    return
+  }
+
+  const updated: BookmarkRecord = { ...existing, mediaSlots: next }
   await db.put('bookmarks', updated)
 }
 

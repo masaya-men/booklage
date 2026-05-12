@@ -35,7 +35,10 @@ export async function resolveThumbnail(bookmark: BookmarkRecord): Promise<string
     if (!id) return existing
     const meta = await fetchTweetMeta(id)
     if (!meta) return existing
-    return meta.photoUrl ?? meta.videoPosterUrl ?? existing
+    // For mix tweets (video + photos) prefer the video poster — matches the
+    // tweet-backfill precedence so PiP / board / Lightbox all show the same
+    // thumbnail for a given bookmark.
+    return meta.videoPosterUrl ?? meta.photoUrl ?? existing
   }
 
   if (type === 'youtube') {

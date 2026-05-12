@@ -15,9 +15,11 @@ import {
   clearCustomCardWidth,
   clearAllCustomCardWidths,
   persistPhotos as persistPhotosDb,
+  persistMediaSlots as persistMediaSlotsDb,
   type BookmarkRecord,
   type CardRecord,
 } from './indexeddb'
+import type { MediaSlot } from '@/lib/embed/types'
 import { presetToCardWidth } from '@/lib/board/size-migration'
 
 export type BoardItem = {
@@ -50,6 +52,10 @@ export type BoardItem = {
    *  Bluesky posts with up to 4 images). photos[0] equals thumbnail. Empty
    *  / undefined → single-image card with no hover swap. I-07 Phase 1. */
   readonly photos?: readonly string[]
+  /** v13: 統一 media 配列 (mix tweet 対応)。 mediaSlots[0] が動画 poster の
+   *  ケースがある。 photos field は読み取り fallback 用に併存 (旧 v12 records)。
+   *  undefined → photos / thumbnail にフォールバック (= 旧挙動)。 */
+  readonly mediaSlots?: readonly MediaSlot[]
 }
 
 type DbLike = IDBPDatabase<unknown>
@@ -116,6 +122,7 @@ function toItem(b: BookmarkRecord, c: CardRecord | undefined): BoardItem {
     displayMode: b.displayMode ?? null,
     hasVideo: b.hasVideo,
     photos: b.photos,
+    mediaSlots: b.mediaSlots,
   }
 }
 
@@ -146,6 +153,10 @@ export function useBoardData(): {
   /** Persist the multi-image photo URL array for a bookmark. Pass an empty
    *  array to clear back to single-image. I-07 Phase 1. */
   persistPhotos: (bookmarkId: string, photos: readonly string[]) => Promise<void>
+  /** Persist the unified mediaSlots array for a bookmark. Pass an empty
+   *  array to clear back to undefined. Mirrors persistPhotos but for the
+   *  new v13 model. Idempotent (deep-equality skip in the IDB layer). */
+  persistMediaSlots: (bookmarkId: string, mediaSlots: readonly MediaSlot[]) => Promise<void>
   persistTags: (bookmarkId: string, tags: readonly string[]) => Promise<void>
   persistDisplayMode: (bookmarkId: string, displayMode: BoardItem['displayMode']) => Promise<void>
   reload: () => Promise<void>
@@ -385,6 +396,25 @@ export function useBoardData(): {
     [],
   )
 
+  const persistMediaSlots = useCallback(
+    async (bookmarkId: string, mediaSlots: readonly MediaSlot[]): Promise<void> => {
+      const db = dbRef.current
+      if (!db || !bookmarkId) return
+      await persistMediaSlotsDb(
+        db as Parameters<typeof persistMediaSlotsDb>[0],
+        bookmarkId,
+        mediaSlots,
+      )
+      const next = mediaSlots.length === 0 ? undefined : mediaSlots
+      setItems((prev) =>
+        prev.map((it) =>
+          it.bookmarkId === bookmarkId ? { ...it, mediaSlots: next } : it,
+        ),
+      )
+    },
+    [],
+  )
+
   const persistTags = useCallback(
     async (bookmarkId: string, tags: readonly string[]): Promise<void> => {
       const db = dbRef.current
@@ -507,6 +537,7 @@ export function useBoardData(): {
     persistThumbnail,
     persistVideoFlag,
     persistPhotos,
+    persistMediaSlots,
     persistTags,
     persistDisplayMode,
     reload,
