@@ -63,7 +63,6 @@ export function BoardRoot() {
     persistOrderBatch,
     persistMeasuredAspect,
     persistThumbnail,
-    persistPhotos,
     persistMediaSlots,
     persistVideoFlag,
     persistSoftDelete,
