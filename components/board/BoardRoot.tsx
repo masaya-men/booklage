@@ -20,6 +20,8 @@ import { useBoardData } from '@/lib/storage/use-board-data'
 import { subscribeBookmarkSaved } from '@/lib/board/channel'
 import { detectUrlType, extractTweetId } from '@/lib/utils/url'
 import { fetchTweetMeta } from '@/lib/embed/tweet-meta'
+import { createBackfillQueue } from '@/lib/board/backfill-queue'
+import { backfillTweetMeta } from '@/lib/board/tweet-backfill'
 import { fetchTikTokMeta } from '@/lib/embed/tiktok-meta'
 import { useMoods } from '@/lib/storage/use-moods'
 import { initDB } from '@/lib/storage/indexeddb'
@@ -632,61 +634,52 @@ export function BoardRoot() {
     [],
   )
 
-  // Tweet thumbnail backfill via Cloudflare Pages Function proxy (the
-  // syndication CDN itself is CORS-locked to platform.twitter.com, so we
-  // can't call it from the browser directly — see functions/api/tweet-meta.ts).
+  // Phase B: rate-limit-driven backfill for every tweet bookmark. Replaces
+  // the prior sequential loop (which persisted thumbnail + hasVideo). The
+  // new path also persists mediaSlots from the same fetchTweetMeta call
+  // (no extra API trips). Uses createBackfillQueue at parallel-3 +
+  // 200ms intervals (spec §4-2 B-3) and an AbortController so navigation
+  // away during a long sweep cancels in-flight tasks cleanly.
   //
-  // For every tweet bookmark we hit /api/tweet-meta?id=<id> once, then write
-  // the resulting photoUrl / videoPosterUrl into bookmark.thumbnail with
-  // force=true. The bookmarklet captures X's generic "SEE WHAT'S HAPPENING"
-  // placeholder for every tweet because X is a SPA, so unconditional
-  // overwrite is correct: the syndication response is the only source of
-  // truth for per-tweet media.
-  //
-  // processedTweetIdsRef dedupes across re-renders — the effect re-runs
-  // whenever items.length changes (e.g. a new bookmark arrives), and we
-  // don't want to re-fetch tweets we've already filled.
-  //
-  // photoUrl AND videoPosterUrl missing → empty string forced into thumbnail,
-  // which flips pickCard to TextCard for genuine text-only tweets.
+  // processedTweetIdsRef dedupes across items.length re-fires so a freshly
+  // arrived bookmark only enqueues if its tweet id has never been touched
+  // in this session.
   const processedTweetIdsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (loading || items.length === 0) return
-    let cancelled = false
-    const sleep = (ms: number): Promise<void> =>
-      new Promise((resolve) => setTimeout(resolve, ms))
-    void (async (): Promise<void> => {
-      for (const it of items) {
-        if (cancelled) return
-        if (detectUrlType(it.url) !== 'tweet') continue
-        const tweetId = extractTweetId(it.url)
-        if (!tweetId) continue
-        if (processedTweetIdsRef.current.has(tweetId)) continue
-        processedTweetIdsRef.current.add(tweetId)
-        try {
-          const meta = await fetchTweetMeta(tweetId)
-          if (cancelled) return
-          if (!meta) continue
-          const url = meta.photoUrl ?? meta.videoPosterUrl ?? ''
-          await persistThumbnail(it.bookmarkId, url, true)
-          // Mark the bookmark as a video source if syndication confirms
-          // it. This drives the small play-overlay badge on the board
-          // grid so video tweets stop looking like still photos. Photos
-          // and text-only tweets never set the flag, so they stay
-          // overlay-free.
-          if (meta.hasVideo) {
-            await persistVideoFlag(it.bookmarkId, true)
-          }
-        } catch {
-          /* swallow per-tweet failures so the loop keeps draining the queue */
-        }
-        if (cancelled) return
-        await sleep(200)
-      }
-    })()
-    return (): void => { cancelled = true }
+    const controller = new AbortController()
+    const queue = createBackfillQueue({
+      maxConcurrent: 3,
+      minIntervalMs: 200,
+      signal: controller.signal,
+    })
+    for (const it of items) {
+      if (detectUrlType(it.url) !== 'tweet') continue
+      const tweetId = extractTweetId(it.url)
+      if (!tweetId) continue
+      if (processedTweetIdsRef.current.has(tweetId)) continue
+      // Spec §B-2 visible filter: items[] is already the post-filter,
+      // post-soft-delete set produced by useBoardData. Iterating it
+      // satisfies the "visible カード限定" requirement.
+      processedTweetIdsRef.current.add(tweetId)
+      void queue.add((signal) =>
+        backfillTweetMeta(
+          { bookmarkId: it.bookmarkId, tweetId },
+          signal,
+          {
+            fetchMeta: fetchTweetMeta,
+            persistThumbnail,
+            persistVideoFlag,
+            persistMediaSlots,
+          },
+        ),
+      ).catch(() => {
+        /* per-target failure isolated by the queue; nothing to do here. */
+      })
+    }
+    return (): void => { controller.abort() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, items.length, persistThumbnail, persistVideoFlag])
+  }, [loading, items.length, persistThumbnail, persistVideoFlag, persistMediaSlots])
 
   // TikTok thumbnail backfill via the public oEmbed endpoint
   // (https://www.tiktok.com/oembed?url=...). The bookmarklet's og:image
