@@ -717,3 +717,49 @@
   transform-origin: center;
   pointer-events: none;
 }
+
+/* I-07: tweet media carousel wrapper. The <img> displays the current
+ * photo; dots sit below as the nav mechanism. */
+.tweetMediaCarousel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.lightboxImageDots {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.lightboxImageDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  /* Hit area extends 6px outward from the visible dot, matching the
+   * 24×24 minimum click target per project convention. */
+  position: relative;
+  transition: background 150ms ease-out, transform 150ms ease-out;
+}
+
+.lightboxImageDot::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.lightboxImageDot[data-active='true'] {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.2);
+}
+
+.lightboxImageDot:hover:not([data-active='true']) {
+  background: rgba(255, 255, 255, 0.6);
+}

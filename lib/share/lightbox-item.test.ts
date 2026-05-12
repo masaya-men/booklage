@@ -28,6 +28,8 @@ describe('normalizeItem', () => {
       description: 'desc',
       thumbnail: 'https://example.com/t.jpg',
       kind: 'board',
+      bookmarkId: 'b-1',
+      photos: undefined,
     })
   })
 
@@ -53,6 +55,8 @@ describe('normalizeItem', () => {
       description: null,
       thumbnail: null,
       kind: 'board',
+      bookmarkId: 'b-2',
+      photos: undefined,
     })
   })
 

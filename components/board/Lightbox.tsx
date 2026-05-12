@@ -997,17 +997,77 @@ function TweetMedia({
   readonly item: LightboxItem
   readonly meta: TweetMeta | null
 }): ReactNode {
+  // Carousel state: index into the photos array for this tweet. Resets to
+  // 0 whenever the underlying item changes (chevron-nav between cards).
+  // I-07 Phase 1.
+  const [imageIdx, setImageIdx] = useState<number>(0)
+  useEffect(() => {
+    setImageIdx(0)
+  }, [item.bookmarkId])
+
   if (meta?.videoUrl) {
     return <TweetVideoPlayer item={item} meta={meta} />
   }
-  const photoUrl = meta?.photoUrl ?? item.thumbnail
+
+  // Source of truth for photos: meta.photoUrls (fresh from syndication)
+  // first, then item.photos (IDB-persisted backfill) as fallback. Either
+  // can lead.
+  const photos = (meta?.photoUrls?.length ?? 0) > 0
+    ? meta!.photoUrls!
+    : (item.photos ?? [])
+  const hasMultiple = photos.length > 1
+  const photoUrl = hasMultiple
+    ? photos[imageIdx]
+    : (meta?.photoUrl ?? item.thumbnail)
+
   if (photoUrl) {
-    return <img src={photoUrl} alt={item.title} />
+    return (
+      <div className={styles.tweetMediaCarousel}>
+        <img src={photoUrl} alt={item.title} />
+        {hasMultiple && (
+          <LightboxImageDots
+            count={photos.length}
+            currentIdx={imageIdx}
+            onJump={setImageIdx}
+          />
+        )}
+      </div>
+    )
   }
   if (meta?.text) {
     return <p className={styles.tweetTextOnly}>{meta.text}</p>
   }
   return <div className={styles.placeholder}>{item.title}</div>
+}
+
+/** Dot indicator for Lightbox carousel. Larger and more clickable than the
+ *  board-side card dots — these are the primary nav mechanism (along with
+ *  keyboard ↑↓). I-07 Phase 1. */
+function LightboxImageDots({
+  count,
+  currentIdx,
+  onJump,
+}: {
+  readonly count: number
+  readonly currentIdx: number
+  readonly onJump: (idx: number) => void
+}): ReactNode {
+  return (
+    <div className={styles.lightboxImageDots} role="tablist" aria-label="画像切替">
+      {Array.from({ length: count }).map((_, i) => (
+        <button
+          key={i}
+          type="button"
+          role="tab"
+          aria-selected={i === currentIdx}
+          aria-label={`画像 ${i + 1} / ${count}`}
+          data-active={i === currentIdx ? 'true' : 'false'}
+          className={styles.lightboxImageDot}
+          onClick={(): void => onJump(i)}
+        />
+      ))}
+    </div>
+  )
 }
 
 /** Inline mp4 player for tweet videos. Frames the clip at its actual
