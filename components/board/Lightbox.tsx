@@ -406,7 +406,15 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       // Kill any in-flight open tween on the chrome / media so close
       // takes over from the current visual state cleanly.
       gsap.killTweensOf(mediaEl)
-      if (textEl) gsap.killTweensOf(textEl)
+      if (textEl) {
+        gsap.killTweensOf(textEl)
+        // I-07-#5: stage 要素の進行中 reveal tween も止める。
+        // text パネル全体の opacity fade 後、 stage 要素の translateY や
+        // clip-path が中途半端な状態で残ったまま unmount しても close 中は
+        // textEl の opacity 0 で隠れているので視覚的に問題ない。
+        const stageEls = collectStageEls(textEl)
+        if (stageEls.length > 0) gsap.killTweensOf(stageEls)
+      }
       if (closeEl) gsap.killTweensOf(closeEl)
 
       const tl = gsap.timeline({
