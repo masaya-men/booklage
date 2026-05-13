@@ -20,14 +20,25 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-13 セッション 22 末 — 本番 deploy 済)
+### 直近の状態 (2026-05-14 セッション 23 末 — 本番 deploy 済)
 
-- master HEAD: セッション 22 commit (E + F + spec)
-- **本番 `booklage.pages.dev` deploy 済** — ユーザー視覚確認予定
-- セッション 22 で ship: **E (全カード角丸 24px 固定)** + **F (W スライダー / G スライダー / DEFAULT リセットボタン)** + 次々セッション向け clone refactor spec 起こし
-- close 角丸 AA 違和感は radius 数値変化ゼロで**根本消滅したはず** (clone refactor 前でも改善)
-- localStorage キー変更: `booklage:size-level` (廃止) → `booklage:card-width-px` + `booklage:card-gap-px`
-- 全 477 vitest + tsc + build clean (size-levels 関連 7 件削除分減)
+- master HEAD: セッション 23 の 2 commit
+  - `slider fixes` — G slider live + W default 267 + step=1 + track 200px
+  - `B-#17 lightbox clone refactor` — open/close path を destefanis 方式に
+- **本番 `booklage.pages.dev` deploy 済 (`428cef71`)**
+- セッション 23 で ship:
+  - **G スライダー bug 修正** (CardsLayer に cardGapPx prop、 4 箇所固定値置換)
+  - **default W = 267** (= ユーザー実機 canvasWrap 1429 で 5 列ぴったり、 pre-slider Size 3 再現)
+  - **slider step=1 + track 200px** (= 暫定精度改善、 物理 track 約 2.2 倍)
+  - **B-#17 Lightbox clone refactor** open/close path:
+    - body 直下に `<div id="lightbox-clone-host">` を常駐
+    - source card を cloneNode → host に append → width/height/top/left を直接 animate
+    - transform: scale + radius interpolation を完全撤去
+    - clone から data-bookmark-id / 削除 × / 角アクション / リサイズハンドルを削除
+    - clone → media は instant swap (cross-fade は backdrop 透けで NG)
+  - 静止画カードでは完璧、 close の角丸 AA 違和感は構造的に消滅
+- 残る視覚問題: **動画カード (YouTube 等) で open 時の「カクッ」** — 「再生ボタン overlay 方式」 で根治予定 (= 別 spec 完成済)
+- 全 477 vitest + tsc + build clean
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 
@@ -52,9 +63,11 @@ CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてありま
 - **MinimalCard polish** — 64px favicon が S サイズ (160px) で大きく見える可能性。 Visual Companion でモック比較してサイズ判定 (セッション 20 で実装後、 視覚調整は次回)
 - **Task 12: 全件再 check 設定 UI** — viewport revalidation で日常運用は OK だが、 ユーザーが 「いま全件チェック」 を 1 クリックで kick できる設定パネル。 設定パネル自体が未実装なので別 spec 立ち上げ要
 
-### Lightbox animation 系 (セッション 22 で E + F 完了、 B-#17 残)
+### Lightbox animation 系 (セッション 23 で B-#17 open/close 完成、 残課題あり)
 
-- **B-#17 destefanis 方式 Lightbox clone refactor** (次々セッション専用) — `cloneNode(true)` を body 直下 (実装は専用 host 要素) に append、 width/height + position:fixed + translate3d で animate。 open / close / 内部 nav の 3 経路すべて書き換え。 E (角丸 24px fixed) と F (連続スライダー) が前提に揃ったので、 border-radius アニメ不要 = 本家と完全に同じ最小実装、 工数 2-3h 級。 **spec は [docs/specs/2026-05-14-lightbox-clone-refactor.md](./specs/2026-05-14-lightbox-clone-refactor.md) 完成済**、 次セッションはこれを読むところから着工。 保持必須は mediaSlots ホバー切替・customWidths・thumbnail healing
+- **B-#17-#2 動画カードの「カクッ」 = 再生ボタン overlay 方式で根治** (次セッション) — clone refactor 完成後、 動画カード (YouTube 等) で open 時に「サムネ → iframe 黒帯」 のジャンプが見える。 cross-fade は backdrop 透け問題で不採用。 根治は LightboxMedia 改修 + Play ボタン overlay 方式 (= サムネ維持 → ユーザー gesture で iframe mount)。 **spec [docs/specs/2026-05-14-lightbox-play-button-overlay.md](./specs/2026-05-14-lightbox-play-button-overlay.md) 完成済**、 工数 2-3h 級
+
+- **B-#17-#3 internal nav (wheel scroll で隣カード) の clone-based 移行** (中期) — open/close は clone-based に移行済だが、 Lightbox 内で wheel scroll した時の隣カード切替は **既存 transform:scale ロジックのまま**。 動作確認まだ。 open/close が本番で安定したら移行する
 
 ### カード操作・PiP
 

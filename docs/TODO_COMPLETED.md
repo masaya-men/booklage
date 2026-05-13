@@ -508,3 +508,97 @@ state:
 - サイズ / ギャップスライダーで「カード幅と隙間」 を絶対 px 値で連続調整可能に
 - vitest 477 / tsc / build 全 clean (テスト総数は 484 → 477、 size-levels 関連 7 件削除分)
 
+---
+
+## セッション 23 (2026-05-14) — スライダー 3 連バグ潰し + B-#17 Lightbox clone refactor
+
+### 前半: スライダー問題の構造的修正
+
+セッション 22 の deploy をユーザー視覚確認した結果、 3 つの問題が報告された:
+1. close 終盤の「角が成形されなおされる」 違和感が**まだ残っていた** (ユーザー仮説: Lightbox 表示中の radius が違うのでは?)
+2. W スライダーが 10 単位刻みでしか動かない、 右の空間を使えていない (画面左寄せ)
+3. G スライダー (カード間ギャップ) は完全に動かない
+
+#### 問題 1 の真因と判定
+ユーザーの仮説「Lightbox の角丸が違う」 が**技術的に裏付けられた**: Lightbox.tsx は transform: scale で animate しているため、 動的に逆スケール補正値で `borderRadius` を毎フレーム書き換えている (L498 / L778)。 これが GPU resample と DOM 補正の競合で close 終盤の AA チラつきを生む。 **セッション 22 で CSS 変数を 24px に揃えただけでは消えない構造的問題**、 B-#17 clone refactor (transform: scale 撤去) でしか根治不可。
+
+#### 問題 2 の修正
+- SizeSlider.tsx L25 `step={10}` をハードコードしていた → `step={1}`
+- GapSlider.tsx L25 `step={2}` → `step={1}`
+- SliderControl.module.css `.range` width 90px → 200px (= 1 マウス px あたりの step 数を約 2.2 倍精細化)
+- ユーザーは「マウスの動きより slow に動く工夫」 まで要求 → ネイティブ range slider では実現不可、 pointer event ベースのカスタム slider を別装飾セッションで実装する旨を IDEAS.md に保管 ("E. スライダー精度の遊び")
+- ユーザーが「数字表記の遊び (130 → 0.0130 等)」 も提案 → 装飾セッションでまとめて対応
+
+#### 問題 3 の真因と修正
+**CardsLayer.tsx が独自に `computeSkylineLayout` を呼んでおり、 4 箇所で gap を `COLUMN_MASONRY.GAP_PX` (固定 18) で渡していた**。 BoardRoot の cardGapPx は実は表示に反映されていなかった (= 計算は走っていたが結果が使われていなかった)。 修正:
+- CardsLayerProps に `cardGapPx` を追加
+- 4 箇所 (masonryLayout / previewMasonry / drag simulator / drop final layout) の固定値参照を置換
+- useMemo / useCallback の依存配列に `cardGapPx` を追加
+- BoardRoot から `cardGapPx={cardGapPx}` を渡す
+- 不要になった `COLUMN_MASONRY` import を整理
+
+#### default W の確定: 280 → 267
+ユーザーが「pre-slider 時代の Size 3 で 5 列が美しく埋まっていた、 それを default にしたい」 と発言。 私が当初 `CARD_WIDTH_DEFAULT_PX: 280` で「ぴったり 5 列」 と推定したが、 ユーザー目視は 267 が正解。 推測でなく実測で詰めるべく、 ユーザーに DevTools で `canvasWrap.clientWidth` を測ってもらった結果 **1429px**。 私の 1489 (window inner width 想定) が間違いだった真因は:
+- canvas-margin 24px ずつ控除 (= -48px)
+- Windows Chrome scrollbar 制御で残り 12px 差
+- → effectiveLayoutWidth = 1429 - 18 (SIDE_PADDING ×2) = **1411**
+- 5 列ぴったり値: `(1411 - 4*18) / 5 = 267.8` → floor で **267** (268 だと 5 列目が 1px はみ出て 4 列に降格)
+- ユーザーの懸念 (b)「window 表示エリア基準で計算していないか」 への明確な回答: viewport.w は黒い canvasWrap.clientWidth で測っている、 window inner width は使っていない
+- ただし「default 267 はユーザー個人環境にのみぴったり」 = 別 PC では別 default が必要 → **論理キャンバス案** (固定幅 + window 余白で中央寄せ) を IDEAS.md に保管 ("G. 論理キャンバス案")
+
+### 中盤: B-#17 Lightbox clone refactor
+
+着工前 5 点チェック (CURRENT_GOAL.md spec) を実施:
+1. master HEAD に E + F + spec → ✅
+2. `--card-radius: 24px` / `--lightbox-media-radius: 24px` → ✅
+3. SizeSlider / GapSlider 本番動作 → ✅ (ユーザー視認、 5 列再現確認)
+4. destefanis 本家 app.js L270-459 を読み直し → ✅ (= cloneNode → body 直下 → width/height/translate3d で animate のパターン把握)
+5. mediaSlots / customCardWidth / thumbnail healing → ユーザー手元確認可能で省略
+
+実装:
+- Lightbox.tsx の上部に `ensureCloneHost()` helper を追加 — body 直下に `<div id="lightbox-clone-host" />` を常駐、 z-index 150 で frame の下、 zero-sized fixed shell + pointer-events:none
+- `createLightboxClone(sourceCard, rect)` helper — source の inline style 全削除 + position:fixed + width/height/top/left を引数 rect でセット + data-bookmark-id 削除 + 削除 × / リセット ↺ / リサイズハンドルを querySelectorAll で remove (= clone は純粋な visual proxy)
+- open path (L703-816) 書き換え:
+  - source card を `[data-bookmark-id]` で querySelector → source rect 取得 (= 既存の originRect ではなく live rect 優先、 scroll 追従)
+  - clone を host に append → GSAP `to` で top/left/width/height を mediaRect へ animate (transform: scale + radius interpolation を完全撤去)
+  - `.media` は opacity:0 で待機、 onComplete で opacity:1 + clone remove (instant swap)
+  - text reveal / closeBtn fade / backdrop fade は既存ロジック維持
+- close path (L420-580) 書き換え:
+  - mediaEl の現在 rect で fresh clone 作成 → host に append
+  - `.media` opacity:0 で隠す
+  - clone を source rect へ animate
+  - landingAt - CLOSE_REVEAL_LEAD で onSourceShouldShow 発火 (= BoardRoot が source visibility 復元)
+  - onComplete で clone remove + onClose
+- internal nav (wheel scroll で隣カード) は触らず、 既存 transform:scale ロジックのまま (= 別 follow-up)
+
+### 後半: 退行報告 → instant swap への収束
+
+ユーザーが本番確認した結果 2 つの問題報告:
+1. **× ボタンが clone と一緒に come along** → `data-visible="true"` 属性が cloneNode 経由で複製、 opacity 0.78 で表示されていた → `createLightboxClone` で削除 ×・リセット ↺・リサイズハンドルを `querySelectorAll().remove()`
+2. **YouTube カードで「カクッ」** → clone (= 縦長カードのサムネ) と `.media` (= 16:9 iframe with 黒帯) は表示が物理的に違うので instant swap で見た目ジャンプ → 一旦 0.18s cross-fade で対応 ship
+
+ユーザー再確認: 静止画でも cross-fade で**背景が透けて見える**問題発生。 cross-fade 中は両方 opacity:1 未満 → backdrop (半透明) が透ける数学的限界。 → **cross-fade を撤去して instant swap に戻す**。 静止画は完璧、 動画は「カクッ」 が残るが「再生ボタン overlay 方式」 別 spec で根治する判断 (= [docs/specs/2026-05-14-lightbox-play-button-overlay.md](./specs/2026-05-14-lightbox-play-button-overlay.md) 新規作成)。
+
+### deploy
+
+セッション 23 中に 5 回 deploy:
+- `52d479c0` step=1 / track 200px
+- `6edc6c1e` G slider fix
+- `12157f50` default W 267
+- `9cc5c75e` B-#17 clone refactor
+- `ea61498c` strip card chrome + cross-fade
+- `428cef71` instant swap (現本番)
+
+### memory への昇格
+
+なし (= 全体としてはセッション固有の経過、 一般化する話は IDEAS.md と spec に集約済)。
+
+### sub-summary
+
+- master HEAD: 2 commit (`slider fixes` + `B-#17 lightbox clone refactor`)
+- 本番 `booklage.pages.dev` deploy 済 (`428cef71`)
+- 静止画カードの Lightbox 開閉が完璧に滑らかに、 close 角丸 AA 違和感は構造的に根治
+- 動画カード (YouTube 等) は「カクッ」 が残るが、 再生ボタン overlay 方式 spec で根治予定
+- スライダー 3 連バグ全て修正、 default W 値はユーザー実機での厳密な逆算で確定
+- vitest 477 / tsc / build clean
+
