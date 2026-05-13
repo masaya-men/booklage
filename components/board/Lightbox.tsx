@@ -392,29 +392,21 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     const closeEl = closeBtnRef.current
 
     if (closeOrigin && mediaEl) {
-      // destefanis-aligned close: animate width/height directly instead of
-      // scaling. Scaled rounded corners sample differently from natively
-      // rendered ones (the GPU resamples the .media texture at fractional
-      // scale → subtle AA differs from the source card's native 24px
-      // corner). Width/height animation has the browser render each frame
-      // at native pixel size — the corners rasterise identically to the
-      // source card at every step. The trade-off is per-frame layout, but
-      // .media is leaf-shaped (sole child is the media element) and we
-      // detach it from .frame's flex via position:fixed for the duration
-      // so the layout cost is isolated to .media itself. (Reference:
-      // github.com/destefanis/twitter-bookmarks-grid app.js L440)
+      // Mirror the open: only .media morphs back to the source card's
+      // current rect. Chrome (text + close button) fades out first; the
+      // .frame container itself stays at scale 1 + opacity 1 (it has no
+      // visible chrome, so it contributes nothing to what the user sees).
       const mediaRect = mediaEl.getBoundingClientRect()
-      const startW = mediaRect.width
-      const startH = mediaRect.height
-      const endW = closeOrigin.width
-      const endH = closeOrigin.height
-      // Top-left coords — destination is the source card's screen rect.
-      // No center-based math because there's no scale/transform-origin
-      // gotcha when we're animating box dimensions instead.
-      const startLeft = mediaRect.left
-      const startTop = mediaRect.top
-      const endLeft = Math.round(closeOrigin.left)
-      const endTop = Math.round(closeOrigin.top)
+      // Round dx/dy to integer pixels so .media's transformed end position
+      // snaps to the same pixel grid the (un-transformed) source card
+      // renders on. Without this, fractional translate values land 0.3-0.5px
+      // off the source card's actual pixel position → that's the last
+      // remaining "意識して凝視すると一瞬だけ明滅" the user reported.
+      // Scale stays fractional (rounding 0.2 → 0 would collapse .media).
+      const dx = Math.round((closeOrigin.left + closeOrigin.width / 2) - (mediaRect.left + mediaRect.width / 2))
+      const dy = Math.round((closeOrigin.top + closeOrigin.height / 2) - (mediaRect.top + mediaRect.height / 2))
+      const endScaleX = Math.max(0.05, closeOrigin.width / mediaRect.width)
+      const endScaleY = Math.max(0.05, closeOrigin.height / mediaRect.height)
 
       // Kill any in-flight open tween on the chrome / media so close
       // takes over from the current visual state cleanly.
@@ -446,20 +438,11 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, 0)
       }
-      // Force .media to render its child img the same way the source card
-      // thumb does: 100%×100% with object-fit:cover, no own border-radius
-      // (corners come from .media's overflow:hidden + border-radius below).
-      // This eliminates any per-element rendering difference between the
-      // lightbox media envelope and the source card.
+      // Pre-tween: align .media's <img> object-fit to the source card thumb
+      // (cover, not contain) so at small sizes the image fills its container
+      // the same way the card thumbnail does — no letterboxing mismatch.
       const mediaImg = mediaEl.querySelector<HTMLImageElement>(':scope > img')
-      if (mediaImg) {
-        mediaImg.style.objectFit = 'cover'
-        mediaImg.style.width = '100%'
-        mediaImg.style.height = '100%'
-        mediaImg.style.maxWidth = 'none'
-        mediaImg.style.maxHeight = 'none'
-        mediaImg.style.borderRadius = '0'
-      }
+      if (mediaImg) mediaImg.style.objectFit = 'cover'
 
       // Read the source card's ACTUAL --card-radius CSS variable. Avoids
       // formula-vs-render drift (CardsLayer L448 sets the same formula but
@@ -473,57 +456,47 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         : Math.min(24, Math.min(closeOrigin.width, closeOrigin.height) * 0.075)
       const computedLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 6
 
-      // Pin .text to its current viewport rect BEFORE detaching .media.
-      // Removing .media from .frame's flex flow would otherwise let .frame
-      // shrink and re-center, jerking .text mid-fade. (.text is fading
-      // anyway over 0.14s, but we don't want a position jump on top of
-      // the opacity fade.)
-      if (textEl) {
-        const textRect = textEl.getBoundingClientRect()
-        textEl.style.position = 'fixed'
-        textEl.style.left = `${textRect.left}px`
-        textEl.style.top = `${textRect.top}px`
-        textEl.style.width = `${textRect.width}px`
-        textEl.style.height = `${textRect.height}px`
-        textEl.style.margin = '0'
-        textEl.style.zIndex = '301'
-      }
-
-      // Detach .media from .frame's flex layout — position:fixed in viewport
-      // coords so we own its placement entirely. width/height/translate3d
-      // are the only animated properties from here, just like destefanis's
-      // body-attached clone. Layout cost is isolated to this single element.
-      mediaEl.style.position = 'fixed'
-      mediaEl.style.left = '0'
-      mediaEl.style.top = '0'
-      mediaEl.style.margin = '0'
-      mediaEl.style.zIndex = '301'
-      mediaEl.style.overflow = 'hidden'  // corners clip the img
-      mediaEl.style.width = `${startW}px`
-      mediaEl.style.height = `${startH}px`
-      gsap.set(mediaEl, { x: startLeft, y: startTop })
-
-      // Pre-roll the radius transition inside the text-fade window so the
-      // size morph that follows has no animated corner — just clean
-      // resize. After this sub-tween completes at t=CLOSE_RADIUS_DUR, the
-      // radius is locked at cardRadiusValue for the rest of close.
+      // Pre-set strategy (mirrors the OPEN path at L737-741): finish the
+      // radius transition INSIDE the text-fade window, BEFORE position/scale
+      // motion begins at CLOSE_FRAME_DELAY. By the time the user's eye
+      // tracks the shrink, the visible corner is already locked at the
+      // source card's value — only scale changes from there. Scale
+      // compensation in the position-tween onUpdate keeps the visible
+      // radius pinned to cardRadiusValue throughout.
       const radiusProxy = { p: 0 }
       tl.to(radiusProxy, {
         p: 1,
         duration: CLOSE_RADIUS_DUR,
         ease: CLOSE_RADIUS_EASE,
         onUpdate: () => {
+          // During radius tween, .media has not yet started moving — scale
+          // is still 1, so visibleR can be applied directly to borderRadius.
           const visibleR = computedLightboxRadius + (cardRadiusValue - computedLightboxRadius) * radiusProxy.p
           mediaEl.style.borderRadius = `${visibleR}px`
         },
       }, 0)
       tl.to(mediaEl, {
-        x: endLeft,
-        y: endTop,
-        width: endW,
-        height: endH,
+        x: dx,
+        y: dy,
+        scaleX: endScaleX,
+        scaleY: endScaleY,
         duration: CLOSE_TWEEN_DUR,
         ease: CLOSE_TWEEN_EASE,
+        transformOrigin: '50% 50%',
+        onUpdate: function (this: gsap.core.Tween): void {
+          // Radius is already at target (radiusProxy.p clamped to 1 by the
+          // earlier sub-tween). Only scale changes — compensate per-frame
+          // so the *visible* radius stays pinned to cardRadiusValue.
+          const r = this.ratio
+          const curScaleX = 1 + (endScaleX - 1) * r
+          const curScaleY = 1 + (endScaleY - 1) * r
+          // Specify horizontal / vertical radii separately so non-uniform
+          // scale (portrait card vs landscape lightbox, etc.) doesn't
+          // squish the corners into ovals.
+          const safeX = Math.max(0.01, curScaleX)
+          const safeY = Math.max(0.01, curScaleY)
+          mediaEl.style.borderRadius = `${cardRadiusValue / safeX}px / ${cardRadiusValue / safeY}px`
+        },
       }, CLOSE_FRAME_DELAY)
       if (backdrop) {
         tl.to(backdrop, {
