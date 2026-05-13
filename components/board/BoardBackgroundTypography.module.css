@@ -17,7 +17,13 @@
   justify-content: center;
   pointer-events: none;
   overflow: hidden;
-  z-index: 2; /* keep in sync with BOARD_Z_INDEX.THEME_BG_TYPOGRAPHY */
+  /* No explicit z-index: the cards-wrapper sibling that follows in DOM
+   * order establishes its own stacking context via translate3d, which
+   * already lifts CardsLayer above this typography. Adding a z-index
+   * here would actually put the typography on top of the cards (z-index
+   * only compares within the same stacking context, and a positive
+   * z-index here outranks the cards-wrapper's auto). DOM order alone
+   * gives us: theme bg → this typography → cards, which is what we want. */
 }
 
 .text {
