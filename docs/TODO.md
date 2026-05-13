@@ -20,27 +20,25 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-14 セッション 26 末 — 本番 deploy 済)
+### 直近の状態 (2026-05-15 セッション 27 末 — brainstorm のみ、 実装ゼロ)
 
-- master HEAD: セッション 26 の commit 群
-  - `style(card)`: 角丸 24 → 20 (= 候補 E、 4 箇所変更: globals.css の `--card-radius` / `--lightbox-media-radius` + CardsLayer / ShareFrame のインライン上書き)
-  - `docs(ideas)`: 新着 IDEAS 3 件追記 (= Nothing デザイン / 飛行機高度計 ScrollBar / 円形レーダー、 全てユーザー session 26 共有)
-  - `docs(dashboard)`: 永続 dashboard.html 新設 + `.claude/rules/session-workflow.md` 終了時手順拡張
-- **本番 `booklage.pages.dev` deploy 済**
-- セッション 26 で ship:
-  - **角丸 24 → 20** (= 候補 E): カード全種 + Lightbox media radius を 20px に統一、 ユーザー実機 OK
-  - **永続ダッシュボード**: `docs/private/dashboard.html` (gitignored)、 単一ページ 3 列構造で dot indicator 付き、 ユーザー大画面閲覧用。 `.claude/rules/session-workflow.md` §終了時 に自動更新ルール明文化
-  - **IDEAS 新着 3 件**: Nothing デザイン (= ミニマル工業テーマ軸) / 飛行機高度計スクロールバー (= SF 軍事 chrome 拡張) / 円形レーダー (= 無限キャンバス + SF 軍事)
-- 着手せず session 27 へ持ち越し: 候補 A (背景タイポ variant) / D (Lightbox nav ちらつき)
-- 全 vitest + tsc + build clean
+- master HEAD: セッション 27 close-out commit (= spec 書き出し + handoff)
+- セッション 27 は **brainstorm + spec 書き出しのみ**、 コード変更ゼロ:
+  - **新規 spec**: `docs/superpowers/specs/2026-05-15-board-chrome-minimal-design.md` が確定済の board chrome 仕様
+  - **① ScrollMeter 下配置** 確定: 波形ロジックは現行維持、 viewport bottom 24px center、 counter readout `[ N1 — N2 / TOTAL ]` + D ハイブリッド動き (= N1/N2 600ms scramble、 TOTAL 1500ms scramble、 常時微振動)、 Lightbox open 時 fade out
+  - **② TopHeader Apple v3 採用** 確定: edge gradient scrim (= board ::before 上下 80px) + 文字 chrome (= white 0.85 + 0.5px paint-order stroke + text-shadow ゼロ)、 hover マイクロインタラクション必須、 mount intro fade 2.4 秒
+  - **動的反転は物理制約で棄却**: mix-blend-mode (= カラフル変色) / JS sampling (= 文字内 partial 不可) / backdrop-filter (= 副作用帯) 全部試して spec §2-4 に判断記録
+- セッション 27 でやらなかったこと: ③ Slider 精密化 / ④ Booklage pin / ⑤ カスタムマウス / ⑥ 拡張機能 (= ②③ 後)
+- Visual Companion (= `.superpowers/brainstorm/`) を多用、 session 27 末に server kill 済
+- 全 vitest + tsc + build clean (= 変更なしのため変わらず)
 
-### 次セッションは board chrome のミニマル化 + 精密化 sprint
+### 次セッションは セッション 27 spec の実装
 
-詳細は `docs/CURRENT_GOAL.md`。 ユーザー要望 5 項目 = ScrollMeter 下配置 / TopHeader 要否 / Slider 精密化 / 左下 Booklage pin 導線 / カスタムマウスポインタ + 拡張機能の作り込み。 brainstorming から開始。
+詳細は `docs/CURRENT_GOAL.md`。 spec §4 の 10 ステップを順に実装。
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 
-CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてあります。 詳細は下記 §未対応バグ + I-07 改善案件 から優先度判断。
+CURRENT_GOAL.md にゴール + 実装手順が書いてあります。 spec 全文は `docs/superpowers/specs/2026-05-15-board-chrome-minimal-design.md`。
 
 ### リブランド進行: Booklage → AllMarks
 

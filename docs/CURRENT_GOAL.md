@@ -1,58 +1,63 @@
-# 次セッションのゴール (= セッション 27)
+# 次セッションのゴール (= セッション 28)
 
 ## ゴール
 
-**board chrome のミニマル化 + 精密化 sprint**。 ユーザー要望 5 項目 + 拡張機能の作り込みを brainstorming で順序決めしてから実装。
+**セッション 27 spec の実装**。 board chrome を Apple iOS Photos / visionOS 流の「edge gradient scrim + 文字 chrome (= thin paint-order stroke + text-shadow ゼロ)」 に置換 + ScrollMeter を下端に移動 + counter readout を追加。
 
-## 前提 (セッション 26 で揃った)
+## 前提 (セッション 27 で揃った)
 
-- master HEAD: セッション 26 close-out commit (= 角丸 20 + dashboard 永続化 + IDEAS 追記)
-- 本番 `booklage.pages.dev` deploy 済
-- 角丸 24 → 20 完了 (= 候補 E)、 ユーザー実機 OK
-- `docs/private/dashboard.html` (= 永続ダッシュボード) を毎セッション末更新する運用が `.claude/rules/session-workflow.md` §終了時 に明文化済
+- master HEAD: セッション 27 close-out commit (= spec 書き出し + dashboard 更新)
+- **`docs/superpowers/specs/2026-05-15-board-chrome-minimal-design.md` が確定済 spec**
+  - ① ScrollMeter 下配置 + counter readout (D ハイブリッド動き) 確定
+  - ② TopHeader = Apple v3 (= edge scrim + thin stroke + 文字 chrome) 確定
+  - 動的反転 (v4-v6) は物理制約で棄却、 学びを spec §5 に記録
+- セッション 27 では brainstorm のみ、 **実装ゼロ**。 Visual Companion server を多用、 Sonnet weekly 制限近づき切り上げ
 
 ## 着工前読み込み必須
 
-- `docs/TODO.md` §未対応バグ・改善 (= B-#13 / B-#17-#3 含む active backlog)
-- `docs/private/IDEAS.md` 関連セクション:
-  - §2026-04-19 お風呂アイデア (= 常時 dashboard + Focus mode + liquid glass overlap、 ヘッダー要否議論)
-  - §セッション 23 D (= スライダー数字表記の遊び) + E (= slow slider 根本治療)
-  - §テーマ連動オリジナルマウスカーソル (2026-05-13)
-- `docs/private/dashboard.html` (= 全景把握、 大画面で眺めて整理)
+- **`docs/superpowers/specs/2026-05-15-board-chrome-minimal-design.md` 全文** (= これが contract、 §4 が実装 plan 順序)
+- `components/board/ScrollMeter.tsx` / `.module.css` (= 現状の波形ロジック確認、 維持する)
+- `components/board/TopHeader.tsx` / `.module.css` (= 改修対象)
+- `components/board/LightboxNavMeter.tsx` (= counter slot machine + meterStack 構造を流用)
+- `components/board/BoardRoot.tsx` (= ScrollMeter portal 化 + lightboxOpen 渡し)
 
-## ユーザー要望 (= session 26 末で共有された 5 項目)
+## 実装手順 (= spec §4 と同じ)
 
-1. **ScrollMeter 下配置** — Lightbox と同じ位置に統一、 Lightbox open 時は非表示?
-2. **TopHeader 自体の要否** — カードに重なっても良い、 視認性低くてもミニマル UI へ
-3. **サイズ・ギャップ slider 最適化** — 精密な動きが出来るように (= 根本治療、 setPointerCapture + movementX × ratio) + 今のムードボードデザインへ馴染ませる
-4. **左下 Booklage pin (ブックマーレット導線) 見直し** — 常時表示じゃなくムードボード画面では出さない / 出すタイミングを工夫する
-5. **カスタムマウスポインタ** — chrome 作り込みの一環として検討
+1. **TopHeader.module.css 改修** = 黒帯削除 + position absolute + 文字 chrome 化
+2. **board container に edge scrim** = `::before` 上端 80px + `::after` 下端 80px
+3. **ScrollMeter portal 化** = TopHeader instrument slot から body / board 直下に移動、 `position: fixed; bottom: 24px; center;`
+4. **ScrollMeter に counter readout** = `[ N1 — N2 / TOTAL ]` + D ハイブリッド動き (= N1/N2 scramble 600ms、 TOTAL 1500ms、 常時微振動)
+5. **画面内範囲 N1〜N2 計算** = viewport y + skyline layout intersect、 60fps throttle
+6. **Lightbox open 時 ScrollMeter fade out** = BoardRoot から hidden prop
+7. **既存 chrome 文字を thin-stroke 化** = FilterPill / Share / SizePicker / ResetAll / PopOut 全部、 text-shadow 排除
+8. **テスト更新** = TopHeader.test.tsx, ScrollMeter.test.tsx
+9. **build + tsc + vitest clean**
+10. **deploy**
 
-**+ 拡張機能の作り込み** — 既存の Chrome 拡張 (= ブックマークレット併存)。 ④ と紐付くので brainstorming で同時扱い。
+各ステップは独立 commit 可能。 1-2 で「視覚的に Apple v3」、 3-6 で「ScrollMeter 下移動 + counter」、 7 で「文字 chrome 統一」。
 
-## 着工手順 (= session 27 最初)
+## 推奨進行
 
-1. **brainstorming session を最初に走らせる** (= superpowers:brainstorming スキル使用、 5 項目 + 拡張機能の優先順位 + 各項目の方向性確定)
-2. 確定方向を `docs/superpowers/specs/2026-05-XX-board-chrome-minimal.md` (or 類似名) に spec 化
-3. spec 確定後、 着手項目を順次実装
+- spec §4 の 10 ステップを TodoWrite に転記
+- ステップ 1-2 を先に commit + deploy で見た目変化を確認 (= edge scrim だけで board の雰囲気が変わるはず)
+- その後 ScrollMeter 移動 + counter を別 commit
+- 最後に文字 chrome 統一 commit
 
-## 推奨優先順位 (= 着工前の暫定、 brainstorming で確定)
+## ③ Slider 精密化以降 (= セッション 28 のさらに次)
 
-- **A. ScrollMeter 下配置** (= ① + ② の半分) — Lightbox と同じ視覚言語に揃える、 chrome の方向性が一気に固まる
-- **B. TopHeader ミニマル化** (= ②) — A 完了後に「ヘッダー何が残る必要があるか」 を決める
-- **C. Slider 根本治療** (= ③) — A/B 確定後、 chrome デザインに馴染ませた slider を再設計
-- **D. ブックマーレット pin 導線見直し + 拡張機能 polish** (= ④ + 拡張) — chrome 全体方針確定後、 「ブクマ追加導線」 として最適化
-- **E. カスタムマウスポインタ** (= ⑤) — 最後の polish、 テーマ機能と連動するなら別 sprint に切り出す判断もあり
+- セッション 27 で着工せず持ち越し
+- IDEAS.md §セッション 23 D + E (= 数値表記の遊び + slow slider 根本治療) 参照
+- 実装方針: `setPointerCapture` + `movementX × ratio` でカスタム slider、 visual も Apple v3 路線
 
-## 着工 NG 条件 (= ユーザー判断で外したもの)
+## 着工 NG 条件
 
-- backdrop blur / Motion One spring の polish (= session 25 で外した)
-- 動画 dot 候補から別形を試す (= 採用済「丸の中三角切り抜き」 で確定)
-- 候補 A 背景タイポ variant 実装 (= session 26 で扱わず、 27 もデザイン chrome を優先するため後回し)
-- 候補 D Lightbox nav ちらつき修正 (= 同上、 後回し)
+- 動的反転 (mix-blend-mode / JS sampling / backdrop-filter v4-v6) の再検討 → spec §2-4 で物理制約と判断記録済、 蒸し返さない
+- backdrop blur / Motion One spring polish (= session 25 で外した、 27 も外した)
 
 ## 並行 backlog (= 触らない)
 
 - リブランド (= AllMarks ドメイン取得後、 月末 2026-05-31 リマインダー)
-- サイズ設計 Phase 2-6
+- ④ Booklage pin 見直し + ⑥ 拡張機能 polish (= ② ③ 後)
+- ⑤ カスタムマウスポインタ (= テーマシステム未確定なので保留)
 - B-#7 自由サイジング縮小 clipping (= 体感バグ、 後日)
+- B-#17-#3 Lightbox internal nav clone 移行 (= 中期)
