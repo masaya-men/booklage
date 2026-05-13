@@ -886,7 +886,7 @@ export function BoardRoot() {
           live inside, so cursor pan never escapes the rounded frame.
           Phase 1A: canvas is now a grid (auto / 1fr) — TopHeader at top,
           canvasWrap holds the existing absolute-layered scroll/cards stage. */}
-      <div className={styles.canvas}>
+      <div className={styles.canvas} data-board-canvas-clip>
         <TopHeader
           hidden={!!lightboxItemId}
           nav={

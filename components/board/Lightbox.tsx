@@ -174,17 +174,51 @@ function ensureCloneHost(): HTMLElement {
   if (!host) {
     host = document.createElement('div')
     host.id = HOST_ID
-    // The host itself is a zero-sized fixed shell; only its absolutely-
-    // positioned children (clones) are visible. zIndex sits above the
-    // board chrome but below the Lightbox `.frame` (frame uses
-    // BOARD_Z_INDEX.LIGHTBOX = 200). Clones must sit *under* the
-    // Lightbox text/close-button overlays during the animation, then
-    // disappear at handoff.
+    // The host is a full-viewport fixed shell, invisible except for the
+    // clones it holds. The full size is needed so the clip-path applied
+    // by updateCloneHostClip can address the dark canvas's exact rect
+    // (clip-path's inset is measured from the host's own box, so a
+    // zero-sized host can't express "everything outside the canvas").
+    // pointer-events: none keeps it transparent to all interaction;
+    // zIndex sits above the board chrome but below the Lightbox `.frame`
+    // (frame uses BOARD_Z_INDEX.LIGHTBOX = 200), so clones layer under
+    // the text + close button overlays during the morph.
     host.style.cssText =
-      'position:fixed;top:0;left:0;width:0;height:0;pointer-events:none;z-index:150;'
+      'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:150;'
     document.body.appendChild(host)
   }
   return host
+}
+
+/** Clip the clone host's paint area to the dark canvas's current rect,
+ *  so the open / close morph never paints outside the rounded canvas
+ *  even when the source card is partially off-screen at click time.
+ *
+ *  Without this, clicking a card whose top edge sits above the canvas
+ *  top (or below the bottom) starts the clone at a fixed-position rect
+ *  that extends past the canvas — and since the host lives at body
+ *  root, ancestor overflow:hidden on `.canvas` doesn't clip it. The
+ *  clip-path here re-imposes that clip at paint time.
+ *
+ *  Updates each time open / close fires so a window resize or panel
+ *  layout change between two lightbox openings is picked up. */
+function updateCloneHostClip(host: HTMLElement): void {
+  const canvasEl = document.querySelector<HTMLElement>('[data-board-canvas-clip]')
+  if (!canvasEl || typeof window === 'undefined') {
+    host.style.clipPath = ''
+    return
+  }
+  const r = canvasEl.getBoundingClientRect()
+  const top = Math.max(0, r.top)
+  const right = Math.max(0, window.innerWidth - r.right)
+  const bottom = Math.max(0, window.innerHeight - r.bottom)
+  const left = Math.max(0, r.left)
+  const radiusRaw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--canvas-radius')
+    .trim()
+  const radius = radiusRaw || '24px'
+  host.style.clipPath =
+    `inset(${top}px ${right}px ${bottom}px ${left}px round ${radius})`
 }
 
 /** Build a visual proxy of a board card at a given screen rect. Strips
@@ -487,6 +521,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       let clone: HTMLElement | null = null
       if (liveSourceEl) {
         const host = ensureCloneHost()
+        updateCloneHostClip(host)
         clone = createLightboxClone(liveSourceEl, mediaRect)
         host.appendChild(clone)
       }
@@ -754,6 +789,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       let clone: HTMLElement | null = null
       if (sourceCard) {
         const host = ensureCloneHost()
+        updateCloneHostClip(host)
         clone = createLightboxClone(sourceCard, sourceRect)
         host.appendChild(clone)
       }
