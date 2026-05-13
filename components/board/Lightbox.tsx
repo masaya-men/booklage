@@ -61,14 +61,15 @@ const OPEN_FALLBACK_DUR = 0.42
 const CLOSE_FRAME_DELAY = 0.1   // wait this long after text starts fading before moving
 const CLOSE_TWEEN_DUR = 0.45    // diagonal travel duration
 const CLOSE_TWEEN_EASE = 'power2.out' // gentle decel into source rect
-// border-radius runs as a separate, faster sub-tween so it reaches the
-// source card's target radius BEFORE the cross-fade window opens. Sharing
-// the position tween's 0.45s/power2.out left a ~1px corner mismatch at
-// reveal time (95% complete, not 100%) that read as "角丸が間に合っていない"
-// at the moment .media and source card overlap. Landing radius at t=0.40
-// gives a 50ms cushion before reveal at t=0.45 → pixel-perfect overlap.
-const CLOSE_RADIUS_DUR = 0.30
-const CLOSE_RADIUS_EASE = 'power3.out'
+// border-radius pre-rolls inside the text-fade window, fully completing
+// BEFORE position/scale motion begins at CLOSE_FRAME_DELAY. Mirrors the
+// OPEN strategy where the first paint matches the source card's corner.
+// Once motion starts, scale compensation in the position-tween onUpdate
+// holds the *visible* radius pinned to cardRadiusValue — no animated
+// corner morph during the visible shrink. Removes the perception of
+// "角丸が間に合っていない" entirely (it never changes during motion).
+const CLOSE_RADIUS_DUR = 0.08
+const CLOSE_RADIUS_EASE = 'power2.out'
 const CLOSE_REVEAL_LEAD = 0.10  // reveal source card this many seconds BEFORE landing (safety margin)
 const CLOSE_FADE_DUR = 0.10     // .media opacity fade at the very end, paired with reveal lead
 const CLOSE_TEXT_FADE_DUR = 0.14
@@ -443,25 +444,37 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       const mediaImg = mediaEl.querySelector<HTMLImageElement>(':scope > img')
       if (mediaImg) mediaImg.style.objectFit = 'cover'
 
-      // Compute the source card's natural border-radius using the same
-      // formula CardsLayer applies inline. Read the lightbox's natural
-      // radius from CSS so this auto-tracks any future spec change.
-      const cardRadiusValue = Math.min(24, Math.min(closeOrigin.width, closeOrigin.height) * 0.075)
+      // Read the source card's ACTUAL --card-radius CSS variable. Avoids
+      // formula-vs-render drift (CardsLayer L448 sets the same formula but
+      // the card's rendered corner can subtly differ via inherited DPR /
+      // CSS rounding). Fall back to the formula if read fails.
+      const liveCardRadius = liveSourceEl
+        ? parseFloat(getComputedStyle(liveSourceEl).getPropertyValue('--card-radius'))
+        : NaN
+      const cardRadiusValue = Number.isFinite(liveCardRadius) && liveCardRadius > 0
+        ? liveCardRadius
+        : Math.min(24, Math.min(closeOrigin.width, closeOrigin.height) * 0.075)
       const computedLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 6
 
-      // Two-tween close: position/scale travels at its own pace (gentle
-      // power2.out, 0.45s), radius runs faster (power3.out, 0.30s) so its
-      // target is locked in before the cross-fade window opens at 0.45s.
-      // A shared proxy decouples radius progress from scale progress while
-      // still allowing per-frame scale compensation — the displayed visible
-      // radius smoothly transitions from `--lightbox-media-radius` (start)
-      // to the source card's `--card-radius` (end), pixel-perfect at reveal.
+      // Pre-set strategy (mirrors the OPEN path at L737-741): finish the
+      // radius transition INSIDE the text-fade window, BEFORE position/scale
+      // motion begins at CLOSE_FRAME_DELAY. By the time the user's eye
+      // tracks the shrink, the visible corner is already locked at the
+      // source card's value — only scale changes from there. Scale
+      // compensation in the position-tween onUpdate keeps the visible
+      // radius pinned to cardRadiusValue throughout.
       const radiusProxy = { p: 0 }
       tl.to(radiusProxy, {
         p: 1,
         duration: CLOSE_RADIUS_DUR,
         ease: CLOSE_RADIUS_EASE,
-      }, CLOSE_FRAME_DELAY)
+        onUpdate: () => {
+          // During radius tween, .media has not yet started moving — scale
+          // is still 1, so visibleR can be applied directly to borderRadius.
+          const visibleR = computedLightboxRadius + (cardRadiusValue - computedLightboxRadius) * radiusProxy.p
+          mediaEl.style.borderRadius = `${visibleR}px`
+        },
+      }, 0)
       tl.to(mediaEl, {
         x: dx,
         y: dy,
@@ -471,10 +484,10 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         ease: CLOSE_TWEEN_EASE,
         transformOrigin: '50% 50%',
         onUpdate: function (this: gsap.core.Tween): void {
-          // `ratio` = eased scale progress 0→1. Radius progress is read
-          // from the sibling proxy so the corner can land before scale does.
+          // Radius is already at target (radiusProxy.p clamped to 1 by the
+          // earlier sub-tween). Only scale changes — compensate per-frame
+          // so the *visible* radius stays pinned to cardRadiusValue.
           const r = this.ratio
-          const visibleR = computedLightboxRadius + (cardRadiusValue - computedLightboxRadius) * radiusProxy.p
           const curScaleX = 1 + (endScaleX - 1) * r
           const curScaleY = 1 + (endScaleY - 1) * r
           // Specify horizontal / vertical radii separately so non-uniform
@@ -482,7 +495,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           // squish the corners into ovals.
           const safeX = Math.max(0.01, curScaleX)
           const safeY = Math.max(0.01, curScaleY)
-          mediaEl.style.borderRadius = `${visibleR / safeX}px / ${visibleR / safeY}px`
+          mediaEl.style.borderRadius = `${cardRadiusValue / safeX}px / ${cardRadiusValue / safeY}px`
         },
       }, CLOSE_FRAME_DELAY)
       if (backdrop) {
