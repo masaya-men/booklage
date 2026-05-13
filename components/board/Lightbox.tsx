@@ -160,6 +160,78 @@ function getPrefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+// =====================================================================
+// destefanis-style clone host (B-#17). We mount a single, persistent
+// `<div id="lightbox-clone-host">` directly under <body> so that every
+// Lightbox open/close can drop its clone there. Putting it on the body
+// escapes any containing block created by ancestor `.frame` /
+// `will-change` / `transform` further up the tree — which was the
+// root-cause of the failed cf6b8d1 attempt in session 21.
+// =====================================================================
+function ensureCloneHost(): HTMLElement {
+  const HOST_ID = 'lightbox-clone-host'
+  let host = document.getElementById(HOST_ID)
+  if (!host) {
+    host = document.createElement('div')
+    host.id = HOST_ID
+    // The host itself is a zero-sized fixed shell; only its absolutely-
+    // positioned children (clones) are visible. zIndex sits above the
+    // board chrome but below the Lightbox `.frame` (frame uses
+    // BOARD_Z_INDEX.LIGHTBOX = 200). Clones must sit *under* the
+    // Lightbox text/close-button overlays during the animation, then
+    // disappear at handoff.
+    host.style.cssText =
+      'position:fixed;top:0;left:0;width:0;height:0;pointer-events:none;z-index:150;'
+    document.body.appendChild(host)
+  }
+  return host
+}
+
+/** Build a visual proxy of a board card at a given screen rect. Strips
+ *  all inline style (transform, visibility:hidden the board applies to
+ *  the source card while Lightbox is open, etc.), then re-positions
+ *  the clone at the requested rect via position:fixed. Only used for
+ *  the open/close morph — interaction is disabled (pointer-events:none)
+ *  and the clone is removed at animation end. */
+function createLightboxClone(sourceCard: HTMLElement, rect: DOMRect): HTMLElement {
+  const clone = sourceCard.cloneNode(true) as HTMLElement
+  // Wipe ALL inline styles inherited from the source card. This drops:
+  //   - transform (gsap.set applied during drag/FLIP)
+  //   - visibility:hidden the CardsLayer applies to the source while
+  //     Lightbox is open (we want the clone visible)
+  //   - any width/height the parent flow had baked in
+  clone.style.cssText = ''
+  clone.style.position = 'fixed'
+  clone.style.top = `${rect.top}px`
+  clone.style.left = `${rect.left}px`
+  clone.style.width = `${rect.width}px`
+  clone.style.height = `${rect.height}px`
+  clone.style.margin = '0'
+  clone.style.visibility = 'visible'
+  clone.style.borderRadius = '24px'
+  clone.style.overflow = 'hidden'
+  clone.style.pointerEvents = 'none'
+  clone.setAttribute('aria-hidden', 'true')
+  // Drop ids / refs that might collide with the source if either side
+  // queries them by selector.
+  clone.removeAttribute('id')
+  clone.removeAttribute('data-bookmark-id')
+  // Strip hover-revealed chrome that would otherwise ride along with
+  // the morph (delete ×, reset ↺, resize handles). These elements
+  // carry their own data-visible attribute that survives cloneNode,
+  // so they'd display at the same opacity the source card had at
+  // click time — i.e. fully visible on a hovered card.
+  const SELECTORS_TO_STRIP = [
+    '[data-testid="card-delete-button"]',
+    '[data-testid="card-reset-size-button"]',
+    '[data-testid^="resize-handle-"]',
+  ]
+  for (const sel of SELECTORS_TO_STRIP) {
+    clone.querySelectorAll(sel).forEach((n) => n.remove())
+  }
+  return clone
+}
+
 /** Optional nav controls — when provided, chevron + dots + arrow-key
  *  nav become available. Caller (BoardRoot or SharedView) owns the
  *  index state and loop logic; Lightbox just forwards user gestures. */
@@ -392,37 +464,40 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     const closeEl = closeBtnRef.current
 
     if (closeOrigin && mediaEl) {
-      // Mirror the open: only .media morphs back to the source card's
-      // current rect. Chrome (text + close button) fades out first; the
-      // .frame container itself stays at scale 1 + opacity 1 (it has no
-      // visible chrome, so it contributes nothing to what the user sees).
+      // === B-#17 destefanis clone-based close ===
+      // Build a fresh clone of the source card at the current .media
+      // rect, hide .media, animate the clone back to the source rect.
+      // border-radius stays static at 24px throughout (clone inherits
+      // the source card's CSS), so the close-frame AA flicker that
+      // motivated this refactor cannot occur.
       const mediaRect = mediaEl.getBoundingClientRect()
-      // Round dx/dy to integer pixels so .media's transformed end position
-      // snaps to the same pixel grid the (un-transformed) source card
-      // renders on. Without this, fractional translate values land 0.3-0.5px
-      // off the source card's actual pixel position → that's the last
-      // remaining "意識して凝視すると一瞬だけ明滅" the user reported.
-      // Scale stays fractional (rounding 0.2 → 0 would collapse .media).
-      const dx = Math.round((closeOrigin.left + closeOrigin.width / 2) - (mediaRect.left + mediaRect.width / 2))
-      const dy = Math.round((closeOrigin.top + closeOrigin.height / 2) - (mediaRect.top + mediaRect.height / 2))
-      const endScaleX = Math.max(0.05, closeOrigin.width / mediaRect.width)
-      const endScaleY = Math.max(0.05, closeOrigin.height / mediaRect.height)
 
       // Kill any in-flight open tween on the chrome / media so close
       // takes over from the current visual state cleanly.
       gsap.killTweensOf(mediaEl)
       if (textEl) {
         gsap.killTweensOf(textEl)
-        // I-07-#5: 進行中の text reveal tween も止める (collectStageEls は
-        // textEl 自身を返す)。 textEl 自体の killTweensOf と冗長気味だが、
-        // helper 経由で一貫させたいので残す。
         const stageEls = collectStageEls(textEl)
         if (stageEls.length > 0) gsap.killTweensOf(stageEls)
       }
       if (closeEl) gsap.killTweensOf(closeEl)
 
+      // Stand up the close clone at .media's current rect, then hide
+      // .media so the clone takes over the visual immediately.
+      let clone: HTMLElement | null = null
+      if (liveSourceEl) {
+        const host = ensureCloneHost()
+        clone = createLightboxClone(liveSourceEl, mediaRect)
+        host.appendChild(clone)
+      }
+      mediaEl.style.opacity = '0'
+      mediaEl.style.borderRadius = ''
+
       const tl = gsap.timeline({
-        onComplete: () => onClose(),
+        onComplete: () => {
+          if (clone && clone.parentNode) clone.remove()
+          onClose()
+        },
       })
       if (textEl) {
         tl.to(textEl, {
@@ -438,66 +513,16 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, 0)
       }
-      // Pre-tween: align .media's <img> object-fit to the source card thumb
-      // (cover, not contain) so at small sizes the image fills its container
-      // the same way the card thumbnail does — no letterboxing mismatch.
-      const mediaImg = mediaEl.querySelector<HTMLImageElement>(':scope > img')
-      if (mediaImg) mediaImg.style.objectFit = 'cover'
-
-      // Card radius is now a fixed 24px across all card sizes (CardsLayer
-      // sets --card-radius: 24px directly), matching --lightbox-media-radius.
-      // Reading the live var still works as a safety net in case a theme
-      // override takes effect later.
-      const liveCardRadius = liveSourceEl
-        ? parseFloat(getComputedStyle(liveSourceEl).getPropertyValue('--card-radius'))
-        : NaN
-      const cardRadiusValue = Number.isFinite(liveCardRadius) && liveCardRadius > 0
-        ? liveCardRadius
-        : 24
-      const computedLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 24
-
-      // Pre-set strategy (mirrors the OPEN path at L737-741): finish the
-      // radius transition INSIDE the text-fade window, BEFORE position/scale
-      // motion begins at CLOSE_FRAME_DELAY. By the time the user's eye
-      // tracks the shrink, the visible corner is already locked at the
-      // source card's value — only scale changes from there. Scale
-      // compensation in the position-tween onUpdate keeps the visible
-      // radius pinned to cardRadiusValue throughout.
-      const radiusProxy = { p: 0 }
-      tl.to(radiusProxy, {
-        p: 1,
-        duration: CLOSE_RADIUS_DUR,
-        ease: CLOSE_RADIUS_EASE,
-        onUpdate: () => {
-          // During radius tween, .media has not yet started moving — scale
-          // is still 1, so visibleR can be applied directly to borderRadius.
-          const visibleR = computedLightboxRadius + (cardRadiusValue - computedLightboxRadius) * radiusProxy.p
-          mediaEl.style.borderRadius = `${visibleR}px`
-        },
-      }, 0)
-      tl.to(mediaEl, {
-        x: dx,
-        y: dy,
-        scaleX: endScaleX,
-        scaleY: endScaleY,
-        duration: CLOSE_TWEEN_DUR,
-        ease: CLOSE_TWEEN_EASE,
-        transformOrigin: '50% 50%',
-        onUpdate: function (this: gsap.core.Tween): void {
-          // Radius is already at target (radiusProxy.p clamped to 1 by the
-          // earlier sub-tween). Only scale changes — compensate per-frame
-          // so the *visible* radius stays pinned to cardRadiusValue.
-          const r = this.ratio
-          const curScaleX = 1 + (endScaleX - 1) * r
-          const curScaleY = 1 + (endScaleY - 1) * r
-          // Specify horizontal / vertical radii separately so non-uniform
-          // scale (portrait card vs landscape lightbox, etc.) doesn't
-          // squish the corners into ovals.
-          const safeX = Math.max(0.01, curScaleX)
-          const safeY = Math.max(0.01, curScaleY)
-          mediaEl.style.borderRadius = `${cardRadiusValue / safeX}px / ${cardRadiusValue / safeY}px`
-        },
-      }, CLOSE_FRAME_DELAY)
+      if (clone) {
+        tl.to(clone, {
+          top: closeOrigin.top,
+          left: closeOrigin.left,
+          width: closeOrigin.width,
+          height: closeOrigin.height,
+          duration: CLOSE_TWEEN_DUR,
+          ease: CLOSE_TWEEN_EASE,
+        }, CLOSE_FRAME_DELAY)
+      }
       if (backdrop) {
         tl.to(backdrop, {
           opacity: 0,
@@ -506,24 +531,14 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         }, CLOSE_BACKDROP_DELAY)
       }
 
-      // Reveal source card slightly BEFORE .media lands, paired with a
-      // brief .media opacity fade. Because the <img> styling is now
-      // matched (cover + card-radius), source card and .media at landing
-      // are visually identical — the lead time + fade are a safety net
-      // against sub-pixel rounding between scaled .media's rect and the
-      // source card's rect. With matched styling, any residual offset
-      // dissolves through this short overlap rather than appearing as
-      // a 1-frame snap.
+      // Reveal source card a hair before the clone lands. Both are
+      // visually identical (clone was made from source), so this lead
+      // is just safety margin for React reflow on visibility flip.
       const landingAt = CLOSE_FRAME_DELAY + CLOSE_TWEEN_DUR
       const revealAt = Math.max(0, landingAt - CLOSE_REVEAL_LEAD)
       if (onSourceShouldShow) {
         tl.call(() => { onSourceShouldShow() }, undefined, revealAt)
       }
-      tl.to(mediaEl, {
-        opacity: 0,
-        duration: CLOSE_FADE_DUR,
-        ease: 'power2.in',
-      }, revealAt)
     } else {
       gsap.to(el, {
         scale: 0.96,
@@ -701,58 +716,27 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
     const closeEl = closeBtnRef.current
 
     if (originRect && mediaEl) {
-      // FLIP target is the *media* element's natural rect (not the whole
-      // .frame). Visually only .media morphs, so the user reads the open
-      // as "the source card grows into the media slot" — closer to the
-      // destefanis "image clone morphs" feel. .frame is untransformed
-      // and only acts as a layout host (no visible chrome).
+      // === B-#17 destefanis clone-based open ===
+      // Strategy: lift a `cloneNode` proxy of the source card up to body
+      // root, animate its width/height/top/left from source rect to the
+      // .media's final rect. No transform:scale — width/height change
+      // directly, so border-radius never gets GPU-resampled. While the
+      // clone is in flight, .media is held opacity:0; the clone vanishes
+      // and .media flips to opacity:1 at the same frame (handoff).
       const mediaRect = mediaEl.getBoundingClientRect()
-      // Round dx/dy to integer pixels so .media's transformed *start*
-      // position snaps to the source card's actual pixel grid. Symmetric
-      // to the close-tween rounding — keeps the "card grows from where
-      // it was" moment pixel-aligned with the source card the user
-      // remembers clicking. Scale stays fractional.
-      const dx = Math.round((originRect.left + originRect.width / 2) - (mediaRect.left + mediaRect.width / 2))
-      const dy = Math.round((originRect.top + originRect.height / 2) - (mediaRect.top + mediaRect.height / 2))
-      const startScaleX = Math.max(0.05, originRect.width / mediaRect.width)
-      const startScaleY = Math.max(0.05, originRect.height / mediaRect.height)
+      const sourceCard = sourceCardId
+        ? document.querySelector<HTMLElement>(`[data-bookmark-id="${sourceCardId}"]`)
+        : null
+      // Prefer the source card's *live* rect over the captured originRect.
+      // originRect was snapshotted at click time and won't track scroll/
+      // pan that happened in the brief window before the lightbox mounted.
+      const sourceRect = sourceCard ? sourceCard.getBoundingClientRect() : originRect
+
+      const dx = (mediaRect.left + mediaRect.width / 2) - (sourceRect.left + sourceRect.width / 2)
+      const dy = (mediaRect.top + mediaRect.height / 2) - (sourceRect.top + sourceRect.height / 2)
       const distance = Math.hypot(dx, dy)
       const dur = OPEN_BASE_DUR + Math.min(distance / OPEN_DIST_DIVISOR, OPEN_DIST_BONUS_MAX)
 
-      // Both card and lightbox radii are now fixed at 24px, so this
-      // "interpolation" is effectively a no-op visually — start and end
-      // values are equal. Logic is retained until the destefanis-style
-      // clone refactor lands; at that point the radius animation can be
-      // dropped entirely (border-radius stays static).
-      const openCardRadius = 24
-      const openLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 24
-
-      // Initial state set synchronously *outside* the timeline so the
-      // browser paints the source-rect frame at t=0 before the tween
-      // runs — avoids the GSAP gotcha where set + to at the same
-      // timeline offset can leave the to-tween's from-state captured
-      // pre-set (resulting in no visible morph). useLayoutEffect runs
-      // before paint, so this is flicker-free.
-      gsap.set(el, { opacity: 1 })
-      gsap.set(mediaEl, {
-        x: dx,
-        y: dy,
-        scaleX: startScaleX,
-        scaleY: startScaleY,
-        transformOrigin: '50% 50%',
-      })
-      // Border-radius set via direct DOM (slash syntax for non-uniform
-      // X/Y radii isn't supported cleanly by gsap.set). At t=0 the
-      // visible radius equals openCardRadius — same as the source card —
-      // so there's no jarring "lightbox starts with the wrong radius"
-      // first frame.
-      {
-        const safeStartX = Math.max(0.01, startScaleX)
-        const safeStartY = Math.max(0.01, startScaleY)
-        mediaEl.style.borderRadius = `${openCardRadius / safeStartX}px / ${openCardRadius / safeStartY}px`
-      }
-      // I-07-#5: textPanel は stage 要素単位で mask-reveal-up する。
-      // textEl 自身は opacity 1 のまま、 子の stage 要素を不可視にしておく。
       const revealTokens = readRevealTokens()
       const prefersReduce = getPrefersReducedMotion()
       const stageEls = textEl ? collectStageEls(textEl) : []
@@ -760,32 +744,56 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       setStageInitialState(stageEls, revealTokens.translateY, prefersReduce)
       if (closeEl) gsap.set(closeEl, { opacity: 0 })
 
+      // Frame stays opaque; .media is invisible while the clone covers
+      // its real estate. Handoff flips .media back to visible at
+      // onComplete.
+      gsap.set(el, { opacity: 1 })
+      gsap.set(mediaEl, { opacity: 0, clearProps: 'transform' })
+      mediaEl.style.borderRadius = ''
+
+      let clone: HTMLElement | null = null
+      if (sourceCard) {
+        const host = ensureCloneHost()
+        clone = createLightboxClone(sourceCard, sourceRect)
+        host.appendChild(clone)
+      }
+
       const tl = gsap.timeline()
-      tl.to(mediaEl, {
-        x: 0,
-        y: 0,
-        scaleX: 1,
-        scaleY: 1,
-        duration: dur,
-        ease: OPEN_EASE,
-        onUpdate: function (this: gsap.core.Tween): void {
-          const r = this.ratio
-          const visibleR = openCardRadius + (openLightboxRadius - openCardRadius) * r
-          const curScaleX = startScaleX + (1 - startScaleX) * r
-          const curScaleY = startScaleY + (1 - startScaleY) * r
-          const safeX = Math.max(0.01, curScaleX)
-          const safeY = Math.max(0.01, curScaleY)
-          mediaEl.style.borderRadius = `${visibleR / safeX}px / ${visibleR / safeY}px`
-        },
-      }, 0)
-      // I-07-#5 destefanis-aligned: text reveal は media tween の **中盤**
-      // から overlap 開始。 destefanis 本家 (transition-delay 0.25s vs
-      // spring 0.45-0.7s) と同じ overlap で、 「カードが止まってから text が
-      // 出るまでのストップ」 を消す。 pause token はゼロが既定、 正の値で
-      // 中盤からの追加遅延が可能。
+      if (clone) {
+        tl.to(clone, {
+          top: mediaRect.top,
+          left: mediaRect.left,
+          width: mediaRect.width,
+          height: mediaRect.height,
+          duration: dur,
+          ease: OPEN_EASE,
+          onComplete: () => {
+            // Instant swap: paint .media at opacity 1 in the same
+            // frame the clone is removed. For still images the two
+            // are visually identical, so the swap is invisible. For
+            // YouTube / video the iframe's letterbox mismatch is
+            // briefly visible — addressed separately by a "play
+            // button overlay" follow-up (IDEAS.md). A cross-fade
+            // tween was tried here but it briefly puts both layers
+            // at <100% opacity, letting the backdrop bleed through
+            // (= "背景が見える" report). Instant swap avoids that.
+            mediaEl.style.opacity = '1'
+            const c = clone
+            if (c && c.parentNode) c.remove()
+          },
+        }, 0)
+      } else {
+        // No source card found (off-screen / unmounted). Fall back to
+        // a simple opacity fade on .media at the final rect.
+        tl.to(mediaEl, {
+          opacity: 1,
+          duration: dur,
+          ease: OPEN_EASE,
+        }, 0)
+      }
+
       const textStartAt = dur * 0.5 + revealTokens.pause
       appendRevealTimeline(tl, stageEls, revealTokens, textStartAt, prefersReduce)
-      // close ボタンは従来通り chromeAt で素フェード in (text と別系統)。
       const chromeAt = dur * OPEN_TEXT_FADE_DELAY_RATIO
       if (closeEl) {
         tl.to(closeEl, {
@@ -803,16 +811,13 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         )
       }
       return (): void => {
-        // Just kill tweens — do NOT snap .media / chrome back to a
-        // settled state here. This cleanup also fires on close (when
-        // identity flips to null right before unmount), and any
-        // gsap.set here paints one frame of "reset to natural size"
-        // between the close tween's landing and the actual unmount —
-        // visible as a flash. Chevron-during-open is rare enough that
-        // letting the slide effect deal with the small mid-tween
-        // .media is acceptable.
+        // Kill in-flight tweens; if the lightbox is being torn down
+        // mid-open, also clean up the clone so it doesn't outlive the
+        // animation. .media's opacity is left as-is — the close path
+        // (or remount) will set it explicitly.
         tl.kill()
         backdropTween?.kill()
+        if (clone && clone.parentNode) clone.remove()
       }
     }
 
