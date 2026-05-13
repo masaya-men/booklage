@@ -99,36 +99,26 @@
   transform: scale(1.2);
 }
 
-/* Mix-tweet (v13) — video slot dots render as a small ▶ triangle so the
- * indicator row reads as "round = photo, triangle = video", matching the
- * Lightbox dot indicator's shape-coding. Sized to fit inside the original
- * 6×6 dot bounding box so the indicator row stays visually uniform. */
+/* Video slot dots = solid circle with a play-triangle cut out from the
+ * center (SVG mask, evenodd fill-rule). The base shape stays a 6×6 round
+ * disc so the indicator row reads as uniform dots, but the inner cutout
+ * silently signals "video" without the visual weight of a separate ▶
+ * sitting in the row. Color is controlled via background so transitions
+ * stay smooth between idle / hover / active states. */
 .multiImageDot[data-slot-type='video'] {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 0;
   box-shadow: none;
-  position: relative;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6'><path fill='black' fill-rule='evenodd' d='M3 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM2.3 1.6v2.8L4.6 3z'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6'><path fill='black' fill-rule='evenodd' d='M3 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM2.3 1.6v2.8L4.6 3z'/></svg>");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
-.multiImageDot[data-slot-type='video']::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-top: 3px solid transparent;
-  border-bottom: 3px solid transparent;
-  border-left: 5px solid rgba(255, 255, 255, 0.6);
-  /* Center the triangle inside the 6×6 dot bounding box. translate(-50%,-50%)
-   * would put the LEFT edge at center, so shift left half of border-left
-   * (= 2.5px) and up half of (border-top + border-bottom)/2 (= 3px). */
-  transform: translate(-2.5px, -3px);
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
-  transition: border-left-color 150ms ease-out;
-}
+
 .multiImageDot[data-slot-type='video'][data-active='true'] {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.95);
   transform: scale(1.2);
-}
-.multiImageDot[data-slot-type='video'][data-active='true']::after {
-  border-left-color: rgba(255, 255, 255, 0.95);
 }

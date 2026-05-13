@@ -812,37 +812,20 @@
   background: rgba(255, 255, 255, 0.85);
 }
 
-/* Mix-tweet video slot indicator — replaces the round dot with an inline
- * ▶ triangle so the user can spot "this slot is a video" at a glance.
- * The CSS-triangle approach keeps the bare-DOM-button hit-area pattern
- * intact (24×24 via ::before extension) without introducing an SVG. */
+/* Video slot indicator — same circular base as the photo dot, but with
+ * a play-triangle cut out from the center via SVG mask (evenodd fill-
+ * rule). The cutout is subtle at the 6px base size but pops with the
+ * 1.6× active scale, signalling "this slot is a video" without disrupting
+ * the row's visual rhythm. The button's 24×24 hit area (::before extend)
+ * is unaffected. */
 .lightboxImageDot[data-slot-type='video'] {
-  background: transparent;
+  border-radius: 0;
   box-shadow: none;
-}
-.lightboxImageDot[data-slot-type='video'] .lightboxImageDotVideoIcon {
-  display: block;
-  width: 0;
-  height: 0;
-  /* Sized to match the 6×6 round photo-dot so the indicator row reads as
-   * uniform marks of comparable visual weight, just shape-coded by media
-   * type (round = photo, triangle = video). */
-  border-top: 3px solid transparent;
-  border-bottom: 3px solid transparent;
-  border-left: 5px solid rgba(255, 255, 255, 0.7);
-  /* 0.5px optical shift right so the triangle's perceived centroid sits
-   * over the original 6px dot's center. */
-  transform: translateX(0.5px);
-  transition: border-left-color 200ms ease-out, transform 200ms ease-out;
-}
-.lightboxImageDot[data-slot-type='video'][data-active='true'] {
-  /* Active state — match the photo-dot scale so the active marker reads
-   * uniformly across types. */
-  transform: scale(1.6);
-}
-.lightboxImageDot[data-slot-type='video'][data-active='true'] .lightboxImageDotVideoIcon {
-  border-left-color: rgba(255, 255, 255, 0.98);
-}
-.lightboxImageDot[data-slot-type='video']:hover:not([data-active='true']) .lightboxImageDotVideoIcon {
-  border-left-color: rgba(255, 255, 255, 0.92);
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6'><path fill='black' fill-rule='evenodd' d='M3 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM2.3 1.6v2.8L4.6 3z'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6'><path fill='black' fill-rule='evenodd' d='M3 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM2.3 1.6v2.8L4.6 3z'/></svg>");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }

@@ -1334,11 +1334,7 @@ function LightboxImageDots({
           data-slot-type={slot.type}
           className={styles.lightboxImageDot}
           onClick={(): void => onJump(i)}
-        >
-          {slot.type === 'video' && (
-            <span className={styles.lightboxImageDotVideoIcon} aria-hidden="true" />
-          )}
-        </button>
+        />
       ))}
     </div>
   )
