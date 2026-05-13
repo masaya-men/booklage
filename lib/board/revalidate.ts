@@ -1,10 +1,14 @@
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+// Maximum age before a card is eligible for re-scraping. 7 days strikes
+// a balance between picking up source-side OGP changes quickly and not
+// hammering /api/ogp. Lightbox open/nav additionally trigger revalidate
+// on demand, so viewport cadence is the safety net, not the only path.
+export const REVALIDATE_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 // Decide whether a bookmark is due for revalidation based on its
 // lastCheckedAt timestamp. undefined / null = never checked = due.
 export function shouldRevalidate(lastCheckedAt: number | undefined, now: number): boolean {
   if (lastCheckedAt == null) return true
-  return now - lastCheckedAt > THIRTY_DAYS_MS
+  return now - lastCheckedAt > REVALIDATE_AGE_MS
 }
 
 export type RevalidationResult =

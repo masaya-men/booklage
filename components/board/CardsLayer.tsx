@@ -24,7 +24,6 @@ import { CardNode } from './CardNode'
 import { MediaTypeIndicator, type MediaType } from './MediaTypeIndicator'
 import { ResizeHandle } from './ResizeHandle'
 import { CardCornerActions } from './CardCornerActions'
-import { RefetchButton } from './cards/RefetchButton'
 import { useCardReorderDrag, computeVirtualOrder, makeSkylineSimulator } from './use-card-reorder-drag'
 import { pickCard } from './cards'
 
@@ -92,10 +91,6 @@ type CardsLayerProps = {
    *  of the layout does not jitter, and the slot stays available as the
    *  visual home for the close-FLIP return. (B-#11)  */
   readonly sourceCardId?: string | null
-  /** Manual refetch callback — bypasses the 30-day age guard. Passed
-   *  down from BoardRoot where `defaultFetcher` + `persistLinkStatus`
-   *  are already wired up. */
-  readonly onRevalidate: (bookmarkId: string, url: string) => Promise<void>
 }
 
 export function CardsLayer({
@@ -117,7 +112,6 @@ export function CardsLayer({
   onCardResizeEnd,
   onCardResetSize,
   sourceCardId,
-  onRevalidate,
 }: CardsLayerProps): ReactNode {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   // Throttle: skip recomputing virtual order if card hasn't moved >8px since last compute.
@@ -487,14 +481,6 @@ export function CardsLayer({
               hasCustomWidth={it.customCardWidth}
               onDelete={(): void => onDelete(it.bookmarkId)}
               onResetSize={(): void => onCardResetSize(it.bookmarkId)}
-            />
-            {/* Manual refetch — hover-revealed, sits left of the delete
-                button. Bypasses the 30-day age guard on demand. */}
-            <RefetchButton
-              bookmarkId={it.bookmarkId}
-              url={it.url}
-              hovered={hoveredBookmarkId === it.bookmarkId}
-              onRevalidate={onRevalidate}
             />
             <ResizeHandle
               cardWidth={p.w}

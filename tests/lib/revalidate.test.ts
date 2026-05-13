@@ -1,15 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
-import { shouldRevalidate, RevalidationQueue } from '@/lib/board/revalidate'
-
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+import { shouldRevalidate, RevalidationQueue, REVALIDATE_AGE_MS } from '@/lib/board/revalidate'
 
 describe('shouldRevalidate', () => {
   it('returns true for never-checked', () => {
     expect(shouldRevalidate(undefined, Date.now())).toBe(true)
   })
 
-  it('returns true if last check > 30 days ago', () => {
-    const old = Date.now() - THIRTY_DAYS_MS - 1000
+  it('returns true if last check older than max age', () => {
+    const old = Date.now() - REVALIDATE_AGE_MS - 1000
     expect(shouldRevalidate(old, Date.now())).toBe(true)
   })
 
@@ -17,8 +15,8 @@ describe('shouldRevalidate', () => {
     expect(shouldRevalidate(Date.now() - 1000, Date.now())).toBe(false)
   })
 
-  it('returns false if last check exactly at 30 day boundary', () => {
-    const exact = Date.now() - THIRTY_DAYS_MS + 1000
+  it('returns false if last check within max age boundary', () => {
+    const exact = Date.now() - REVALIDATE_AGE_MS + 1000
     expect(shouldRevalidate(exact, Date.now())).toBe(false)
   })
 })

@@ -511,6 +511,56 @@ export function BoardRoot() {
   }, [focusCard])
 
 
+  // Shared revalidation queue. Used by both the viewport IntersectionObserver
+  // (safety-net cadence) and the Lightbox intent triggers below — keeping a
+  // single queue means bounded concurrency (max 3) is global, not per-source.
+  // Lazy-initialised on first render; persistLinkStatus/persistThumbnail are
+  // stable useCallback([]) so capture-by-closure is safe.
+  const revalidateQueueRef = useRef<RevalidationQueue | null>(null)
+  if (revalidateQueueRef.current === null) {
+    revalidateQueueRef.current = new RevalidationQueue({
+      fetcher: defaultFetcher,
+      onResult: async (id, r) => {
+        const now = Date.now()
+        if (r.kind === 'alive') {
+          await persistLinkStatus(id, 'alive', now)
+          // Heal stale thumbnails when the source changed its og:image —
+          // this is what makes the "Lightbox open → see latest" loop close.
+          if (r.data?.image) await persistThumbnail(id, r.data.image, true)
+        } else if (r.kind === 'gone') {
+          await persistLinkStatus(id, 'gone', now)
+        }
+        // unknown → no state change (will retry on the next intent or viewport entry)
+      },
+    })
+  }
+
+  // Intent-driven revalidate: called when the user signals they care about a
+  // specific card (Lightbox open / nav / jump). shouldRevalidate guards on
+  // age so most calls are no-ops — fresh records cost nothing.
+  const revalidateOnIntent = useCallback((bookmarkId: string): void => {
+    const q = revalidateQueueRef.current
+    if (!q) return
+    const it = items.find((x) => x.bookmarkId === bookmarkId)
+    if (!it) return
+    if (shouldRevalidate(it.lastCheckedAt, Date.now())) q.enqueue(bookmarkId, it.url)
+  }, [items])
+
+  // Wheel-scroll through Lightbox can fire handleLightboxNav 10× per second.
+  // Trailing 300ms debounce so only the card the user actually settled on
+  // gets a fetch — paging fast through the deck triggers zero traffic.
+  const navDebounceRef = useRef<{ id: string | null; timer: number | null }>({ id: null, timer: null })
+  const revalidateOnNav = useCallback((bookmarkId: string): void => {
+    navDebounceRef.current.id = bookmarkId
+    if (navDebounceRef.current.timer !== null) window.clearTimeout(navDebounceRef.current.timer)
+    navDebounceRef.current.timer = window.setTimeout(() => {
+      const pendingId = navDebounceRef.current.id
+      navDebounceRef.current.id = null
+      navDebounceRef.current.timer = null
+      if (pendingId) revalidateOnIntent(pendingId)
+    }, 300)
+  }, [revalidateOnIntent])
+
   const handleCardClick = useCallback((bookmarkId: string, originRect: DOMRect): void => {
     // Block Lightbox open for gone (dead-link) cards — the content is
     // unreachable so opening the Lightbox would only show a broken embed.
@@ -519,7 +569,8 @@ export function BoardRoot() {
     setLightboxOriginRect(originRect)
     setLightboxItemId(bookmarkId)
     setLightboxSourceItemId(bookmarkId)
-  }, [items])
+    revalidateOnIntent(bookmarkId)
+  }, [items, revalidateOnIntent])
 
   // Right-click on a card → soft-delete. Pre-launch convenience: no
   // confirmation dialog (the user wanted the fastest possible delete
@@ -576,17 +627,21 @@ export function BoardRoot() {
   const handleLightboxNav = useCallback((dir: -1 | 1): void => {
     if (filteredItems.length === 0 || lightboxIndex < 0) return
     const next = ((lightboxIndex + dir) % filteredItems.length + filteredItems.length) % filteredItems.length
-    setLightboxItemId(filteredItems[next]?.bookmarkId ?? null)
+    const nextId = filteredItems[next]?.bookmarkId ?? null
+    setLightboxItemId(nextId)
+    if (nextId) revalidateOnNav(nextId)
     // Source id and origin rect are NOT touched here — close always
     // returns to the originally clicked card regardless of how many
     // chevron-navs the user performed in between (B-#11).
-  }, [filteredItems, lightboxIndex])
+  }, [filteredItems, lightboxIndex, revalidateOnNav])
 
   const handleLightboxJump = useCallback((index: number): void => {
     if (index < 0 || index >= filteredItems.length) return
-    setLightboxItemId(filteredItems[index]?.bookmarkId ?? null)
+    const nextId = filteredItems[index]?.bookmarkId ?? null
+    setLightboxItemId(nextId)
+    if (nextId) revalidateOnIntent(nextId)
     // Source id / origin rect preserved — see handleLightboxNav (B-#11).
-  }, [filteredItems])
+  }, [filteredItems, revalidateOnIntent])
 
   const handleDropOrder = useCallback(
     (orderedBookmarkIds: readonly string[]): void => {
@@ -751,23 +806,14 @@ export function BoardRoot() {
   }, [reload])
 
   // Viewport-driven revalidation: when a card enters the viewport, check
-  // whether its link is still alive if it hasn't been checked for 30+ days
-  // (or never). Uses a separate IntersectionObserver instance — no
-  // interference with other observers (PiP presence, etc.).
+  // whether its link is still alive if it hasn't been checked recently
+  // (REVALIDATE_AGE_MS). Reuses the shared revalidateQueueRef so global
+  // concurrency stays bounded. Lightbox intent triggers are the primary
+  // freshness path; this is the safety net for cards never opened.
   useEffect(() => {
     if (!items.length) return
-    const queue = new RevalidationQueue({
-      fetcher: defaultFetcher,
-      onResult: async (id, r) => {
-        const now = Date.now()
-        if (r.kind === 'alive') {
-          await persistLinkStatus(id, 'alive', now)
-        } else if (r.kind === 'gone') {
-          await persistLinkStatus(id, 'gone', now)
-        }
-        // unknown → no state change (will retry next viewport entry)
-      },
-    })
+    const queue = revalidateQueueRef.current
+    if (!queue) return
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -791,28 +837,7 @@ export function BoardRoot() {
       if (el) observer.observe(el)
     }
     return () => observer.disconnect()
-  }, [items, persistLinkStatus])
-
-  // Manual refetch — bypasses the 30-day age guard on user request.
-  // Calls defaultFetcher directly (no queue) and immediately persists
-  // the result. Also heals a stale thumbnail when the scraper returns
-  // a better image URL.
-  const manualRevalidate = useCallback(
-    async (bookmarkId: string, url: string): Promise<void> => {
-      const r = await defaultFetcher(url)
-      const now = Date.now()
-      if (r.kind === 'gone') {
-        await persistLinkStatus(bookmarkId, 'gone', now)
-      } else if (r.kind === 'alive') {
-        await persistLinkStatus(bookmarkId, 'alive', now)
-        if (r.data?.image) {
-          await persistThumbnail(bookmarkId, r.data.image, true)
-        }
-      }
-      // 'unknown' → no state change (transient network error — user can retry)
-    },
-    [persistLinkStatus, persistThumbnail],
-  )
+  }, [items])
 
   const sidebarCounts = useMemo(() => {
     const active = items.filter((i) => !i.isDeleted)
@@ -938,7 +963,6 @@ export function BoardRoot() {
                 onCardResizeEnd={handleCardResizeEnd}
                 onCardResetSize={handleCardResetSize}
                 sourceCardId={lightboxSourceItemId}
-                onRevalidate={manualRevalidate}
               />
             </div>
           </InteractionLayer>
