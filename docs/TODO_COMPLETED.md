@@ -602,3 +602,77 @@ state:
 - スライダー 3 連バグ全て修正、 default W 値はユーザー実機での厳密な逆算で確定
 - vitest 477 / tsc / build clean
 
+---
+
+## セッション 24 (2026-05-14) — 動画カードのカクッ根治 + open animation 揺れの根本原因特定
+
+### 前半: B-#17-#2 動画カードの「カクッ」 を board-aspect poster box で根治
+
+セッション 23 末で残った課題: YouTube カードを Lightbox で開く瞬間、 clone (= board card のサムネを cover) と `.media` (= 16:9 box + サムネを cover で詰める) の見た目差で「カクッ」 と切り替わる。 spec [docs/specs/2026-05-14-lightbox-play-button-overlay.md](./specs/2026-05-14-lightbox-play-button-overlay.md) では「Play overlay 押下まではサムネ維持」 を提案していたが、 ユーザーの真意は別だった。
+
+**ユーザーの真意確認** (= 3 ラウンドの対話で解像度を上げた):
+- 当初 Claude の解釈: 「Play overlay を fade-in する」 (= 表面的な誤魔化し)
+- ユーザー真意: **「board card と完全に同じ aspect・同じ crop で Lightbox に grow させてほしい」**。 Play overlay を重ねるのは OK、 押下後に iframe が出て 16:9 にカクッとなるのも OK (= 操作直後だから許容)
+- 結論: `.media` の動画カード rendering 構造を、 board card と同じ「サムネ + 自然 aspect」 に揃える根治
+
+**実装** (= `feat(lightbox): preserve board card aspect during open animation`, commit + deploy `e690033d`):
+- `lib/share/lightbox-item.ts`: `LightboxItem` 型に `aspectRatio?: number` 追加、 `normalizeItem` で BoardItem の aspectRatio を素通り
+- `components/board/Lightbox.tsx`:
+  - `EmbedPoster` を `EmbedPosterBox` (= 動的 aspect 持ち wrap) + `EmbedPlayButton` (= 共通 Play UI) に分割
+  - YouTubeEmbed: `hasInteracted === false` 時に `EmbedPosterBox` で render、 押下後に既存 `iframeWrap16x9` / `iframeWrap9x16` + iframe mount に切替
+  - TikTokEmbed: `tier === 'poster'` 時に `EmbedPosterBox`、 video / iframe tier はそのまま
+  - InstagramEmbed: `EmbedPosterBox` + Instagram で開く link badge を子に
+- `components/board/Lightbox.module.css`:
+  - 新規 `.embedPosterBox` class — `aspect-ratio: var(--item-aspect, 16/9)` で動的、 width clamp に `calc(var(--item-aspect) * var(--lightbox-media-max-h))` を含めて envelope 内に収まる
+- `lib/share/lightbox-item.test.ts`: fixture に aspectRatio 期待値追加 (2 件)
+- 検証: tsc clean / vitest 477 全パス / build 22 routes
+- ユーザー実機確認: 全動画種別 (YouTube / Shorts / TikTok / Instagram) で open 時のカクッ消滅、 Play 押下後の iframe 切替もユーザー許容
+
+### 後半: open animation の「揺れ / FPS 低い」 感 → backdrop-filter blur が真犯人
+
+ユーザーが新たに報告: 「Lightbox にカードが来る時に若干揺れているような、 FPS が低いような感じがある。 徹底的に手を抜かずに調査したら原因が分かりそう?」
+
+systematic-debugging skill で Phase 1 (Root Cause Investigation):
+
+1. **コード精査**: open animation は B-#17 clone-based、 GSAP timeline で top/left/width/height + backdrop opacity 0→1 (`OPEN_BACKDROP_FADE_DUR = 0.42s`) + text reveal stagger を並行発火
+2. **destefanis 本家との比較** (= `C:/Users/masay/AppData/Local/Temp/destefanis-app.js`): `backdrop-filter` / `blur(` grep で **0 件**。 本家には全く blur なし
+3. **我々の実装**: `.backdrop` (z-index 300) に `backdrop-filter: blur(8px)` あり、 viewport 全面サイズ
+4. **ユーザー環境**: DPR 2.58 (4K + 200% × 130%)
+5. **症状の機序仮説**:
+   - backdrop は z-index 300、 clone は z-index 150 (= clone が backdrop の**下**)
+   - アニメ中 backdrop は opacity 0→1 で fade-in 状態 → element は描画されている → backdrop-filter active
+   - 各フレームで「動く clone を blur した結果」 を re-compute → opacity α で composite
+   - 結果として「sharp clone + blurred clone」 が α 比率で混ざる → 二重像 → 動くごとに ずれる → 「揺れ」 として知覚
+   - 加えて viewport-size × DPR 2.58 の paint cost で frame drop → 「FPS 低い」 感覚
+
+**git history で blur 導入経緯を確認** (= ユーザー質問「なぜブラーが入ってた?」 に対する事実回答):
+- `a1fa6dc` (2026-05-02): 最初の Lightbox 実装で blur 12px を導入 (ユーザー + Claude 共同設計)
+- `33682191` (2026-05-11): destefanis 本家を参考に大幅シンプル化 (tilt 削除等) したが、 commit message に「values left distinct so the project keeps its own character (subtle back.out spring on open, 8px backdrop blur, etc)」 = 「AllMarks の個性として 8px blur は意図的に残す」 とあり
+
+**ユーザー判断**: 「ブラー不要、 暗くするだけで OK」 (= AllMarks 個性として残す必要なし、 destefanis 方式と同じく半透明の暗さだけで深さ表現で十分)
+
+**実装** (= `perf(lightbox): drop backdrop-filter blur to eliminate open-anim shake`, commit + deploy `4156d88d`):
+- `components/board/Lightbox.module.css` の `.backdrop` から `backdrop-filter` 2 行を削除、 削除理由のコメントを残した (= 将来 theme として復活する想定で `--lightbox-backdrop-blur` 変数は globals.css に残置)
+- `--lightbox-backdrop: rgba(0,0,0,0.5)` の暗さはそのまま (= 1 行調整でいつでも濃淡変更可能)
+- 検証: tsc clean / vitest 476 (BroadcastChannel 1 件 flaky、 isolated で PASS、 私の変更と無関係) / build 22 routes
+- ユーザー実機確認: **「とてもよくなりました!!」** — 仮説 A 確定
+
+### 学び (memory への昇格対象 — 別途 update 検討)
+
+- **backdrop-filter の paint trap**: viewport-size + 動的コンテンツがフィルタ要素の後ろ + 高 DPR、 この三条件が揃うと Chromium で深刻な frame drop が出る。 destefanis 本家が回避していたのは経験的な選択
+- **「AllMarks の個性として残す」 判断は再検討必要**: ガラス系の演出は LiquidGlass テーマで集中投入する方針 (memory `project_liquidglass_as_theme`)。 default chrome の backdrop には不要
+
+### deploy
+
+セッション 24 で 2 回 deploy:
+- `e690033d` board-aspect poster box (動画カード「カクッ」 根治)
+- `4156d88d` drop backdrop-filter (open animation 揺れ根治) ← 現本番
+
+### sub-summary
+
+- master HEAD: 3 commit (= 動画カード aspect 統一 + backdrop blur 削除 + close-out)
+- 本番 `booklage.pages.dev` deploy 済 (`4156d88d`)
+- B-#17 関連で残っていた最後の体感問題 2 つ (動画カクッ + open 揺れ) が両方根治
+- 静止画・動画ともに「board card がそのままぬるっと大きくなる」 体感を実現
+- vitest 477 (BroadcastChannel 1 件 flaky を除く) / tsc / build clean
+

@@ -20,24 +20,23 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-14 セッション 23 末 — 本番 deploy 済)
+### 直近の状態 (2026-05-14 セッション 24 末 — 本番 deploy 済)
 
-- master HEAD: セッション 23 の 2 commit
-  - `slider fixes` — G slider live + W default 267 + step=1 + track 200px
-  - `B-#17 lightbox clone refactor` — open/close path を destefanis 方式に
-- **本番 `booklage.pages.dev` deploy 済 (`428cef71`)**
-- セッション 23 で ship:
-  - **G スライダー bug 修正** (CardsLayer に cardGapPx prop、 4 箇所固定値置換)
-  - **default W = 267** (= ユーザー実機 canvasWrap 1429 で 5 列ぴったり、 pre-slider Size 3 再現)
-  - **slider step=1 + track 200px** (= 暫定精度改善、 物理 track 約 2.2 倍)
-  - **B-#17 Lightbox clone refactor** open/close path:
-    - body 直下に `<div id="lightbox-clone-host">` を常駐
-    - source card を cloneNode → host に append → width/height/top/left を直接 animate
-    - transform: scale + radius interpolation を完全撤去
-    - clone から data-bookmark-id / 削除 × / 角アクション / リサイズハンドルを削除
-    - clone → media は instant swap (cross-fade は backdrop 透けで NG)
-  - 静止画カードでは完璧、 close の角丸 AA 違和感は構造的に消滅
-- 残る視覚問題: **動画カード (YouTube 等) で open 時の「カクッ」** — 「再生ボタン overlay 方式」 で根治予定 (= 別 spec 完成済)
+- master HEAD: セッション 24 の commit 群
+  - `feat(lightbox): preserve board card aspect during open animation (B-#17-#2)` — 動画カードの「カクッ」 根治
+  - `perf(lightbox): drop backdrop-filter blur to eliminate open-anim shake` — open animation 「揺れ / FPS 低い」 根治
+- **本番 `booklage.pages.dev` deploy 済 (`4156d88d`)**
+- セッション 24 で ship:
+  - **B-#17-#2 動画カード Lightbox 構造改修**:
+    - `LightboxItem` に `aspectRatio` 追加 → `normalizeItem` で BoardItem から素通り
+    - 新規 `EmbedPosterBox` (= 動的 aspect 持ち wrap) + `EmbedPlayButton` に分割
+    - YouTube / TikTok / Instagram の Play 前 branch を「board card と同 aspect の poster + Play overlay」 構造に統一
+    - Play 押下 (= user gesture) で初めて 16:9 / 9:16 の iframe wrap + iframe mount に切替 (= ここで「カクッ」 はユーザー操作直後だから許容)
+  - **open animation 揺れの根治** (= systematic-debugging で仮説 A 確定):
+    - `.backdrop` の `backdrop-filter: blur(8px)` を削除 (destefanis 本家にも 0 件と grep 確認、 git history で「AllMarks 個性として意図的に残した」 経緯も確認したうえでユーザー判断)
+    - 半透明の `--lightbox-backdrop: rgba(0,0,0,0.5)` で十分な暗さ・深さ表現が出る
+    - ユーザー DPR 2.58 (4K + 200% × 130%) 環境で paint cost が特に深刻だった構造的問題が解決
+- B-#17 関連で残っていた体感問題は全て根治、 board card がそのままぬるっと大きくなる Lightbox open 完成
 - 全 477 vitest + tsc + build clean
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
@@ -63,11 +62,11 @@ CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてありま
 - **MinimalCard polish** — 64px favicon が S サイズ (160px) で大きく見える可能性。 Visual Companion でモック比較してサイズ判定 (セッション 20 で実装後、 視覚調整は次回)
 - **Task 12: 全件再 check 設定 UI** — viewport revalidation で日常運用は OK だが、 ユーザーが 「いま全件チェック」 を 1 クリックで kick できる設定パネル。 設定パネル自体が未実装なので別 spec 立ち上げ要
 
-### Lightbox animation 系 (セッション 23 で B-#17 open/close 完成、 残課題あり)
+### Lightbox animation 系 (セッション 23-24 で B-#17 open/close/動画 + 揺れ完成、 残課題あり)
 
-- **B-#17-#2 動画カードの「カクッ」 = 再生ボタン overlay 方式で根治** (次セッション) — clone refactor 完成後、 動画カード (YouTube 等) で open 時に「サムネ → iframe 黒帯」 のジャンプが見える。 cross-fade は backdrop 透け問題で不採用。 根治は LightboxMedia 改修 + Play ボタン overlay 方式 (= サムネ維持 → ユーザー gesture で iframe mount)。 **spec [docs/specs/2026-05-14-lightbox-play-button-overlay.md](./specs/2026-05-14-lightbox-play-button-overlay.md) 完成済**、 工数 2-3h 級
+- **B-#17-#3 internal nav (wheel scroll で隣カード) の clone-based 移行** (中期) — open/close は clone-based に移行済だが、 Lightbox 内で wheel scroll した時の隣カード切替は **既存 transform:scale ロジックのまま**。 動作確認まだ。 open/close が本番で安定したのを受けて、 次に着手するならここ
 
-- **B-#17-#3 internal nav (wheel scroll で隣カード) の clone-based 移行** (中期) — open/close は clone-based に移行済だが、 Lightbox 内で wheel scroll した時の隣カード切替は **既存 transform:scale ロジックのまま**。 動作確認まだ。 open/close が本番で安定したら移行する
+- **角丸 24 → 20 検討** (= B-#17 落ち着いた現時点でやって良い視覚比較) — 短時間タスク
 
 ### カード操作・PiP
 
