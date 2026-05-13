@@ -8,8 +8,13 @@
   inset: 0;
   z-index: 300;
   background: var(--lightbox-backdrop);
-  backdrop-filter: blur(var(--lightbox-backdrop-blur, 8px));
-  -webkit-backdrop-filter: blur(var(--lightbox-backdrop-blur, 8px));
+  /* backdrop-filter intentionally removed 2026-05-14: viewport-sized blur
+     filter on a fading-in element with moving clone behind it produced
+     visible "shake / low FPS" feeling during open animation, especially
+     at high DPR (user environment: 4K + 200% × 130% = DPR 2.58). The
+     dark semi-transparent background alone gives the depth-separation
+     we want — same as destefanis reference. To bring blur back as a
+     theme option, set --lightbox-backdrop-blur and re-enable here. */
   opacity: 0;
   pointer-events: none;
   display: grid;
