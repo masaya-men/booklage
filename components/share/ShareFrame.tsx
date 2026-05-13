@@ -206,7 +206,7 @@ export function ShareFrame({
               cursor: editable ? 'grab' : (onCardOpen ? 'pointer' : 'default'),
               zIndex: isDragging ? 50 : undefined,
               ['--card-index' as string]: i,
-              ['--card-radius' as string]: '24px',
+              ['--card-radius' as string]: '20px',
             } as CSSProperties}
             onPointerDown={(e): void => {
               if (editable && cardIds) handleCardPointerDown(e, id)

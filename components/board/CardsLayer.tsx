@@ -449,7 +449,7 @@ export function CardsLayer({
               opacity: newlyAddedIds.has(it.bookmarkId) ? 0 : 1,
               visibility: sourceCardId === it.bookmarkId ? 'hidden' : undefined,
               animation: newlyAddedIds.has(it.bookmarkId) ? 'booklage-entrance-a 400ms ease-out forwards' : undefined,
-              ['--card-radius' as string]: '24px',
+              ['--card-radius' as string]: '20px',
             }}
           >
             <CardNode

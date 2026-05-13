@@ -323,7 +323,7 @@ ol {
   --text-meta: #777777;
   --text-muted: #555555;
   --text-signature: #444444;
-  --card-radius: 24px;
+  --card-radius: 20px;
 
   /* === card hover micro-interaction (I-07-#2) ===
      Cross-fade duration + easing shared by the multi-slot hover swap
@@ -347,7 +347,7 @@ ol {
   --lightbox-text-reveal-translate-y: 16px;
   --lightbox-text-reveal-easing: power2.out;
 
-  --lightbox-media-radius: 24px;
+  --lightbox-media-radius: 20px;
   /* Backdrop opacity 0.88 (bumped from 0.78) so the cards visible behind
      the blur don't create a noticeable bright band in the bottom half of
      the canvas when the user has scrolled past the top rows. With 0.78,
