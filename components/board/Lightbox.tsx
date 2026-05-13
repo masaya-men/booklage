@@ -168,103 +168,65 @@ function getPrefersReducedMotion(): boolean {
 // `will-change` / `transform` further up the tree — which was the
 // root-cause of the failed cf6b8d1 attempt in session 21.
 // =====================================================================
-function ensureCloneHost(): HTMLElement {
+/** Get-or-create the clone host inside the board's cards stage (the
+ *  .canvasWrap region marked by data-lightbox-clone-host). Mounting
+ *  inside the stage — rather than at body root — means the canvas's
+ *  overflow:hidden naturally clips any clone whose flight path
+ *  crosses the dark frame's edge, AND the .fadeTop / .fadeBottom
+ *  soft overlays (z 50 inside the same stage) automatically cover
+ *  clones passing under them. The clone becomes a citizen of the
+ *  same visual world the regular cards inhabit, so no manual
+ *  clip-path / mask mirroring is required.
+ *
+ *  Returns null if the stage isn't mounted yet (defensive — Lightbox
+ *  is only ever opened from inside a mounted BoardRoot, but callers
+ *  must treat null as "fall back to the no-clone fade path"). */
+function ensureCloneHost(): HTMLElement | null {
   const HOST_ID = 'lightbox-clone-host'
-  let host = document.getElementById(HOST_ID)
-  if (!host) {
-    host = document.createElement('div')
-    host.id = HOST_ID
-    // The host is a full-viewport fixed shell, invisible except for the
-    // clones it holds. The full size is needed so the clip-path applied
-    // by updateCloneHostMask can address the dark canvas's exact rect
-    // (clip-path's inset is measured from the host's own box, so a
-    // zero-sized host can't express "everything outside the canvas").
-    // pointer-events: none keeps it transparent to all interaction;
-    // zIndex sits above the board chrome but below the Lightbox `.frame`
-    // (frame uses BOARD_Z_INDEX.LIGHTBOX = 200), so clones layer under
-    // the text + close button overlays during the morph.
-    host.style.cssText =
-      'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:150;'
-    document.body.appendChild(host)
-  }
+  const existing = document.getElementById(HOST_ID)
+  if (existing) return existing
+
+  const stage = document.querySelector<HTMLElement>('[data-lightbox-clone-host]')
+  if (!stage) return null
+
+  const host = document.createElement('div')
+  host.id = HOST_ID
+  // Full-size invisible shell inside the stage. zIndex 30 sits below
+  // the fadeTop / fadeBottom overlays (z 50) so soft-band occlusion
+  // applies naturally, and above the cards content (CARDS=10) so the
+  // clone reads as the front-most card during the morph. The Lightbox
+  // .frame (z 200 at body root) remains above on its own portal layer.
+  host.style.cssText =
+    'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:30;'
+  stage.appendChild(host)
   return host
 }
 
-/** Confine the clone host's paint to the dark canvas's current rect AND
- *  fade clones through the same top/bottom soft-fade band that regular
- *  scrolling cards travel under. Without this the open / close morph
- *  paints outside the canvas (host lives at body root, so canvas
- *  overflow:hidden doesn't clip it) and any clone whose flight path
- *  crosses the .fadeTop / .fadeBottom region pops in fully opaque
- *  instead of melting through the same curtain regular cards obey.
- *
- *  Two layers:
- *    - clip-path: inset(...) round var(--canvas-radius)
- *        Locks left / right / corner-radius to the canvas's hard edges.
- *    - mask-image: linear-gradient(to bottom, ...)
- *        Mirrors .fadeTop / .fadeBottom's alpha curve (FADE_BAND_H px
- *        soft band at canvas top + bottom). Mask alpha = 1 - overlay
- *        alpha, since regular cards are *darkened* by a black overlay
- *        whereas clones (sitting above that overlay on body root) need
- *        the equivalent visual via direct opacity.
- *
- *  Updates each time open / close fires so window resize / responsive
- *  layout changes between two lightbox sessions are picked up. */
-const FADE_BAND_H = 64 // matches .fadeTop / .fadeBottom in BoardRoot.module.css
-function updateCloneHostMask(host: HTMLElement): void {
-  const canvasEl = document.querySelector<HTMLElement>('[data-board-canvas-clip]')
-  if (!canvasEl || typeof window === 'undefined') {
-    host.style.clipPath = ''
-    host.style.maskImage = ''
-    host.style.webkitMaskImage = ''
-    return
+/** Build a visual proxy of a board card at a given rect. Strips all
+ *  inline style (transform, visibility:hidden the board applies to the
+ *  source card while Lightbox is open, etc.), then positions the clone
+ *  at the requested rect via position:absolute. The rect's top / left
+ *  are expressed in the host's coordinate system (i.e. relative to
+ *  .canvasWrap), NOT viewport coordinates — callers convert via
+ *  toHostRelativeRect() before invoking. Only used for the open/close
+ *  morph — interaction is disabled (pointer-events:none) and the clone
+ *  is removed at animation end. */
+type CloneRect = { top: number; left: number; width: number; height: number }
+function toHostRelativeRect(viewportRect: DOMRect, host: HTMLElement): CloneRect {
+  // host is position:absolute filling .canvasWrap, so host's own
+  // bounding rect == canvasWrap's. Subtracting host.top / host.left
+  // converts a viewport-space rect (from getBoundingClientRect on any
+  // element) into the host's local coordinate system, which is what
+  // position:absolute children consume.
+  const o = host.getBoundingClientRect()
+  return {
+    top: viewportRect.top - o.top,
+    left: viewportRect.left - o.left,
+    width: viewportRect.width,
+    height: viewportRect.height,
   }
-  const r = canvasEl.getBoundingClientRect()
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const insetTop = Math.max(0, r.top)
-  const insetRight = Math.max(0, vw - r.right)
-  const insetBottom = Math.max(0, vh - r.bottom)
-  const insetLeft = Math.max(0, r.left)
-  const radiusRaw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--canvas-radius')
-    .trim()
-  const radius = radiusRaw || '24px'
-  host.style.clipPath =
-    `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px round ${radius})`
-
-  // Top band: alpha 0 at canvas top, 0.15 at 30%, 1.0 at canvas top + 64px.
-  // Bottom band mirrors it: 1.0 at canvas bottom - 64px, 0.15 at 70%,
-  // alpha 0 at canvas bottom. Values matched to .fadeTop's gradient stops
-  // (dark 0% / 30% / 100% -> 1.0 / 0.85 / 0.0 overlay alpha => 0 / 0.15
-  // / 1.0 mask alpha).
-  const t0 = r.top
-  const t30 = r.top + FADE_BAND_H * 0.3
-  const t100 = r.top + FADE_BAND_H
-  const b0 = r.bottom - FADE_BAND_H
-  const b70 = r.bottom - FADE_BAND_H * 0.3
-  const b100 = r.bottom
-  const gradient =
-    `linear-gradient(to bottom,` +
-    ` transparent 0px,` +
-    ` transparent ${t0}px,` +
-    ` rgba(0,0,0,0.15) ${t30}px,` +
-    ` black ${t100}px,` +
-    ` black ${b0}px,` +
-    ` rgba(0,0,0,0.15) ${b70}px,` +
-    ` transparent ${b100}px,` +
-    ` transparent ${vh}px)`
-  host.style.webkitMaskImage = gradient
-  host.style.maskImage = gradient
 }
-
-/** Build a visual proxy of a board card at a given screen rect. Strips
- *  all inline style (transform, visibility:hidden the board applies to
- *  the source card while Lightbox is open, etc.), then re-positions
- *  the clone at the requested rect via position:fixed. Only used for
- *  the open/close morph — interaction is disabled (pointer-events:none)
- *  and the clone is removed at animation end. */
-function createLightboxClone(sourceCard: HTMLElement, rect: DOMRect): HTMLElement {
+function createLightboxClone(sourceCard: HTMLElement, rect: CloneRect): HTMLElement {
   const clone = sourceCard.cloneNode(true) as HTMLElement
   // Wipe ALL inline styles inherited from the source card. This drops:
   //   - transform (gsap.set applied during drag/FLIP)
@@ -272,7 +234,7 @@ function createLightboxClone(sourceCard: HTMLElement, rect: DOMRect): HTMLElemen
   //     Lightbox is open (we want the clone visible)
   //   - any width/height the parent flow had baked in
   clone.style.cssText = ''
-  clone.style.position = 'fixed'
+  clone.style.position = 'absolute'
   clone.style.top = `${rect.top}px`
   clone.style.left = `${rect.left}px`
   clone.style.width = `${rect.width}px`
@@ -554,12 +516,16 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       if (closeEl) gsap.killTweensOf(closeEl)
 
       // Stand up the close clone at .media's current rect, then hide
-      // .media so the clone takes over the visual immediately.
+      // .media so the clone takes over the visual immediately. Both
+      // start and end rects are converted to host-relative coords
+      // because the host lives inside .canvasWrap (position:absolute)
+      // rather than at body root.
       let clone: HTMLElement | null = null
-      if (liveSourceEl) {
-        const host = ensureCloneHost()
-        updateCloneHostMask(host)
-        clone = createLightboxClone(liveSourceEl, mediaRect)
+      const host = liveSourceEl ? ensureCloneHost() : null
+      const closeOriginHost = host ? toHostRelativeRect(closeOrigin, host) : null
+      const mediaRectHost = host ? toHostRelativeRect(mediaRect, host) : null
+      if (liveSourceEl && host && mediaRectHost) {
+        clone = createLightboxClone(liveSourceEl, mediaRectHost)
         host.appendChild(clone)
       }
       mediaEl.style.opacity = '0'
@@ -585,12 +551,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           ease: 'power2.in',
         }, 0)
       }
-      if (clone) {
+      if (clone && closeOriginHost) {
         tl.to(clone, {
-          top: closeOrigin.top,
-          left: closeOrigin.left,
-          width: closeOrigin.width,
-          height: closeOrigin.height,
+          top: closeOriginHost.top,
+          left: closeOriginHost.left,
+          width: closeOriginHost.width,
+          height: closeOriginHost.height,
           duration: CLOSE_TWEEN_DUR,
           ease: CLOSE_TWEEN_EASE,
         }, CLOSE_FRAME_DELAY)
@@ -823,21 +789,27 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       gsap.set(mediaEl, { opacity: 0, clearProps: 'transform' })
       mediaEl.style.borderRadius = ''
 
+      // Convert start (source) and end (media) rects from viewport
+      // coords into the host's local coords; the host lives inside
+      // .canvasWrap (position:absolute), not at body root, so the
+      // clone's top/left and the gsap tween's target values must be
+      // expressed relative to the canvasWrap.
       let clone: HTMLElement | null = null
-      if (sourceCard) {
-        const host = ensureCloneHost()
-        updateCloneHostMask(host)
-        clone = createLightboxClone(sourceCard, sourceRect)
+      const host = sourceCard ? ensureCloneHost() : null
+      const sourceRectHost = host ? toHostRelativeRect(sourceRect, host) : null
+      const mediaRectHost = host ? toHostRelativeRect(mediaRect, host) : null
+      if (sourceCard && host && sourceRectHost) {
+        clone = createLightboxClone(sourceCard, sourceRectHost)
         host.appendChild(clone)
       }
 
       const tl = gsap.timeline()
-      if (clone) {
+      if (clone && mediaRectHost) {
         tl.to(clone, {
-          top: mediaRect.top,
-          left: mediaRect.left,
-          width: mediaRect.width,
-          height: mediaRect.height,
+          top: mediaRectHost.top,
+          left: mediaRectHost.left,
+          width: mediaRectHost.width,
+          height: mediaRectHost.height,
           duration: dur,
           ease: OPEN_EASE,
           onComplete: () => {

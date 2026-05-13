@@ -933,7 +933,7 @@ export function BoardRoot() {
             </>
           }
         />
-        <div ref={canvasRef} className={styles.canvasWrap} data-board-canvas-clip>
+        <div ref={canvasRef} className={styles.canvasWrap} data-lightbox-clone-host>
           <InteractionLayer
             direction={themeMeta.direction}
             onScroll={handleScroll}
@@ -1004,16 +1004,15 @@ export function BoardRoot() {
             </div>
           </InteractionLayer>
           {/* Soft fade at canvas top/bottom edges — scroll affordance.
-              Hidden while the Lightbox is open so the backdrop reads as a
-              uniform dim across the full canvas; otherwise the top fade
-              (where TopHeader used to be) leaves a darker band that breaks
-              the "lightbox centered in a calm field" feel. */}
-          {!lightboxItemId && (
-            <>
-              <div className={styles.fadeTop} aria-hidden="true" />
-              <div className={styles.fadeBottom} aria-hidden="true" />
-            </>
-          )}
+              Kept mounted while the Lightbox is open so the clone host
+              (positioned inside canvasWrap with z-index 30) is naturally
+              occluded by these overlays (z 50) when its flight path
+              crosses the soft band — same world the regular cards
+              travel under. The Lightbox's own frame/backdrop sits on a
+              separate sibling layer at the canvas level, so the fade
+              bands never overlap the centered media or its text panel. */}
+          <div className={styles.fadeTop} aria-hidden="true" />
+          <div className={styles.fadeBottom} aria-hidden="true" />
           {!loading && items.length === 0 && (
             <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
           )}
