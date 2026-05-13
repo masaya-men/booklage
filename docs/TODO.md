@@ -20,22 +20,23 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-14 セッション 25 末 — 本番 deploy 済)
+### 直近の状態 (2026-05-14 セッション 26 末 — 本番 deploy 済)
 
-- master HEAD: セッション 25 の commit 群
-  - `feat(dot-indicator)`: 動画 dot は「丸の中を三角で切り抜き」 へ (= ユーザー発案)
-  - `feat(board-bg-typo)`: 背景タイポで現タグ名 / "AllMarks" を hero 表示 (= Geist Semibold + variant 拡張枠予約)
-  - `refactor(lightbox)`: clone host を canvasWrap 内 portal に + clip/mask hack 全削除
-  - `refactor(board)`: scroll affordance fade overlay 削除 (= destefanis 本家踏襲)
-  - `fix(lightbox)`: backdrop を dim layer + stage layer に split (= clone がアニメ中 dim されない 3 層構造へ、 ユーザー長年の希望「カード暗くならない」 根治)
-- **本番 `booklage.pages.dev` deploy 済 (`0ed947f5`)**
-- セッション 25 で ship:
-  - **動画 dot 再デザイン**: ImageCard + Lightbox の動画 slot dot を SVG mask で「丸の中三角切り抜き」 に統一、 過去ブレスト 7 候補は不要 (= ユーザー発案で一発採用)
-  - **背景タイポ hero**: BoardBackgroundTypography 新規、 「すべて」 → "AllMarks"、 タグ切替で text 変わる、 Geist Semibold 600 + variant 拡張枠 (= dvd-bounce / glitch / multi / marquee / card-wind の selector slot 予約済)
-  - **Lightbox clone 構造の連鎖根治**: clone host を canvasWrap 内 portal + backdrop split (dim 100 / clone 200 / stage 300 の 3 層)、 「画面で見切れたカードを click で clone が canvas 外飛び出る」 + 「アニメ中 clone 自体が dim される」 両方根治
-  - **scroll affordance fade overlay 削除**: destefanis 本家にない、 ScrollMeter で代替済、 Lightbox との干渉も消える
-- destefanis 本家との残差: backdrop blur 無し + Motion One spring 無し (= ユーザー判断「polish しない」 確定済、 spec から外す)
-- 全 477 vitest + tsc + build clean
+- master HEAD: セッション 26 の commit 群
+  - `style(card)`: 角丸 24 → 20 (= 候補 E、 4 箇所変更: globals.css の `--card-radius` / `--lightbox-media-radius` + CardsLayer / ShareFrame のインライン上書き)
+  - `docs(ideas)`: 新着 IDEAS 3 件追記 (= Nothing デザイン / 飛行機高度計 ScrollBar / 円形レーダー、 全てユーザー session 26 共有)
+  - `docs(dashboard)`: 永続 dashboard.html 新設 + `.claude/rules/session-workflow.md` 終了時手順拡張
+- **本番 `booklage.pages.dev` deploy 済**
+- セッション 26 で ship:
+  - **角丸 24 → 20** (= 候補 E): カード全種 + Lightbox media radius を 20px に統一、 ユーザー実機 OK
+  - **永続ダッシュボード**: `docs/private/dashboard.html` (gitignored)、 単一ページ 3 列構造で dot indicator 付き、 ユーザー大画面閲覧用。 `.claude/rules/session-workflow.md` §終了時 に自動更新ルール明文化
+  - **IDEAS 新着 3 件**: Nothing デザイン (= ミニマル工業テーマ軸) / 飛行機高度計スクロールバー (= SF 軍事 chrome 拡張) / 円形レーダー (= 無限キャンバス + SF 軍事)
+- 着手せず session 27 へ持ち越し: 候補 A (背景タイポ variant) / D (Lightbox nav ちらつき)
+- 全 vitest + tsc + build clean
+
+### 次セッションは board chrome のミニマル化 + 精密化 sprint
+
+詳細は `docs/CURRENT_GOAL.md`。 ユーザー要望 5 項目 = ScrollMeter 下配置 / TopHeader 要否 / Slider 精密化 / 左下 Booklage pin 導線 / カスタムマウスポインタ + 拡張機能の作り込み。 brainstorming から開始。
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 

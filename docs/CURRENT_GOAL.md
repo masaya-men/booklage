@@ -1,60 +1,58 @@
-# 次セッションのゴール (= セッション 26)
+# 次セッションのゴール (= セッション 27)
 
 ## ゴール
 
-**ユーザー判断で 1 つ選ぶ**。 セッション 25 で大物 (= dot + 背景タイポ + Lightbox clone 構造根治) 完了、 次は中規模 polish / 新機能 / バグ修正のどれかから 1 つ。
+**board chrome のミニマル化 + 精密化 sprint**。 ユーザー要望 5 項目 + 拡張機能の作り込みを brainstorming で順序決めしてから実装。
 
-## 前提 (セッション 25 で揃った)
+## 前提 (セッション 26 で揃った)
 
-- master HEAD: セッション 25 close-out (= dot 三角切り抜き + 背景タイポ + Lightbox 3 層構造 = backdrop dim + clone + stage)
-- 本番 `booklage.pages.dev` deploy 済 (`0ed947f5` 系)
-- destefanis 本家との残差 (= backdrop blur 無し + Motion One spring 無し) は polish しない確定、 spec から外す
+- master HEAD: セッション 26 close-out commit (= 角丸 20 + dashboard 永続化 + IDEAS 追記)
+- 本番 `booklage.pages.dev` deploy 済
+- 角丸 24 → 20 完了 (= 候補 E)、 ユーザー実機 OK
+- `docs/private/dashboard.html` (= 永続ダッシュボード) を毎セッション末更新する運用が `.claude/rules/session-workflow.md` §終了時 に明文化済
 
 ## 着工前読み込み必須
 
-- `docs/TODO.md` の §現在の状態 + §未対応バグ・改善 (active backlog)
-- `docs/private/IDEAS.md` の関連セクション (= ユーザーの選択肢に応じて)
+- `docs/TODO.md` §未対応バグ・改善 (= B-#13 / B-#17-#3 含む active backlog)
+- `docs/private/IDEAS.md` 関連セクション:
+  - §2026-04-19 お風呂アイデア (= 常時 dashboard + Focus mode + liquid glass overlap、 ヘッダー要否議論)
+  - §セッション 23 D (= スライダー数字表記の遊び) + E (= slow slider 根本治療)
+  - §テーマ連動オリジナルマウスカーソル (2026-05-13)
+- `docs/private/dashboard.html` (= 全景把握、 大画面で眺めて整理)
 
-## 候補 (= ユーザーが選ぶ)
+## ユーザー要望 (= session 26 末で共有された 5 項目)
 
-### A. 背景タイポの animation variant 1 つ実装 (= polish 系、 ワクワク)
-- IDEAS.md §H 「動く街並みテーマ (車テーマ)」 の隣に、 dvd-bounce / glitch / multi / marquee / card-wind の 5 候補既記載
-- `BoardBackgroundTypography.tsx` の `variant` prop と CSS の `data-variant=...` selector slot に実装入れるだけ、 URL query `?bgtypo=<variant>` で即試せる
-- 推奨: **dvd-bounce** か **glitch** から、 雰囲気を見ながら 1 つずつ
-- 工数: ~1h × 1 variant
+1. **ScrollMeter 下配置** — Lightbox と同じ位置に統一、 Lightbox open 時は非表示?
+2. **TopHeader 自体の要否** — カードに重なっても良い、 視認性低くてもミニマル UI へ
+3. **サイズ・ギャップ slider 最適化** — 精密な動きが出来るように (= 根本治療、 setPointerCapture + movementX × ratio) + 今のムードボードデザインへ馴染ませる
+4. **左下 Booklage pin (ブックマーレット導線) 見直し** — 常時表示じゃなくムードボード画面では出さない / 出すタイミングを工夫する
+5. **カスタムマウスポインタ** — chrome 作り込みの一環として検討
 
-### B. B-#7 自由サイジング縮小時の clipping 修正 (= 体感バグ、 既存 backlog)
-- セッション 13 で root cause 特定済 (= skyline masonry が discrete に reflow burst)
-- 案 (a) リサイズ中固定 / (b) FLIP tween 再チューニング / (c) skyline ヒステリシス / (d) 受容
-- ユーザー希望: 周囲「ぬるっと」 維持 = 案 a (固定) は最終手段
-- 工数: 中 (調査含めて 2-3h)
+**+ 拡張機能の作り込み** — 既存の Chrome 拡張 (= ブックマークレット併存)。 ④ と紐付くので brainstorming で同時扱い。
 
-### C. テーマ機能の最初の 1 つ実装 (= 大物、 アプリの一段ステップアップ)
-- 現状テーマは default のみ、 テーマ切替 UI も無し
-- 最初の 1 つは: **動く街並みテーマ (車テーマ)** (= IDEAS.md 2026-05-14 ユーザー発案) or **SF 軍事スタイル** (= IDEAS.md 2026-05-06) or **Glass theme** (= 既存 LiquidGlass spec)
-- テーマ切替 UI から作るか、 default に上書きで proof of concept か
-- 工数: 大 (= 1 セッションでは収まらない、 まず brainstorming + spec)
+## 着工手順 (= session 27 最初)
 
-### D. B-#17-#3 Lightbox 内 nav 切替アニメちらつき修正 (= 体感バグ、 既存 backlog)
-- open/close は B-#17 で clone-based に移行済、 ただし wheel scroll で隣カード切替するときの **既存 transform:scale ロジック**にちらつきが残る
-- 「アニメ本体は気に入っているのでちらつきだけ修正したい」 (= ユーザー)
-- 工数: 中 (~1h)
+1. **brainstorming session を最初に走らせる** (= superpowers:brainstorming スキル使用、 5 項目 + 拡張機能の優先順位 + 各項目の方向性確定)
+2. 確定方向を `docs/superpowers/specs/2026-05-XX-board-chrome-minimal.md` (or 類似名) に spec 化
+3. spec 確定後、 着手項目を順次実装
 
-### E. 角丸 24 → 20 検討 (= 視覚 polish、 短時間)
-- 全カード border-radius を 24px → 20px に変えて視覚比較
-- B-#17 落ち着いた現時点でやって良い
-- 工数: 小 (~30 min)
+## 推奨優先順位 (= 着工前の暫定、 brainstorming で確定)
 
-## 推奨
+- **A. ScrollMeter 下配置** (= ① + ② の半分) — Lightbox と同じ視覚言語に揃える、 chrome の方向性が一気に固まる
+- **B. TopHeader ミニマル化** (= ②) — A 完了後に「ヘッダー何が残る必要があるか」 を決める
+- **C. Slider 根本治療** (= ③) — A/B 確定後、 chrome デザインに馴染ませた slider を再設計
+- **D. ブックマーレット pin 導線見直し + 拡張機能 polish** (= ④ + 拡張) — chrome 全体方針確定後、 「ブクマ追加導線」 として最適化
+- **E. カスタムマウスポインタ** (= ⑤) — 最後の polish、 テーマ機能と連動するなら別 sprint に切り出す判断もあり
 
-私の推奨は **A の dvd-bounce** (= 背景タイポを楽しく遊べる variant 1 つ追加、 ユーザーが具体イメージ言ってくれた中で最も実装が手軽 + 楽しい)。 ただ「**ワクワク 1 つ + 体感バグ 1 つ**」 の組合せで A + D (= 30 min variant 追加 + 1h ちらつき修正) も可。
+## 着工 NG 条件 (= ユーザー判断で外したもの)
 
-## 着工 NG 条件
-
-- backdrop blur / Motion One spring の polish に着手しない (= ユーザー判断で外した)
-- 動画 dot 候補 A-G から別形を試さない (= 採用済「丸の中三角切り抜き」 で確定)
+- backdrop blur / Motion One spring の polish (= session 25 で外した)
+- 動画 dot 候補から別形を試す (= 採用済「丸の中三角切り抜き」 で確定)
+- 候補 A 背景タイポ variant 実装 (= session 26 で扱わず、 27 もデザイン chrome を優先するため後回し)
+- 候補 D Lightbox nav ちらつき修正 (= 同上、 後回し)
 
 ## 並行 backlog (= 触らない)
 
 - リブランド (= AllMarks ドメイン取得後、 月末 2026-05-31 リマインダー)
 - サイズ設計 Phase 2-6
+- B-#7 自由サイジング縮小 clipping (= 体感バグ、 後日)
