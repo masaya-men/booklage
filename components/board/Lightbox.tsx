@@ -176,7 +176,7 @@ function ensureCloneHost(): HTMLElement {
     host.id = HOST_ID
     // The host is a full-viewport fixed shell, invisible except for the
     // clones it holds. The full size is needed so the clip-path applied
-    // by updateCloneHostClip can address the dark canvas's exact rect
+    // by updateCloneHostMask can address the dark canvas's exact rect
     // (clip-path's inset is measured from the host's own box, so a
     // zero-sized host can't express "everything outside the canvas").
     // pointer-events: none keeps it transparent to all interaction;
@@ -190,35 +190,72 @@ function ensureCloneHost(): HTMLElement {
   return host
 }
 
-/** Clip the clone host's paint area to the dark canvas's current rect,
- *  so the open / close morph never paints outside the rounded canvas
- *  even when the source card is partially off-screen at click time.
+/** Confine the clone host's paint to the dark canvas's current rect AND
+ *  fade clones through the same top/bottom soft-fade band that regular
+ *  scrolling cards travel under. Without this the open / close morph
+ *  paints outside the canvas (host lives at body root, so canvas
+ *  overflow:hidden doesn't clip it) and any clone whose flight path
+ *  crosses the .fadeTop / .fadeBottom region pops in fully opaque
+ *  instead of melting through the same curtain regular cards obey.
  *
- *  Without this, clicking a card whose top edge sits above the canvas
- *  top (or below the bottom) starts the clone at a fixed-position rect
- *  that extends past the canvas — and since the host lives at body
- *  root, ancestor overflow:hidden on `.canvas` doesn't clip it. The
- *  clip-path here re-imposes that clip at paint time.
+ *  Two layers:
+ *    - clip-path: inset(...) round var(--canvas-radius)
+ *        Locks left / right / corner-radius to the canvas's hard edges.
+ *    - mask-image: linear-gradient(to bottom, ...)
+ *        Mirrors .fadeTop / .fadeBottom's alpha curve (FADE_BAND_H px
+ *        soft band at canvas top + bottom). Mask alpha = 1 - overlay
+ *        alpha, since regular cards are *darkened* by a black overlay
+ *        whereas clones (sitting above that overlay on body root) need
+ *        the equivalent visual via direct opacity.
  *
- *  Updates each time open / close fires so a window resize or panel
- *  layout change between two lightbox openings is picked up. */
-function updateCloneHostClip(host: HTMLElement): void {
+ *  Updates each time open / close fires so window resize / responsive
+ *  layout changes between two lightbox sessions are picked up. */
+const FADE_BAND_H = 64 // matches .fadeTop / .fadeBottom in BoardRoot.module.css
+function updateCloneHostMask(host: HTMLElement): void {
   const canvasEl = document.querySelector<HTMLElement>('[data-board-canvas-clip]')
   if (!canvasEl || typeof window === 'undefined') {
     host.style.clipPath = ''
+    host.style.maskImage = ''
+    host.style.webkitMaskImage = ''
     return
   }
   const r = canvasEl.getBoundingClientRect()
-  const top = Math.max(0, r.top)
-  const right = Math.max(0, window.innerWidth - r.right)
-  const bottom = Math.max(0, window.innerHeight - r.bottom)
-  const left = Math.max(0, r.left)
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const insetTop = Math.max(0, r.top)
+  const insetRight = Math.max(0, vw - r.right)
+  const insetBottom = Math.max(0, vh - r.bottom)
+  const insetLeft = Math.max(0, r.left)
   const radiusRaw = getComputedStyle(document.documentElement)
     .getPropertyValue('--canvas-radius')
     .trim()
   const radius = radiusRaw || '24px'
   host.style.clipPath =
-    `inset(${top}px ${right}px ${bottom}px ${left}px round ${radius})`
+    `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px round ${radius})`
+
+  // Top band: alpha 0 at canvas top, 0.15 at 30%, 1.0 at canvas top + 64px.
+  // Bottom band mirrors it: 1.0 at canvas bottom - 64px, 0.15 at 70%,
+  // alpha 0 at canvas bottom. Values matched to .fadeTop's gradient stops
+  // (dark 0% / 30% / 100% -> 1.0 / 0.85 / 0.0 overlay alpha => 0 / 0.15
+  // / 1.0 mask alpha).
+  const t0 = r.top
+  const t30 = r.top + FADE_BAND_H * 0.3
+  const t100 = r.top + FADE_BAND_H
+  const b0 = r.bottom - FADE_BAND_H
+  const b70 = r.bottom - FADE_BAND_H * 0.3
+  const b100 = r.bottom
+  const gradient =
+    `linear-gradient(to bottom,` +
+    ` transparent 0px,` +
+    ` transparent ${t0}px,` +
+    ` rgba(0,0,0,0.15) ${t30}px,` +
+    ` black ${t100}px,` +
+    ` black ${b0}px,` +
+    ` rgba(0,0,0,0.15) ${b70}px,` +
+    ` transparent ${b100}px,` +
+    ` transparent ${vh}px)`
+  host.style.webkitMaskImage = gradient
+  host.style.maskImage = gradient
 }
 
 /** Build a visual proxy of a board card at a given screen rect. Strips
@@ -521,7 +558,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       let clone: HTMLElement | null = null
       if (liveSourceEl) {
         const host = ensureCloneHost()
-        updateCloneHostClip(host)
+        updateCloneHostMask(host)
         clone = createLightboxClone(liveSourceEl, mediaRect)
         host.appendChild(clone)
       }
@@ -789,7 +826,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       let clone: HTMLElement | null = null
       if (sourceCard) {
         const host = ensureCloneHost()
-        updateCloneHostClip(host)
+        updateCloneHostMask(host)
         clone = createLightboxClone(sourceCard, sourceRect)
         host.appendChild(clone)
       }
