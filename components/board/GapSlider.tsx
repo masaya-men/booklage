@@ -22,7 +22,7 @@ export function GapSlider({ value, onChange }: Props): ReactElement {
         className={styles.range}
         min={BOARD_SLIDERS.CARD_GAP_MIN_PX}
         max={BOARD_SLIDERS.CARD_GAP_MAX_PX}
-        step={2}
+        step={1}
         value={value}
         onChange={handle}
         data-testid="gap-slider"

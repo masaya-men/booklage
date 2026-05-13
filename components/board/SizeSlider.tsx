@@ -22,7 +22,7 @@ export function SizeSlider({ value, onChange }: Props): ReactElement {
         className={styles.range}
         min={BOARD_SLIDERS.CARD_WIDTH_MIN_PX}
         max={BOARD_SLIDERS.CARD_WIDTH_MAX_PX}
-        step={10}
+        step={1}
         value={value}
         onChange={handle}
         data-testid="size-slider"

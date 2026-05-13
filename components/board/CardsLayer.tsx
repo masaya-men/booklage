@@ -15,7 +15,6 @@ import { computeSkylineLayout, type SkylineCard } from '@/lib/board/skyline-layo
 import type { CardPosition, DisplayMode } from '@/lib/board/types'
 import {
   BOARD_Z_INDEX,
-  COLUMN_MASONRY,
   CULLING,
 } from '@/lib/board/constants'
 import type { BoardItem } from '@/lib/storage/use-board-data'
@@ -54,6 +53,10 @@ type CardsLayerProps = {
   readonly items: ReadonlyArray<BoardItem>
   readonly viewport: Viewport
   readonly viewportWidth: number
+  /** Board-wide card gap in pixels — driven by the GapSlider in the
+   *  toolbar. Threaded through the same skyline layout calls that use
+   *  defaultCardWidth so changing the slider reflows cards live. */
+  readonly cardGapPx: number
   readonly hoveredBookmarkId: string | null
   readonly spaceHeld: boolean
   readonly onHoverChange: (id: string | null) => void
@@ -97,6 +100,7 @@ export function CardsLayer({
   items,
   viewport,
   viewportWidth,
+  cardGapPx,
   hoveredBookmarkId,
   spaceHeld,
   onHoverChange,
@@ -172,9 +176,9 @@ export function CardsLayer({
       computeSkylineLayout({
         cards: skylineCards,
         containerWidth: viewportWidth,
-        gap: COLUMN_MASONRY.GAP_PX,
+        gap: cardGapPx,
       }),
-    [skylineCards, viewportWidth],
+    [skylineCards, viewportWidth, cardGapPx],
   )
 
   // Stage 2: preview layout computed from the live virtual order.
@@ -190,9 +194,9 @@ export function CardsLayer({
     return computeSkylineLayout({
       cards: orderedCards,
       containerWidth: viewportWidth,
-      gap: COLUMN_MASONRY.GAP_PX,
+      gap: cardGapPx,
     })
-  }, [virtualOrderedIds, items, viewportWidth, buildSkylineCard])
+  }, [virtualOrderedIds, items, viewportWidth, cardGapPx, buildSkylineCard])
 
   // During drag, use preview positions for non-dragged cards.
   // During drop/idle, use real masonry positions.
@@ -299,7 +303,7 @@ export function CardsLayer({
           cardWorldY,
           simulateLayout: makeSkylineSimulator({
             containerWidth: viewportWidth,
-            gap: COLUMN_MASONRY.GAP_PX,
+            gap: cardGapPx,
             resolveWidth: resolveCardWidth,
             intrinsicHeights,
           }),
@@ -315,7 +319,7 @@ export function CardsLayer({
           return prev
         })
       },
-      [items, viewportWidth, resolveCardWidth, intrinsicHeights],
+      [items, viewportWidth, cardGapPx, resolveCardWidth, intrinsicHeights],
     ),
     onDrop: useCallback(
       (_orderedIds: readonly string[]): void => {
@@ -342,7 +346,7 @@ export function CardsLayer({
         const finalMasonry = computeSkylineLayout({
           cards: finalCards,
           containerWidth: viewportWidth,
-          gap: COLUMN_MASONRY.GAP_PX,
+          gap: cardGapPx,
         })
 
         // Snap all non-dragged cards to their FINAL masonry positions + scale 1,
@@ -382,7 +386,7 @@ export function CardsLayer({
         onDrop(finalOrder)
         setVirtualOrderedIds(null)
       },
-      [onDrop, virtualOrderedIds, items, viewportWidth, buildSkylineCard],
+      [onDrop, virtualOrderedIds, items, viewportWidth, cardGapPx, buildSkylineCard],
     ),
   })
 

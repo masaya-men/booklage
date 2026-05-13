@@ -958,6 +958,7 @@ export function BoardRoot() {
                 items={filteredItems}
                 viewport={viewport}
                 viewportWidth={effectiveLayoutWidth}
+                cardGapPx={cardGapPx}
                 hoveredBookmarkId={hoveredBookmarkId}
                 spaceHeld={spaceHeld}
                 onHoverChange={setHoveredBookmarkId}

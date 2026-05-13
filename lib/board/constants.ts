@@ -111,11 +111,17 @@ export const COLUMN_MASONRY = {
 } as const
 
 /** Board-wide card width and gap controlled by the header sliders.
- *  CARD_WIDTH_DEFAULT_PX matches the legacy 5-column "size 3" layout at
- *  ~1489px viewport so existing boards open with the same density.
- *  Reset button restores both to these defaults. */
+ *  CARD_WIDTH_DEFAULT_PX = 267 derives from the pre-slider 5-column
+ *  layout at the developer's canvasWrap width (1429px measured live):
+ *    effectiveLayoutWidth = 1429 - 2 * SIDE_PADDING_PX(9) = 1411
+ *    5W + 4 * 18 (gap) <= 1411  =>  W <= 267.8  →  267 (floor)
+ *  Skyline layout drops a card with strict `>`, so 268 (= 1412 row
+ *  total) misses the 5th column by 1px. 267 leaves a 4px safety
+ *  margin and reliably fits five columns. Earlier 280 assumed window
+ *  inner width 1489, missing the canvas-margin (24px each side) +
+ *  scrollbar control. Reset button restores both to these defaults. */
 export const BOARD_SLIDERS = {
-  CARD_WIDTH_DEFAULT_PX: 280,
+  CARD_WIDTH_DEFAULT_PX: 267,
   CARD_WIDTH_MIN_PX: 120,
   CARD_WIDTH_MAX_PX: 720,
   CARD_GAP_DEFAULT_PX: 18,
