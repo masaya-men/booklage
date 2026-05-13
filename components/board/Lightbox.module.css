@@ -1,12 +1,19 @@
 /* Lightbox lives inside the rounded dark canvas (.canvas in BoardRoot)
-   which has overflow: hidden + border-radius. So absolute positioning
-   here naturally clips the backdrop AND the FLIP open animation to the
+   which has overflow: hidden + border-radius. Absolute positioning here
+   naturally clips both the dim backdrop AND the FLIP stage to the
    canvas's rounded shape — the lightbox can never visually escape into
-   the white outer margin. */
+   the white outer margin.
+
+   Two-layer split (session 25): the dim/backdrop and the FLIP stage are
+   now separate siblings. The clone host (mounted inside canvasWrap by
+   ensureCloneHost) lives at z-index 200 between them, so the open/close
+   morph's clone is *above* the dim (no half-transparent black painted
+   over it) and *below* the stage (text panel + close button + media
+   still render in front of the clone as the morph completes). */
 .backdrop {
   position: absolute;
   inset: 0;
-  z-index: 300;
+  z-index: 100;
   background: var(--lightbox-backdrop);
   /* backdrop-filter intentionally removed 2026-05-14: viewport-sized blur
      filter on a fading-in element with moving clone behind it produced
@@ -16,6 +23,28 @@
      we want — same as destefanis reference. To bring blur back as a
      theme option, set --lightbox-backdrop-blur and re-enable here. */
   opacity: 0;
+  pointer-events: none;
+}
+.backdrop.open {
+  /* opacity intentionally NOT set here — GSAP drives the fade in/out
+     via inline style. A CSS opacity rule + CSS transition here would
+     race with the GSAP tween (browser interpolates one curve, GSAP
+     overrides each frame), producing a faint flicker on close.
+     pointer-events stays here because it's a discrete state, not
+     interpolated. */
+  pointer-events: auto;
+}
+
+/* FLIP stage — perspective + grid centering for the lightbox content.
+   Sits above the clone host (z 200) so the text panel / close button /
+   media render in front of any in-flight morph clone, but the stage
+   itself is pointer-transparent: only its centered .frame child captures
+   pointer events, which lets clicks on the empty area pass through to
+   the backdrop's onClick=close handler below. */
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 300;
   pointer-events: none;
   display: grid;
   place-items: center;
@@ -30,15 +59,6 @@
      outside the lightbox. Combined with the parent .canvas's own
      overflow:hidden, this keeps everything contained. */
   overflow: hidden;
-}
-.backdrop.open {
-  /* opacity intentionally NOT set here — GSAP drives the fade in/out
-     via inline style. A CSS opacity rule + CSS transition here would
-     race with the GSAP tween (browser interpolates one curve, GSAP
-     overrides each frame), producing a faint flicker on close.
-     pointer-events stays here because it's a discrete state, not
-     interpolated. */
-  pointer-events: auto;
 }
 
 /* --- Vertical envelope for the whole lightbox unit ---
@@ -80,6 +100,11 @@
   gap: 32px;
   max-width: min(94vw, 1240px);
   max-height: var(--lightbox-media-max-h);
+  /* Stage is pointer-events:none so empty area click falls through to
+     the backdrop's close handler; the frame itself must re-enable
+     pointer events so its interactive children (close, chevrons,
+     media controls) still receive clicks. */
+  pointer-events: auto;
   /* Initial state hidden so the FLIP open animation never flashes a
      mid-reflow frame at viewport center before useLayoutEffect runs.
      gsap.set in the open animation overrides opacity to start the
@@ -664,8 +689,10 @@
 .navChevronPrev { left: 24px; }
 .navChevronNext { right: 24px; }
 
-/* Reveal on backdrop hover, focus, or hover of the chevron itself */
-.backdrop:hover .navChevron,
+/* Reveal on backdrop hover, focus, or hover of the chevron itself.
+   Sibling combinator since .navChevron now lives inside .stage rather
+   than .backdrop (post-split, session 25). */
+.backdrop.open:hover ~ .stage .navChevron,
 .navChevron:hover,
 .navChevron:focus-visible {
   opacity: 1;

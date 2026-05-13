@@ -188,12 +188,13 @@ function ensureCloneHost(): HTMLElement | null {
 
   const host = document.createElement('div')
   host.id = HOST_ID
-  // Full-size invisible shell inside the stage. zIndex 30 sits above
-  // the cards content (CARDS=10) so the clone reads as the front-most
-  // card during the morph; the Lightbox .frame (z 200 at body root)
-  // remains above on its own portal layer.
+  // Full-size invisible shell inside the stage. zIndex 200 places the
+  // clone between the Lightbox's dim backdrop (z 100) and the Lightbox
+  // stage / frame chrome (z 300) — so the in-flight morph paints over
+  // the dim (clone never darkens with the rest of the board) AND under
+  // the eventual text panel + close button (no flicker at handoff).
   host.style.cssText =
-    'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:30;'
+    'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;'
   stage.appendChild(host)
   return host
 }
@@ -1090,13 +1091,27 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           onComplete={handleSceneComplete}
         />
       )}
+      {/* Two-layer split (session 25): backdrop is now a pure dim
+          layer (z 100) that only carries the semi-transparent black,
+          opacity fade-in tween, and outside-click-to-close handler. */}
       <div
         ref={backdropRef}
         className={`${styles.backdrop} ${styles.open}`.trim()}
+        onClick={(e) => { if (e.target === backdropRef.current) requestClose() }}
+        data-testid="lightbox-backdrop"
+        aria-hidden="true"
+      />
+      {/* Stage owns the perspective / centering / overflow clip and all
+          interactive content (frame + nav + close). z 300 keeps it above
+          the clone host (z 200) so text panel + close render in front
+          of any in-flight morph clone. pointer-events:none lets clicks
+          on the empty stage area fall through to the backdrop's close
+          handler; .frame re-enables pointer events for its children. */}
+      <div
+        className={styles.stage}
         role="dialog"
         aria-modal="true"
         aria-labelledby="lightbox-title"
-        onClick={(e) => { if (e.target === backdropRef.current) requestClose() }}
         data-testid="lightbox"
       >
       {nav && nav.total > 1 && (
