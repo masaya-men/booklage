@@ -383,3 +383,66 @@ nav: slide 着地後に `gsap.timeline({ delay: pause })` で reveal 発火
 - code reviewer は時々 「sync cluster の文脈」 を誤解する。 extension/lib/ogp.js + dispatch.js の sync と BOOKMARKLET_SOURCE の sync は別クラスター (前者は MV3 V8、 後者は ES5-safe で訪問者ブラウザ任意) を識別する必要あり
 - 「進めて」 「OK」 は agreed steps 実行の意味であり (memory `feedback_user_urgency_override`)、 IDB schema bump のような 「不可逆 + 当初 spec 範囲」 は迷わず実行。 ただし deploy 自体は user 確認を仰ぐ (memory `feedback_irreversible_pause`)
 
+---
+
+## セッション 21 (2026-05-13) — セッション 20 deploy + 再取得 UX 再設計 + Lightbox close 角丸調査 (途中)
+
+### 前半: セッション 20 deploy + 4 URL bug 本番動作確認
+
+セッション 20 末で deploy 未実施だった「カード健全性機構 + IDB v14」 を本番反映。
+最初の deploy で out/ が古いままで RefetchButton が消えていない問題 → fresh build + 再 deploy で 162 ファイル uploaded → 本番反映完了。 root cause: `rtk next build` は static export を trigger しない。 必ず `pnpm build` を使うべき (CLAUDE.md 指定済だった)。
+
+検証結果: labs.noomoagency / pitperform の thumbnail OK、 Instagram / CodePen は MinimalCard で identifiable、 Lightbox 閉じ中 wheel スクロールも正しくブロック。 4 URL bug 全解決確認。
+
+### 中盤: hover ↻ refetch ボタン廃止 + Lightbox open trigger で自動再取得
+
+ユーザー観察「↻ ボタンのデザイン悪い、 30 日 viewport 自動でほぼ網羅されてるなら不要では?」 から再設計。 さらに「OGP 変更された時に自動更新されないのは悲しい」 「Lightbox 開いた時に最新化できないか?」 を受けて、 **intent-driven revalidate** を実装:
+
+- `lib/board/revalidate.ts`: `THIRTY_DAYS_MS` → `REVALIDATE_AGE_MS = 7 days` (export 化)
+- `components/board/BoardRoot.tsx`: shared `RevalidationQueue` を `useRef` で hoist、 `handleCardClick` / `handleLightboxNav` / `handleLightboxJump` で `revalidateOnIntent` 呼出
+- nav (wheel scroll) は **300ms trailing debounce** — 高速スクロール中は fetch ゼロ
+- alive 結果で **thumbnail も自動 heal** (`persistThumbnail(id, image, force=true)`) → OGP 側で og:image 差し替えても気付ける
+- `components/board/cards/RefetchButton.tsx` + .module.css 完全削除、 `CardsLayer` の `onRevalidate` prop + RefetchButton render 削除
+
+commit: `b432df9 feat(health): intent-driven revalidate on Lightbox open + 7-day cadence`
+
+### 後半: Lightbox close の角丸 「間に合っていない」 問題 (未解決のまま revert)
+
+ユーザー観察「カードが元の位置に戻る際の角丸の修正が間に合っていない」。 段階的に 3 回試行:
+
+1. **49f20d3** — radius tween を position tween から decouple (0.30s power3.out で 50ms 前完走) → 改善せず
+2. **8e43648** — radius を text-fade window 内に pre-roll (0.08s power2.out)、 source card の `--card-radius` を DOM から実値読み取り (formula drift 排除) → 改善せず
+3. **cf6b8d1** — destefanis 方式に転換: `scale` → `width`/`height` 直接アニメ、 `.media` を `position: fixed` で flex 離脱、 内側 img を 100%×100% cover に統一 → **アニメーションが壊れた**
+
+#### destefanis 方式失敗の root cause (途中まで判明)
+
+`.frame` の **`will-change: transform`** (Lightbox.module.css L85) が **`position: fixed` の containing block を作る**ため、 viewport 基準でなく `.frame` 基準で位置決めされていた。 `position: absolute` + `.frame`-local 座標に修正 + `.frame` 自体も width/height 固定して shrink 防止 — まで実装したが、 Playwright 検証で `.media` が**まだ source card 位置にジャンプ**する症状残存 (timing 由来の可能性大、 未確定)。
+
+→ commit `3f2115c` で revert、 本番は `8e43648` 状態 (pre-roll radius、 動き正常、 AA 差は微妙に残る) に巻き戻し済 + deploy 完了。
+
+#### destefanis 本家調査結果 (`https://github.com/destefanis/twitter-bookmarks-grid`)
+
+- 単一 `app.js` (24KB) + `style.css` の最小構成
+- **Motion One** で spring animation
+- 核心: `lightboxClone = el.cloneNode(true)` でカードを複製、 body に append、 `width`/`height` を直接 animate、 `transform: translate3d` で位置だけ動かす
+- カード自体は `visibility: hidden` で隠す
+- border-radius は 24px CSS 固定、 アニメ中 native レンダリング → GPU resample AA 問題ゼロ
+
+#### 残課題 (次セッション以降)
+
+ユーザーは「ボードカードのリッチ機能 (ホバー切替、 将来の動画同時再生) は維持しつつ、 destefanis 方式で animation を最高品質にしたい」 と希望。 技術的に可能 (clone はアニメ用スナップショット、 ソースカードは触らない) だが、 4-6h 級の本格リファクタ → **別 spec を立てて専用セッションで取り組む**ことで合意。
+
+### memory に追記すべき教訓
+
+- **`pnpm build` を使え** (`rtk next build` は static export しない → 古い out/ を deploy してしまう)。 既存 CLAUDE.md L91-93 で指定済だった、 守れていなかった
+- **`will-change: transform` は position:fixed の containing block を作る** (MDN 検証済)。 destefanis 方式実装時の最初の罠
+- **destefanis の核心は cloneNode(true) + body append**。 .frame 階層の transform/perspective/will-change の組み合わせ罠を全部回避する
+
+### sub-summary
+
+- master HEAD: `3f2115c` (= cf6b8d1 revert)
+- 本番 deploy 済 (`booklage.pages.dev` で動作確認済、 close 動き正常)
+- ↻ ボタン廃止 + 7 日 cadence + Lightbox open auto revalidate は ship 済 + 動作確認済
+- close 角丸 AA 問題は**未解決**、 destefanis 方式リファクタで解く方針合意、 次セッション以降の spec 作業から
+- vitest 484 / tsc / build 全 clean
+
