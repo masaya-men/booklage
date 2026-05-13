@@ -19,6 +19,12 @@ export type LightboxItem = {
    *  video poster for mix tweets. Undefined → fall through to photos /
    *  thumbnail (= 旧挙動). */
   readonly mediaSlots?: readonly MediaSlot[]
+  /** Board card aspect ratio (width / height). Used by Lightbox video embeds
+   *  (YouTube / TikTok / Instagram) to render the pre-play poster at the
+   *  *same* aspect the user saw on the board card, so the open animation's
+   *  clone-to-media swap is visually unbroken. Falls back to 16:9 when
+   *  undefined (share cards have no persisted aspect). B-#17-#2. */
+  readonly aspectRatio?: number
 }
 
 function isBoardItem(item: BoardItem | ShareCard): item is BoardItem {
@@ -36,6 +42,7 @@ export function normalizeItem(item: BoardItem | ShareCard): LightboxItem {
       bookmarkId: item.bookmarkId,
       photos: item.photos,
       mediaSlots: item.mediaSlots,
+      aspectRatio: item.aspectRatio,
     }
   }
   return {

@@ -165,11 +165,38 @@
   display: block;
 }
 
-/* Poster image shown for YouTube/TikTok/Instagram embeds before the
-   user clicks play. Fills the aspect-ratio wrapper exactly so the FLIP
-   open animation grows the SAME image the user clicked on as the card,
-   giving real visual continuity instead of a black iframe loading frame.
-   Underneath sits the LiquidGlass play overlay (.playOverlay). */
+/* Pre-play poster wrap used for every embed type (YouTube / TikTok /
+   Instagram) before the user interacts. The box aspect-ratio is the
+   *board card's persisted aspectRatio*, passed inline as --item-aspect.
+   This makes the lightbox open animation end on a shape identical to
+   the source card — the clone→media swap becomes visually invisible
+   (B-#17-#2).
+   width formula keeps the derived height inside the envelope:
+     width = min(920, 60vw, aspect × envelopeHeight)
+   For tall aspect ratios (e.g. 9:16 Shorts ≈ 0.56), aspect × envelope
+   is small, so width shrinks and height stays within bounds. For wide
+   16:9, the 920/60vw cap binds first.
+   Switches to .iframeWrap16x9 / .iframeWrap9x16 on user gesture — that
+   transition is the deliberate "kakkuru" the user accepted, because
+   it follows their explicit play action. */
+.embedPosterBox {
+  position: relative;
+  width: min(
+    920px,
+    60vw,
+    calc(var(--item-aspect, 1.7778) * var(--lightbox-media-max-h))
+  );
+  aspect-ratio: var(--item-aspect, 16 / 9);
+  max-height: var(--lightbox-media-max-h);
+  border-radius: var(--lightbox-media-radius);
+  overflow: hidden;
+  background: black;
+}
+
+/* Poster image filling .embedPosterBox (or, for pre-play tier-poster
+   TikTok inside iframeWrap9x16). Cover crop is a no-op when the box
+   aspect equals the image's natural aspect — which it does for board
+   cards because we pass the persisted aspectRatio. */
 .embedPoster {
   position: absolute;
   inset: 0;

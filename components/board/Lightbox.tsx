@@ -1549,6 +1549,10 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
   // thumbnail. LightboxItem normalizes to `string | null`, so we coerce
   // here at the call sites rather than weakening the embeds' prop types.
   const thumb = item.thumbnail ?? undefined
+  // Board card's persisted aspect. Embeds render their pre-play poster at
+  // this aspect so the lightbox grows the *same shape* the user clicked on,
+  // hiding the clone→media swap (B-#17-#2). Undefined for share view.
+  const aspectRatio = item.aspectRatio
 
   if (urlType === 'youtube') {
     const videoId = extractYoutubeId(item.url)
@@ -1559,6 +1563,7 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
           title={item.title}
           vertical={isYoutubeShorts(item.url)}
           thumbnail={thumb}
+          aspectRatio={aspectRatio}
         />
       )
     }
@@ -1566,12 +1571,12 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
 
   if (urlType === 'tiktok') {
     const videoId = extractTikTokVideoId(item.url)
-    if (videoId) return <TikTokEmbed videoId={videoId} url={item.url} thumbnail={thumb} title={item.title} />
+    if (videoId) return <TikTokEmbed videoId={videoId} url={item.url} thumbnail={thumb} title={item.title} aspectRatio={aspectRatio} />
   }
 
   if (urlType === 'instagram') {
     const shortcode = extractInstagramShortcode(item.url)
-    if (shortcode) return <InstagramEmbed shortcode={shortcode} thumbnail={thumb} title={item.title} />
+    if (shortcode) return <InstagramEmbed shortcode={shortcode} thumbnail={thumb} title={item.title} aspectRatio={aspectRatio} />
   }
 
   // image / website / fallbacks
@@ -1581,36 +1586,56 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
   return <div className={styles.placeholder}>{item.title}</div>
 }
 
-/** Shared poster + LiquidGlass play button overlay used by every embed
- *  type (YouTube / TikTok / Instagram) until the user clicks play. The
- *  poster image guarantees visual continuity from the source card during
- *  the FLIP open animation — instead of a black iframe loading frame,
- *  the lightbox grows showing the same artwork the user clicked on. */
-function EmbedPoster({
+/** Pre-play poster wrap used by every embed type (YouTube / TikTok /
+ *  Instagram). Renders the saved thumbnail at the *board card's persisted
+ *  aspect* (via `--item-aspect` CSS var) so the lightbox open animation
+ *  ends on a shape identical to the source card — the clone→media swap
+ *  becomes visually invisible. Overlay (Play button or external link) is
+ *  passed as children so each embed can express its specific affordance.
+ *  Falls back to `fallbackAspect` when the item has no persisted aspect
+ *  (share-view cards). B-#17-#2. */
+function EmbedPosterBox({
+  aspectRatio,
+  fallbackAspect,
   thumbnail,
   alt,
-  onClick,
+  children,
 }: {
-  readonly thumbnail: string
+  readonly aspectRatio: number | undefined
+  readonly fallbackAspect: number
+  readonly thumbnail: string | undefined
   readonly alt: string
-  readonly onClick: () => void
+  readonly children?: ReactNode
 }): ReactNode {
+  const aspect = aspectRatio && aspectRatio > 0 ? aspectRatio : fallbackAspect
   return (
-    <>
-      <img src={thumbnail} alt={alt} className={styles.embedPoster} />
-      <button
-        type="button"
-        className={styles.playOverlay}
-        onClick={onClick}
-        aria-label="Play"
-      >
-        <span className={styles.playDisc} aria-hidden="true">
-          <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
-            <path d="M6.5 5v14l11-7z" />
-          </svg>
-        </span>
-      </button>
-    </>
+    <div
+      className={styles.embedPosterBox}
+      style={{ '--item-aspect': aspect } as CSSProperties}
+    >
+      {thumbnail && <img src={thumbnail} alt={alt} className={styles.embedPoster} />}
+      {children}
+    </div>
+  )
+}
+
+/** LiquidGlass-styled center play button — the sole pre-play affordance
+ *  shared by YouTube and TikTok. Click delegates to the parent embed's
+ *  `setHasInteracted(true)` to mount the actual player. */
+function EmbedPlayButton({ onClick }: { readonly onClick: () => void }): ReactNode {
+  return (
+    <button
+      type="button"
+      className={styles.playOverlay}
+      onClick={onClick}
+      aria-label="Play"
+    >
+      <span className={styles.playDisc} aria-hidden="true">
+        <svg viewBox="0 0 24 24" className={styles.playOverlayIcon} aria-hidden="true">
+          <path d="M6.5 5v14l11-7z" />
+        </svg>
+      </span>
+    </button>
   )
 }
 
@@ -1619,11 +1644,13 @@ function YouTubeEmbed({
   title,
   vertical,
   thumbnail,
+  aspectRatio,
 }: {
   readonly videoId: string
   readonly title: string
   readonly vertical: boolean
   readonly thumbnail: string | undefined
+  readonly aspectRatio: number | undefined
 }): ReactNode {
   const [hasInteracted, setHasInteracted] = useState<boolean>(false)
   // YouTube CDN poster — used only as fallback when the bookmarklet
@@ -1631,26 +1658,37 @@ function YouTubeEmbed({
   // hqdefault is the universal fallback if max isn't available, but we
   // only reach this code path when item.thumbnail is missing entirely.
   const poster = thumbnail || `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
+
+  // Pre-play: render the poster at the *board card's* aspect so the open
+  // animation's clone→media swap is invisible. The iframe wrap (16:9 /
+  // 9:16) only mounts after the user clicks play — at that moment the
+  // aspect snaps to YouTube's native player shape, which is acceptable
+  // because it follows a deliberate user gesture (B-#17-#2).
+  if (!hasInteracted) {
+    return (
+      <EmbedPosterBox
+        aspectRatio={aspectRatio}
+        fallbackAspect={vertical ? 9 / 16 : 16 / 9}
+        thumbnail={poster}
+        alt={title}
+      >
+        <EmbedPlayButton onClick={(): void => setHasInteracted(true)} />
+      </EmbedPosterBox>
+    )
+  }
+
   return (
     <div className={vertical ? styles.iframeWrap9x16 : styles.iframeWrap16x9}>
-      {hasInteracted ? (
-        <iframe
-          // autoplay=1 starts playback immediately on the first iframe
-          // mount, which is allowed because the click on our overlay
-          // satisfies Chromium's user-gesture requirement for autoplay.
-          src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-          title={title}
-          className={styles.iframe}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-        />
-      ) : (
-        <EmbedPoster
-          thumbnail={poster}
-          alt={title}
-          onClick={(): void => setHasInteracted(true)}
-        />
-      )}
+      <iframe
+        // autoplay=1 starts playback immediately on the first iframe
+        // mount, which is allowed because the click on our overlay
+        // satisfies Chromium's user-gesture requirement for autoplay.
+        src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+        title={title}
+        className={styles.iframe}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
     </div>
   )
 }
@@ -1687,11 +1725,13 @@ function TikTokEmbed({
   url,
   thumbnail,
   title,
+  aspectRatio,
 }: {
   readonly videoId: string
   readonly url: string
   readonly thumbnail: string | undefined
   readonly title: string
+  readonly aspectRatio: number | undefined
 }): ReactNode {
   const [hasInteracted, setHasInteracted] = useState<boolean>(false)
   // undefined = scrape in flight, null = scrape failed, value = success
@@ -1743,13 +1783,14 @@ function TikTokEmbed({
 
   if (tier === 'poster') {
     return (
-      <div className={styles.iframeWrap9x16}>
-        <EmbedPoster
-          thumbnail={thumbnail}
-          alt={title}
-          onClick={(): void => setHasInteracted(true)}
-        />
-      </div>
+      <EmbedPosterBox
+        aspectRatio={aspectRatio}
+        fallbackAspect={9 / 16}
+        thumbnail={thumbnail}
+        alt={title}
+      >
+        <EmbedPlayButton onClick={(): void => setHasInteracted(true)} />
+      </EmbedPosterBox>
     )
   }
 
@@ -1803,15 +1844,21 @@ function InstagramEmbed({
   shortcode,
   thumbnail,
   title,
+  aspectRatio,
 }: {
   readonly shortcode: string
   readonly thumbnail: string | undefined
   readonly title: string
+  readonly aspectRatio: number | undefined
 }): ReactNode {
   const postUrl = `https://www.instagram.com/p/${shortcode}/`
   return (
-    <div className={styles.iframeWrap9x16}>
-      {thumbnail && <img src={thumbnail} alt={title} className={styles.embedPoster} />}
+    <EmbedPosterBox
+      aspectRatio={aspectRatio}
+      fallbackAspect={1}
+      thumbnail={thumbnail}
+      alt={title}
+    >
       <a
         className={styles.embedOpenLink}
         href={postUrl}
@@ -1831,6 +1878,6 @@ function InstagramEmbed({
           Instagramで開く
         </span>
       </a>
-    </div>
+    </EmbedPosterBox>
   )
 }

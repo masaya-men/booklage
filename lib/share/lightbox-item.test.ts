@@ -30,6 +30,7 @@ describe('normalizeItem', () => {
       kind: 'board',
       bookmarkId: 'b-1',
       photos: undefined,
+      aspectRatio: 1.5,
     })
   })
 
@@ -57,6 +58,7 @@ describe('normalizeItem', () => {
       kind: 'board',
       bookmarkId: 'b-2',
       photos: undefined,
+      aspectRatio: 1,
     })
   })
 
