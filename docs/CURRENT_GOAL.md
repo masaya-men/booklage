@@ -1,45 +1,64 @@
 # 次セッションのゴール (= セッション 25)
 
 ## ゴール
-**B-#17 関連の最後の残課題を仕上げて、 Lightbox 周りを完全に「これで終わり」 にする**。
-具体候補:
-- **A**: B-#17-#3 internal nav (= Lightbox 内 wheel scroll / chevron で隣カード切替) を clone-based に移行
-- **B**: 角丸 24 → 20 視覚比較 (= 短時間タスク、 「もう少し控えめ」 にするかの最終判断)
-- **C**: B-#17 残課題ではない別 backlog に進む (= TopHeader brushup / レスポンシブ / PiP scroll 見切れ等)
+**動画ドット indicator の再デザイン** (= mediaSlots 内の動画 dot は現在「▶ 三角」、 ミニマル感が弱いと過去にユーザー発案)。 IDEAS.md L1386 の保管済 7 候補 (A-G) から **A / B / C の 3 案を実装して board に並べ、 視覚比較**でベスト 1 案を採用 + 全箇所適用。
 
 ## 前提 (セッション 24 で揃った)
-- master HEAD: セッション 24 末 (= 動画カード aspect 統一 + backdrop blur 削除 + close-out)
+- master HEAD: セッション 24 末 (= 動画カード aspect 統一 + open animation 揺れ根治 + close-out)
 - 本番 `booklage.pages.dev` deploy 済 (`4156d88d`)
-- B-#17 open/close/動画/揺れ の体感は完成、 ユーザー満足 (= 「とてもよくなりました!!」)
-- 残るのは internal nav (= wheel scroll 隣カード) と細かい brushup
+- B-#17 関連の体感問題は全て根治、 board card が滑らかに Lightbox に grow する
 
-## やること候補別 詳細
+## 着工前読み込み必須
+- `docs/private/IDEAS.md` L1386-1417 の「動画インジケーターの再デザイン候補 (2026-05-13 セッション 21 発案)」 — 候補 A-G の詳細 + Claude 評価 + 関連ファイルパス
+- `components/board/cards/ImageCard.module.css` L88-134 — 現 dot 実装
+- Lightbox 側の dot 実装箇所 (= board と shape coding 統一を取る場合は同時更新)
 
-### A. B-#17-#3 internal nav の clone-based 移行
-- 現状: Lightbox 内で wheel scroll / chevron / arrow key で隣カードに移ると、 既存 transform:scale + opacity ロジックで「3D physical slide」 が走る (= Lightbox.tsx L857 以降の `useLayoutEffect` で実装)
-- 課題: 動作確認まだ、 体感も検証されていない (= セッション 23 では open/close のみ clone-based 化、 nav は触らず)
-- 移行する場合の方針: open/close と同じ clone-based pattern を適用 — 旧 frame snapshot を残しつつ、 新 frame を clone-based で grow
-- 工数: 2-3h 級 (= clone host を流用、 既存 3D slide の代替 or 共存)
-- ただし「動作してるなら触らない」 選択もアリ — open/close で十分体感満足してるなら nav は brushup ではなく後回しでも問題なし
+## やること
 
-### B. 角丸 24 → 20 視覚比較
-- 現状: `--card-radius: 24px` / `--lightbox-media-radius: 24px` 統一 (セッション 22 で確定)
-- セッション 23 末の plan で「B-#17 落ち着いたら視覚比較」 と置き残し
-- 試し方: `--card-radius: 20px` で 1 commit + deploy → ユーザー視覚確認 → 採用 or 戻す
-- 工数: 30 min (= 変更 1 行 + deploy + 視覚判定)
+### Phase 1: 3 案実装 (= 視覚比較用)
+過去ブレストの推奨に従い、 **A / B / C** を実装:
+- **A 横カプセル (lozenge)** — 4×8 px の横長丸角四角。 動画の 16:9 暗示
+- **B 二重丸 (ring)** — 外輪 + 内ドット。 録画ボタン連想
+- **C 中抜き丸 (hollow)** — 写真 = 塗、 動画 = 輪郭のみ。 最ミニマル
 
-### C. 別 backlog の選択肢
-- **B-#7 自由サイジング 縮小時の clipping ポイント** — root cause 既調査済、 案 a/b/c/d から選んで実装
-- **B-#10 モバイル UX 本格チューニング** (ユーザー希望で最後に回す方針)
-- **B-#13 TopHeader brushup** — ScrollMeter 下配置への移行検討
-- **B-#3 重複 URL サムネ問題** — セッション 20 で真因未調査
-- **MinimalCard polish** — 64px favicon が S サイズで大きい可能性
-- **Task 12 全件再 check 設定 UI** — 設定パネル自体が未実装
+実装方法:
+- 各候補を CSS のみで切替可能にする (= data attribute や class で gate)
+- `/triage` のような専用 page は要らない、 board 上で複数枚動画カードを並べた状態で 3 案順に切替できれば OK
+- もしくは Visual Companion (= 既存の `/glass-lab` 的な lab page) に並べて見せる選択もアリ
+
+### Phase 2: 視覚比較 → 採用判断
+- 3 案実装 + deploy → ユーザーが本番でハードリロードして 1 案選ぶ
+- 採用案: A or B or C のいずれか (= もし全部いまいちなら D-G を追加実装の判断)
+
+### Phase 3: 採用案を全箇所適用
+- 板書 mediaSlots dot indicator (board card)
+- Lightbox 側の同様の dot indicator (= 統一を取る場合)
+- 関連 vitest テスト (= dot の DOM 構造変化があれば更新)
+
+## 工数見積
+2-3h (= 3 案実装 30-45 min × 3 + 視覚比較 + 採用適用 + テスト)。
 
 ## 着工 NG 条件
-- ユーザーが次セッションで何を進めたいか未確認のうちは選択肢 A-C のうち 1 つに着工しない (= まず方向性合意)
+- IDEAS.md L1386 の candidate を読まずに着手しない (= 候補と評価ゼロから議論し直すのは無駄)
+- A/B/C 以外の案を最初から実装に入れない (= まず推奨 3 案で視覚判断、 全部いまいちなら D-G を追加検討)
 
-## このセッションで触らない backlog
-- リブランド (= AllMarks ドメイン取得後に一気に。 月末リマインダーは TODO.md 冒頭)
+## 並行 backlog (= このセッション内で着手しない、 終了時の TODO 整理で言及)
+
+### 次の次以降の候補
+
+ワクワク系 (= ユーザー希望):
+- **動画同時再生 Phase 1 MVP** — Booklage core 差別化、 magic moment。 ただし規模大、 まず brainstorming セッション 1 本入れて scope 確定が筋良い
+- **Triage モード MVP** — マッチングアプリ風 swipe、 IDEAS.md L38 に詳細仕様済
+- **配置モード切替 (grid / free)** — IDEAS.md §フォルダごとの配置モード
+- **背景タイポグラフィでタグ名表示** — 2026-05-14 新規発案 (= IDEAS.md §H 追加済)、 「すべて」 → AllMarks ロゴ、 「すべて」 rename ブレスト含む
+- **テーマ連動オリジナルマウスカーソル** — IDEAS.md L1421 詳細仕様済 (リキッドグラス虫眼鏡デフォルト等)
+- **テーマ機能の最初の 1 つ実装** (Glass / SF 軍事 / 3D シーン 等)
+- **装飾系** (背景タイポ + 数字表記の遊び + slider 精度 Y 案 + ScrollMeter 下配置)
+
+体感問題:
+- **B-#7 自由サイジング縮小時の clipping** (= ユーザー認識: いまだに起きる、 原因不明)
+- **B-#17-#3 Lightbox 内 nav 切替アニメのちらつき** (= アニメ本体は気に入っているので維持、 ちらつきだけ修正)
+
+## このセッションで触らない
+- リブランド (= AllMarks ドメイン取得後、 月末リマインダーは TODO.md 冒頭)
 - サイズ設計 Phase 2-6 (= 別 spec)
-- 新機能アイデア (= IDEAS.md)
