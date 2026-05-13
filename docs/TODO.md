@@ -20,23 +20,21 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-14 セッション 24 末 — 本番 deploy 済)
+### 直近の状態 (2026-05-14 セッション 25 末 — 本番 deploy 済)
 
-- master HEAD: セッション 24 の commit 群
-  - `feat(lightbox): preserve board card aspect during open animation (B-#17-#2)` — 動画カードの「カクッ」 根治
-  - `perf(lightbox): drop backdrop-filter blur to eliminate open-anim shake` — open animation 「揺れ / FPS 低い」 根治
-- **本番 `booklage.pages.dev` deploy 済 (`4156d88d`)**
-- セッション 24 で ship:
-  - **B-#17-#2 動画カード Lightbox 構造改修**:
-    - `LightboxItem` に `aspectRatio` 追加 → `normalizeItem` で BoardItem から素通り
-    - 新規 `EmbedPosterBox` (= 動的 aspect 持ち wrap) + `EmbedPlayButton` に分割
-    - YouTube / TikTok / Instagram の Play 前 branch を「board card と同 aspect の poster + Play overlay」 構造に統一
-    - Play 押下 (= user gesture) で初めて 16:9 / 9:16 の iframe wrap + iframe mount に切替 (= ここで「カクッ」 はユーザー操作直後だから許容)
-  - **open animation 揺れの根治** (= systematic-debugging で仮説 A 確定):
-    - `.backdrop` の `backdrop-filter: blur(8px)` を削除 (destefanis 本家にも 0 件と grep 確認、 git history で「AllMarks 個性として意図的に残した」 経緯も確認したうえでユーザー判断)
-    - 半透明の `--lightbox-backdrop: rgba(0,0,0,0.5)` で十分な暗さ・深さ表現が出る
-    - ユーザー DPR 2.58 (4K + 200% × 130%) 環境で paint cost が特に深刻だった構造的問題が解決
-- B-#17 関連で残っていた体感問題は全て根治、 board card がそのままぬるっと大きくなる Lightbox open 完成
+- master HEAD: セッション 25 の commit 群
+  - `feat(dot-indicator)`: 動画 dot は「丸の中を三角で切り抜き」 へ (= ユーザー発案)
+  - `feat(board-bg-typo)`: 背景タイポで現タグ名 / "AllMarks" を hero 表示 (= Geist Semibold + variant 拡張枠予約)
+  - `refactor(lightbox)`: clone host を canvasWrap 内 portal に + clip/mask hack 全削除
+  - `refactor(board)`: scroll affordance fade overlay 削除 (= destefanis 本家踏襲)
+  - `fix(lightbox)`: backdrop を dim layer + stage layer に split (= clone がアニメ中 dim されない 3 層構造へ、 ユーザー長年の希望「カード暗くならない」 根治)
+- **本番 `booklage.pages.dev` deploy 済 (`0ed947f5`)**
+- セッション 25 で ship:
+  - **動画 dot 再デザイン**: ImageCard + Lightbox の動画 slot dot を SVG mask で「丸の中三角切り抜き」 に統一、 過去ブレスト 7 候補は不要 (= ユーザー発案で一発採用)
+  - **背景タイポ hero**: BoardBackgroundTypography 新規、 「すべて」 → "AllMarks"、 タグ切替で text 変わる、 Geist Semibold 600 + variant 拡張枠 (= dvd-bounce / glitch / multi / marquee / card-wind の selector slot 予約済)
+  - **Lightbox clone 構造の連鎖根治**: clone host を canvasWrap 内 portal + backdrop split (dim 100 / clone 200 / stage 300 の 3 層)、 「画面で見切れたカードを click で clone が canvas 外飛び出る」 + 「アニメ中 clone 自体が dim される」 両方根治
+  - **scroll affordance fade overlay 削除**: destefanis 本家にない、 ScrollMeter で代替済、 Lightbox との干渉も消える
+- destefanis 本家との残差: backdrop blur 無し + Motion One spring 無し (= ユーザー判断「polish しない」 確定済、 spec から外す)
 - 全 477 vitest + tsc + build clean
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む

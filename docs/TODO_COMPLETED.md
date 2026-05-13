@@ -676,3 +676,90 @@ systematic-debugging skill で Phase 1 (Root Cause Investigation):
 - 静止画・動画ともに「board card がそのままぬるっと大きくなる」 体感を実現
 - vitest 477 (BroadcastChannel 1 件 flaky を除く) / tsc / build clean
 
+---
+
+## セッション 25 (2026-05-14) — 動画 dot 再デザイン + 背景タイポ + Lightbox open/close clone 構造の根治
+
+### 1. 動画 dot indicator 再デザイン (= 丸の中を三角で切り抜き、 ユーザー発案)
+
+過去ブレストの 7 候補 (A 横カプセル / B 二重丸 / C 中抜き丸 / D 縦バー / E パルス / F 二重リング / G 超小三角) を比較ページに並べる方針を提示したが、 ユーザー自身が「丸の中を三角形でくり抜く」 アイデアを発案 → 一発採用。
+
+- `ImageCard.module.css` の `data-slot-type='video'` を SVG mask 方式に書き換え (= path で円 + 三角 evenodd fill-rule、 background-color で fill 制御)
+- `Lightbox.module.css` の同 selector も同様に書き換え
+- `Lightbox.tsx` の不要 span 子要素 (`lightboxImageDotVideoIcon`) を削除
+
+途中ハマり: **Chromium で `mask-image` を click 要素本体に当てると hit area が masked shape に縮む** という罠 (= Lightbox dot の 24×24 hit area が 6×6 disc-minus-triangle に collapse、 ユーザー指摘で発覚)。 修正: mask を `::after` pseudo に逃がす + button 本体は透明 unmasked。 memory: `reference_mask_image_pointer_events.md` に保存。
+
+### 2. 背景タイポでタグ名表示 (= 新機能、 IDEAS.md §H ベース)
+
+board の背景に巨大タイポでタグ名 (or 「すべて」 → "AllMarks") を表示する Apple TV+ 風 hero。 ユーザーが「後でいろんなアニメーション (DVD bounce / glitch / 数増し / 横流し / カード起こす風で揺れ) で遊べるよう拡張可能構造で」 と要望。
+
+- 新規 component `components/board/BoardBackgroundTypography.tsx` + module CSS
+- `variant` prop で animation 切替の枠を予約 (= 'static' のみ実装、 `'dvd-bounce' / 'glitch' / 'multi' / 'marquee' / 'card-wind'` は CSS selector slot のみ予約)
+- URL query `?bgtypo=<variant>` で切替できる仕込みも入れた
+- フォントは **Geist Semibold (600)** (= Phase A 確定済の Geist 一族で統一感)
+- text content: `'all'` → `"AllMarks"` / `'inbox'` → `"Inbox"` / `'archive'` → `"Archive"` / `'dead'` → `"Dead Links"` / mood タグ → mood.name
+- `BoardRoot` で ThemeLayer wrapper と cards wrapper の間に挿入 (= viewport-bound、 cards が前面、 ヘッダー上には出ない)
+
+ハマり 1: 初期実装で `.host` に `z-index: 2` を当ててしまい **タイポがカードの前面に出る** バグ。 cards wrapper の translate3d による stacking context の罠 (= z-index は同じ stacking 内でしか比較されない)。 修正: z-index 指定削除 → DOM 順序のみで cards が前面に。
+
+ハマり 2 (= ユーザー指摘): 1 番目の Apple TV+ 構造ベタ写しは「destefanis 哲学に近い individual な個性」 が無い、 ただし「自由配置連動」 ら polish 系は今やらない、 シンプル「タイポ + AllMarks ロゴ表示」 で確定。
+
+IDEAS.md §H に animation variant ブレスト詳細を追記 (= ユーザーが言ってくれた DVD bounce / glitch / multi / marquee / card-wind の各イメージを具体保管、 次以降のセッションで「これやって」 と言えば即着手可)。
+
+### 3. Lightbox open/close clone 構造の連鎖再 work (= 3 段階)
+
+ユーザーが「画面で見切れているカードを click すると、 open animation 中に clone が canvas 外まで飛び出る」 と発見。 過去 (= B-#17 destefanis-style clone refactor、 セッション 23) で clone を body 直下 portal に変更した時から潜在していたバグ。
+
+#### 3-A. clip-path 追加 (= 最初の試行、 失敗)
+- clone host (= body 直下 fixed) に clip-path: inset(...) で canvas rect 内に clip
+- anchor を `.canvas` (= TopHeader 含む) に設定してしまい、 clone が **TopHeader 上を通る**バグ → ユーザー指摘で `.canvasWrap` に anchor 移動 (memory `feedback_verify_layout_before_clipping.md` 保存)
+- さらに「物理的に同じ世界の住人として fade band も通る」 と mask-image gradient 追加
+- ↑ ただし fade overlay は Lightbox open 中 unmount される gate あり、 mask は実質効かない → fade overlay gate を撤廃 + そのまま mask を当てた状態で deploy
+- 結果: 「fade が変に残ってアニメがダサい」 「Lightbox に出てきてもしばらくカード暗い」 ユーザー報告
+
+#### 3-B. 方式 B (= clone host を canvasWrap 内 portal、 hack 全削除)
+- ユーザー指示「徹底的にベストプラクティス探そう、 本家どうなってる?」 → memory `reference_destefanis_visual_spec.md` 再読み → **本家は source-card transform + Motion One spring** で clone を使わない、 だから canvas overflow:hidden で自動 clip + fade band 自動適用
+- Booklage の clone 方式 (= B-#17、 border-radius sharp 維持のため意図的選択) は本家とは別実装、 ただし clone を **canvasWrap 内 portal** に move すれば canvas 自身が clip 担当
+- 実装: ensureCloneHost を body 直下 → canvasWrap 内 absolute portal、 clone 座標を viewport → host-relative に変換、 `updateCloneHostMask` 等 hack 全削除、 fade overlay 自体も削除 (= destefanis 本家にない、 ScrollMeter で代替)
+- ↑ ただし `.backdrop` (z 300) が canvasWrap (z auto) の sibling、 stacking 比較で **backdrop が clone host (z 30) の上**にいて、 clone がアニメ中に dim される新バグ発生
+- ユーザー「最近の修正で明らかにカードの挙動が変わった」 指摘 (memory `feedback_check_reference_before_patching.md` 保存)
+
+#### 3-C. 方式 β (= backdrop を dim layer + stage layer に split、 確定形)
+- `.backdrop` は dim 専用 (= z 100、 半透明黒 + opacity fade + close handler)
+- 新規 `.stage` (= z 300、 perspective + overflow + grid centering + 全 children) を sibling として split
+- `clone host` を z 200 に上げて、 backdrop (100) < clone (200) < stage (300) の 3 層構造
+- `.frame { pointer-events: auto }` で stage 内の透明領域は backdrop に透過、 frame 内は click 受ける
+- `.backdrop:hover .navChevron` → `.backdrop.open:hover ~ .stage .navChevron` (= sibling combinator)
+- ユーザー実機確認: **「OK 直った!!!!!!!」**
+- 結論: 本家と 100% 同等ではない (= backdrop blur 無し + Motion One spring じゃない、 ただし B-#17 利点として border-radius sharp + テキスト pixel-perfect は維持)、 ただし「カード暗くなる根治」 + 「destefanis 風視覚 95%」 が達成された。 blur / spring polish はユーザー判断で**やらない**確定。
+
+### 学び (memory に保存済)
+
+- **mask-image gates pointer events (Chromium)** — click 要素本体に mask 当てると hit area が masked shape に縮む、 `::after` に逃がす
+- **Animation world consistency** — Portal-elevated clones must fade through the same overlays / fade bands as in-world elements (ユーザー「fade band は薄いカーテン」)
+- **Verify layout before clipping** — `.canvas` ではなく `.canvasWrap` (= TopHeader 除外) が正解、 着工前に CSS module + fade band 位置を確認すべき
+- **Check reference before patching** — 3+ local-symptom 修正したら、 reference spec memory を re-read、 4 つ目の patch じゃなく reference 再確認に戻る
+
+### deploy
+
+セッション 25 で 9 回 deploy:
+- `2f0442d` dot 三角切り抜き
+- `8e5affb` 背景タイポ hero (初期、 z-index 2)
+- `eb31e2f` z-index 削除でカード前面化
+- `05c3269` Lightbox dot hit area fix
+- `e3...` clip-path 追加 (canvas anchor) → 撤回
+- 次 `.canvasWrap` に anchor 移動
+- 次 mask-image gradient 追加 + fade gate 撤廃 (= 方式 A 第 4 段)
+- `250f2dba` 方式 B (= canvasWrap 内 portal + hack 全削除)
+- 後 fade overlay 削除 + cleanup
+- `0ed947f5` 方式 β (= backdrop split、 確定形) ← 現本番
+
+### sub-summary
+
+- master HEAD: dot 三角切り抜き / 背景タイポ / Lightbox clone host 構造 (= 方式 β)
+- ユーザー要望「拡張可能構造」 (= 背景タイポ animation variant 5 種) は CSS selector + variant prop で予約済
+- destefanis 本家との残差: backdrop blur 無し + Motion One spring 無し (= ユーザー判断「polish しない」 確定、 spec から外す)
+- 動画 dot は「丸の中三角切り抜き」 採用、 過去ブレスト L1386 の 7 候補は不要
+- vitest 477 (BroadcastChannel 1 件 flaky) / tsc / build clean
+
