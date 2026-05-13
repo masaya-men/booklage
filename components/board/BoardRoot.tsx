@@ -7,13 +7,7 @@ import {
   DEFAULT_THEME_ID,
   getThemeMeta,
 } from '@/lib/board/theme-registry'
-import { BOARD_INNER, COLUMN_MASONRY } from '@/lib/board/constants'
-import {
-  DEFAULT_SIZE_LEVEL,
-  type SizeLevel,
-  clampSizeLevel,
-  sizeLevelToColumnCount,
-} from '@/lib/board/size-levels'
+import { BOARD_INNER, BOARD_SLIDERS } from '@/lib/board/constants'
 import type { BoardFilter, CardPosition, DisplayMode } from '@/lib/board/types'
 import { applyFilter } from '@/lib/board/filter'
 import { useBoardData } from '@/lib/storage/use-board-data'
@@ -32,7 +26,9 @@ import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
 import { TopHeader } from './TopHeader'
 import { FilterPill } from './FilterPill'
-import { SizePicker } from './SizePicker'
+import { SizeSlider } from './SizeSlider'
+import { GapSlider } from './GapSlider'
+import { WidthGapResetButton } from './WidthGapResetButton'
 import { ResetAllButton } from './ResetAllButton'
 import { ScrollMeter } from './ScrollMeter'
 import { BoardChrome } from './BoardChrome'
@@ -103,7 +99,20 @@ export function BoardRoot() {
   // we clear the filter to 'all' and stash the cardId here. The retry useEffect
   // below picks this up after filteredItems re-renders and completes the scroll.
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
-  const [sizeLevel, setSizeLevel] = useState<SizeLevel>(DEFAULT_SIZE_LEVEL)
+  const [cardWidthPx, setCardWidthPx] = useState<number>(BOARD_SLIDERS.CARD_WIDTH_DEFAULT_PX)
+  const [cardGapPx, setCardGapPx] = useState<number>(BOARD_SLIDERS.CARD_GAP_DEFAULT_PX)
+  const clampCardWidth = useCallback((v: number): number => {
+    if (!Number.isFinite(v)) return BOARD_SLIDERS.CARD_WIDTH_DEFAULT_PX
+    return Math.min(BOARD_SLIDERS.CARD_WIDTH_MAX_PX, Math.max(BOARD_SLIDERS.CARD_WIDTH_MIN_PX, v))
+  }, [])
+  const clampCardGap = useCallback((v: number): number => {
+    if (!Number.isFinite(v)) return BOARD_SLIDERS.CARD_GAP_DEFAULT_PX
+    return Math.min(BOARD_SLIDERS.CARD_GAP_MAX_PX, Math.max(BOARD_SLIDERS.CARD_GAP_MIN_PX, v))
+  }, [])
+  const handleResetWidthGap = useCallback((): void => {
+    setCardWidthPx(BOARD_SLIDERS.CARD_WIDTH_DEFAULT_PX)
+    setCardGapPx(BOARD_SLIDERS.CARD_GAP_DEFAULT_PX)
+  }, [])
   const pip = usePipWindow()
   const handleCardClickFromPip = useCallback((cardId: string) => {
     if (typeof window !== 'undefined') {
@@ -117,7 +126,7 @@ export function BoardRoot() {
   // Per-card persisted overrides — derived directly from items so the
   // very first render after the IDB load already knows the right widths.
   // The previous useEffect-based hydration created a one-frame flash on
-  // reload where every card briefly snapped to the SizePicker default
+  // reload where every card briefly snapped to the size slider default
   // before the effect populated the override map; useMemo eliminates
   // that flash since it runs in the same render as items.
   const persistentCustomWidths = useMemo<Readonly<Record<string, number>>>(() => {
@@ -287,28 +296,17 @@ export function BoardRoot() {
   // No sidebar reservation, no max-width cap — the canvas is the whole stage.
   const effectiveLayoutWidth = Math.max(0, viewport.w - 2 * BOARD_INNER.SIDE_PADDING_PX)
 
-  // SizePicker level → column count → default per-card width that evenly
-  // distributes the layout area across N columns with the standard gap.
-  // This default applies to every card on the board until per-card custom
-  // widths land in the next session.
-  const desiredColumnCount = sizeLevelToColumnCount(sizeLevel)
-  const defaultCardWidth =
-    desiredColumnCount > 0 && effectiveLayoutWidth > 0
-      ? Math.max(
-          1,
-          (effectiveLayoutWidth - (desiredColumnCount - 1) * COLUMN_MASONRY.GAP_PX) /
-            desiredColumnCount,
-        )
-      : 1
-
+  // Card width slider drives every card's default width directly (px-absolute).
+  // Cards that the user has freely resized (`customWidths[id]`) keep their own
+  // width — the slider intentionally doesn't override per-card customizations.
   const skylineCards = useMemo<SkylineCard[]>(
     () =>
       filteredItems.map((it) => {
-        const w = customWidths[it.bookmarkId] ?? defaultCardWidth
+        const w = customWidths[it.bookmarkId] ?? cardWidthPx
         const h = it.aspectRatio > 0 ? w / it.aspectRatio : w
         return { id: it.bookmarkId, width: w, height: h }
       }),
-    [filteredItems, defaultCardWidth, customWidths],
+    [filteredItems, cardWidthPx, customWidths],
   )
 
   const layout = useMemo(
@@ -316,9 +314,9 @@ export function BoardRoot() {
       computeSkylineLayout({
         cards: skylineCards,
         containerWidth: effectiveLayoutWidth,
-        gap: COLUMN_MASONRY.GAP_PX,
+        gap: cardGapPx,
       }),
-    [skylineCards, effectiveLayoutWidth],
+    [skylineCards, effectiveLayoutWidth, cardGapPx],
   )
 
   const horizontalOffset = BOARD_INNER.SIDE_PADDING_PX
@@ -582,18 +580,24 @@ export function BoardRoot() {
     void persistSoftDelete(bookmarkId, true)
   }, [persistSoftDelete])
 
-  // Size level is a single board-wide preference, not per-card data.
+  // Card width and gap are board-wide preferences, not per-card data.
   // localStorage is sufficient (recovers on next visit, cross-device sync
-  // not in scope). On mount we hydrate from the saved value once.
+  // not in scope). On mount we hydrate from saved values once.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const saved = window.localStorage.getItem('booklage:size-level')
-    if (saved !== null) setSizeLevel(clampSizeLevel(Number(saved)))
-  }, [])
+    const savedW = window.localStorage.getItem('booklage:card-width-px')
+    if (savedW !== null) setCardWidthPx(clampCardWidth(Number(savedW)))
+    const savedG = window.localStorage.getItem('booklage:card-gap-px')
+    if (savedG !== null) setCardGapPx(clampCardGap(Number(savedG)))
+  }, [clampCardWidth, clampCardGap])
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.localStorage.setItem('booklage:size-level', String(sizeLevel))
-  }, [sizeLevel])
+    window.localStorage.setItem('booklage:card-width-px', String(cardWidthPx))
+  }, [cardWidthPx])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('booklage:card-gap-px', String(cardGapPx))
+  }, [cardGapPx])
 
   // Fired by Lightbox at the moment .media has landed at the source
   // card's rect, ~150ms BEFORE the lightbox actually unmounts. Restoring
@@ -892,7 +896,13 @@ export function BoardRoot() {
                 onClick={() => { void pip.open() }}
                 disabled={!pip.isSupported}
               />
-              <SizePicker value={sizeLevel} onChange={setSizeLevel} />
+              <SizeSlider value={cardWidthPx} onChange={(v): void => setCardWidthPx(clampCardWidth(v))} />
+              <GapSlider value={cardGapPx} onChange={(v): void => setCardGapPx(clampCardGap(v))} />
+              <WidthGapResetButton
+                widthPx={cardWidthPx}
+                gapPx={cardGapPx}
+                onReset={handleResetWidthGap}
+              />
               <ResetAllButton
                 count={customWidthCount}
                 onClick={handleResetAllCustomWidths}
@@ -957,7 +967,7 @@ export function BoardRoot() {
                 persistMeasuredAspect={persistMeasuredAspect}
                 displayMode={displayMode}
                 newlyAddedIds={newlyAddedIds}
-                defaultCardWidth={defaultCardWidth}
+                defaultCardWidth={cardWidthPx}
                 customWidths={customWidths}
                 onCardResize={handleCardResize}
                 onCardResizeEnd={handleCardResizeEnd}
@@ -1023,7 +1033,7 @@ export function BoardRoot() {
             description: it.description ?? '',
             thumbnail: it.thumbnail ?? '',
             type: detectUrlType(it.url),
-            cardWidth: defaultCardWidth,
+            cardWidth: cardWidthPx,
             aspectRatio: it.aspectRatio,
           }))}
           positions={layout.positions}

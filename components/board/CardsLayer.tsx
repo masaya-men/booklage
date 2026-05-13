@@ -67,7 +67,7 @@ type CardsLayerProps = {
   readonly displayMode: DisplayMode
   readonly newlyAddedIds: ReadonlySet<string>
   /** Default per-card width for cards with no custom width — derived from
-   *  the active SizePicker level so the board still distributes evenly
+   *  the active size slider level so the board still distributes evenly
    *  across N columns. Skyline layout uses this for every card whose id
    *  is NOT in the resize override map. */
   readonly defaultCardWidth: number
@@ -143,7 +143,7 @@ export function CardsLayer({
 
   // Resolve each card's render width + height for the skyline engine.
   // Width comes from `customWidths` if the card has been resized in
-  // this session, otherwise from `defaultCardWidth` (= the SizePicker
+  // this session, otherwise from `defaultCardWidth` (= the size slider
   // level's auto-distribute width). Height is intrinsic for text cards
   // or `width / aspectRatio` for image/video cards.
   const buildSkylineCard = useCallback(
@@ -445,7 +445,7 @@ export function CardsLayer({
               opacity: newlyAddedIds.has(it.bookmarkId) ? 0 : 1,
               visibility: sourceCardId === it.bookmarkId ? 'hidden' : undefined,
               animation: newlyAddedIds.has(it.bookmarkId) ? 'booklage-entrance-a 400ms ease-out forwards' : undefined,
-              ['--card-radius' as string]: `${Math.min(24, Math.min(p.w, p.h) * 0.075)}px`,
+              ['--card-radius' as string]: '24px',
             }}
           >
             <CardNode

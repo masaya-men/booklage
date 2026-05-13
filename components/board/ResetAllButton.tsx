@@ -13,7 +13,7 @@ type Props = {
 
 /**
  * Header pill that drops the manual-resize override on every card at
- * once. Sized to match the SizePicker chrome (22px tall cells, monospace
+ * once. Sized to match the slider chrome (26px tall pill, monospace
  * label) so the action group reads as a coherent row.
  */
 export function ResetAllButton({ count, onClick }: Props): ReactElement | null {

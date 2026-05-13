@@ -206,10 +206,7 @@ export function ShareFrame({
               cursor: editable ? 'grab' : (onCardOpen ? 'pointer' : 'default'),
               zIndex: isDragging ? 50 : undefined,
               ['--card-index' as string]: i,
-              // Scale --card-radius proportionally to card size so the visual
-              // corner ratio matches the board (24px on a ~320px card ≈ 7.5%).
-              // Board cards inherit the global 24px var; we override per-card here.
-              ['--card-radius' as string]: `${Math.min(24, Math.min(cardW, cardH) * 0.075)}px`,
+              ['--card-radius' as string]: '24px',
             } as CSSProperties}
             onPointerDown={(e): void => {
               if (editable && cardIds) handleCardPointerDown(e, id)

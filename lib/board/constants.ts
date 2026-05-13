@@ -110,6 +110,19 @@ export const COLUMN_MASONRY = {
   GAP_PX: 18,
 } as const
 
+/** Board-wide card width and gap controlled by the header sliders.
+ *  CARD_WIDTH_DEFAULT_PX matches the legacy 5-column "size 3" layout at
+ *  ~1489px viewport so existing boards open with the same density.
+ *  Reset button restores both to these defaults. */
+export const BOARD_SLIDERS = {
+  CARD_WIDTH_DEFAULT_PX: 280,
+  CARD_WIDTH_MIN_PX: 120,
+  CARD_WIDTH_MAX_PX: 720,
+  CARD_GAP_DEFAULT_PX: 18,
+  CARD_GAP_MIN_PX: 0,
+  CARD_GAP_MAX_PX: 60,
+} as const
+
 /**
  * Share-wire encoding only. The board itself uses continuous `cardWidth`
  * (lib/board/size-migration.ts); this column-span map is kept for the

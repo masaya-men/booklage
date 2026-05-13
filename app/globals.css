@@ -347,7 +347,7 @@ ol {
   --lightbox-text-reveal-translate-y: 16px;
   --lightbox-text-reveal-easing: power2.out;
 
-  --lightbox-media-radius: 6px;
+  --lightbox-media-radius: 24px;
   /* Backdrop opacity 0.88 (bumped from 0.78) so the cards visible behind
      the blur don't create a noticeable bright band in the bottom half of
      the canvas when the user has scrolled past the top rows. With 0.78,

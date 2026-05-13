@@ -446,3 +446,65 @@ commit: `b432df9 feat(health): intent-driven revalidate on Lightbox open + 7-day
 - close 角丸 AA 問題は**未解決**、 destefanis 方式リファクタで解く方針合意、 次セッション以降の spec 作業から
 - vitest 484 / tsc / build 全 clean
 
+---
+
+## セッション 22 (2026-05-13) — E (角丸 24px fixed) + F (サイズ / ギャップスライダー) + clone refactor spec
+
+セッション 21 で合意した A-G の前提作業 (E + F) を片付け、 次々セッション向けの clone refactor spec を起こした。 ユーザーは「途中で確認はせず案 b で一気に進めて」と判断、 1 commit + 1 deploy にまとめた。
+
+### E. 角丸 24px fixed 化
+
+destefanis 本家準拠で、 全カードと Lightbox を **24px 固定**に統一。 これで open/close で radius 数値変化がゼロになり、 GPU resample 由来の AA 差は構造的に発生しない (= 次々セッションの clone refactor で「border-radius を animate しない」 最小実装が可能に)。
+
+変更:
+- [app/globals.css:350](app/globals.css#L350): `--lightbox-media-radius: 6px` → `24px`
+- [CardsLayer.tsx:448](components/board/CardsLayer.tsx#L448): `Math.min(24, Math.min(p.w, p.h) * 0.075)` → `'24px'` 固定
+- [ShareFrame.tsx:212](components/share/ShareFrame.tsx#L212): 同じ formula を `'24px'` 固定に (ShareFrame は将来作り直しもあり得るとユーザー了承)
+- [Lightbox.tsx:447-457, 728-729](components/board/Lightbox.tsx#L447): `openCardRadius` / `cardRadiusValue` 計算を 24 固定値に。 interpolation ロジック自体は temporary に残置 (両端 24 = 視覚的 no-op、 destefanis refactor 時に削除)
+
+味の変化: 小カードがぽってり丸くなる。 ユーザー受容、 「業界標準値 24px、 ぱくり懸念なし」 と合意済 (memory `project_phase_a_decisions` の destefanis 忠実方針と一致)。
+
+### F. サイズ / ギャップスライダー化
+
+5 段階 SizeLevel を完全廃止、 連続 px 値に。 ギャップも 18px 固定 → 連続 px 値に。
+
+新規 component:
+- [SizeSlider.tsx](components/board/SizeSlider.tsx) — `W <slider> 280` (デフォルト 280px、 range 120-720)
+- [GapSlider.tsx](components/board/GapSlider.tsx) — `G <slider> 18` (デフォルト 18px、 range 0-60)
+- [WidthGapResetButton.tsx](components/board/WidthGapResetButton.tsx) — `DEFAULT` ラベル、 両 slider を default に戻す。 default 状態だと disabled (薄く表示)
+- [SliderControl.module.css](components/board/SliderControl.module.css) — 共通 slider スタイル、 32×32 px のヒット領域 (memory `feedback_large_pointer`)、 visible thumb は 12×12 px
+
+削除:
+- `components/board/SizePicker.tsx` + `.module.css` + `.test.tsx`
+- `lib/board/size-levels.ts` + `.test.ts`
+
+state:
+- [BoardRoot.tsx:106-117](components/board/BoardRoot.tsx#L106): `cardWidthPx` / `cardGapPx` state 追加、 clamp ヘルパ、 reset handler
+- localStorage キー: `booklage:card-width-px` / `booklage:card-gap-px` (旧 `booklage:size-level` は廃止、 古いキーは無視)
+- 自由リサイズ済カード (`customWidths[id]`) の挙動は維持: slider はそれらに影響を与えない (memory `feedback_free_size_decided` 確定仕様遵守)
+- skyline layout の `gap` を `cardGapPx` 参照に変更
+
+ラベル選定: 「W / G」 (memory `feedback_ui_vocabulary` = UI text は世界共通英語語彙)。 「DEFAULT」 はリセット意味で短く強い語、 ResetAllButton (RESET + count) と並んでも区別がつく。
+
+### 次々セッション向け spec 起こし
+
+[docs/specs/2026-05-14-lightbox-clone-refactor.md](docs/specs/2026-05-14-lightbox-clone-refactor.md) 作成。 destefanis 本家の cloneNode(true) + body append + width/height + position:fixed 構造を、 mediaSlots / customCardWidth / thumbnail healing 等の board 機能を一切壊さず Lightbox の open / close / 内部 nav 3 経路に適用する spec。 E + F が前提に揃ったことで、 当初見積 4-6h を 2-3h 級に圧縮見込み。
+
+着工前の前提チェック 5 点 (master HEAD / radius 統一 / slider 動作 / 本家ソース読み直し / 既存機能スクショ保存) を spec 末尾に明記。
+
+### コメント整理 (動作影響なし)
+
+5 ファイルの「SizePicker」 言及を「size slider」 に置換 (BoardRoot / CardsLayer / TopHeader.module.css / ResetAllButton)。 残り 4 ファイル (use-board-data / indexeddb / CardCornerActions / TopHeader.module.css 他) は Read 必須エラーで scope creep 回避でスキップ。 全て JSDoc コメント、 動作には無関係。
+
+### memory 追記
+
+なし (今回の変更は memory 化するほどの一般化はなく、 spec ファイルで十分)。
+
+### sub-summary
+
+- master HEAD: 本 commit (E + F + spec)
+- 本番 deploy 済 (`booklage.pages.dev` に reflect、 ユーザー視覚確認待ち)
+- close 角丸 AA 違和感は radius 数値変化がゼロになったので**根本消滅したはず** (clone refactor 前でも改善する) → ユーザー目視確認予定
+- サイズ / ギャップスライダーで「カード幅と隙間」 を絶対 px 値で連続調整可能に
+- vitest 477 / tsc / build 全 clean (テスト総数は 484 → 477、 size-levels 関連 7 件削除分)
+

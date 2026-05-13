@@ -20,13 +20,14 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-13 セッション 21 末 — 本番 deploy 済)
+### 直近の状態 (2026-05-13 セッション 22 末 — 本番 deploy 済)
 
-- master HEAD: `3f2115c` = セッション 21 close anim revert (= `8e43648` 状態)
-- **本番 `booklage.pages.dev` deploy 済** — 動作確認済
-- セッション 21 で ship: ↻ ボタン廃止 + 7 日 cadence + Lightbox open / nav / jump で自動再取得 + thumbnail healing 自動化
-- close 角丸 AA 差はわずかに残存 (destefanis 方式リファクタで根本解決予定、 次セッション spec へ)
-- 全 484 vitest + tsc + build clean
+- master HEAD: セッション 22 commit (E + F + spec)
+- **本番 `booklage.pages.dev` deploy 済** — ユーザー視覚確認予定
+- セッション 22 で ship: **E (全カード角丸 24px 固定)** + **F (W スライダー / G スライダー / DEFAULT リセットボタン)** + 次々セッション向け clone refactor spec 起こし
+- close 角丸 AA 違和感は radius 数値変化ゼロで**根本消滅したはず** (clone refactor 前でも改善)
+- localStorage キー変更: `booklage:size-level` (廃止) → `booklage:card-width-px` + `booklage:card-gap-px`
+- 全 477 vitest + tsc + build clean (size-levels 関連 7 件削除分減)
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 
@@ -51,12 +52,9 @@ CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてありま
 - **MinimalCard polish** — 64px favicon が S サイズ (160px) で大きく見える可能性。 Visual Companion でモック比較してサイズ判定 (セッション 20 で実装後、 視覚調整は次回)
 - **Task 12: 全件再 check 設定 UI** — viewport revalidation で日常運用は OK だが、 ユーザーが 「いま全件チェック」 を 1 クリックで kick できる設定パネル。 設定パネル自体が未実装なので別 spec 立ち上げ要
 
-### Lightbox animation 系 + size UI 再設計 (セッション 21 で確定方針 A-G)
+### Lightbox animation 系 (セッション 22 で E + F 完了、 B-#17 残)
 
-- **B-#14 角丸を 24px fixed に変更** (E、 次セッション最優先) — `CardsLayer.tsx:448` formula を 24 固定に。 全カードサイズで統一、 小カードはぽってり丸くなる味の変化を受容。 Lightbox の AA 違和感も radius 変化が消えて根本解決。 destefanis refactor の前提作業
-- **B-#15 サイズスライダー化** (F) — 現 5 段階 → 連続スライダー、 デフォルト = 現 size 3、 リセットボタン 1 個でデフォルトに戻す。 column 数自動算出
-- **B-#16 ギャップスライダー** (F 併設) — カード間 gap 無段階、 サイズスライダーと並べて TopHeader 内に配置
-- **B-#17 destefanis 方式 Lightbox clone refactor** — `cloneNode(true)` を body に append、 width/height + translate3d で animate。 open / close / 内部 nav の 3 経路すべて書き換え。 B-#14 が前提に揃うと border-radius アニメ不要 = 本家と完全に同じ最小実装、 工数 4-6h → 2-3h に圧縮見込み。 spec は `docs/specs/2026-05-14-lightbox-clone-refactor.md` に書く予定。 詳細経緯は TODO_COMPLETED.md セッション 21 narrative 参照
+- **B-#17 destefanis 方式 Lightbox clone refactor** (次々セッション専用) — `cloneNode(true)` を body 直下 (実装は専用 host 要素) に append、 width/height + position:fixed + translate3d で animate。 open / close / 内部 nav の 3 経路すべて書き換え。 E (角丸 24px fixed) と F (連続スライダー) が前提に揃ったので、 border-radius アニメ不要 = 本家と完全に同じ最小実装、 工数 2-3h 級。 **spec は [docs/specs/2026-05-14-lightbox-clone-refactor.md](./specs/2026-05-14-lightbox-clone-refactor.md) 完成済**、 次セッションはこれを読むところから着工。 保持必須は mediaSlots ホバー切替・customWidths・thumbnail healing
 
 ### カード操作・PiP
 

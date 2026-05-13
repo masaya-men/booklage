@@ -444,17 +444,17 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       const mediaImg = mediaEl.querySelector<HTMLImageElement>(':scope > img')
       if (mediaImg) mediaImg.style.objectFit = 'cover'
 
-      // Read the source card's ACTUAL --card-radius CSS variable. Avoids
-      // formula-vs-render drift (CardsLayer L448 sets the same formula but
-      // the card's rendered corner can subtly differ via inherited DPR /
-      // CSS rounding). Fall back to the formula if read fails.
+      // Card radius is now a fixed 24px across all card sizes (CardsLayer
+      // sets --card-radius: 24px directly), matching --lightbox-media-radius.
+      // Reading the live var still works as a safety net in case a theme
+      // override takes effect later.
       const liveCardRadius = liveSourceEl
         ? parseFloat(getComputedStyle(liveSourceEl).getPropertyValue('--card-radius'))
         : NaN
       const cardRadiusValue = Number.isFinite(liveCardRadius) && liveCardRadius > 0
         ? liveCardRadius
-        : Math.min(24, Math.min(closeOrigin.width, closeOrigin.height) * 0.075)
-      const computedLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 6
+        : 24
+      const computedLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 24
 
       // Pre-set strategy (mirrors the OPEN path at L737-741): finish the
       // radius transition INSIDE the text-fade window, BEFORE position/scale
@@ -719,14 +719,13 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       const distance = Math.hypot(dx, dy)
       const dur = OPEN_BASE_DUR + Math.min(distance / OPEN_DIST_DIVISOR, OPEN_DIST_BONUS_MAX)
 
-      // Compute radius compensation values — visible corner roundness
-      // smoothly interpolates from the source card's natural --card-radius
-      // (at t=0) to --lightbox-media-radius (at t=1). DOM border-radius is
-      // visibleR / current_scale at every frame so the *visible* radius
-      // (DOM × scale) hits the right value at both ends regardless of
-      // how aggressive the FLIP scale is.
-      const openCardRadius = Math.min(24, Math.min(originRect.width, originRect.height) * 0.075)
-      const openLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 6
+      // Both card and lightbox radii are now fixed at 24px, so this
+      // "interpolation" is effectively a no-op visually — start and end
+      // values are equal. Logic is retained until the destefanis-style
+      // clone refactor lands; at that point the radius animation can be
+      // dropped entirely (border-radius stays static).
+      const openCardRadius = 24
+      const openLightboxRadius = parseFloat(getComputedStyle(mediaEl).borderRadius) || 24
 
       // Initial state set synchronously *outside* the timeline so the
       // browser paints the source-rect frame at t=0 before the tween
