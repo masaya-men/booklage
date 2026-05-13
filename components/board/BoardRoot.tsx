@@ -959,9 +959,10 @@ export function BoardRoot() {
             {/* Hero background typography — viewport-bound (does NOT live
                 inside the pan-transform wrappers above), so the headline
                 stays centred on screen while cards travel over it. The
-                cards' DOM order comes after, putting them above the type
-                with the typography's z-index (THEME_BG_TYPOGRAPHY) keeping
-                it above the theme background but below frame mask + cards. */}
+                cards-wrapper that follows in DOM order establishes its
+                own stacking context via translate3d, and since the
+                typography host carries no explicit z-index, DOM order
+                alone keeps the cards above the typography. */}
             <BoardBackgroundTypography
               activeFilter={activeFilter}
               moods={moods}
@@ -1003,16 +1004,6 @@ export function BoardRoot() {
               />
             </div>
           </InteractionLayer>
-          {/* Soft fade at canvas top/bottom edges — scroll affordance.
-              Kept mounted while the Lightbox is open so the clone host
-              (positioned inside canvasWrap with z-index 30) is naturally
-              occluded by these overlays (z 50) when its flight path
-              crosses the soft band — same world the regular cards
-              travel under. The Lightbox's own frame/backdrop sits on a
-              separate sibling layer at the canvas level, so the fade
-              bands never overlap the centered media or its text panel. */}
-          <div className={styles.fadeTop} aria-hidden="true" />
-          <div className={styles.fadeBottom} aria-hidden="true" />
           {!loading && items.length === 0 && (
             <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
           )}

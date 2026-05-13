@@ -170,13 +170,10 @@ function getPrefersReducedMotion(): boolean {
 // =====================================================================
 /** Get-or-create the clone host inside the board's cards stage (the
  *  .canvasWrap region marked by data-lightbox-clone-host). Mounting
- *  inside the stage — rather than at body root — means the canvas's
- *  overflow:hidden naturally clips any clone whose flight path
- *  crosses the dark frame's edge, AND the .fadeTop / .fadeBottom
- *  soft overlays (z 50 inside the same stage) automatically cover
- *  clones passing under them. The clone becomes a citizen of the
- *  same visual world the regular cards inhabit, so no manual
- *  clip-path / mask mirroring is required.
+ *  inside the stage — rather than at body root — lets the canvas's
+ *  overflow:hidden naturally clip any clone whose flight path crosses
+ *  the dark frame's edge (including the rounded corners), so no manual
+ *  clip-path mirroring is needed.
  *
  *  Returns null if the stage isn't mounted yet (defensive — Lightbox
  *  is only ever opened from inside a mounted BoardRoot, but callers
@@ -191,11 +188,10 @@ function ensureCloneHost(): HTMLElement | null {
 
   const host = document.createElement('div')
   host.id = HOST_ID
-  // Full-size invisible shell inside the stage. zIndex 30 sits below
-  // the fadeTop / fadeBottom overlays (z 50) so soft-band occlusion
-  // applies naturally, and above the cards content (CARDS=10) so the
-  // clone reads as the front-most card during the morph. The Lightbox
-  // .frame (z 200 at body root) remains above on its own portal layer.
+  // Full-size invisible shell inside the stage. zIndex 30 sits above
+  // the cards content (CARDS=10) so the clone reads as the front-most
+  // card during the morph; the Lightbox .frame (z 200 at body root)
+  // remains above on its own portal layer.
   host.style.cssText =
     'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:30;'
   stage.appendChild(host)

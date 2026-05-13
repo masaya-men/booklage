@@ -45,33 +45,3 @@
   color: var(--share-accent);
 }
 
-/* Scroll affordance — a soft top/bottom fade hints that more cards live
-   above/below the visible viewport. Sits above cards (zIndex BOARD_Z_INDEX
-   between CARDS=10 and TOOLBAR=110) but doesn't block pointer events. */
-.fadeTop,
-.fadeBottom {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 64px;
-  pointer-events: none;
-  z-index: 50;
-}
-.fadeTop {
-  top: 0;
-  background: linear-gradient(
-    to bottom,
-    var(--bg-dark) 0%,
-    rgba(10, 10, 10, 0.85) 30%,
-    rgba(10, 10, 10, 0) 100%
-  );
-}
-.fadeBottom {
-  bottom: 0;
-  background: linear-gradient(
-    to top,
-    var(--bg-dark) 0%,
-    rgba(10, 10, 10, 0.85) 30%,
-    rgba(10, 10, 10, 0) 100%
-  );
-}
