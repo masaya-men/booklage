@@ -32,6 +32,7 @@ export const CULLING = {
 
 export const BOARD_Z_INDEX = {
   THEME_BG: 0,
+  THEME_BG_TYPOGRAPHY: 2,
   FRAME_MASK: 5,
   CARDS: 10,
   EMPTY_STATE: 12,

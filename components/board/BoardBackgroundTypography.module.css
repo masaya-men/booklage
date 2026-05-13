@@ -1,0 +1,60 @@
+/* Background typography layer — sits between the dark theme background
+ * and the cards, displaying the active filter's name (or "AllMarks" for
+ * the all-bookmarks view) at hero scale. Cards float on top and occlude
+ * the type as they scroll, the way Apple TV+ / Disney+ / Spotify category
+ * heroes do — except here the user's own card arrangement is what reveals
+ * or hides the headline.
+ *
+ * Position is viewport-bound rather than world-bound: the type stays in
+ * the centre of the visible canvas while the user pans the board, so the
+ * background reads as a "stage backdrop" the cards travel across rather
+ * than a label glued to a particular spot on the canvas. */
+.host {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2; /* keep in sync with BOARD_Z_INDEX.THEME_BG_TYPOGRAPHY */
+}
+
+.text {
+  font-family: var(--font-geist), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 600; /* Semibold —太め + 無機質、 Apple SF Pro よりやや角立つ */
+  font-size: clamp(72px, 17vw, 260px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: rgba(255, 255, 255, 0.95);
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+  /* Slight de-saturation of the text against the dark stage keeps the
+   * cards readable when they overlap. The cards are full-bleed media, so
+   * a pure-white background type can flash too brightly through their
+   * gaps; 0.95 alpha softens that without losing the type's presence. */
+}
+
+/* ─── Variants ────────────────────────────────────────────────────────────
+ *
+ * Each future motion treatment hangs off a `data-variant=...` selector
+ * below. Adding a new one is purely additive: declare the keyframes /
+ * transforms here, no host-component refactor required. JS-driven
+ * variants (card-wind physics, marquee infinite scroll) can read the
+ * same data-variant attribute and animate the `.text` child directly.
+ *
+ * Baseline — type is centred, motionless. */
+.host[data-variant='static'] .text {
+  /* no-op — matches the default declaration above */
+}
+
+/* Reserved selector slots for future variants. Empty for now; left in
+ * source so the wiring point is obvious next time we add motion.
+ *
+.host[data-variant='dvd-bounce'] .text { ... }
+.host[data-variant='glitch'] .text { ... }
+.host[data-variant='multi'] .text { ... }
+.host[data-variant='marquee'] .text { ... }
+.host[data-variant='card-wind'] .text { ... }
+*/

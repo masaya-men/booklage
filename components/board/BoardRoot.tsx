@@ -22,6 +22,11 @@ import { useMoods } from '@/lib/storage/use-moods'
 import { initDB } from '@/lib/storage/indexeddb'
 import { loadBoardConfig, saveBoardConfig } from '@/lib/storage/board-config'
 import { ThemeLayer } from './ThemeLayer'
+import {
+  BoardBackgroundTypography,
+  isBoardBgTypoVariant,
+  type BoardBgTypoVariant,
+} from './BoardBackgroundTypography'
 import { CardsLayer } from './CardsLayer'
 import { InteractionLayer } from './InteractionLayer'
 import { TopHeader } from './TopHeader'
@@ -71,6 +76,16 @@ export function BoardRoot() {
   } = useBoardData()
   const { moods } = useMoods()
   const [activeFilter, setActiveFilter] = useState<BoardFilter>('all')
+  // Background-typography animation variant. `'static'` (fixed centred
+  // headline) is the only treatment wired up today; the URL query
+  // `?bgtypo=...` lets us swap in future variants (dvd-bounce, glitch,
+  // marquee, card-wind, multi) without touching this file again.
+  const [bgTypoVariant, setBgTypoVariant] = useState<BoardBgTypoVariant>('static')
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const raw = new URL(window.location.href).searchParams.get('bgtypo')
+    if (raw && isBoardBgTypoVariant(raw)) setBgTypoVariant(raw)
+  }, [])
   const [displayMode, setDisplayMode] = useState<DisplayMode>('visual')
   const [viewport, setViewport] = useState({ x: 0, y: 0, w: 1200, h: 800 })
   // Lifted from InteractionLayer so CardsLayer can also observe Space-held
@@ -941,6 +956,17 @@ export function BoardRoot() {
                 totalHeight={contentHeight}
               />
             </div>
+            {/* Hero background typography — viewport-bound (does NOT live
+                inside the pan-transform wrappers above), so the headline
+                stays centred on screen while cards travel over it. The
+                cards' DOM order comes after, putting them above the type
+                with the typography's z-index (THEME_BG_TYPOGRAPHY) keeping
+                it above the theme background but below frame mask + cards. */}
+            <BoardBackgroundTypography
+              activeFilter={activeFilter}
+              moods={moods}
+              variant={bgTypoVariant}
+            />
             {/* Cards — full-canvas-width with destefanis half-gap padding.
                 Vertical transform adds BOARD_TOP_PAD_PX so the first row gets
                 breathing room below the canvas top edge / toolbar pill. */}
