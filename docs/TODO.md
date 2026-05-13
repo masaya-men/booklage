@@ -51,9 +51,12 @@ CURRENT_GOAL.md にゴール 1 行 + やること 3〜5 個が書いてありま
 - **MinimalCard polish** — 64px favicon が S サイズ (160px) で大きく見える可能性。 Visual Companion でモック比較してサイズ判定 (セッション 20 で実装後、 視覚調整は次回)
 - **Task 12: 全件再 check 設定 UI** — viewport revalidation で日常運用は OK だが、 ユーザーが 「いま全件チェック」 を 1 クリックで kick できる設定パネル。 設定パネル自体が未実装なので別 spec 立ち上げ要
 
-### Lightbox animation 系
+### Lightbox animation 系 + size UI 再設計 (セッション 21 で確定方針 A-G)
 
-- **B-#14 destefanis 方式リファクタ** (セッション 21 で方針確定、 別 spec 起こし要) — `cloneNode(true)` でカードを複製、 body append、 width/height + translate3d で animate。 open / close / 内部 nav の 3 経路すべて書き換え。 ボードカードのリッチ機能 (mediaSlots ホバー切替、 将来の動画同時再生) は完全保持。 工数 4-6h。 spec は `docs/specs/2026-05-14-lightbox-clone-refactor.md` に書く予定。 詳細経緯は TODO_COMPLETED.md セッション 21 narrative 参照
+- **B-#14 角丸を 24px fixed に変更** (E、 次セッション最優先) — `CardsLayer.tsx:448` formula を 24 固定に。 全カードサイズで統一、 小カードはぽってり丸くなる味の変化を受容。 Lightbox の AA 違和感も radius 変化が消えて根本解決。 destefanis refactor の前提作業
+- **B-#15 サイズスライダー化** (F) — 現 5 段階 → 連続スライダー、 デフォルト = 現 size 3、 リセットボタン 1 個でデフォルトに戻す。 column 数自動算出
+- **B-#16 ギャップスライダー** (F 併設) — カード間 gap 無段階、 サイズスライダーと並べて TopHeader 内に配置
+- **B-#17 destefanis 方式 Lightbox clone refactor** — `cloneNode(true)` を body に append、 width/height + translate3d で animate。 open / close / 内部 nav の 3 経路すべて書き換え。 B-#14 が前提に揃うと border-radius アニメ不要 = 本家と完全に同じ最小実装、 工数 4-6h → 2-3h に圧縮見込み。 spec は `docs/specs/2026-05-14-lightbox-clone-refactor.md` に書く予定。 詳細経緯は TODO_COMPLETED.md セッション 21 narrative 参照
 
 ### カード操作・PiP
 
