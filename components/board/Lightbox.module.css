@@ -814,13 +814,26 @@
 
 /* Video slot indicator — same circular base as the photo dot, but with
  * a play-triangle cut out from the center via SVG mask (evenodd fill-
- * rule). The cutout is subtle at the 6px base size but pops with the
- * 1.6× active scale, signalling "this slot is a video" without disrupting
- * the row's visual rhythm. The button's 24×24 hit area (::before extend)
- * is unaffected. */
+ * rule). The cutout pops with the 1.6× active scale, signalling "this
+ * slot is a video" without disrupting the row's visual rhythm.
+ *
+ * The mask lives on an ::after pseudo, NOT the button itself: Chromium
+ * gates pointer events to the visible (masked) region of the element,
+ * so masking the button would shrink its 24×24 click target (defined by
+ * the ::before -9px outset) down to whatever shape the mask exposes —
+ * making the small video dot nearly unclickable. Keeping the button's
+ * own box transparent and unmasked preserves the full hit area, while
+ * ::after carries the visible disc + triangle cutout. */
 .lightboxImageDot[data-slot-type='video'] {
-  border-radius: 0;
+  background: transparent;
   box-shadow: none;
+}
+
+.lightboxImageDot[data-slot-type='video']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.55);
   filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
   -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6'><path fill='black' fill-rule='evenodd' d='M3 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM2.3 1.6v2.8L4.6 3z'/></svg>");
   mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6'><path fill='black' fill-rule='evenodd' d='M3 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM2.3 1.6v2.8L4.6 3z'/></svg>");
@@ -828,4 +841,14 @@
   mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
+  pointer-events: none;
+  transition: background 200ms ease-out;
+}
+
+.lightboxImageDot[data-slot-type='video'][data-active='true']::after {
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.lightboxImageDot[data-slot-type='video']:hover:not([data-active='true'])::after {
+  background: rgba(255, 255, 255, 0.85);
 }
