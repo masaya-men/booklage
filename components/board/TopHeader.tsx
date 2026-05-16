@@ -24,9 +24,9 @@ export function TopHeader({ nav, instrument, actions, hidden }: Props): ReactEle
       aria-hidden={hidden ? 'true' : undefined}
     >
       <div className={styles.group} data-group="nav">{nav}</div>
-      <span className={styles.divider} aria-hidden="true" />
+      <span className={styles.divider} aria-hidden="true">·</span>
       <div className={styles.group} data-group="instrument">{instrument}</div>
-      <span className={styles.divider} aria-hidden="true" />
+      <span className={styles.divider} aria-hidden="true">·</span>
       <div className={styles.group} data-group="actions">{actions}</div>
     </header>
   )

@@ -16,10 +16,55 @@
   border-radius: var(--canvas-radius);
   background: var(--bg-dark);
   overflow: hidden;
-  /* Phase 1A: TopHeader (auto) sits above canvasWrap (1fr) which holds the
-     existing absolute-layered scroll/cards/lightbox tree. */
+  /* Session 28: TopHeader is now position:absolute so the grid row it
+     occupied collapses to 0 height — `auto 1fr` still leaves the second
+     row filling the canvas, and canvasWrap inhabits it without further
+     change. Kept the grid declaration in place so Lightbox / sibling
+     absolute layers continue to share the same stacking context. */
   display: grid;
   grid-template-rows: auto 1fr;
+}
+
+/* Apple iOS Photos / visionOS edge gradient scrim — top.
+   Ambient overlay layer (not chrome): provides background tonality for
+   the floating TopHeader text labels without introducing a pill / bar.
+   z-index 80 sits above the cards inside canvasWrap (default flow) and
+   below the chrome row (z-index 110) + Lightbox (z-index 100). */
+.canvas::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.32) 0%,
+    rgba(0, 0, 0, 0.16) 40%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 80;
+}
+
+/* Mirror scrim at the bottom — same gradient flipped, so the relocated
+   ScrollMeter + counter readout (coming in the next commit) stays
+   legible against whatever cards sit directly behind it. */
+.canvas::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.32) 0%,
+    rgba(0, 0, 0, 0.16) 40%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 80;
 }
 
 .canvasWrap {

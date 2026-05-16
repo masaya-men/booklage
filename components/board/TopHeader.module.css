@@ -1,27 +1,34 @@
+/* Apple iOS Photos / visionOS overlay-UI direction: the header itself is
+   no longer a solid bar — it floats over the board as a row of text-only
+   chrome elements, with legibility supplied by the canvas edge gradient
+   scrim (BoardRoot.module.css ::before). The header DOM (and its grid
+   layout) is preserved so existing slots / tests / a11y order keep
+   working; only the visual envelope (background, border, sticky height)
+   is stripped away. */
+
 .header {
-  /* Grid keeps the instrument column geometrically pinned to page center
-     regardless of nav vs actions widths. The two 1fr side columns absorb
-     leftover horizontal space symmetrically; the auto-width middle group
-     stays at the dead center of the header. */
   display: grid;
   grid-template-columns: 1fr auto auto auto 1fr;
-  align-items: center;
-  height: 64px;
-  padding: 0 24px;
-  background: #000;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  position: sticky;
-  top: 0;
-  z-index: 110; /* mirrors BOARD_Z_INDEX.TOOLBAR in lib/board/constants.ts */
+  align-items: flex-start;
   gap: 16px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 14px 24px 0;
+  z-index: 110; /* mirrors BOARD_Z_INDEX.TOOLBAR in lib/board/constants.ts */
+  /* The header lane itself doesn't intercept pointer events — only the
+     individual `.group` islands do. So clicks anywhere in the empty
+     horizontal space between groups pass straight through to whatever
+     card / canvas surface sits behind, instead of being swallowed by a
+     full-width transparent strip. */
+  pointer-events: none;
   /* Smooth fade when Lightbox open/close toggles .hidden — feels like the
      header politely steps aside rather than blinking out. */
   transition: opacity 0.25s ease;
 }
 
-/* Faded out while the Lightbox is open. We keep the header in the canvas
-   grid (no display:none) so the cards area below doesn't reflow; only
-   opacity + pointer-events change. */
+/* Faded out while the Lightbox is open. */
 .hidden {
   opacity: 0;
   pointer-events: none;
@@ -31,26 +38,33 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  /* Re-enable pointer events on the chrome island — parent disables them
+     on the lane so empty space stays click-through. */
+  pointer-events: auto;
 }
 
 .group[data-group="nav"]        { justify-self: start; }
 .group[data-group="instrument"] { justify-self: center; }
 .group[data-group="actions"]    { justify-self: end; }
 
+/* Dot divider — replaces the previous 1px vertical line. Sits inline with
+   the chrome row, ambient at 0.4 opacity. Pointer-events:none keeps the
+   dot from snagging clicks even though .group children re-enable them. */
 .divider {
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.12);
-  justify-self: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: default;
+  user-select: none;
+  pointer-events: none;
+  align-self: center;
 }
 
-/* Mobile (≤640px): the desktop grid overflows 320–390px viewports by ~400–500px,
-   clipping Share/SizePicker/ResetAll/PopOut behind the canvas right edge. Until
-   the header gets its proper mobile redesign (ScrollMeter likely moves to the
-   bottom to match the Lightbox), keep FilterPill (left) + Share (right) only. */
+/* Mobile (≤640px): chrome row collapses to FilterPill (left) + Share (right)
+   only — same constraint as the previous solid header. */
 @media (max-width: 640px) {
   .header {
-    padding: 0 12px;
+    padding: 10px 12px 0;
     gap: 8px;
   }
   .divider { display: none; }
