@@ -872,6 +872,36 @@ export function BoardRoot() {
   const contentWidth = Math.max(viewport.w, contentBounds.width)
   const contentHeight = Math.max(viewport.h, contentBounds.height)
 
+  // Visible card range [N1, N2] for the ScrollMeter counter readout. Naturally
+  // 60Hz-throttled: viewport state updates once per scroll event (React
+  // batches within a frame), so this useMemo recomputes once per frame.
+  // Cards are laid out by skyline (not strictly y-sorted across columns),
+  // so we sweep the full filteredItems list and track first/last visible
+  // index. The card's screen-space top in canvasWrap coords is
+  // `BOARD_TOP_PAD_PX + pos.y - viewport.y` — visible if that intersects
+  // [0, viewport.h].
+  const visibleRange = useMemo<{ start: number; end: number }>(() => {
+    if (filteredItems.length === 0) return { start: 0, end: 0 }
+    let firstIdx = -1
+    let lastIdx = -1
+    for (let i = 0; i < filteredItems.length; i++) {
+      const item = filteredItems[i]
+      if (!item) continue
+      const pos = layout.positions[item.bookmarkId]
+      if (!pos) continue
+      const cardTop = BOARD_TOP_PAD_PX + pos.y - viewport.y
+      const cardBottom = cardTop + pos.h
+      if (cardBottom > 0 && cardTop < viewport.h) {
+        if (firstIdx === -1) firstIdx = i
+        lastIdx = i
+      }
+    }
+    return {
+      start: firstIdx >= 0 ? firstIdx + 1 : 0,
+      end: lastIdx >= 0 ? lastIdx + 1 : 0,
+    }
+  }, [filteredItems, layout.positions, viewport.y, viewport.h])
+
   return (
     <div className={styles.outerFrame}>
       {/* Outer-frame chrome — wordmark (top-left) + link strip (bottom).
@@ -895,14 +925,6 @@ export function BoardRoot() {
               onChange={handleFilterChange}
               moods={moods}
               counts={sidebarCounts}
-            />
-          }
-          instrument={
-            <ScrollMeter
-              contentHeight={contentBounds.height}
-              viewportY={viewport.y}
-              viewportHeight={viewport.h}
-              onScrollTo={handleScrollMeterJump}
             />
           }
           actions={
@@ -1008,6 +1030,23 @@ export function BoardRoot() {
             <EmptyStateWelcome onOpenModal={handleOpenBookmarkletModal} />
           )}
         </div>
+        {/* Session 28: ScrollMeter relocated from the TopHeader instrument
+            slot to the canvas bottom (mirroring LightboxNavMeter's pixel
+            position). Sibling of canvasWrap so it lives inside the same
+            rounded-canvas stacking context as the cards behind it, but
+            above the bottom edge scrim band. Hidden via the same prop
+            mechanism as TopHeader so the meter cleanly swaps with
+            LightboxNavMeter when the user opens a card. */}
+        <ScrollMeter
+          contentHeight={contentBounds.height}
+          viewportY={viewport.y}
+          viewportHeight={viewport.h}
+          onScrollTo={handleScrollMeterJump}
+          visibleRangeStart={visibleRange.start}
+          visibleRangeEnd={visibleRange.end}
+          totalCount={filteredItems.length}
+          hidden={!!lightboxItemId}
+        />
         {/* Lightbox is a sibling of TopHeader + canvasWrap, NOT a child of
             canvasWrap. This way its backdrop (position: absolute; inset: 0)
             fills the FULL canvas — including the TopHeader band — so the

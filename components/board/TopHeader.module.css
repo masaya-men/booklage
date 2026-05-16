@@ -1,14 +1,13 @@
 /* Apple iOS Photos / visionOS overlay-UI direction: the header itself is
    no longer a solid bar — it floats over the board as a row of text-only
    chrome elements, with legibility supplied by the canvas edge gradient
-   scrim (BoardRoot.module.css ::before). The header DOM (and its grid
-   layout) is preserved so existing slots / tests / a11y order keep
-   working; only the visual envelope (background, border, sticky height)
-   is stripped away. */
+   scrim (BoardRoot.module.css ::before). After Session 28 the instrument
+   slot is gone (ScrollMeter relocated to the canvas bottom), so the row
+   contains just nav (left) and actions (right) with space-between. */
 
 .header {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto 1fr;
+  display: flex;
+  justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
   position: absolute;
@@ -43,23 +42,6 @@
   pointer-events: auto;
 }
 
-.group[data-group="nav"]        { justify-self: start; }
-.group[data-group="instrument"] { justify-self: center; }
-.group[data-group="actions"]    { justify-self: end; }
-
-/* Dot divider — replaces the previous 1px vertical line. Sits inline with
-   the chrome row, ambient at 0.4 opacity. Pointer-events:none keeps the
-   dot from snagging clicks even though .group children re-enable them. */
-.divider {
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 14px;
-  font-family: inherit;
-  cursor: default;
-  user-select: none;
-  pointer-events: none;
-  align-self: center;
-}
-
 /* Mobile (≤640px): chrome row collapses to FilterPill (left) + Share (right)
    only — same constraint as the previous solid header. */
 @media (max-width: 640px) {
@@ -67,8 +49,6 @@
     padding: 10px 12px 0;
     gap: 8px;
   }
-  .divider { display: none; }
-  .group[data-group="instrument"] { display: none; }
   .group[data-group="actions"] > :not([data-testid="share-pill"]) {
     display: none;
   }

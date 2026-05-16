@@ -5,7 +5,6 @@ import styles from './TopHeader.module.css'
 
 type Props = {
   readonly nav: ReactNode
-  readonly instrument: ReactNode
   readonly actions: ReactNode
   /** When the Lightbox is open we fade the header out so its chrome doesn't
    *  compete with the lightbox surface, and the lightbox close button (top-
@@ -15,7 +14,7 @@ type Props = {
   readonly hidden?: boolean
 }
 
-export function TopHeader({ nav, instrument, actions, hidden }: Props): ReactElement {
+export function TopHeader({ nav, actions, hidden }: Props): ReactElement {
   const className = hidden ? `${styles.header} ${styles.hidden}` : styles.header
   return (
     <header
@@ -24,9 +23,6 @@ export function TopHeader({ nav, instrument, actions, hidden }: Props): ReactEle
       aria-hidden={hidden ? 'true' : undefined}
     >
       <div className={styles.group} data-group="nav">{nav}</div>
-      <span className={styles.divider} aria-hidden="true">·</span>
-      <div className={styles.group} data-group="instrument">{instrument}</div>
-      <span className={styles.divider} aria-hidden="true">·</span>
       <div className={styles.group} data-group="actions">{actions}</div>
     </header>
   )
