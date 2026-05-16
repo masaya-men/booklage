@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "Dấu trang × Cắt dán"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "Tôi đã tạo một bức cắt dán từ dấu trang và nó tuyệt vời ✨ #Booklage"
+    "defaultText": "Tôi đã tạo một bức cắt dán từ dấu trang và nó tuyệt vời ✨ #AllMarks"
   }
 }

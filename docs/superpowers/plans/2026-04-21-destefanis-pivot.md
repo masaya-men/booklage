@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Pivot Booklage board from folder-based to tag-based (mood bucket) model, adopt destefanis/twitter-bookmarks-grid visual identity, add Lightbox + Triage + entrance animation, and rewrite /save as a zero-friction top-center toast popup. All 14 locked brainstorm items land in MVP.
+**Goal:** Pivot AllMarks board from folder-based to tag-based (mood bucket) model, adopt destefanis/twitter-bookmarks-grid visual identity, add Lightbox + Triage + entrance animation, and rewrite /save as a zero-friction top-center toast popup. All 14 locked brainstorm items land in MVP.
 
 **Architecture:** Data layer migrates IDB v8 → v9 (new `moods` store, `bookmarks.tags[]` replaces `folderId`). Save flow auto-writes on /save load, sends BroadcastChannel, board tab listens and fade-ins the new card. Classification moves from save-time picker to a dedicated `/triage` ceremony route. Visuals adopt destefanis dark minimal (flat cards, 5-column 160px masonry, 10px gaps, Noto Serif JP titles). Lightbox overlays on card click with GSAP spring (replaces `window.open`). `BookmarkTagger` interface lets MVP `HeuristicTagger` be swapped for embedding/LLM variants post-launch.
 
@@ -184,10 +184,10 @@ export interface MoodRecord {
 export type MoodInput = Omit<MoodRecord, 'id' | 'createdAt'>
 ```
 
-Update `BooklageDB` schema (at line 140):
+Update `AllMarksDB` schema (at line 140):
 
 ```typescript
-interface BooklageDB {
+interface AllMarksDB {
   bookmarks: BookmarkRecord
   moods: MoodRecord
   cards: CardRecord
@@ -423,7 +423,7 @@ export async function reorderMoods(db: DbLike, orderedIds: readonly string[]): P
 In `lib/storage/indexeddb.ts`:
 
 1. Delete `FolderRecord`, `FolderInput`, `addFolder`, `getAllFolders`, `getBookmarksByFolder`, `getCardsByFolder` functions (and their JSDoc).
-2. Remove `folders: FolderRecord` from `BooklageDB`.
+2. Remove `folders: FolderRecord` from `AllMarksDB`.
 3. Update `addBookmark` — instead of accepting `folderId`, take a bookmark input with `tags: string[]` and use `getAllBookmarks(db)` length for `orderIndex`. Update `BookmarkInput`:
 
 ```typescript
@@ -441,7 +441,7 @@ Rewrite `addBookmark` body:
 
 ```typescript
 export async function addBookmark(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   input: BookmarkInput,
 ): Promise<BookmarkRecord> {
   const existingCount = await db.count('bookmarks')
@@ -493,7 +493,7 @@ Also rewrite `deleteBookmark` to not use the `by-folder` index. Use `by-bookmark
 
 ```typescript
 export async function deleteBookmark(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
 ): Promise<void> {
   const tx = db.transaction(['bookmarks', 'cards'], 'readwrite')
@@ -1241,7 +1241,7 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toContain('top=40')
   })
 
-  it('includes Booklage origin', () => {
+  it('includes AllMarks origin', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
     expect(uri).toContain('https://booklage.pages.dev/save')
   })
@@ -1433,7 +1433,7 @@ export function SaveToast(): ReactElement {
       <div className={styles.container} data-state="no-url">
         <div className={styles.icon}>📌</div>
         <div className={styles.body}>
-          <span className={styles.brand}>Booklage</span>
+          <span className={styles.brand}>AllMarks</span>
           <span className={styles.label}>ブックマークレットから開いてください</span>
         </div>
       </div>
@@ -1452,7 +1452,7 @@ export function SaveToast(): ReactElement {
         {state === 'error' && <div className={styles.errorIcon} role="img" aria-label={t('bookmarklet.toast.error')}>✗</div>}
       </div>
       <div className={styles.body}>
-        <span className={styles.brand}>Booklage</span>
+        <span className={styles.brand}>AllMarks</span>
         <span className={`${styles.label} ${state === 'saved' ? styles.saved : ''} ${state === 'error' ? styles.error : ''}`.trim()}>
           {state === 'saving' && t('bookmarklet.toast.saving')}
           {state === 'saved' && t('bookmarklet.toast.saved')}
@@ -1855,7 +1855,7 @@ export function Sidebar({
       <LiquidGlass className={styles.sidebarGlass}>
         <div className={styles.inner}>
           <div className={styles.brand}>
-            <span className={styles.brandName}>Booklage</span>
+            <span className={styles.brandName}>AllMarks</span>
             <button
               type="button"
               className={styles.collapseBtn}

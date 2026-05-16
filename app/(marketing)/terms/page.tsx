@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
-  description: 'Booklage terms of service — free to use, your data stays in your browser.',
+  description: 'AllMarks terms of service — free to use, your data stays in your browser.',
 }
 
 export default function TermsPage(): React.ReactElement {
@@ -13,13 +13,13 @@ export default function TermsPage(): React.ReactElement {
 
       <h2>1. Acceptance of Terms</h2>
       <p>
-        By accessing or using Booklage (&quot;the Service&quot;), you agree to be bound
+        By accessing or using AllMarks (&quot;the Service&quot;), you agree to be bound
         by these Terms of Service. If you do not agree, please do not use the Service.
       </p>
 
       <h2>2. Description of Service</h2>
       <p>
-        Booklage is a free web application that allows you to save bookmarks
+        AllMarks is a free web application that allows you to save bookmarks
         and arrange them as visual collages. All data is stored locally in your
         browser&apos;s IndexedDB. No account or registration is required.
       </p>
@@ -30,15 +30,15 @@ export default function TermsPage(): React.ReactElement {
         <li>You agree not to use the Service for any illegal purpose</li>
         <li>You agree not to attempt to interfere with or disrupt the Service</li>
         <li>You understand that your data is stored locally and clearing your
-          browser data will permanently delete your Booklage content</li>
+          browser data will permanently delete your AllMarks content</li>
       </ul>
 
       <h2>4. Intellectual Property</h2>
       <p>
-        Booklage respects the intellectual property rights of others. The bookmarks
-        you save reference content owned by third parties. Booklage does not claim
-        ownership of any bookmarked content. The Booklage application, its code,
-        design, and branding are the property of the Booklage team.
+        AllMarks respects the intellectual property rights of others. The bookmarks
+        you save reference content owned by third parties. AllMarks does not claim
+        ownership of any bookmarked content. The AllMarks application, its code,
+        design, and branding are the property of the AllMarks team.
       </p>
 
       <h2>5. Content Sharing</h2>
@@ -60,7 +60,7 @@ export default function TermsPage(): React.ReactElement {
 
       <h2>7. Limitation of Liability</h2>
       <p>
-        To the maximum extent permitted by law, the Booklage team shall not be
+        To the maximum extent permitted by law, the AllMarks team shall not be
         liable for any indirect, incidental, special, consequential, or punitive
         damages arising from your use of the Service.
       </p>

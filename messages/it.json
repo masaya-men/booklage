@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "Segnalibri × Collage"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "Ho creato un collage di segnalibri ed è fantastico ✨ #Booklage"
+    "defaultText": "Ho creato un collage di segnalibri ed è fantastico ✨ #AllMarks"
   }
 }

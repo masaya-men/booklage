@@ -1,4 +1,4 @@
-# 開発ToDo (旧 Booklage → リブランド: AllMarks 進行中)
+# 開発ToDo (旧 AllMarks → リブランド: AllMarks 進行中)
 
 > 完了済みタスク → [TODO_COMPLETED.md](./TODO_COMPLETED.md)
 > アイデア・将来構想・代替案 → `docs/private/IDEAS.md` (非公開、 gitignored)
@@ -39,12 +39,12 @@
 
 CURRENT_GOAL.md にゴール + 進め方 (Phase 1 視覚 fine-tune / Phase 2 ③ Slider) が書いてあります。
 
-### リブランド進行: Booklage → AllMarks
+### リブランド進行: AllMarks → AllMarks
 
 - 2026-05-11 セッション 8 で名前変更を決定
 - 新ブランド: **AllMarks** / メインドメイン: **allmarks.app** (取得は月末)
 - 詳細 spec: `docs/private/2026-05-11-allmarks-branding-spec.md` (gitignored)
-- **現状コードは全て「Booklage」 のまま**。 ドメイン取得後に一気に置換予定
+- **現状コードは全て「AllMarks」 のまま**。 ドメイン取得後に一気に置換予定
 
 ---
 

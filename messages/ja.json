@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "Bookmark × Collage"
   },
   "board": {
@@ -44,13 +44,13 @@
     },
     "empty": {
       "title": "ブックマークをはじめよう",
-      "description": "Booklage は、どのサイトからでも 1 クリックで保存できるブックマークレットを使います",
-      "installButton": "📌 Booklage を設置",
+      "description": "AllMarks は、どのサイトからでも 1 クリックで保存できるブックマークレットを使います",
+      "installButton": "📌 AllMarks を設置",
       "alreadyInstalled": "既に設置済？ 別サイトで 📌 をクリック"
     },
     "bookmarkletModal": {
       "title": "ブックマークレットを設置する",
-      "linkLabel": "📌 Booklage",
+      "linkLabel": "📌 AllMarks",
       "dragInstruction": "↑ これをブラウザのブックマークバーにドラッグしてください",
       "barHint": "ブックマークバーが見えない場合:",
       "barShortcutWindows": "Windows: Ctrl + Shift + B",
@@ -75,7 +75,7 @@
     }
   },
   "share": {
-    "defaultText": "ブックマークでコラージュ作ったら最高になった✨ #Booklage"
+    "defaultText": "ブックマークでコラージュ作ったら最高になった✨ #AllMarks"
   },
   "bookmarklet": {
     "toast": {

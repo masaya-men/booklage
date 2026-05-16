@@ -73,7 +73,7 @@ export function SaveDemoSection(): React.ReactElement {
 
         <div className={styles.step}>
           <div className={styles.popup}>
-            <div className={styles.popupHeader}>📌 Booklage に保存</div>
+            <div className={styles.popupHeader}>📌 AllMarks に保存</div>
             <div className={styles.popupPreview} />
             <div className={styles.popupFolder}>My Collage</div>
             <div className={styles.popupSave}>保存</div>

@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "Favoritos × Colagem"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "Fiz uma colagem de favoritos e ficou incrível ✨ #Booklage"
+    "defaultText": "Fiz uma colagem de favoritos e ficou incrível ✨ #AllMarks"
   }
 }

@@ -1,7 +1,7 @@
 import type { TweetMeta, MediaSlot } from './types'
 
 /**
- * Booklage's CORS-friendly proxy for `cdn.syndication.twimg.com`.
+ * AllMarks's CORS-friendly proxy for `cdn.syndication.twimg.com`.
  *
  * Why we proxy: Twitter's syndication CDN responds with
  * `Access-Control-Allow-Origin: https://platform.twitter.com`, so any
@@ -13,7 +13,7 @@ import type { TweetMeta, MediaSlot } from './types'
  */
 const PROXY_ENDPOINT = '/api/tweet-meta'
 
-/** Fetch tweet metadata via the Booklage proxy. Returns null on any failure. */
+/** Fetch tweet metadata via the AllMarks proxy. Returns null on any failure. */
 export async function fetchTweetMeta(id: string): Promise<TweetMeta | null> {
   if (!/^\d+$/.test(id)) return null
   try {

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** スクロール連動のインタラクティブデモ型LPを実装し、Booklageで何ができるかを体験として伝える
+**Goal:** スクロール連動のインタラクティブデモ型LPを実装し、AllMarksで何ができるかを体験として伝える
 
 **Architecture:** `app/page.tsx`（Server Component）が `LandingPage`（Client Component）を読み込む。LandingPageは6つのセクションコンポーネントで構成。Lenisでスムーズスクロール、GSAP ScrollTriggerでスクロール連動アニメーション。各セクションは独立したCSS Modulesを持つ。
 
@@ -837,7 +837,7 @@ export function SaveDemoSection(): React.ReactElement {
         {/* Step 2: Popup */}
         <div className={styles.step}>
           <div className={styles.popup}>
-            <div className={styles.popupHeader}>📌 Booklage に保存</div>
+            <div className={styles.popupHeader}>📌 AllMarks に保存</div>
             <div className={styles.popupPreview} />
             <div className={styles.popupFolder}>My Collage</div>
             <div className={styles.popupSave}>保存</div>

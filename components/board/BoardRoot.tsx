@@ -909,7 +909,7 @@ export function BoardRoot() {
           back to the marketing site without intruding on the board. */}
       <BoardChrome />
       {/* Provisional onboarding affordance for early testers — drag the
-          pill into the browser bookmark bar to install Booklage. Revisit
+          pill into the browser bookmark bar to install AllMarks. Revisit
           once the marketing site handles install on its own. */}
       <BookmarkletPill />
       {/* Inner dark canvas — destefanis-style stage. The whole pan/cards/

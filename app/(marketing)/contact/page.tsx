@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Contact',
-  description: 'Contact the Booklage team — questions, feedback, and support.',
+  description: 'Contact the AllMarks team — questions, feedback, and support.',
 }
 
 export default function ContactPage(): React.ReactElement {
@@ -12,7 +12,7 @@ export default function ContactPage(): React.ReactElement {
 
       <h2>お問い合わせ</h2>
       <p>
-        Booklage に関するご質問、フィードバック、バグ報告などは
+        AllMarks に関するご質問、フィードバック、バグ報告などは
         以下の方法でご連絡ください。
       </p>
 
@@ -34,7 +34,7 @@ export default function ContactPage(): React.ReactElement {
 
       <h2>フィードバック</h2>
       <p>
-        Booklage をより良くするためのアイデアやご意見を歓迎します。
+        AllMarks をより良くするためのアイデアやご意見を歓迎します。
         「こんな機能が欲しい」「ここが使いにくい」など、
         どんな小さなことでもお聞かせください。
       </p>

@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'Booklage privacy policy — we collect zero personal data. Everything stays in your browser.',
+  description: 'AllMarks privacy policy — we collect zero personal data. Everything stays in your browser.',
 }
 
 export default function PrivacyPage(): React.ReactElement {
@@ -13,7 +13,7 @@ export default function PrivacyPage(): React.ReactElement {
 
       <h2>Our Philosophy: Zero Data Collection</h2>
       <p>
-        Booklage is built on a simple principle: <strong>your data belongs to you</strong>.
+        AllMarks is built on a simple principle: <strong>your data belongs to you</strong>.
         We do not collect, store, or transmit any personal data to our servers.
         All your bookmarks, folders, and collage layouts are stored exclusively
         in your browser&apos;s IndexedDB — a local database that never leaves your device.
@@ -36,28 +36,28 @@ export default function PrivacyPage(): React.ReactElement {
       </p>
       <ul>
         <li>Your data exists only on your device</li>
-        <li>Clearing your browser data removes all Booklage data</li>
+        <li>Clearing your browser data removes all AllMarks data</li>
         <li>We cannot access, recover, or view your data</li>
         <li>No server-side backups of your content exist</li>
       </ul>
 
       <h2>Sharing Feature</h2>
       <p>
-        When you share a collage, Booklage encodes the collage data into a compressed URL.
+        When you share a collage, AllMarks encodes the collage data into a compressed URL.
         This URL is generated entirely in your browser — no data is sent to our servers.
         The shared URL contains only the information you explicitly choose to share.
       </p>
 
       <h2>Bookmarklet</h2>
       <p>
-        The Booklage bookmarklet reads OGP meta tags (title, description, image) from the
+        The AllMarks bookmarklet reads OGP meta tags (title, description, image) from the
         page you&apos;re visiting. This information is processed entirely in your browser and
-        sent directly to your local Booklage popup window. No data passes through our servers.
+        sent directly to your local AllMarks popup window. No data passes through our servers.
       </p>
 
       <h2>Hosting &amp; Analytics</h2>
       <p>
-        Booklage is hosted on Cloudflare Pages. Cloudflare may collect minimal,
+        AllMarks is hosted on Cloudflare Pages. Cloudflare may collect minimal,
         anonymized server-level metrics (such as total page views) as part of their
         standard hosting service. These metrics contain no personally identifiable information.
         We do not use Google Analytics, Facebook Pixel, or any third-party tracking scripts.
@@ -65,7 +65,7 @@ export default function PrivacyPage(): React.ReactElement {
 
       <h2>Third-Party Services</h2>
       <p>
-        Booklage may display content from third-party websites (such as tweet embeds
+        AllMarks may display content from third-party websites (such as tweet embeds
         via react-tweet, or video embeds via oEmbed). These embeds may be subject to
         the privacy policies of their respective services. We recommend reviewing
         the privacy policies of any third-party service whose content appears in your collages.
@@ -81,7 +81,7 @@ export default function PrivacyPage(): React.ReactElement {
 
       <h2>Children&apos;s Privacy</h2>
       <p>
-        Booklage does not knowingly collect any information from children under 13.
+        AllMarks does not knowingly collect any information from children under 13.
         Since we collect no personal data from any user, this is inherently enforced.
       </p>
 

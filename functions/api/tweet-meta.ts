@@ -58,7 +58,7 @@ export async function onRequest(context: PagesContext): Promise<Response> {
   try {
     const res = await fetch(upstream, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Booklage/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; AllMarks/1.0)',
       },
       signal: AbortSignal.timeout(8000),
     })

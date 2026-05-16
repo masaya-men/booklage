@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** B0 リビルド時に削除されたブックマークレットを復活させ、任意サイトから 1 クリックで Booklage に保存できる主導線を再実装する。B-embeds 4 種カード（Tweet/VideoThumb/Image/Text）が実 URL で正しく出ることを確認する。
+**Goal:** B0 リビルド時に削除されたブックマークレットを復活させ、任意サイトから 1 クリックで AllMarks に保存できる主導線を再実装する。B-embeds 4 種カード（Tweet/VideoThumb/Image/Text）が実 URL で正しく出ることを確認する。
 
 **Architecture:** Pure inline `javascript:` URI 方式。OGP 抽出 + `/save` ポップアップ起動のみ bookmarklet が担当、保存処理は既存の `/save` route + `SavePopup` を無変更で流用。install UI はサイドバー行 + 導入モーダル + 空状態ウェルカムの 3 UI。
 
@@ -270,8 +270,8 @@ Append to `lib/utils/bookmarklet.ts`:
 const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,m=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},k=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},u=l.href,t=m('meta[property="og:title"]')||d.title||u,i=m('meta[property="og:image"]')||m('meta[name="twitter:image"]')||'',ds=(m('meta[property="og:description"]')||m('meta[name="description"]')||'').slice(0,200),sn=m('meta[property="og:site_name"]')||l.hostname,f=k('link[rel="icon"]')||k('link[rel="shortcut icon"]')||'/favicon.ico';if(f&&!/^https?:/.test(f)){try{f=new URL(f,u).href}catch(e){f=''}}var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f});window.open(__APP_URL__+'/save?'+p.toString(),'booklage-save','width=480,height=600,scrollbars=yes')})();`
 
 /**
- * Generate the `javascript:` URI for the Booklage bookmarklet.
- * @param appUrl — Booklage origin (e.g. https://booklage.pages.dev or http://localhost:3000)
+ * Generate the `javascript:` URI for the AllMarks bookmarklet.
+ * @param appUrl — AllMarks origin (e.g. https://booklage.pages.dev or http://localhost:3000)
  * @returns Full `javascript:...` URI ready to be placed in an `<a href>`
  */
 export function generateBookmarkletUri(appUrl: string): string {
@@ -316,13 +316,13 @@ In `messages/ja.json`, inside the existing `board` object, add these keys (merge
     },
     "empty": {
       "title": "ブックマークをはじめよう",
-      "description": "Booklage は、どのサイトからでも 1 クリックで保存できるブックマークレットを使います",
-      "installButton": "📌 Booklage を設置",
+      "description": "AllMarks は、どのサイトからでも 1 クリックで保存できるブックマークレットを使います",
+      "installButton": "📌 AllMarks を設置",
       "alreadyInstalled": "既に設置済？ 別サイトで 📌 をクリック"
     },
     "bookmarkletModal": {
       "title": "ブックマークレットを設置する",
-      "linkLabel": "📌 Booklage",
+      "linkLabel": "📌 AllMarks",
       "dragInstruction": "↑ これをブラウザのブックマークバーにドラッグしてください",
       "barHint": "ブックマークバーが見えない場合:",
       "barShortcutWindows": "Windows: Ctrl + Shift + B",
@@ -844,7 +844,7 @@ describe('EmptyStateWelcome', () => {
   it('calls onOpenModal when install button is clicked', () => {
     const onOpenModal = vi.fn()
     render(<EmptyStateWelcome onOpenModal={onOpenModal} />)
-    fireEvent.click(screen.getByRole('button', { name: /Booklage を設置/ }))
+    fireEvent.click(screen.getByRole('button', { name: /AllMarks を設置/ }))
     expect(onOpenModal).toHaveBeenCalledOnce()
   })
 })
@@ -1347,11 +1347,11 @@ Open `https://booklage.pages.dev/board` with Ctrl+Shift+R (hard reload).
 Smoke-check:
 - Sidebar shows "📌 ブックマークレット" row between Library and Folders
 - If Board is empty → welcome card shows with install button
-- Clicking either entry point → modal opens with draggable 📌 Booklage link
-- Drag the 📌 Booklage link to the browser bookmark bar → it appears as "Booklage" bookmark
+- Clicking either entry point → modal opens with draggable 📌 AllMarks link
+- Drag the 📌 AllMarks link to the browser bookmark bar → it appears as "AllMarks" bookmark
 - Navigate to any other site and click the bookmark bar 📌 → `/save` popup opens (480×600 window)
 - Select folder → Save → popup auto-closes after 1.5s
-- Return to Booklage `/board` → new card appears (via BroadcastChannel auto-refresh)
+- Return to AllMarks `/board` → new card appears (via BroadcastChannel auto-refresh)
 
 - [ ] **Step 10.5: Update `docs/TODO.md`**
 

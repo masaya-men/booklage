@@ -6,7 +6,7 @@ import { GuideCalloutDragLink } from '@/components/bookmarklet/GuideCalloutDragL
 export const metadata: Metadata = {
   title: 'Guide',
   description:
-    'Booklage の使い方ガイド — ブックマークレットの設置から、ボード上でのコラージュ操作まで。',
+    'AllMarks の使い方ガイド — ブックマークレットの設置から、ボード上でのコラージュ操作まで。',
 }
 
 export default function GuidePage(): React.ReactElement {
@@ -31,7 +31,7 @@ export default function GuidePage(): React.ReactElement {
 
       <h2>はじめに</h2>
       <p>
-        Booklage はアカウント登録もインストールも不要です。
+        AllMarks はアカウント登録もインストールも不要です。
         ブラウザがあれば 30 秒で始められます。手順は以下の 3 ステップのみ。
       </p>
       <ol>
@@ -43,13 +43,13 @@ export default function GuidePage(): React.ReactElement {
       <h2>1. ブックマークレットの設置</h2>
       <p>
         ブックマークレットは、Web サイト上で実行できる小さなプログラムです。
-        Booklage では、これを使ってあらゆるサイトをワンクリックで保存します。
+        AllMarks では、これを使ってあらゆるサイトをワンクリックで保存します。
       </p>
       <ol>
         <li><Link href="/board">Board ページ</Link>を開きます</li>
         <li>初回は中央に「ようこそ」画面が表示されます。「ブックマークレットを設置」をクリック</li>
-        <li>表示された「📌 Booklage に保存」リンクを、ブラウザのブックマークバーに <strong>ドラッグ&ドロップ</strong> します</li>
-        <li>ブックマークバーに「Booklage に保存」が現れたら設置完了</li>
+        <li>表示された「📌 AllMarks に保存」リンクを、ブラウザのブックマークバーに <strong>ドラッグ&ドロップ</strong> します</li>
+        <li>ブックマークバーに「AllMarks に保存」が現れたら設置完了</li>
       </ol>
       <h3>ブックマークバーが見えない場合</h3>
       <ul>
@@ -61,7 +61,7 @@ export default function GuidePage(): React.ReactElement {
       <h2>2. ブックマークを保存する</h2>
       <ol>
         <li>保存したい Web サイト（X の投稿、YouTube 動画、ブログ記事、なんでも）を開きます</li>
-        <li>ブックマークバーの「📌 Booklage に保存」をクリックします</li>
+        <li>ブックマークバーの「📌 AllMarks に保存」をクリックします</li>
         <li>ポップアップで自動的にタイトルとサムネイルが取得されます</li>
         <li>そのまま「保存」をクリックすると Board に追加されます</li>
       </ol>
@@ -111,7 +111,7 @@ export default function GuidePage(): React.ReactElement {
       <h2>5. データについて知っておくこと</h2>
       <ul>
         <li>
-          <strong>データはこのブラウザ内のみに保存されます</strong> — 別のブラウザや別の端末で同じ Booklage を開いても、保存したブックマークは見えません
+          <strong>データはこのブラウザ内のみに保存されます</strong> — 別のブラウザや別の端末で同じ AllMarks を開いても、保存したブックマークは見えません
         </li>
         <li>
           <strong>シークレットモードでは保存されません</strong> — プライベートウィンドウを閉じるとデータも消えます
@@ -142,7 +142,7 @@ export default function GuidePage(): React.ReactElement {
       <h3>サムネイルが正しく表示されない</h3>
       <p>
         一部の Web サイトは OGP 画像を提供していない、または X のように特殊な仕様を持っています。
-        Booklage は自動的にメディア API へ問い合わせて補完しますが、取得できない場合はテキストカードとして表示されます。
+        AllMarks は自動的にメディア API へ問い合わせて補完しますが、取得できない場合はテキストカードとして表示されます。
       </p>
 
       <h2>困ったときは</h2>

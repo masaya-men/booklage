@@ -125,7 +125,7 @@ export function SharedView(): ReactElement {
         />
       </div>
       <Link href="/board" className={styles.cornerLink}>
-        Booklage を試す ↗
+        AllMarks を試す ↗
       </Link>
       <Lightbox
         item={openCard}

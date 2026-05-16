@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "북마크 × 콜라주"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "북마크로 콜라주를 만들었는데 최고예요 ✨ #Booklage"
+    "defaultText": "북마크로 콜라주를 만들었는데 최고예요 ✨ #AllMarks"
   }
 }

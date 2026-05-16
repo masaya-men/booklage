@@ -29,7 +29,7 @@ export function GuideCalloutDragLink(): ReactElement | null {
       onClick={(e): void => e.preventDefault()}
       title="ブックマークバーにドラッグして設置"
     >
-      📌 Booklage に保存
+      📌 AllMarks に保存
     </a>
   )
 }

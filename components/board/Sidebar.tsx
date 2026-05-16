@@ -35,7 +35,7 @@ export function Sidebar({
       <LiquidGlass className={styles.sidebarGlass}>
         <div className={styles.inner}>
           <div className={styles.brand}>
-            <span className={styles.brandName}>Booklage</span>
+            <span className={styles.brandName}>AllMarks</span>
             <button
               type="button"
               className={styles.collapseBtn}

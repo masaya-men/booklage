@@ -708,7 +708,7 @@ function StageText({ zoom }: { readonly zoom: number }): ReactElement {
     'Sweep across strong edges — high contrast makes the bend snap.',
     'Drag the lens. Hover. Release. The droplet bounces back to shape.',
     'displacement / refraction / specular / bloom / shadow / deformation',
-    'Booklage · Bookmark × Collage · 表現としてのブックマーク',
+    'AllMarks · Bookmark × Collage · 表現としてのブックマーク',
   ]
   // Repeat 4× so even tall stages stay populated.
   const items = Array.from({ length: 4 }, (_, copy) =>

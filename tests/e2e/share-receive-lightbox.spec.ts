@@ -29,7 +29,7 @@ async function openLightboxOnFirstCard(page: Page): Promise<void> {
 test.describe('Receive-side Lightbox + nav', () => {
   test('clicking a card opens the Lightbox', async ({ page }) => {
     await page.goto(await makeShareUrl(5))
-    await expect(page.getByText('Booklage を試す')).toBeVisible()
+    await expect(page.getByText('AllMarks を試す')).toBeVisible()
 
     await openLightboxOnFirstCard(page)
     await expect(page.getByTestId('lightbox')).toContainText('Card 0')
@@ -68,11 +68,11 @@ test.describe('Receive-side Lightbox + nav', () => {
     await expect(page.getByTestId('lightbox')).not.toBeVisible({ timeout: 2000 })
   })
 
-  test('corner link reads Booklage を試す', async ({ page }) => {
+  test('corner link reads AllMarks を試す', async ({ page }) => {
     await page.goto(await makeShareUrl(3))
-    await expect(page.getByText('Booklage を試す')).toBeVisible()
+    await expect(page.getByText('AllMarks を試す')).toBeVisible()
     // Old phrasings must not be present
-    await expect(page.getByText('Booklage で表現する')).not.toBeVisible()
-    await expect(page.getByText('自分も Booklage を使う')).not.toBeVisible()
+    await expect(page.getByText('AllMarks で表現する')).not.toBeVisible()
+    await expect(page.getByText('自分も AllMarks を使う')).not.toBeVisible()
   })
 })

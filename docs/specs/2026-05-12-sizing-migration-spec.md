@@ -1,6 +1,6 @@
 # Sizing Migration Spec — AllMarks → 新 sizing 哲学
 
-> 全プロジェクト共通の sizing 思想 (`C:\Users\masay\.claude\design-philosophy-sizing.md` v2 / 2026-05-12) への AllMarks (旧 Booklage) 移行計画。 **本ドキュメントは spec のみ。 実装は別セッション。**
+> 全プロジェクト共通の sizing 思想 (`C:\Users\masay\.claude\design-philosophy-sizing.md` v2 / 2026-05-12) への AllMarks (旧 AllMarks) 移行計画。 **本ドキュメントは spec のみ。 実装は別セッション。**
 
 最終更新: 2026-05-12
 対象範囲: `app/globals.css` の `:root` token + 主要 component CSS modules

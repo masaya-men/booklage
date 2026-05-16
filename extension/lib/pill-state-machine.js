@@ -1,4 +1,4 @@
-// Pure state-machine for the Booklage cursor pill.
+// Pure state-machine for the AllMarks cursor pill.
 // Imported by content.js + tests/extension/cursor-pill.test.ts.
 
 export const PILL_STATES = ['saving', 'saved', 'error']

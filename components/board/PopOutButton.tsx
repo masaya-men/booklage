@@ -15,8 +15,8 @@ export function PopOutButton({ onClick, disabled }: PopOutButtonProps): ReactEle
       className={styles.button}
       onClick={onClick}
       disabled={disabled}
-      title={disabled ? 'PiP not supported in this browser' : 'Open Booklage Companion'}
-      aria-label="Open Booklage Companion"
+      title={disabled ? 'PiP not supported in this browser' : 'Open AllMarks Companion'}
+      aria-label="Open AllMarks Companion"
       data-testid="pip-popout"
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">

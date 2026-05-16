@@ -78,7 +78,7 @@ export function usePipWindow(): PipWindowApi {
     // resize landed (Chrome may clamp below ~240).
     if (typeof console !== 'undefined') {
       console.warn(
-        `[Booklage PiP v80] outer ${win.outerWidth}×${win.outerHeight}, inner ${win.innerWidth}×${win.innerHeight}`,
+        `[AllMarks PiP v80] outer ${win.outerWidth}×${win.outerHeight}, inner ${win.innerWidth}×${win.innerHeight}`,
       )
     }
 
@@ -129,7 +129,7 @@ export function usePipWindow(): PipWindowApi {
     if (typeof console !== 'undefined') {
       // Use console.warn so it bypasses default-level filters that hide info.
       console.warn(
-        `[Booklage PiP v80] injected ${totalRules} CSS rules across ${document.styleSheets.length} parent sheets`,
+        `[AllMarks PiP v80] injected ${totalRules} CSS rules across ${document.styleSheets.length} parent sheets`,
       )
     }
 
@@ -142,7 +142,7 @@ export function usePipWindow(): PipWindowApi {
     // Chrome's Document PiP intentionally always shows the origin in the
     // title bar (anti-spoofing), so document.title doesn't actually surface.
     // Setting it anyway in case Chrome relaxes this in future versions.
-    win.document.title = 'Booklage'
+    win.document.title = 'AllMarks'
 
     win.addEventListener('pagehide', () => setPipWindow(null), { once: true })
     setPipWindow(win)
@@ -159,7 +159,7 @@ export function usePipWindow(): PipWindowApi {
     }
   }, [pipWindow])
 
-  // Mirror PiP state onto <html data-booklage-pip>. The Booklage browser
+  // Mirror PiP state onto <html data-booklage-pip>. The AllMarks browser
   // extension reads this marker to skip the cursor pill while PiP is open
   // (the new card sliding into PiP is feedback enough). Removed on close.
   useEffect(() => {

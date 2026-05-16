@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "إشارات مرجعية × كولاج"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "صنعت كولاج من الإشارات المرجعية وكان رائعًا ✨ #Booklage"
+    "defaultText": "صنعت كولاج من الإشارات المرجعية وكان رائعًا ✨ #AllMarks"
   }
 }

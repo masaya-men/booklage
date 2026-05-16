@@ -793,7 +793,7 @@ In `lib/storage/indexeddb.ts`, near the existing `updateBookmarkSizePreset`:
 import { clampCardWidth, MIN_CARD_WIDTH, MAX_CARD_WIDTH } from '@/lib/board/size-migration'
 
 export async function updateBookmarkCardWidth(
-  db: BooklageDB,
+  db: AllMarksDB,
   bookmarkId: string,
   cardWidth: number,
 ): Promise<void> {

@@ -1,5 +1,5 @@
 /** Application name — sourced from env or fallback */
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'Booklage'
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'AllMarks'
 
 /** Application URL — sourced from env or fallback */
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
@@ -14,7 +14,9 @@ export const FOLDER_COLORS = [
  *  B0 does not render rotation; kept for forward compatibility with future card styles. */
 export const FLOAT_ROTATION_RANGE = 3
 
-/** IndexedDB database name */
+/** IndexedDB database name. **DO NOT CHANGE** — renaming would orphan
+ *  all existing user data. Kept as legacy 'booklage-db' even after the
+ *  AllMarks rebrand (2026-05-16). */
 export const DB_NAME = 'booklage-db'
 
 /** IndexedDB schema version */

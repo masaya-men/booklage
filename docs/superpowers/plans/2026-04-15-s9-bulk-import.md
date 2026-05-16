@@ -114,7 +114,7 @@ export type { OgpStatus } from '@/lib/storage/indexeddb'
 export interface FolderAssignment {
   /** Source folder name (from file) */
   sourceName: string
-  /** Target Booklage folder ID (existing or new) */
+  /** Target AllMarks folder ID (existing or new) */
   targetFolderId: string
   /** Whether this folder needs to be created */
   isNew: boolean
@@ -292,7 +292,7 @@ const bookmark: BookmarkRecord = {
  * @param ogpData - The OGP data to merge
  */
 export async function updateBookmarkOgp(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   ogpData: { title?: string; description?: string; thumbnail?: string; favicon?: string; siteName?: string; ogpStatus: OgpStatus },
 ): Promise<void> {
@@ -310,7 +310,7 @@ export async function updateBookmarkOgp(
  * Get all bookmarks across all folders.
  */
 export async function getAllBookmarks(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
 ): Promise<BookmarkRecord[]> {
   return db.getAll('bookmarks')
 }
@@ -320,7 +320,7 @@ export async function getAllBookmarks(
  * Used for deduplication during import.
  */
 export async function getBookmarksByUrls(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   urls: Set<string>,
 ): Promise<BookmarkRecord[]> {
   const all = await db.getAll('bookmarks')
@@ -340,7 +340,7 @@ export async function getBookmarksByUrls(
  * @returns Array of created BookmarkRecords
  */
 export async function addBookmarkBatch(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   inputs: BookmarkInput[],
   batchSize: number = 50,
   onProgress?: (completed: number) => void,
@@ -1586,7 +1586,7 @@ export interface ImportProgress {
 
 /**
  * Build folder assignments from parsed bookmarks.
- * Maps source folder names to existing or new Booklage folders.
+ * Maps source folder names to existing or new AllMarks folders.
  */
 export async function buildFolderAssignments(
   db: IDBPDatabase<unknown>,
@@ -1758,7 +1758,7 @@ git commit -m "feat(s9): batch import engine — folder creation, dedupe, OGP qu
 - Create: `components/import/ImportModal.tsx` + `ImportModal.module.css`
 - Create: `components/import/SourceSelector.tsx` + `SourceSelector.module.css`
 
-This is a UI task. Implement the modal shell with step management, and the source selection tiles (step 1). Use the existing Booklage design system: liquid glass, GSAP animations, CSS modules.
+This is a UI task. Implement the modal shell with step management, and the source selection tiles (step 1). Use the existing AllMarks design system: liquid glass, GSAP animations, CSS modules.
 
 Read the design spec at `docs/superpowers/specs/2026-04-15-s9-bulk-import.md` for the full UI specification. Read existing UI patterns in `components/board/SettingsPanel.tsx` and `components/bookmarklet/SavePopup.tsx` for glass effect and animation patterns.
 
@@ -1881,7 +1881,7 @@ git commit -m "feat(s9): integrate import modal and bookmark list panel into boa
 - [ ] **Step 6: Completion celebration** — CSS keyframes for sparkle particles, triggered after last card lands
 - [ ] **Step 7: Toast notification** — slide in from top-right, 5s auto-dismiss with progress bar
 - [ ] **Step 8: Liquid glass on modal** — apply `useLiquidGlass` hook to modal container, follow existing pattern from `SettingsPanel.tsx`
-- [ ] **Step 9: Custom scrollbar for modal** — CSS `::-webkit-scrollbar` styles matching Booklage theme
+- [ ] **Step 9: Custom scrollbar for modal** — CSS `::-webkit-scrollbar` styles matching AllMarks theme
 - [ ] **Step 10: Verify all animations on dev server**
 - [ ] **Step 11: Commit**
 

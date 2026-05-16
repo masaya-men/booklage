@@ -33,7 +33,7 @@ B0 で装飾ゼロの骨組みを作ったボードに、**「表現ツール」
 
 ### 含まないもの（次スプリント以降）
 
-- **B1-playback**: 複数動画・音を同時再生（Booklage の核だが別 spec）
+- **B1-playback**: 複数動画・音を同時再生（AllMarks の核だが別 spec）
 - **B1 装飾**: リキッドグラス、カードスタイル、テーマ別アニメーション、スプリング物理
 - **B1.5 or B2 Share+Import**: SNS シェアから直接ブクマをインポートできる機構
 - **B2 Triage**: 大量ブクマ仕分けモード（Tinder 風）
@@ -396,7 +396,7 @@ export type BoardConfigV6 = {
 | Grid 配置感 | **Moodboard 3000**（Figma plugin） | gap / margin の数値、justified 感 |
 | Meanwhile Studio collage | **`docs/private/IDEAS.md`（非公開）** | 有機的重なり、ブリード感 |
 
-**実装時**: **Designmd Style Extractor**（Chrome 拡張）で shopify.design 等の CSS を吸い出し、**数値と余白のリズムだけ** 学習して Booklage 独自に再構成。**そのまま使うのは NG**（AI 感・shadcn 感が出る）。
+**実装時**: **Designmd Style Extractor**（Chrome 拡張）で shopify.design 等の CSS を吸い出し、**数値と余白のリズムだけ** 学習して AllMarks 独自に再構成。**そのまま使うのは NG**（AI 感・shadcn 感が出る）。
 
 ### B11. テストシナリオ
 

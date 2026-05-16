@@ -4,7 +4,7 @@ type IntentInput = {
   readonly text?: string
 }
 
-const DEFAULT_TEXT = 'Booklage で見る ↗'
+const DEFAULT_TEXT = 'AllMarks で見る ↗'
 
 /**
  * Build a Twitter / X Web Intent URL. The image must be attached manually by

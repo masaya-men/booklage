@@ -1,4 +1,4 @@
-// Booklage Service Worker
+// AllMarks Service Worker
 // Cache strategy:
 //   - Pre-cache: /board (main app), manifest, icons
 //   - Cache-first: /_next/static/* (hashed immutable assets)

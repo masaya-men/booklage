@@ -6,7 +6,7 @@
 
 ## 目的
 
-ユーザーが任意の Web サイトからワンクリックで Booklage にブックマークを保存できる主導線（bookmarklet）を復活させる。B0 リビルド時に削除された `public/bookmarklet.js` と board 上の install UI を再実装し、B-embeds 4 種カード（Tweet / VideoThumb / Image / Text）の pickCard router に実 URL が正しく流れることを検証する。
+ユーザーが任意の Web サイトからワンクリックで AllMarks にブックマークを保存できる主導線（bookmarklet）を復活させる。B0 リビルド時に削除された `public/bookmarklet.js` と board 上の install UI を再実装し、B-embeds 4 種カード（Tweet / VideoThumb / Image / Text）の pickCard router に実 URL が正しく流れることを検証する。
 
 ## 前提（ 2026-04-21 時点の既存資産）
 
@@ -23,12 +23,12 @@
 
 ```
 [任意の Web サイト]
-  ↓ ユーザーがブックマークバーの「📌 Booklage」をクリック
+  ↓ ユーザーがブックマークバーの「📌 AllMarks」をクリック
   ↓ bookmarklet JS (inline URI) が実行される
   ↓ ページの OGP メタタグを読み取り
   ↓ window.open('/save?url=...&title=...&image=...&desc=...&site=...&favicon=...', 'booklage-save', 'width=480,height=600,scrollbars=yes')
 
-[Booklage /save ポップアップ（既存 SavePopup、無変更）]
+[AllMarks /save ポップアップ（既存 SavePopup、無変更）]
   ↓ URL param パース → プレビュー表示
   ↓ IDB からフォルダ一覧取得 → 選択 UI
   ↓ [保存] → addBookmark() で IDB に書き込み
@@ -158,7 +158,7 @@ javascript:(function(){
 
 **構成**（上から）:
 1. ヘッダー: 「📌 ブックマークレットを設置する」 + 閉じる × ボタン
-2. 大きめのドラッグ可能リンク（`<a href={bookmarkletUri} draggable>📌 Booklage</a>`）
+2. 大きめのドラッグ可能リンク（`<a href={bookmarkletUri} draggable>📌 AllMarks</a>`）
    - styled to look like a chip/button with depth
    - `onClick={(e) => e.preventDefault()}` でクリック誤操作を防ぐ（ドラッグのみ有効）
 3. 説明文: 「↑ これをブラウザのブックマークバーにドラッグしてください」
@@ -196,11 +196,11 @@ javascript:(function(){
 ┌────────────────────────────────────┐
 │           📌                       │
 │   ブックマークをはじめよう           │
-│   Booklage は、どのサイトからでも    │
+│   AllMarks は、どのサイトからでも    │
 │   1 クリックで保存できる            │
 │   ブックマークレットを使います       │
 │                                    │
-│   [ 📌 Booklage を設置 ]  ← ボタン │
+│   [ 📌 AllMarks を設置 ]  ← ボタン │
 │                                    │
 │   既に設置済？                      │
 │   別サイトで 📌 をクリック           │
@@ -236,8 +236,8 @@ javascript:(function(){
     },
     "empty": {
       "title": "ブックマークをはじめよう",
-      "description": "Booklage は、どのサイトからでも 1 クリックで保存できるブックマークレットを使います",
-      "installButton": "📌 Booklage を設置",
+      "description": "AllMarks は、どのサイトからでも 1 クリックで保存できるブックマークレットを使います",
+      "installButton": "📌 AllMarks を設置",
       "alreadyInstalled": "既に設置済？ 別サイトで 📌 をクリック"
     },
     "bookmarkletModal": {

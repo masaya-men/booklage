@@ -2,14 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship Chrome extension v0 (Manifest v3 sideload-loadable package) that saves the current tab to Booklage via 4 triggers (icon click / context menu page / context menu link / Ctrl+Shift+B), shows a `Booklage · Saving / Saved / Failed` cursor pill when PiP is closed, and cooperates with the existing in-tab Document PiP via the Plan 1 `/save-iframe` BroadcastChannel bridge. As a prerequisite, fix the visual collision between the bookmarklet `/save` popup and the PiP companion: when PiP is active, the bookmarklet performs a silent iframe save with no popup.
+**Goal:** Ship Chrome extension v0 (Manifest v3 sideload-loadable package) that saves the current tab to AllMarks via 4 triggers (icon click / context menu page / context menu link / Ctrl+Shift+B), shows a `AllMarks · Saving / Saved / Failed` cursor pill when PiP is closed, and cooperates with the existing in-tab Document PiP via the Plan 1 `/save-iframe` BroadcastChannel bridge. As a prerequisite, fix the visual collision between the bookmarklet `/save` popup and the PiP companion: when PiP is active, the bookmarklet performs a silent iframe save with no popup.
 
 **Architecture:**
-- **Booklage side** — extend the Plan 1 `/save-iframe` to (a) track PiP presence via a small BroadcastChannel protocol (`pip:open` / `pip:query` / `pip:presence`) and (b) answer a new `booklage:probe` postMessage so the bookmarklet IIFE can decide silent-vs-popup at run time. Rewrite the bookmarklet source to (1) inject a hidden iframe pointing at `/save-iframe`, (2) probe for PiP, (3) postMessage-save silently if PiP is active, (4) fall back to the existing `window.open('/save?…')` popup if not.
+- **AllMarks side** — extend the Plan 1 `/save-iframe` to (a) track PiP presence via a small BroadcastChannel protocol (`pip:open` / `pip:query` / `pip:presence`) and (b) answer a new `booklage:probe` postMessage so the bookmarklet IIFE can decide silent-vs-popup at run time. Rewrite the bookmarklet source to (1) inject a hidden iframe pointing at `/save-iframe`, (2) probe for PiP, (3) postMessage-save silently if PiP is active, (4) fall back to the existing `window.open('/save?…')` popup if not.
 - **Extension side (new)** — vanilla JavaScript Manifest v3 package. Background service worker is the dispatcher: on each trigger it (a) calls `chrome.scripting.executeScript` on the active tab to extract OGP, (b) opens an offscreen document if not already open, (c) forwards the OGP payload to the offscreen doc, which forwards it via postMessage to a hidden `<iframe src="https://booklage.pages.dev/save-iframe">`. Content script is `<all_urls>` and renders the cursor pill on save events. Settings live in `chrome.storage.sync`. Distribution is Unlisted Chrome Web Store + sideload.
 
 **Tech stack:**
-- **Booklage side:** TypeScript strict, Vanilla CSS Modules, Vitest, Playwright, existing `idb` IDB layer, existing BroadcastChannel infra (`lib/board/channel.ts`)
+- **AllMarks side:** TypeScript strict, Vanilla CSS Modules, Vitest, Playwright, existing `idb` IDB layer, existing BroadcastChannel infra (`lib/board/channel.ts`)
 - **Extension side:** vanilla JavaScript (no framework — keep zip <100KB), Manifest v3, Chrome APIs (`offscreen`, `scripting`, `contextMenus`, `commands`, `notifications`, `storage`, `runtime`, `tabs`)
 
 **Spec:** `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`
@@ -20,7 +20,7 @@
 
 ## File Structure
 
-### Booklage side (additions / modifications)
+### AllMarks side (additions / modifications)
 
 | Path | Action | Responsibility |
 |------|--------|----------------|
@@ -45,14 +45,14 @@
 | `extension/offscreen.html` | Create | Hidden host doc for the booklage `/save-iframe` |
 | `extension/offscreen.js` | Create | postMessage bridge between SW and the embedded `/save-iframe` |
 | `extension/content.js` | Create | OGP extractor injection target + cursor pill renderer |
-| `extension/content.css` | Create | Cursor pill glass-themed styles (matches Booklage `LiquidGlass` baseline) |
+| `extension/content.css` | Create | Cursor pill glass-themed styles (matches AllMarks `LiquidGlass` baseline) |
 | `extension/popup.html` | Create | Tiny popup (just an "Open settings" link) |
 | `extension/popup.js` | Create | `chrome.runtime.openOptionsPage()` wiring |
 | `extension/popup.css` | Create | Popup styles |
 | `extension/options.html` | Create | Settings page |
 | `extension/options.js` | Create | `chrome.storage.sync` read/write |
 | `extension/options.css` | Create | Settings page style |
-| `extension/icons/icon-{16,32,48,128}.png` | Create | Booklage glyph (square book-mark mark, transparent BG) |
+| `extension/icons/icon-{16,32,48,128}.png` | Create | AllMarks glyph (square book-mark mark, transparent BG) |
 | `extension/_locales/en/messages.json` | Create | i18n strings (description / shortcut hint / settings labels) |
 | `extension/lib/ogp.js` | Create | OGP extractor (mirrors `lib/utils/bookmarklet.ts`'s `extractOgpFromDocument`, injected via `chrome.scripting`) |
 | `tests/extension/ogp-extract.test.ts` | Create | Unit tests for OGP function (DOM fixtures from `tests/e2e/fixtures/`) |
@@ -555,9 +555,9 @@ Use the spec §7.1 manifest shape verbatim. Omit `web_accessible_resources` (Pla
 ```json
 {
   "manifest_version": 3,
-  "name": "Booklage",
+  "name": "AllMarks",
   "version": "0.1.0",
-  "description": "Save any URL to Booklage as a beautiful visual collage card.",
+  "description": "Save any URL to AllMarks as a beautiful visual collage card.",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -569,7 +569,7 @@ Use the spec §7.1 manifest shape verbatim. Omit `web_accessible_resources` (Pla
       "32": "icons/icon-32.png",
       "48": "icons/icon-48.png"
     },
-    "default_title": "Save to Booklage",
+    "default_title": "Save to AllMarks",
     "default_popup": "popup.html"
   },
   "background": {
@@ -594,7 +594,7 @@ Use the spec §7.1 manifest shape verbatim. Omit `web_accessible_resources` (Pla
         "default": "Ctrl+Shift+B",
         "mac": "Command+Shift+B"
       },
-      "description": "Save current page to Booklage"
+      "description": "Save current page to AllMarks"
     }
   },
   "content_scripts": [
@@ -658,7 +658,7 @@ The popup must be tiny — a single "Open Settings" link and a brand mark. v0 do
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <div class="brand">Booklage</div>
+  <div class="brand">AllMarks</div>
   <button id="settings">Open settings</button>
   <p class="hint">Press <kbd>Ctrl+Shift+B</kbd> on any page to save.</p>
   <script src="popup.js"></script>
@@ -749,12 +749,12 @@ chrome.commands.onCommand.addListener(async (command) => {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'booklage-save-page',
-    title: 'Save to Booklage',
+    title: 'Save to AllMarks',
     contexts: ['page'],
   })
   chrome.contextMenus.create({
     id: 'booklage-save-link',
-    title: 'Save link to Booklage',
+    title: 'Save link to AllMarks',
     contexts: ['link'],
   })
 })
@@ -771,7 +771,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
 - [ ] **Step 1: Create the file** + a stub `extension/lib/dispatch.js` that just `console.log`s for now
 
-- [ ] **Step 2: Sideload + verify** — Press Ctrl+Shift+B on any page, see the log in the SW devtools (`chrome://extensions` → Booklage → "service worker" link)
+- [ ] **Step 2: Sideload + verify** — Press Ctrl+Shift+B on any page, see the log in the SW devtools (`chrome://extensions` → AllMarks → "service worker" link)
 
 - [ ] **Step 3: Commit**
 
@@ -942,11 +942,11 @@ export async function dispatchSave({ trigger, tabId, linkUrl }) {
   const result = await postToOffscreen(envelope, nonce)
   if (result?.ok) {
     chrome.tabs.sendMessage(tabId, { type: 'booklage:cursor-pill', state: 'saved' }).catch(() => {
-      chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48.png', title: 'Booklage', message: 'Saved' })
+      chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48.png', title: 'AllMarks', message: 'Saved' })
     })
   } else {
     chrome.tabs.sendMessage(tabId, { type: 'booklage:cursor-pill', state: 'error' }).catch(() => {
-      chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48.png', title: 'Booklage', message: 'Failed to save' })
+      chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48.png', title: 'AllMarks', message: 'Failed to save' })
     })
   }
 }
@@ -999,7 +999,7 @@ function ensurePill() {
   pill.className = 'booklage-pill'
   pill.innerHTML = `
     <span class="booklage-pill__icon" data-role="icon"></span>
-    <span class="booklage-pill__brand">Booklage</span>
+    <span class="booklage-pill__brand">AllMarks</span>
     <span class="booklage-pill__sep">·</span>
     <span class="booklage-pill__state" data-role="state">Saving</span>
   `
@@ -1144,11 +1144,11 @@ Settings (v0):
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
-  <h1>Booklage settings</h1>
+  <h1>AllMarks settings</h1>
   <section>
     <label class="row">
       <input type="checkbox" id="autoOpenPip" />
-      <span>Auto-open PiP on Booklage tab</span>
+      <span>Auto-open PiP on AllMarks tab</span>
     </label>
   </section>
   <section>
@@ -1447,7 +1447,7 @@ rtk git commit -m "chore(ext): packaging script for Web Store zip"
 Outside-of-repo work, but document in TODO.md:
 1. Pay one-time $5 USD developer fee (per CLAUDE.md, list as ¥フィー — currency conversion)
 2. Upload `dist/booklage-extension-0.1.0.zip`
-3. Title: "Booklage"
+3. Title: "AllMarks"
 4. Short description: from manifest
 5. Detailed description: from `docs/private/extension-store-description.md` (create as private)
 6. Screenshots: 1280×800, taken on the booklage board with cursor pill / PiP visible
@@ -1486,8 +1486,8 @@ rtk git commit -m "feat(marketing): public extension privacy policy page"
 After all tasks above are merged:
 - [ ] Sideload `extension/` in Chrome
 - [ ] Press Ctrl+Shift+B on github.com/anthropics/anthropic-sdk-typescript — verify cursor pill appears, then "Saved", then booklage tab (open in another window) shows the new card
-- [ ] Right-click on a link in the same page → "Save link to Booklage" → verify pill + booklage card
-- [ ] Right-click on the page background → "Save to Booklage" → verify pill + booklage card
+- [ ] Right-click on a link in the same page → "Save link to AllMarks" → verify pill + booklage card
+- [ ] Right-click on the page background → "Save to AllMarks" → verify pill + booklage card
 - [ ] Click the extension icon → popup opens → click "Open settings" → options page renders
 - [ ] On booklage tab with PiP open: trigger a save via shortcut from another tab — verify PiP card slides in (= proves the BroadcastChannel bridge works through `/save-iframe`)
 - [ ] On a `chrome://extensions` page: trigger save — verify the OS notification fallback fires (cursor pill cannot inject into chrome:// pages)

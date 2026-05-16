@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Booklage — Save to Collage",
+  "name": "AllMarks — Save to Collage",
   "version": "1.0.0",
-  "description": "Save any webpage to your Booklage collage with one click. Extracts title, description, thumbnail, and favicon automatically.",
+  "description": "Save any webpage to your AllMarks collage with one click. Extracts title, description, thumbnail, and favicon automatically.",
   "permissions": ["activeTab"],
   "action": {
     "default_popup": "popup.html",

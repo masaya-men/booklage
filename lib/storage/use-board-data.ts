@@ -199,9 +199,9 @@ export function useBoardData(): {
       try {
         const { backfillRelativeThumbnails } = await import('./backfill-relative-thumbnails')
         const n = await backfillRelativeThumbnails(db as Parameters<typeof backfillRelativeThumbnails>[0])
-        if (n > 0) console.info('[booklage] healed', n, 'relative thumbnails')
+        if (n > 0) console.info('[allmarks] healed', n, 'relative thumbnails')
       } catch (e) {
-        console.warn('[booklage] backfill failed (non-fatal):', e)
+        console.warn('[allmarks] backfill failed (non-fatal):', e)
       }
       if (cancelled) return
       const bookmarks = await getAllBookmarks(db as Parameters<typeof getAllBookmarks>[0])

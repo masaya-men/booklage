@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Booklage を Cloudflare Pages にデプロイし `booklage.pages.dev` で世界中からアクセス可能にする
+**Goal:** AllMarks を Cloudflare Pages にデプロイし `booklage.pages.dev` で世界中からアクセス可能にする
 
 **Architecture:** Next.js を `output: 'export'` で静的 HTML に書き出し、Cloudflare Pages で配信。API（OGP 取得・oEmbed プロキシ）は Cloudflare Pages Functions として実装。GitHub 連携で git push → 自動デプロイ。
 
@@ -158,7 +158,7 @@ export async function onRequest(context: PagesContext): Promise<Response> {
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; BooklageBot/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; AllMarksBot/1.0)',
         Accept: 'text/html',
       },
       signal: AbortSignal.timeout(8000),
@@ -445,7 +445,7 @@ git push origin master
 | 変数名 | 値 |
 |--------|-----|
 | `NEXT_PUBLIC_APP_URL` | `https://booklage.pages.dev` |
-| `NEXT_PUBLIC_APP_NAME` | `Booklage` |
+| `NEXT_PUBLIC_APP_NAME` | `AllMarks` |
 | `NODE_VERSION` | `20` |
 
 - [ ] **Step 4: 「保存してデプロイ」をクリック**

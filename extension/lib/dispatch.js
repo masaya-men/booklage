@@ -70,7 +70,7 @@ export async function dispatchSave({ trigger, tabId, linkUrl, ogpFromBookmarklet
     type: 'booklage:save',
     payload: { ...ogp, nonce },
   }
-  // Cursor pill on the source tab. While PiP is open on a Booklage tab,
+  // Cursor pill on the source tab. While PiP is open on a AllMarks tab,
   // the new-card slide-in animation is sufficient feedback — suppress
   // saving/saved pills to avoid double UI. Errors still surface a pill
   // because PiP can't report failures.

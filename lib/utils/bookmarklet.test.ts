@@ -164,7 +164,7 @@ describe('generateBookmarkletUri', () => {
     expect(uri).toContain('/favicon.ico')
   })
 
-  it('checks for the Booklage extension marker (data-booklage-extension)', () => {
+  it('checks for the AllMarks extension marker (data-booklage-extension)', () => {
     const uri = generateBookmarkletUri('https://booklage.pages.dev')
     expect(uri).toContain('booklageExtension')
   })

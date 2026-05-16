@@ -65,7 +65,7 @@
 - **素材**: 屈折ガラス (kube.io recipe、詳細は §4.1)
 - **外形**: 非対称 — 左上/左下に大きめの角丸 (24px)、右側 (canvas 側) は小さい角丸 (6px)。canvas に「かけてある重い紙」感
 - **含む要素** (上から):
-  1. ロゴ (`Booklage`) + 折り畳みボタン
+  1. ロゴ (`AllMarks`) + 折り畳みボタン
   2. 検索 (常時表示、⌘K ショートカット、B1 では UI shell のみ、実動作は B2)
   3. Library セクション: `すべて` / `未読` / `既読` + 件数
   4. Folders セクション: B2 用の dashed border placeholder (「B2 で実装」と表示)
@@ -93,8 +93,8 @@
 | 右 (280px) | 仕上げトグル (desaturate ON/OFF, ウォーターマーク ON/OFF) + ブクマ埋込みインジケータ (「N 件のブクマ + 配置を URL に圧縮」) + キャプション |
 | 下 | **ダイレクト共有ボタン群**: X / Instagram (モバイルのみ直接) / LINE / Pinterest / Threads。下段に手動の「URL コピー」「PNG 保存」 |
 
-- **ウォーターマーク**: canvas 右下に Booklage ロゴ + `booklage.pages.dev` 半透明チップ。ON/OFF トグル (デフォルト ON、バイラル重視)
-- **ブクマ埋込み**: シェア URL に brotli 圧縮で全ブクマ + 配置を埋め込み (IDEAS.md §SNS シェアから中身ブクマを直接インポート)。B1 は **実装**する (これが Booklage の核ウイルス機構)
+- **ウォーターマーク**: canvas 右下に AllMarks ロゴ + `booklage.pages.dev` 半透明チップ。ON/OFF トグル (デフォルト ON、バイラル重視)
+- **ブクマ埋込み**: シェア URL に brotli 圧縮で全ブクマ + 配置を埋め込み (IDEAS.md §SNS シェアから中身ブクマを直接インポート)。B1 は **実装**する (これが AllMarks の核ウイルス機構)
 - **Web Share API**: モバイルの Instagram ボタンは `navigator.share({ files: [pngBlob] })` 経由。PC は PNG DL フォールバック
 - **Web Intent**: X / LINE / Pinterest / Threads は Web Intent URL で投稿画面を開く (画像は手動添付、技術的制約)
 
@@ -140,7 +140,7 @@ IDEAS.md §kube.io に記載の recipe を採用:
 
 ### 3.3 色
 
-- 主色: `#7c5cfc` (Booklage violet、既存)
+- 主色: `#7c5cfc` (AllMarks violet、既存)
 - neutral chrome 選択色: `#1a1a1a` (Task 19 で確定済、継続)
 - canvas 背景: テーマごと (既存 ThemeLayer)
 - 暗モーダル背景: `#1a1a24 → #2d2438` のグラデ (シェアモーダル用)

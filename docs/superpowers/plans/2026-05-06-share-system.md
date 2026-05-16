@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Booklage の核となるバイラル機能 — ボード上のカードから「シェア用ムードボード」を組み立て、PNG + URL の両方で SNS 投稿でき、受信者が view-only で閲覧 → 自分のボードに取り込める一連の Share System を実装する。
+**Goal:** AllMarks の核となるバイラル機能 — ボード上のカードから「シェア用ムードボード」を組み立て、PNG + URL の両方で SNS 投稿でき、受信者が view-only で閲覧 → 自分のボードに取り込める一連の Share System を実装する。
 
 **Architecture:** クライアント完結（サーバー保存ゼロ）。送信者は `<ShareComposer>` モーダルでアスペクト・カードを選択し、`lib/share/encode.ts`（gzip + base64url）で URL fragment にデータ埋込 → `dom-to-image-more` で PNG 書き出し（ウォーターマーク合成）。受信者は `/share#d=<...>` 経由で `<SharedView>`（`'use client'`）が hash デコード → 既存 `<CardsLayer>` で描画 → `<ImportConfirmModal>` 経由で IndexedDB 取込。
 
@@ -1579,7 +1579,7 @@ export type WatermarkSpec = {
 }
 
 const COMMON = {
-  primary: 'Booklage',
+  primary: 'AllMarks',
   fontFamily: 'Geist, system-ui, sans-serif',
   fontWeight: 600,
   textColor: 'rgba(255,255,255,0.85)',
@@ -1836,7 +1836,7 @@ type IntentInput = {
   readonly text?: string
 }
 
-const DEFAULT_TEXT = 'Booklage で見る ↗'
+const DEFAULT_TEXT = 'AllMarks で見る ↗'
 
 /**
  * Build a Twitter / X Web Intent URL. The image must be attached manually by
@@ -2487,8 +2487,8 @@ import type { Metadata } from 'next'
 import { SharedView } from '@/components/share/SharedView'
 
 export const metadata: Metadata = {
-  title: 'Shared Collage — Booklage',
-  description: 'A shared moodboard from Booklage.',
+  title: 'Shared Collage — AllMarks',
+  description: 'A shared moodboard from AllMarks.',
 }
 
 // Static-export friendly: SharedView is a client component reading

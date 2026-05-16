@@ -30,12 +30,12 @@ chrome.commands.onCommand.addListener(async (command) => {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'booklage-save-page',
-    title: 'Save to Booklage',
+    title: 'Save to AllMarks',
     contexts: ['page'],
   })
   chrome.contextMenus.create({
     id: 'booklage-save-link',
-    title: 'Save link to Booklage',
+    title: 'Save link to AllMarks',
     contexts: ['link'],
   })
 })

@@ -758,7 +758,7 @@ Append near the existing `updateBookmarkOgp` helper in `lib/storage/indexeddb.ts
  * reorder).
  */
 export async function updateBookmarkOrderIndex(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   orderIndex: number,
 ): Promise<void> {
@@ -771,7 +771,7 @@ export async function updateBookmarkOrderIndex(
  * Set a single bookmark's sizePreset. 'S' | 'M' | 'L'.
  */
 export async function updateBookmarkSizePreset(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   sizePreset: 'S' | 'M' | 'L',
 ): Promise<void> {
@@ -785,7 +785,7 @@ export async function updateBookmarkSizePreset(
  * Use for drag-to-reorder: caller supplies the new complete order by ID.
  */
 export async function updateBookmarkOrderBatch(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   orderedBookmarkIds: readonly string[],
 ): Promise<void> {
   const tx = db.transaction('bookmarks', 'readwrite')

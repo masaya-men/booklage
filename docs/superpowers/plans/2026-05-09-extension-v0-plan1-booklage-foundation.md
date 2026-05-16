@@ -1,8 +1,8 @@
-# Chrome Extension v0 — Plan 1: Booklage Foundation Implementation Plan
+# Chrome Extension v0 — Plan 1: AllMarks Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Booklage-side foundation for the upcoming Chrome extension: a `/save-iframe` postMessage endpoint that writes IDB cross-origin, a Document Picture-in-Picture (PiP) "Booklage Companion" with the records-stack design, a Pop out button on the board, and a `?focus=<cardId>` smooth-scroll handler. After this plan, the Booklage app is ready for the extension to talk to it — and as a side effect, users can already manually exercise the PiP via the Pop out button.
+**Goal:** Build the AllMarks-side foundation for the upcoming Chrome extension: a `/save-iframe` postMessage endpoint that writes IDB cross-origin, a Document Picture-in-Picture (PiP) "AllMarks Companion" with the records-stack design, a Pop out button on the board, and a `?focus=<cardId>` smooth-scroll handler. After this plan, the AllMarks app is ready for the extension to talk to it — and as a side effect, users can already manually exercise the PiP via the Pop out button.
 
 **Architecture:** Three independent additions, each tightly scoped. (1) `app/save-iframe/page.tsx` is a hidden-iframe-friendly endpoint that listens for `postMessage`, validates the payload with Zod, writes to IDB via existing `lib/storage/indexeddb.ts`, broadcasts `bookmark-saved` via existing `lib/board/channel.ts`, and posts back a typed result. (2) The PiP companion uses the Document Picture-in-Picture API — opened via `documentPictureInPicture.requestWindow()` — populated via React Portal targeting the PiP window's document. The PiP renders a 5-card stack with 3D-perspective transforms, scan-reveal on thumbnail load, and slide-in animation on `bookmark-saved` events. (3) The board adds a `PopOutButton` to TopHeader actions and a `?focus=<cardId>` URL param handler that smooth-scrolls + glows the matching card.
 
@@ -22,7 +22,7 @@
 | `app/save-iframe/page.tsx` | Create | Client component that listens for postMessage with `type: 'booklage:save'`, validates via Zod, calls `addBookmark`, posts back a typed result, and broadcasts `bookmark-saved`. |
 | `tests/e2e/save-iframe.spec.ts` | Create | Playwright E2E that loads `/save-iframe` in an iframe, posts a save message, asserts IDB write + result message. |
 | `lib/board/pip-window.ts` | Create | `usePipWindow()` hook: manages a Document PiP window, copies stylesheets into it, exposes `open / close / window`. |
-| `components/pip/PipEmptyState.tsx` | Create | The "Booklage" wordmark with 4s breathing, shown when no cards exist yet. |
+| `components/pip/PipEmptyState.tsx` | Create | The "AllMarks" wordmark with 4s breathing, shown when no cards exist yet. |
 | `components/pip/PipEmptyState.module.css` | Create | Styles for empty state. |
 | `components/pip/PipCard.tsx` | Create | Single card in the stack: thumbnail with scan-reveal, fallback placeholder for missing image, hover pull-forward. |
 | `components/pip/PipCard.module.css` | Create | Card styles + scan-reveal keyframes. |
@@ -40,7 +40,7 @@
 **Out of scope (for Plan 2):**
 - Chrome extension `manifest.json`, service worker, content script
 - Offscreen document pattern
-- Cursor pill (only renders inside the extension's content script, no Booklage-side change)
+- Cursor pill (only renders inside the extension's content script, no AllMarks-side change)
 - All `chrome.*` API usage
 
 ---
@@ -239,7 +239,7 @@ import { postBookmarkSaved } from '@/lib/board/channel'
 import { parseSaveMessage, type SaveMessageResult } from '@/lib/utils/save-message'
 
 const ALLOWED_ORIGIN_PATTERNS: RegExp[] = [
-  // Booklage extension origin (chrome-extension://) — the actual ID is set
+  // AllMarks extension origin (chrome-extension://) — the actual ID is set
   // post-publish; allow any chrome-extension origin in v0. Production
   // tightening is tracked in spec §8.4 (origin verification).
   /^chrome-extension:\/\//,
@@ -432,7 +432,7 @@ const PIP_WIDTH = 320
 const PIP_HEIGHT = 320
 
 /**
- * Manage a Document Picture-in-Picture window for the Booklage Companion.
+ * Manage a Document Picture-in-Picture window for the AllMarks Companion.
  * Copies all parent stylesheets into the PiP document so CSS Modules apply.
  * Cleans up on unmount.
  */
@@ -470,7 +470,7 @@ export function usePipWindow(): PipWindowApi {
     win.document.body.style.margin = '0'
     win.document.body.style.padding = '0'
     win.document.body.style.overflow = 'hidden'
-    win.document.title = 'Booklage'
+    win.document.title = 'AllMarks'
 
     win.addEventListener('pagehide', () => setPipWindow(null), { once: true })
     setPipWindow(win)
@@ -527,7 +527,7 @@ import styles from './PipEmptyState.module.css'
 export function PipEmptyState(): ReactElement {
   return (
     <div className={styles.empty} data-testid="pip-empty-state">
-      <div className={styles.wordmark}>Booklage</div>
+      <div className={styles.wordmark}>AllMarks</div>
     </div>
   )
 }
@@ -891,7 +891,7 @@ export function PipStack({ cards, onCardClick }: PipStackProps): ReactElement {
           )
         })}
       </div>
-      <div className={styles.wordmark}>Booklage</div>
+      <div className={styles.wordmark}>AllMarks</div>
     </div>
   )
 }
@@ -999,7 +999,7 @@ If a `getAllBookmarks` or similar exists, you can derive recent N from it (sort 
 
 ```typescript
 // Append to lib/storage/indexeddb.ts
-export async function getRecentBookmarks(db: IDBPDatabase<BooklageSchema>, limit: number = 5): Promise<BookmarkRecord[]> {
+export async function getRecentBookmarks(db: IDBPDatabase<AllMarksSchema>, limit: number = 5): Promise<BookmarkRecord[]> {
   const all = await db.getAll('bookmarks')
   return all
     .filter((b) => !b.archivedAt)
@@ -1145,7 +1145,7 @@ export function PipCompanion({ onClose, onCardClick }: PipCompanionProps): React
         className={styles.close}
         onClick={onClose}
         data-testid="pip-close"
-        aria-label="Close Booklage Companion"
+        aria-label="Close AllMarks Companion"
       >×</button>
     </div>
   )
@@ -1252,10 +1252,10 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { PopOutButton } from './PopOutButton'
 
 describe('PopOutButton', () => {
-  it('renders with title attribute "Open Booklage Companion"', () => {
+  it('renders with title attribute "Open AllMarks Companion"', () => {
     render(<PopOutButton onClick={() => {}} disabled={false} />)
     const btn = screen.getByTestId('pip-popout')
-    expect(btn.getAttribute('title')).toBe('Open Booklage Companion')
+    expect(btn.getAttribute('title')).toBe('Open AllMarks Companion')
   })
 
   it('calls onClick when enabled and clicked', () => {
@@ -1298,8 +1298,8 @@ export function PopOutButton({ onClick, disabled }: PopOutButtonProps): ReactEle
       className={styles.button}
       onClick={onClick}
       disabled={disabled}
-      title={disabled ? 'PiP not supported in this browser' : 'Open Booklage Companion'}
-      aria-label="Open Booklage Companion"
+      title={disabled ? 'PiP not supported in this browser' : 'Open AllMarks Companion'}
+      aria-label="Open AllMarks Companion"
       data-testid="pip-popout"
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -1658,7 +1658,7 @@ Print to user:
 > 1. `pnpm dev` で local server 起動
 > 2. `http://localhost:3000/board` を開く
 > 3. TopHeader 右側に新しい PiP icon ボタンが見える → click → 320×320 の PiP window が開く
-> 4. PiP の中身: 既存ブクマがあれば 5-card stack、無ければ "Booklage" wordmark + breathing
+> 4. PiP の中身: 既存ブクマがあれば 5-card stack、無ければ "AllMarks" wordmark + breathing
 > 5. 別タブで `http://localhost:3000/save-iframe` を開く、開発ツール console で:
 >    ```js
 >    window.parent.postMessage({
@@ -1684,10 +1684,10 @@ npx wrangler pages deploy out/ --project-name=booklage --branch=master --commit-
 Update top of TODO.md "現在の状態" section:
 
 ```markdown
-- **本番**: `https://booklage.pages.dev` に **Chrome 拡張 v0 — Plan 1 (Booklage 基盤) 完了** 反映済
+- **本番**: `https://booklage.pages.dev` に **Chrome 拡張 v0 — Plan 1 (AllMarks 基盤) 完了** 反映済
 - **次セッション最優先**: Plan 2 — Chrome 拡張本体 (manifest + service worker + content script + cursor pill) の plan 作成
 - **2026-05-09 引き継ぎ (Phase 1 / Plan 1 完了)**:
-  - Booklage 側: `/save-iframe` postMessage endpoint 追加、PiP コンパニオン (320×320 + 5-card 3D stack + scan reveal + hover pull-forward) を board の Pop out ボタンから利用可能に
+  - AllMarks 側: `/save-iframe` postMessage endpoint 追加、PiP コンパニオン (320×320 + 5-card 3D stack + scan reveal + hover pull-forward) を board の Pop out ボタンから利用可能に
   - 拡張未実装でも `/save-iframe` に postMessage 投げれば IDB 書き込み + PiP 同期可能 → Plan 2 で拡張から呼ぶだけ
   - 関連 spec: `docs/superpowers/specs/2026-05-09-chrome-extension-v0-design.md`
   - 関連 plan: `docs/superpowers/plans/2026-05-09-extension-v0-plan1-booklage-foundation.md`

@@ -486,7 +486,7 @@ import type { ImportedBookmark, OgpStatus } from './types'
 export interface FolderAssignment {
   /** Source folder name (from file) */
   sourceName: string
-  /** Target Booklage folder ID (existing or new) */
+  /** Target AllMarks folder ID (existing or new) */
   targetFolderId: string
   /** Whether this folder needs to be created */
   isNew: boolean

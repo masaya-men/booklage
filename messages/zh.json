@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "书签 × 拼贴"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "用书签做了一个拼贴画，太棒了 ✨ #Booklage"
+    "defaultText": "用书签做了一个拼贴画，太棒了 ✨ #AllMarks"
   }
 }

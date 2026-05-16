@@ -258,7 +258,7 @@ export function extractOgpFromDocument(doc: Document): OgpData {
 `lib/utils/bookmarklet.ts:68` の `BOOKMARKLET_SOURCE` を修正。 inline は ES5-safe + minified 形式なので、 image 解決ロジックを 1 行で書き加える:
 
 ```ts
-const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,m=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},k=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},r=function(h,b){if(!h)return'';if(/^https?:\\/\\//i.test(h))return h;if(h.indexOf('//')===0)return'https:'+h;try{return new URL(h,b).href}catch(e){return''}},u=l.href,t=m('meta[property="og:title"]')||d.title||u,i=r(m('meta[property="og:image"]')||m('meta[name="twitter:image"]')||'',u),ds=(m('meta[property="og:description"]')||m('meta[name="description"]')||'').slice(0,200),sn=m('meta[property="og:site_name"]')||l.hostname,f=r(k('link[rel="icon"]')||k('link[rel="shortcut icon"]')||'/favicon.ico',u);if(d.documentElement&&d.documentElement.dataset&&d.documentElement.dataset.booklageExtension==='1'){var nc='b'+Date.now()+Math.random().toString(36).slice(2,7);window.postMessage({type:'booklage:save-via-extension',ogp:{url:u,title:t,image:i,description:ds,siteName:sn,favicon:f},nonce:nc},'*');return}var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f}),W=200,H=160;window.open('__APP_URL__/save?'+p.toString(),'booklage-save','width='+W+',height='+H+',left='+Math.max(0,screen.availWidth-W-20)+',top='+Math.max(0,screen.availHeight-H-20)+',toolbar=0,menubar=0,location=0,status=0,resizable=0,scrollbars=0');var h=d.createElement('div');h.style.cssText='all:initial;position:fixed;top:16px;right:16px;z-index:2147483647';d.body.appendChild(h);var sh=h.attachShadow?h.attachShadow({mode:'closed'}):h,P=d.createElement('div');P.style.cssText='padding:10px 16px;border-radius:20px;background:rgba(18,18,22,.92);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 24px rgba(0,0,0,.32);font:500 13px system-ui,sans-serif;color:rgba(255,255,255,.94);opacity:0;transition:opacity .2s';P.textContent='Booklage に保存中…';sh.appendChild(P);setTimeout(function(){P.style.opacity='1'},20);setTimeout(function(){P.textContent='Booklage に保存しました ✓'},500);setTimeout(function(){P.style.opacity='0'},2200);setTimeout(function(){try{d.body.removeChild(h)}catch(e){}},2500)})();`
+const BOOKMARKLET_SOURCE = `(function(){var d=document,l=location,m=function(s){var e=d.querySelector(s);return e?e.getAttribute('content')||'':'';},k=function(s){var e=d.querySelector(s);return e?e.getAttribute('href')||'':'';},r=function(h,b){if(!h)return'';if(/^https?:\\/\\//i.test(h))return h;if(h.indexOf('//')===0)return'https:'+h;try{return new URL(h,b).href}catch(e){return''}},u=l.href,t=m('meta[property="og:title"]')||d.title||u,i=r(m('meta[property="og:image"]')||m('meta[name="twitter:image"]')||'',u),ds=(m('meta[property="og:description"]')||m('meta[name="description"]')||'').slice(0,200),sn=m('meta[property="og:site_name"]')||l.hostname,f=r(k('link[rel="icon"]')||k('link[rel="shortcut icon"]')||'/favicon.ico',u);if(d.documentElement&&d.documentElement.dataset&&d.documentElement.dataset.booklageExtension==='1'){var nc='b'+Date.now()+Math.random().toString(36).slice(2,7);window.postMessage({type:'booklage:save-via-extension',ogp:{url:u,title:t,image:i,description:ds,siteName:sn,favicon:f},nonce:nc},'*');return}var p=new URLSearchParams({url:u,title:t,image:i,desc:ds,site:sn,favicon:f}),W=200,H=160;window.open('__APP_URL__/save?'+p.toString(),'booklage-save','width='+W+',height='+H+',left='+Math.max(0,screen.availWidth-W-20)+',top='+Math.max(0,screen.availHeight-H-20)+',toolbar=0,menubar=0,location=0,status=0,resizable=0,scrollbars=0');var h=d.createElement('div');h.style.cssText='all:initial;position:fixed;top:16px;right:16px;z-index:2147483647';d.body.appendChild(h);var sh=h.attachShadow?h.attachShadow({mode:'closed'}):h,P=d.createElement('div');P.style.cssText='padding:10px 16px;border-radius:20px;background:rgba(18,18,22,.92);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 24px rgba(0,0,0,.32);font:500 13px system-ui,sans-serif;color:rgba(255,255,255,.94);opacity:0;transition:opacity .2s';P.textContent='AllMarks に保存中…';sh.appendChild(P);setTimeout(function(){P.style.opacity='1'},20);setTimeout(function(){P.textContent='AllMarks に保存しました ✓'},500);setTimeout(function(){P.style.opacity='0'},2200);setTimeout(function(){try{d.body.removeChild(h)}catch(e){}},2500)})();`
 ```
 
 変更点: `r` 関数を追加 (resolver)、 `i=r(...,u)`、 `f=r(...,u)` に変更。
@@ -928,7 +928,7 @@ Expected: 6 passing.
  *  Used by the viewport-driven revalidation engine and the manual
  *  refetch button. No-op when the bookmark does not exist. */
 export async function updateBookmarkHealth(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   patch: { linkStatus?: 'alive' | 'gone' | 'unknown'; lastCheckedAt?: number },
 ): Promise<void> {
@@ -1698,14 +1698,14 @@ export interface FullRevalidationProgress {
 }
 
 export async function getFullRevalidationProgress(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
 ): Promise<FullRevalidationProgress | null> {
   const rec = await db.get('settings', 'fullRevalidation' as never)
   return (rec as unknown as { value: FullRevalidationProgress })?.value ?? null
 }
 
 export async function saveFullRevalidationProgress(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   progress: FullRevalidationProgress | null,
 ): Promise<void> {
   if (progress) {

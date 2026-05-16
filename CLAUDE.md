@@ -421,7 +421,7 @@ export function ExportButton({ canvasRef }: { canvasRef: RefObject<HTMLElement> 
 ```bash
 # .env.local
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME=Booklage
+NEXT_PUBLIC_APP_NAME=AllMarks
 
 # Cloudflare Pages のみ使用（Workers/R2/KV は不要）
 ```

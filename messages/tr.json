@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "Yer İmleri × Kolaj"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "Yer imleriyle bir kolaj yaptım ve harika oldu ✨ #Booklage"
+    "defaultText": "Yer imleriyle bir kolaj yaptım ve harika oldu ✨ #AllMarks"
   }
 }

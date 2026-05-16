@@ -14,7 +14,7 @@ export default function MarketingLayout({
   return (
     <div className="static-page">
       <header className="static-header">
-        <Link href="/" className="static-logo">Booklage</Link>
+        <Link href="/" className="static-logo">AllMarks</Link>
         <nav className="static-nav">
           <Link href="/features">Features</Link>
           <Link href="/guide">Guide</Link>
@@ -30,7 +30,7 @@ export default function MarketingLayout({
         {children}
       </main>
       <footer className="static-footer">
-        <p>&copy; 2026 Booklage. All rights reserved.</p>
+        <p>&copy; 2026 AllMarks. All rights reserved.</p>
         <nav>
           <Link href="/privacy">Privacy Policy</Link>
           <Link href="/terms">Terms of Service</Link>

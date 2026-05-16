@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'FAQ',
-  description: 'Frequently asked questions about Booklage — bookmark collage app.',
+  description: 'Frequently asked questions about AllMarks — bookmark collage app.',
 }
 
 export default function FaqPage(): React.ReactElement {
@@ -11,9 +11,9 @@ export default function FaqPage(): React.ReactElement {
       <h1>FAQ</h1>
       <p className="updated">よくある質問</p>
 
-      <h2>Booklage とは何ですか？</h2>
+      <h2>AllMarks とは何ですか？</h2>
       <p>
-        Booklage は、あらゆるWebサイトのブックマークをビジュアルコラージュとして
+        AllMarks は、あらゆるWebサイトのブックマークをビジュアルコラージュとして
         管理・共有できる無料のWebアプリです。ブックマークを「整理」するのではなく
         「表現」するツールです。
       </p>
@@ -33,9 +33,9 @@ export default function FaqPage(): React.ReactElement {
       <h2>ブックマークレットの使い方を教えてください</h2>
       <ol>
         <li><a href="/board">Board ページ</a>を開きます</li>
-        <li>左下の「📌 Booklage に保存」リンクを見つけます</li>
+        <li>左下の「📌 AllMarks に保存」リンクを見つけます</li>
         <li>そのリンクをブックマークバーにドラッグ＆ドロップします</li>
-        <li>保存したいWebサイトを開き、ブックマークバーの「Booklage に保存」をクリックします</li>
+        <li>保存したいWebサイトを開き、ブックマークバーの「AllMarks に保存」をクリックします</li>
         <li>ポップアップでフォルダを選んで「保存」をクリックします</li>
       </ol>
 
@@ -61,7 +61,7 @@ export default function FaqPage(): React.ReactElement {
 
       <h2>ブラウザのデータを消したらどうなりますか？</h2>
       <p>
-        ブラウザのデータ（キャッシュ、Cookie 等）を消去すると、Booklage のデータも
+        ブラウザのデータ（キャッシュ、Cookie 等）を消去すると、AllMarks のデータも
         削除されます。データはブラウザ内にのみ存在するため、サーバーからの復元はできません。
         大切なコラージュは画像として保存しておくことをおすすめします。
       </p>
@@ -80,7 +80,7 @@ export default function FaqPage(): React.ReactElement {
 
       <h2>オープンソースですか？</h2>
       <p>
-        はい。Booklage のソースコードは{' '}
+        はい。AllMarks のソースコードは{' '}
         <a href="https://github.com/masaya-men/booklage" target="_blank" rel="noopener noreferrer">
           GitHub
         </a>

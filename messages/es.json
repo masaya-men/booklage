@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "Marcadores × Collage"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "Hice un collage de marcadores y quedó increíble ✨ #Booklage"
+    "defaultText": "Hice un collage de marcadores y quedó increíble ✨ #AllMarks"
   }
 }

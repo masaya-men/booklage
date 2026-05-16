@@ -421,7 +421,7 @@ In `lib/storage/indexeddb.ts`, locate the existing `persistCustomCardWidth` func
  * idempotent backfills). I-07 Phase 1.
  */
 export async function persistPhotos(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   photos: readonly string[],
 ): Promise<void> {

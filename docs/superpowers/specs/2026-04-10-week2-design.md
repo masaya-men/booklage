@@ -1,4 +1,4 @@
-# Week 2 設計書 — Booklage ローンチ準備
+# Week 2 設計書 — AllMarks ローンチ準備
 
 > **この文書は Week 2 の全作業の設計書です。**
 > 各セッションの冒頭で `docs/TODO.md` と合わせて必ず読むこと。
@@ -246,7 +246,7 @@ Google Fonts: `Inter`（本文）、`Outfit`（見出し・ブランド）
 
 #### 技術方式
 
-外部サイト上にBooklageドメインのiframeを埋め込む方式:
+外部サイト上にAllMarksドメインのiframeを埋め込む方式:
 
 1. ブックマークレットJS → `booklage.com/bookmarklet/popup` のiframeを生成
 2. 外部サイトのDOMからOGPメタタグを読み取り
@@ -255,7 +255,7 @@ Google Fonts: `Inter`（本文）、`Outfit`（見出し・ブランド）
 
 #### セキュリティ
 
-- `postMessage` の `origin` を必ず検証（Booklageドメインのみ受け付け）
+- `postMessage` の `origin` を必ず検証（AllMarksドメインのみ受け付け）
 - iframeには `sandbox="allow-scripts allow-same-origin"` を設定
 - 外部サイトのCookieや認証情報には一切アクセスしない
 - CSP: `frame-ancestors 'self'` は設定しない（外部サイトから埋め込まれる必要があるため）
@@ -265,7 +265,7 @@ Google Fonts: `Inter`（本文）、`Outfit`（見出し・ブランド）
 
 ```
 ┌──────────────────────────────┐
-│ ✨ Booklage に保存            │  ← ヘッダー
+│ ✨ AllMarks に保存            │  ← ヘッダー
 │                               │
 │ ┌───────────────────────────┐ │
 │ │ [OG画像サムネイル]         │ │  ← 保存するページのプレビュー
@@ -302,8 +302,8 @@ Google Fonts: `Inter`（本文）、`Outfit`（見出し・ブランド）
 
 ```json
 {
-  "name": "Booklage",
-  "short_name": "Booklage",
+  "name": "AllMarks",
+  "short_name": "AllMarks",
   "start_url": "/board",
   "display": "standalone",
   "theme_color": "#0a0a0a",
@@ -389,7 +389,7 @@ Google Fonts: `Inter`（本文）、`Outfit`（見出し・ブランド）
 [フッター]
   リンク: Features, Guide, FAQ, About, Privacy, Terms, Contact
   言語切り替え
-  © Booklage
+  © AllMarks
 ```
 
 - 全テキスト: 翻訳キーで管理
@@ -530,7 +530,7 @@ Google Fonts: `Inter`（本文）、`Outfit`（見出し・ブランド）
 - **入力**: `public/manifest.json`, `app/(app)/board/page.tsx`, この設計書のセクション3.2〜3.4
 - **作業**: manifest.json更新。Web Share Target対応。iOSショートカット作成。保存後の引き込み演出（SaveConfirmation, Toast）
 - **完了条件**:
-  - Android: PWAインストール → 外部アプリから共有 → Booklageで保存
+  - Android: PWAインストール → 外部アプリから共有 → AllMarksで保存
   - URLパラメータ `?shared_url=` で保存フローが起動
   - 保存後にカード着地アニメーション + トースト表示
   - iOSショートカットファイルがダウンロード可能

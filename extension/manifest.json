@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Booklage",
+  "name": "AllMarks",
   "version": "0.1.0",
-  "description": "Save any URL to Booklage as a beautiful visual collage card.",
+  "description": "Save any URL to AllMarks as a beautiful visual collage card.",
   "minimum_chrome_version": "124",
   "icons": {
     "16": "icons/icon-16.png",
@@ -15,7 +15,7 @@
       "32": "icons/icon-32.png",
       "48": "icons/icon-48.png"
     },
-    "default_title": "Save to Booklage",
+    "default_title": "Save to AllMarks",
     "default_popup": "popup.html"
   },
   "background": {
@@ -39,7 +39,7 @@
         "default": "Ctrl+Shift+B",
         "mac": "Command+Shift+B"
       },
-      "description": "Save current page to Booklage"
+      "description": "Save current page to AllMarks"
     }
   },
   "content_scripts": [

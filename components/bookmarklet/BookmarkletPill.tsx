@@ -43,7 +43,7 @@ export function BookmarkletPill(): ReactElement | null {
       data-testid="bookmarklet-pill"
     >
       <span className={styles.icon} aria-hidden="true">📌</span>
-      <span className={styles.label}>Booklage</span>
+      <span className={styles.label}>AllMarks</span>
       <span className={styles.hint}>↤ Drag me</span>
     </a>
   )

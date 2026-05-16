@@ -19,8 +19,8 @@ type SiteHeaderProps = {
 export function SiteHeader({ showThemeToggle = true }: SiteHeaderProps = {}): React.ReactElement {
   return (
     <header className={styles.header}>
-      <Link href="/" className={styles.logo} aria-label="Booklage home">
-        Booklage
+      <Link href="/" className={styles.logo} aria-label="AllMarks home">
+        AllMarks
       </Link>
       <nav className={styles.nav} aria-label="Primary">
         {NAV_ITEMS.map((item) => (

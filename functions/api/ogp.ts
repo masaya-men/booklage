@@ -95,7 +95,7 @@ export async function onRequest(context: PagesContext): Promise<Response> {
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; BooklageBot/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; AllMarksBot/1.0)',
         Accept: 'text/html',
       },
       signal: AbortSignal.timeout(8000),

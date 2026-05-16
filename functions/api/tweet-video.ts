@@ -52,7 +52,7 @@ export async function onRequest(context: PagesContext): Promise<Response> {
   }
 
   const upstreamHeaders: Record<string, string> = {
-    'User-Agent': 'Mozilla/5.0 (compatible; Booklage/1.0)',
+    'User-Agent': 'Mozilla/5.0 (compatible; AllMarks/1.0)',
   }
   const range = context.request.headers.get('range')
   if (range) upstreamHeaders.Range = range

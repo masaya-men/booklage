@@ -128,7 +128,7 @@ import type { ReactNode } from 'react'
  * Paints html + body black inline so the popup's first paint is already
  * dark — no white flash, no FOUC during Next.js hydration.
  *
- * Isolated from app/layout.tsx (root) so the rest of Booklage is unaffected.
+ * Isolated from app/layout.tsx (root) so the rest of AllMarks is unaffected.
  */
 export default function SaveLayout({ children }: { children: ReactNode }): React.ReactElement {
   return (
@@ -595,7 +595,7 @@ export function SaveToast(): ReactElement {
           <div className={styles.indicator}>
             <div className={styles.ring} data-role="ring" />
           </div>
-          <div className={styles.brand}>Booklage</div>
+          <div className={styles.brand}>AllMarks</div>
           <div className={styles.label} aria-live="polite">
             <StaggeredLabel text="ブックマークレットから開いてください" />
           </div>
@@ -652,7 +652,7 @@ export function SaveToast(): ReactElement {
             >!</div>
           )}
         </div>
-        <div className={styles.brand}>Booklage</div>
+        <div className={styles.brand}>AllMarks</div>
         <div className={labelClass} aria-live="polite">
           <StaggeredLabel text={labelText} />
         </div>
@@ -710,11 +710,11 @@ Expected: `/save` returns 200.
 Before deploying, verify these manually in a real browser:
 
 1. Open `http://localhost:3000/` (or wherever the install modal lives)
-2. Drag the `📌 Booklage ↤ Drag me` link to the bookmarks bar
+2. Drag the `📌 AllMarks ↤ Drag me` link to the bookmarks bar
 3. Open `https://github.com/anthropics/claude-code` in a new tab (this URL has og:image)
 4. Click the bookmarklet
 5. Verify: popup appears at **bottom-right** of screen, **square**-ish (320×320), **black** from the first frame (no white flash)
-6. Verify: ring indicator spins in the centre, brand "Booklage" + "保存中…" appears
+6. Verify: ring indicator spins in the centre, brand "AllMarks" + "保存中…" appears
 7. Verify: after ~600ms, the GitHub OG image fades in as a blurred bg overlay, checkmark draws, "Inbox に保存しました" letter-staggers in
 8. Verify: ~1.5s later, popup fades out smoothly and closes
 
@@ -734,7 +734,7 @@ Expected: Deploy succeeds. Output shows `https://booklage.pages.dev` and a per-d
 
 User opens `https://booklage.pages.dev` with **hard reload** (Ctrl+Shift+R). User is informed:
 
-> Bookmarklet は再ドラッグが必要です — `📌 Booklage ↤ Drag me` を再度ブックマークバーへドラッグしてから任意サイトでクリック。
+> Bookmarklet は再ドラッグが必要です — `📌 AllMarks ↤ Drag me` を再度ブックマークバーへドラッグしてから任意サイトでクリック。
 
 Verify: same checklist as Step 3 but on production.
 
@@ -747,7 +747,7 @@ Open `docs/TODO.md` and update the top status section:
 - **次セッション最優先**: Phase 1 — Chrome 拡張 v0 の設計開始
 - **2026-05-09 引き継ぎ**:
   - ブクマレット popup を 320×320 / 右下 / 黒キャンバス / staged アニメに刷新済
-  - **ブクマレット再インストールが必要** — 古いやつを削除して `📌 Booklage ↤ Drag me` を再ドラッグ
+  - **ブクマレット再インストールが必要** — 古いやつを削除して `📌 AllMarks ↤ Drag me` を再ドラッグ
   - Phase 0 (ブクマレット polish) ＝ 終了。これより Phase 1 (拡張) → Phase 2 (一括インポート) → Phase 3 (PiP) の 3 段で投資移転
 ```
 

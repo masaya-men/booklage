@@ -19,7 +19,7 @@ describe('EmptyStateWelcome', () => {
   it('calls onOpenModal when install button is clicked', () => {
     const onOpenModal = vi.fn()
     render(<EmptyStateWelcome onOpenModal={onOpenModal} />)
-    fireEvent.click(screen.getByRole('button', { name: /Booklage を設置/ }))
+    fireEvent.click(screen.getByRole('button', { name: /AllMarks を設置/ }))
     expect(onOpenModal).toHaveBeenCalledOnce()
   })
 })

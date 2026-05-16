@@ -50,7 +50,7 @@
 
 - [ ] **Step 1: Read the current globals.css to understand existing vars**
 
-Run: `cat app/globals.css` (or Read tool) and note existing `--color-*` / other vars — **do not remove or rename existing variables**. Only append the new Booklage-wide block.
+Run: `cat app/globals.css` (or Read tool) and note existing `--color-*` / other vars — **do not remove or rename existing variables**. Only append the new AllMarks-wide block.
 
 - [ ] **Step 2: Append new variable block at the end of `:root`**
 
@@ -78,7 +78,7 @@ Add to `app/globals.css` inside the existing `:root { ... }` block (or create a 
   --corner-radius-inner: 6px;
 
   /* Accents */
-  --accent-primary: #7c5cfc;   /* Booklage violet (may already exist; dedupe if so) */
+  --accent-primary: #7c5cfc;   /* AllMarks violet (may already exist; dedupe if so) */
   --accent-dark: #1a1a1a;
 }
 ```
@@ -675,7 +675,7 @@ export function Sidebar({ collapsed, onToggle, counts, onThemeClick }: Props): R
         <div className={styles.inner}>
           {/* Brand */}
           <div className={styles.brand}>
-            <span className={styles.brandName}>Booklage</span>
+            <span className={styles.brandName}>AllMarks</span>
             <span className={styles.brandMono}>v1</span>
             <button
               type="button"
@@ -1241,7 +1241,7 @@ const handleAlign = useCallback((): void => {
 const handleShare = useCallback((): void => {
   // Plan B (ShareModal) not yet implemented. For now, log + noop.
   if (process.env.NODE_ENV === 'development') {
-    console.warn('[Booklage] Share modal coming in Plan B (2026-04-21)')
+    console.warn('[AllMarks] Share modal coming in Plan B (2026-04-21)')
   }
 }, [])
 ```
@@ -1329,7 +1329,7 @@ Test in both Chrome and Firefox (or Safari) with a hard-reload:
 
 - [ ] Sidebar visible, edge-anchored (no margin from left edge)
 - [ ] Ctrl+Shift+R reloads the app; sidebar still there
-- [ ] Brand "Booklage" uses serif italic; version pill "v1" uses monospace
+- [ ] Brand "AllMarks" uses serif italic; version pill "v1" uses monospace
 - [ ] Search shell shows "⌘K" hint
 - [ ] Library section shows real counts (すべて / 未読 / 既読) — verify by adding a bookmark and reloading
 - [ ] "すべて" item has violet left border + gradient wash background

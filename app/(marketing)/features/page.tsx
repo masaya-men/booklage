@@ -4,18 +4,18 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Features',
   description:
-    'Booklage の機能一覧 — ブックマーク保存、ビジュアルコラージュ、メディア埋め込み、プライバシーファースト設計。',
+    'AllMarks の機能一覧 — ブックマーク保存、ビジュアルコラージュ、メディア埋め込み、プライバシーファースト設計。',
 }
 
 export default function FeaturesPage(): React.ReactElement {
   return (
     <>
       <h1>Features</h1>
-      <p className="updated">Booklage でできること</p>
+      <p className="updated">AllMarks でできること</p>
 
       <h2>1. ブックマーク保存</h2>
       <p>
-        ブラウザのブックマークバーに「Booklage に保存」ブックマークレットを設置するだけで、
+        ブラウザのブックマークバーに「AllMarks に保存」ブックマークレットを設置するだけで、
         あらゆる Web サイトをワンクリックで保存できます。アカウント登録は不要、
         Google ログインも不要。ブラウザがあれば即始められます。
       </p>
@@ -40,7 +40,7 @@ export default function FeaturesPage(): React.ReactElement {
 
       <h2>3. プライバシーファースト</h2>
       <p>
-        Booklage はあなたのデータを <strong>一切サーバーに保存しません</strong>。
+        AllMarks はあなたのデータを <strong>一切サーバーに保存しません</strong>。
         すべてのブックマークはあなたのブラウザ内（IndexedDB）にのみ存在します。
       </p>
       <ul>
@@ -101,13 +101,13 @@ export default function FeaturesPage(): React.ReactElement {
 
       <h2>5. 制約と誠実な開示</h2>
       <p>
-        Booklage は技術的な制約をユーザーに対して隠しません。launch 時点で以下を明示します。
+        AllMarks は技術的な制約をユーザーに対して隠しません。launch 時点で以下を明示します。
       </p>
       <ul>
         <li>
           <strong>Instagram の埋め込み再生はできません</strong> — Meta 社の API 制約により、
           サードパーティアプリ内での Instagram 動画再生は技術的に不可能です。
-          Booklage では Instagram カードクリック時に「Instagram で開く」リンクを提示します。
+          AllMarks では Instagram カードクリック時に「Instagram で開く」リンクを提示します。
         </li>
         <li>
           <strong>データはこのブラウザ内のみ</strong> — 別のブラウザや別の端末にはデータが移りません。

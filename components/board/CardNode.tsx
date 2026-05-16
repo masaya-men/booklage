@@ -12,7 +12,7 @@ type CardNodeProps = {
   readonly rotation?: number
   /** When true, renders a glassy lock chip in the top-right corner. */
   readonly locked?: boolean
-  /** When true, renders the Booklage-violet selection outline + glow halo. */
+  /** When true, renders the AllMarks-violet selection outline + glow halo. */
   readonly selected?: boolean
   readonly onPointerDown?: (e: PointerEvent<HTMLDivElement>, cardId: string) => void
 }

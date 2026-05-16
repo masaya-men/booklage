@@ -24,7 +24,7 @@
 ```
 [t=0ms]      window.open() — 320×320, 右下, chrome 黒, 中身も最初から黒
 [0→200ms]    ステージ A "Awaken": 中央リング (radial pulse) が opacity 0→1, scale 0.92→1.00
-             "Booklage" wordmark が 8px 下から slide-up + fade-in
+             "AllMarks" wordmark が 8px 下から slide-up + fade-in
              ease: cubic-bezier(0.16, 1, 0.3, 1)
 [200→Nms]    ステージ B "Save in progress": リングが slow rotate (linear 1.4s/loop)
              "保存中…" テキスト
@@ -86,7 +86,7 @@
           {state === 'saved'  && <CheckmarkDraw />}
           {state === 'error'  && <ErrorMark />}
         </div>
-        <div className={styles.brand}>Booklage</div>
+        <div className={styles.brand}>AllMarks</div>
         <div className={styles.label}>{label}</div>
       </div>
     </div>

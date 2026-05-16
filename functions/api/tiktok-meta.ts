@@ -13,7 +13,7 @@ interface PagesContext {
  *     banner, scrollbar, profile header) which CSS cannot suppress because
  *     the iframe is cross-origin.
  *   - The oEmbed endpoint only returns embed HTML + thumbnail — no mp4.
- *   - The Display API requires user OAuth, which Booklage doesn't have.
+ *   - The Display API requires user OAuth, which AllMarks doesn't have.
  *   - The mp4 lives inside `__UNIVERSAL_DATA_FOR_REHYDRATION__` JSON
  *     embedded in the public video page HTML. Anyone hitting the URL with
  *     a real-browser-shaped fetch can read it.

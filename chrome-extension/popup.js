@@ -1,4 +1,4 @@
-// Popup script — communicates with content script and opens Booklage save page.
+// Popup script — communicates with content script and opens AllMarks save page.
 
 const BOOKLAGE_SAVE_URL = 'https://booklage.pages.dev/save'
 
@@ -42,7 +42,7 @@ function renderPreview(info) {
   document.getElementById('saveBtn').disabled = false
 }
 
-// Save: open Booklage with the page data encoded in the URL
+// Save: open AllMarks with the page data encoded in the URL
 document.getElementById('saveBtn').addEventListener('click', () => {
   if (!pageInfo) return
 
@@ -61,7 +61,7 @@ document.getElementById('saveBtn').addEventListener('click', () => {
   const btn = document.getElementById('saveBtn')
   btn.textContent = '保存しました!'
   btn.classList.add('saved')
-  document.getElementById('status').textContent = 'Booklageが開きます...'
+  document.getElementById('status').textContent = 'AllMarksが開きます...'
 
   setTimeout(() => window.close(), 1500)
 })

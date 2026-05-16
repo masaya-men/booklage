@@ -20,7 +20,7 @@ export type WatermarkSpec = {
 }
 
 const COMMON = {
-  primary: 'Booklage',
+  primary: 'AllMarks',
   fontFamily: 'Geist, system-ui, sans-serif',
   fontWeight: 600,
   textColor: 'rgba(255,255,255,0.85)',
@@ -44,7 +44,7 @@ export const WATERMARK_VARIANT_B: WatermarkSpec = {
   ...COMMON,
   variant: 'B',
   primaryFontSize: 14,
-  secondary: 'booklage.com',
+  secondary: 'allmarks.app',
   secondaryFontSize: 10,
 }
 

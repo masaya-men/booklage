@@ -82,7 +82,7 @@ BoardRoot
 | ファイル | 行数目安 | 責務 |
 |---|---|---|
 | `components/board/cards/TweetCard.tsx` | ~120 | `react-tweet` ラッパー、measurement トリガ、エラーフォールバック |
-| `components/board/cards/TweetCard.module.css` | ~60 | Booklage tone の override（react-tweet default を一切使わない） |
+| `components/board/cards/TweetCard.module.css` | ~60 | AllMarks tone の override（react-tweet default を一切使わない） |
 | `components/board/cards/VideoThumbCard.tsx` | ~80 | YouTube + TikTok 共通、サムネ + ▶ overlay |
 | `components/board/cards/VideoThumbCard.module.css` | ~50 | ▶ オーバーレイの styling、hover lift |
 | `components/board/cards/ImageCard.tsx` | ~50 | 既存 OGP 画像カードの抽出、intrinsic 比対応 |
@@ -211,7 +211,7 @@ export function TweetCard({ item }: { readonly item: BoardItem }): ReactNode {
 ```
 
 **重要な設計ポイント**:
-- `react-tweet` の default styling は使わない → CSS Module で完全 override（Booklage tone）
+- `react-tweet` の default styling は使わない → CSS Module で完全 override（AllMarks tone）
 - 測定 hook は **idle callback** で動かす（main thread を塞がない）
 - 削除済 / private tweet は `<Tweet>` 内部で 404 → onError で TweetCardFallback へ
 - viewport culling 内で測定優先順位制御（`useTweetMeasurement` 内で IntersectionObserver 使用）
@@ -397,7 +397,7 @@ export function getFaviconUrl(host: string): string {
 
 #### デザイン
 
-- [ ] Tweet card が Booklage tone（AI 感 / react-tweet default 感ゼロ）
+- [ ] Tweet card が AllMarks tone（AI 感 / react-tweet default 感ゼロ）
 - [ ] TextCard headline モードが Are.na / Figma Brand tier の美しさ
 - [ ] Moodboard 的視覚リズム（短文小、長文縦長、動画横長 / 縦長）が体感できる
 
@@ -405,7 +405,7 @@ export function getFaviconUrl(host: string): string {
 
 実装段階で判断が分かれた場合のフォールバック候補：
 
-1. **react-tweet の theme**: `react-tweet` は light/dark theme prop を持つ → Booklage の theme 切替（B0 の dotted-notebook / grid-paper）と連動するか？ **推奨**: B では light 固定、theme 連動は polish スプリントで
+1. **react-tweet の theme**: `react-tweet` は light/dark theme prop を持つ → AllMarks の theme 切替（B0 の dotted-notebook / grid-paper）と連動するか？ **推奨**: B では light 固定、theme 連動は polish スプリントで
 2. **Twitter syndication API の domain**: `getTweet` は内部で `cdn.syndication.twimg.com` を叩く → Cloudflare Pages からの fetch で CORS issue 出るか実装時確認 **推奨**: 出たら client side proxy（自前 Cloudflare Worker）を別 spec で
 3. **TikTok oEmbed が遅い**: TikTok の oEmbed API はレスポンス遅い場合あり → タイムアウト 3s で諦めて 9:16 placeholder + ▶ overlay。ユーザーは何が起きたか分からないかも → メッセージ表示する？ **推奨**: タイムアウト時は静かに placeholder（過剰表示しない）
 4. **TextCard の display font 採用**: 既存プロジェクトに Playfair / Fraunces / GT Super 等が入ってるか確認 → なければ Google Fonts 経由で追加（バンドルサイズ +10-30KB）。**推奨**: Fraunces (variable) 1 本に絞り、italic/regular で headline / editorial 両用
@@ -424,7 +424,7 @@ export function getFaviconUrl(host: string): string {
 - **B+ スクショサービス**: TextCard を本物のスクショに置換可能にする migration path（microlink / Cloudflare Browser Rendering）
 - **Instagram embed**: 規約厳しい、後回し
 - **ツイート内インタラクション**: link クリック、画像拡大、action button（C 以降）
-- **theme 連動**: react-tweet の light/dark を Booklage theme と連動（polish スプリント）
+- **theme 連動**: react-tweet の light/dark を AllMarks theme と連動（polish スプリント）
 
 ---
 

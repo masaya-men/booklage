@@ -1,6 +1,6 @@
 {
-  "name": "Booklage",
-  "short_name": "Booklage",
+  "name": "AllMarks",
+  "short_name": "AllMarks",
   "description": "Bookmark × Collage — Turn your bookmarks into beautiful visual collages",
   "start_url": "/board",
   "display": "standalone",

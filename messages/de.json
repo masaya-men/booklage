@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "Lesezeichen × Collage"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "Habe eine Lesezeichen-Collage erstellt und sie ist großartig ✨ #Booklage"
+    "defaultText": "Habe eine Lesezeichen-Collage erstellt und sie ist großartig ✨ #AllMarks"
   }
 }

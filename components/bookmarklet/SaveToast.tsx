@@ -94,7 +94,7 @@ export function SaveToast(): ReactElement {
           <div className={styles.indicator}>
             <div className={styles.ring} data-role="ring" />
           </div>
-          <div className={styles.brand}>Booklage</div>
+          <div className={styles.brand}>AllMarks</div>
           <div className={styles.label} aria-live="polite">
             <StaggeredLabel text="ブックマークレットから開いてください" />
           </div>
@@ -151,7 +151,7 @@ export function SaveToast(): ReactElement {
             >!</div>
           )}
         </div>
-        <div className={styles.brand}>Booklage</div>
+        <div className={styles.brand}>AllMarks</div>
         <div className={labelClass} aria-live="polite">
           <StaggeredLabel text={labelText} />
         </div>

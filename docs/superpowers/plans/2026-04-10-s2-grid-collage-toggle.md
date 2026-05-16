@@ -653,8 +653,8 @@ export interface CardRecord {
 Replace the `upgrade` function in `initDB`:
 
 ```typescript
-export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
-  return openDB<BooklageDB>(DB_NAME, DB_VERSION, {
+export async function initDB(): Promise<IDBPDatabase<AllMarksDB>> {
+  return openDB<AllMarksDB>(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion, _newVersion, transaction) {
       // ── v0 → v1: initial schema ──
       if (oldVersion < 1) {

@@ -4,8 +4,8 @@ import type { ReactElement } from 'react'
 import { SharedView } from '@/components/share/SharedView'
 
 export const metadata: Metadata = {
-  title: 'Shared Collage — Booklage',
-  description: 'A shared moodboard from Booklage.',
+  title: 'Shared Collage — AllMarks',
+  description: 'A shared moodboard from AllMarks.',
 }
 
 // Static-export friendly: SharedView is a client component reading

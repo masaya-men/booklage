@@ -3,32 +3,32 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'About',
-  description: 'About Booklage — a bookmark collage app that puts privacy first.',
+  description: 'About AllMarks — a bookmark collage app that puts privacy first.',
 }
 
 export default function AboutPage(): React.ReactElement {
   return (
     <>
-      <h1>About Booklage</h1>
+      <h1>About AllMarks</h1>
 
       <h2>ブックマークを、もっと楽しく。</h2>
       <p>
-        Booklage は「ブックマーク × コラージュ」をテーマにした Web アプリです。
+        AllMarks は「ブックマーク × コラージュ」をテーマにした Web アプリです。
         あらゆる Web サイトのブックマークを、自由に並べて、自分だけの
         ビジュアルコラージュとして楽しむことができます。
       </p>
 
-      <h2>Why Booklage?</h2>
+      <h2>Why AllMarks?</h2>
       <p>
         ブックマークは「あとで読む」リストに埋もれがちです。
-        Booklage は、ブックマークを「整理」するのではなく「表現」するツールとして
+        AllMarks は、ブックマークを「整理」するのではなく「表現」するツールとして
         デザインしました。服飾学生のムードボードのように、
         お気に入りのコンテンツを自由に並べて、眺めて、シェアする体験を提供します。
       </p>
 
       <h2>Privacy First</h2>
       <p>
-        Booklage は一切のユーザーデータをサーバーに保存しません。
+        AllMarks は一切のユーザーデータをサーバーに保存しません。
         すべてのデータはあなたのブラウザ内（IndexedDB）に保存されます。
         アカウント登録も不要。完全に無料。これが私たちの哲学です。
       </p>
@@ -38,7 +38,7 @@ export default function AboutPage(): React.ReactElement {
 
       <h2>Open Source</h2>
       <p>
-        Booklage はオープンソースプロジェクトです。
+        AllMarks はオープンソースプロジェクトです。
         ソースコードは{' '}
         <a href="https://github.com/masaya-men/booklage" target="_blank" rel="noopener noreferrer">
           GitHub

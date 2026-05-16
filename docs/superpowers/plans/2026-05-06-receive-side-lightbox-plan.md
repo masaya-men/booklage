@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 受信側 (`/share#d=...`) のカードクリックで board と同じ Lightbox を read-only で開き、board / 受信側両方に左右矢印 + Instagram 風 dot indicator + キーボード ←/→ nav を追加し、左下リンクを「自分も Booklage を使う ↗」に改名する。
+**Goal:** 受信側 (`/share#d=...`) のカードクリックで board と同じ Lightbox を read-only で開き、board / 受信側両方に左右矢印 + Instagram 風 dot indicator + キーボード ←/→ nav を追加し、左下リンクを「自分も AllMarks を使う ↗」に改名する。
 
 **Architecture:** Lightbox の Props を `BoardItem | ShareCard` の union で受け、内部で `LightboxItem` (slim 共通 shape) に正規化する additive 拡張。nav 制御は呼び出し側 (BoardRoot / SharedView) が `currentIndex / total / onNav / onJump` を渡す形。chevron + dots は Lightbox 内部で render、slide animation は GSAP。
 
@@ -1283,7 +1283,7 @@ return (
       />
     </div>
     <Link href="/board" className={styles.cornerLink}>
-      自分も Booklage を使う ↗
+      自分も AllMarks を使う ↗
     </Link>
     <Lightbox
       item={openCard}
@@ -1318,18 +1318,18 @@ pnpm dev
 - 4) ←/→ キー、chevron click、dot click、すべて動く
 - 5) Lightbox 内「元のサイトへ ↗」で元 URL 新タブ
 - 6) ✕ で閉じる
-- 7) 左下に「自分も Booklage を使う ↗」表示
+- 7) 左下に「自分も AllMarks を使う ↗」表示
 
 - [ ] **Step 6: Commit**
 
 ```bash
 rtk git add components/share/SharedView.tsx
-rtk git commit -m "feat(share): receive-side Lightbox + nav + 自分も Booklage を使う rename
+rtk git commit -m "feat(share): receive-side Lightbox + nav + 自分も AllMarks を使う rename
 
 Click a card in /share view → Lightbox opens with FLIP from card rect.
 ←/→ + chevron + dot indicator nav through all cards. Original URL
 opens via Lightbox's existing 元のサイトへ ↗ link. Corner link
-renamed: Booklage で表現する → 自分も Booklage を使う.
+renamed: AllMarks で表現する → 自分も AllMarks を使う.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ```
@@ -1373,7 +1373,7 @@ test.describe('Receive-side Lightbox + nav', () => {
   test('clicking a card opens the Lightbox', async ({ page }) => {
     const url = await makeShareUrl(page, 5)
     await page.goto(url)
-    await expect(page.getByText('自分も Booklage を使う')).toBeVisible()
+    await expect(page.getByText('自分も AllMarks を使う')).toBeVisible()
 
     // Click the first ShareFrame card
     const cards = page.locator('[data-testid^="share-frame-card-"]')
@@ -1420,11 +1420,11 @@ test.describe('Receive-side Lightbox + nav', () => {
     await expect(page.getByTestId('lightbox')).not.toBeVisible({ timeout: 2000 })
   })
 
-  test('corner link renamed to 自分も Booklage を使う', async ({ page }) => {
+  test('corner link renamed to 自分も AllMarks を使う', async ({ page }) => {
     const url = await makeShareUrl(page, 3)
     await page.goto(url)
-    await expect(page.getByText('自分も Booklage を使う')).toBeVisible()
-    await expect(page.getByText('Booklage で表現する')).not.toBeVisible()
+    await expect(page.getByText('自分も AllMarks を使う')).toBeVisible()
+    await expect(page.getByText('AllMarks で表現する')).not.toBeVisible()
   })
 })
 ```
@@ -1623,7 +1623,7 @@ Expected: deploy 成功、`booklage.pages.dev` に反映
 - シークレットで開いて受信側を確認
 - カードクリック → Lightbox 起動
 - ← / → / chevron / dot 全部動くか確認
-- 「自分も Booklage を使う ↗」が表示されるか
+- 「自分も AllMarks を使う ↗」が表示されるか
 
 ---
 
@@ -1635,6 +1635,6 @@ Expected: deploy 成功、`booklage.pages.dev` に反映
 - [ ] 新 E2E (share-receive-lightbox, board-lightbox-nav) pass
 - [ ] board / 受信側両方で chevron + dots + arrow nav 動作
 - [ ] 端末ループ (派手スライド) 動作
-- [ ] 「自分も Booklage を使う ↗」表示
+- [ ] 「自分も AllMarks を使う ↗」表示
 - [ ] Lightbox.tsx 内に `bookmarkId` 残存ゼロ (tweetId 等は別概念なので残してよい)
 - [ ] 本番 deploy 完了

@@ -129,7 +129,7 @@ return (
 
 副次効果: `preloadedRef` + 「最初に hover した瞬間に `new Image()` で preload する」 ロジックは **不要になる** ので削除する。 全 slot URL がそのまま `<img loading="lazy">` 経由でブラウザ側に load 委譲される。 `imgRef` は **layer 0 (slot 0) にだけ** 付与する (aspect 再計測の対象は default 表示の slot 0 のため)。
 
-**帯域トレードオフの明記**: 元の preload は「**ユーザーが実際に hover したカードのみ** 全 slot URL を取得」 だった。 新設計は `loading="lazy"` 任せで「**viewport 近傍に入った全カード**」 が全 slot 取得する。 board 上の 80% のカードが多画像で hover されないと仮定すると、 viewport 内 10〜20 カード × 平均 2〜3 余分 slot ≈ 数 MB の差。 Twitter CDN は無料なので Booklage 側コスト増はゼロ、 ユーザー側帯域がやや増える。 視覚的 smoothness と引き換えに許容。 もし将来「外出先のセルラー回線で重い」 と判明したら、 IntersectionObserver で hover 起きるまで slots[1..N-1] を `display: none` にする保守的 fallback を別 spec 化可能。
+**帯域トレードオフの明記**: 元の preload は「**ユーザーが実際に hover したカードのみ** 全 slot URL を取得」 だった。 新設計は `loading="lazy"` 任せで「**viewport 近傍に入った全カード**」 が全 slot 取得する。 board 上の 80% のカードが多画像で hover されないと仮定すると、 viewport 内 10〜20 カード × 平均 2〜3 余分 slot ≈ 数 MB の差。 Twitter CDN は無料なので AllMarks 側コスト増はゼロ、 ユーザー側帯域がやや増える。 視覚的 smoothness と引き換えに許容。 もし将来「外出先のセルラー回線で重い」 と判明したら、 IntersectionObserver で hover 起きるまで slots[1..N-1] を `display: none` にする保守的 fallback を別 spec 化可能。
 
 ---
 

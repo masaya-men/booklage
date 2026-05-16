@@ -188,7 +188,7 @@ export type BookmarkInput = Omit<
 // Database schema
 // ---------------------------------------------------------------------------
 
-interface BooklageDB {
+interface AllMarksDB {
   bookmarks: BookmarkRecord
   moods: MoodRecord
   cards: CardRecord
@@ -196,7 +196,7 @@ interface BooklageDB {
   preferences: UserPreferencesRecord
 }
 
-type BooklageIDB = IDBPDatabase<BooklageDB>
+type AllMarksIDB = IDBPDatabase<AllMarksDB>
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -252,7 +252,7 @@ export function handleDBBlocked(
   blockedVersion: number | null,
 ): void {
   console.warn(
-    '[booklage] IDB upgrade blocked by another tab at version',
+    '[allmarks] IDB upgrade blocked by another tab at version',
     currentVersion,
     '(this tab wants',
     blockedVersion,
@@ -265,7 +265,7 @@ export function handleDBBlocked(
   const last = Number(window.sessionStorage.getItem(BLOCKED_RELOAD_KEY) ?? 0)
   if (Number.isFinite(last) && Date.now() - last < BLOCKED_RELOAD_COOLDOWN_MS) {
     console.error(
-      '[booklage] IDB still blocked after a recent auto-reload — skipping reload to avoid a loop. Close all Booklage tabs and restart the browser.',
+      '[allmarks] IDB still blocked after a recent auto-reload — skipping reload to avoid a loop. Close all AllMarks tabs and restart the browser.',
     )
     return
   }
@@ -282,7 +282,7 @@ export function handleDBBlocking(
   event: IDBVersionChangeEvent,
 ): void {
   console.warn(
-    '[booklage] IDB blocking upgrade in another tab — closing this connection at version',
+    '[allmarks] IDB blocking upgrade in another tab — closing this connection at version',
     currentVersion,
     'to allow upgrade to',
     blockedVersion,
@@ -297,8 +297,8 @@ export function handleDBBlocking(
  * Open (or create) the IndexedDB database with the application schema.
  * @returns The opened IDBPDatabase instance
  */
-export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
-  const db = await openDB<BooklageDB>(DB_NAME, DB_VERSION, {
+export async function initDB(): Promise<IDBPDatabase<AllMarksDB>> {
+  const db = await openDB<AllMarksDB>(DB_NAME, DB_VERSION, {
     blocked: handleDBBlocked,
     blocking: handleDBBlocking,
     upgrade(db, oldVersion, _newVersion, transaction) {
@@ -602,7 +602,7 @@ export async function initDB(): Promise<IDBPDatabase<BooklageDB>> {
  * @returns The created BookmarkRecord
  */
 export async function addBookmark(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   input: BookmarkInput,
 ): Promise<BookmarkRecord> {
   // Append to the end of the current bookmark list (board-wide ordering).
@@ -662,7 +662,7 @@ export async function addBookmark(
  * @param bookmarkId - The bookmark ID to delete
  */
 export async function deleteBookmark(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
 ): Promise<void> {
   const tx = db.transaction(['bookmarks', 'cards'], 'readwrite')
@@ -692,7 +692,7 @@ export async function deleteBookmark(
  * @param updates - Partial card fields to merge
  */
 export async function updateCard(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   cardId: string,
   updates: Partial<Omit<CardRecord, 'id' | 'bookmarkId' | 'folderId'>>,
 ): Promise<void> {
@@ -722,7 +722,7 @@ export const DEFAULT_PREFERENCES: UserPreferencesRecord = {
  * Check if user has saved preferences (vs first-time defaults).
  */
 export async function hasSavedPreferences(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
 ): Promise<boolean> {
   const prefs = await db.get('preferences', 'main')
   return prefs !== undefined
@@ -734,7 +734,7 @@ export async function hasSavedPreferences(
  * @returns The stored UserPreferencesRecord or DEFAULT_PREFERENCES
  */
 export async function getPreferences(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
 ): Promise<UserPreferencesRecord> {
   const prefs = await db.get('preferences', 'main')
   return prefs ?? DEFAULT_PREFERENCES
@@ -746,7 +746,7 @@ export async function getPreferences(
  * @param prefs - Partial preferences to merge with existing values
  */
 export async function savePreferences(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   prefs: Partial<Omit<UserPreferencesRecord, 'key'>>,
 ): Promise<void> {
   const current = await getPreferences(db)
@@ -764,7 +764,7 @@ export async function savePreferences(
  * @param ogpData - OGP fields to merge plus the new ogpStatus
  */
 export async function updateBookmarkOgp(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   ogpData: {
     title?: string
@@ -794,7 +794,7 @@ export async function updateBookmarkOgp(
  * causing reloaded boards to "snap to nearest preset" — bug fix.
  */
 export async function persistCustomCardWidth(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   width: number,
 ): Promise<void> {
@@ -818,7 +818,7 @@ export async function persistCustomCardWidth(
  * idempotent backfills). I-07 Phase 1.
  */
 export async function persistPhotos(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   photos: readonly string[],
 ): Promise<void> {
@@ -851,7 +851,7 @@ export async function persistPhotos(
  * cleanup spec retires photos[], persistPhotos() will be removed.
  */
 export async function persistMediaSlots(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   mediaSlots: readonly MediaSlot[],
 ): Promise<void> {
@@ -889,7 +889,7 @@ export async function persistMediaSlots(
  * affordance.
  */
 export async function clearCustomCardWidth(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
 ): Promise<void> {
   const existing = await db.get('bookmarks', bookmarkId)
@@ -905,7 +905,7 @@ export async function clearCustomCardWidth(
  *   prune their in-memory override map without diffing the whole list).
  */
 export async function clearAllCustomCardWidths(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
 ): Promise<readonly string[]> {
   const tx = db.transaction('bookmarks', 'readwrite')
   const store = tx.objectStore('bookmarks')
@@ -929,7 +929,7 @@ export async function clearAllCustomCardWidths(
  * reorder).
  */
 export async function updateBookmarkOrderIndex(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   orderIndex: number,
 ): Promise<void> {
@@ -943,7 +943,7 @@ export async function updateBookmarkOrderIndex(
  * Use for drag-to-reorder: caller supplies the new complete order by ID.
  */
 export async function updateBookmarkOrderBatch(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   orderedBookmarkIds: readonly string[],
 ): Promise<void> {
   const tx = db.transaction('bookmarks', 'readwrite')
@@ -962,7 +962,7 @@ export async function updateBookmarkOrderBatch(
  * is not found. Used by viewport revalidation and the refetch button.
  */
 export async function updateBookmarkHealth(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   patch: { linkStatus?: 'alive' | 'gone' | 'unknown'; lastCheckedAt?: number },
 ): Promise<void> {
@@ -981,7 +981,7 @@ export async function updateBookmarkHealth(
  * @returns Array of all BookmarkRecord
  */
 export async function getAllBookmarks(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
 ): Promise<BookmarkRecord[]> {
   return db.getAll('bookmarks')
 }
@@ -996,7 +996,7 @@ export async function getAllBookmarks(
  * @returns Array of created BookmarkRecord
  */
 export async function addBookmarkBatch(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   inputs: BookmarkInput[],
   batchSize: number = 50,
   onProgress?: (completed: number) => void,

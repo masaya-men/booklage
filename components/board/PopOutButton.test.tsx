@@ -3,10 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { PopOutButton } from './PopOutButton'
 
 describe('PopOutButton', () => {
-  it('renders with title attribute "Open Booklage Companion"', () => {
+  it('renders with title attribute "Open AllMarks Companion"', () => {
     render(<PopOutButton onClick={() => {}} disabled={false} />)
     const btn = screen.getByTestId('pip-popout')
-    expect(btn.getAttribute('title')).toBe('Open Booklage Companion')
+    expect(btn.getAttribute('title')).toBe('Open AllMarks Companion')
   })
 
   it('calls onClick when enabled and clicked', () => {

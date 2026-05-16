@@ -37,8 +37,8 @@ export function SiteFooter(): React.ReactElement {
     <footer className={styles.footer}>
       <div className={styles.inner}>
         <div className={styles.brandColumn}>
-          <Link href="/" className={styles.brand} aria-label="Booklage home">
-            Booklage
+          <Link href="/" className={styles.brand} aria-label="AllMarks home">
+            AllMarks
           </Link>
           <p className={styles.tagline}>
             ブックマークを、ビジュアルコラージュに。
@@ -62,7 +62,7 @@ export function SiteFooter(): React.ReactElement {
         </div>
       </div>
       <div className={styles.bottom}>
-        <p>&copy; 2026 Booklage</p>
+        <p>&copy; 2026 AllMarks</p>
         <p className={styles.bottomMeta}>
           Data lives in your browser. No accounts, no tracking.
         </p>

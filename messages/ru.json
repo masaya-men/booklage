@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Booklage",
+    "name": "AllMarks",
     "tagline": "Закладки × Коллаж"
   },
   "board": {
@@ -19,6 +19,6 @@
     }
   },
   "share": {
-    "defaultText": "Сделал коллаж из закладок — получилось потрясающе ✨ #Booklage"
+    "defaultText": "Сделал коллаж из закладок — получилось потрясающе ✨ #AllMarks"
   }
 }

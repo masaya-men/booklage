@@ -272,7 +272,7 @@ Lightbox / 矢印 nav / 取り込みボタンは Phase 2 / 3。
 - **Phase 2 (次セッション、独立 brainstorming)**:
   - 受信側 read-only Lightbox（board の Lightbox を流用）
   - board / 受信側 Lightbox の左右矢印 / キーボード ←→ nav
-  - 「Booklage で表現する」文言改名（候補: 「Booklage で集める」「自分のボードに取り込む」等、別 brainstorming）
+  - 「AllMarks で表現する」文言改名（候補: 「AllMarks で集める」「自分のボードに取り込む」等、別 brainstorming）
 - **Phase 3 (Phase 2 の後)**:
   - 受信側 Lightbox に「このカードを取り込む」単体ボタン
   - Lightbox 外で全部取り込み + matching-app 風タグ付け（TODO Task 4.1, 4.2）

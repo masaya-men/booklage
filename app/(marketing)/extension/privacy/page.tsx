@@ -2,21 +2,21 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Extension Privacy Policy — Booklage',
-  description: 'Privacy policy for the Booklage Chrome extension.',
+  title: 'Extension Privacy Policy — AllMarks',
+  description: 'Privacy policy for the AllMarks Chrome extension.',
 }
 
 export default function ExtensionPrivacyPage(): React.ReactElement {
   return (
     <>
-      <h1>Booklage Chrome Extension — Privacy Policy</h1>
+      <h1>AllMarks Chrome Extension — Privacy Policy</h1>
       <p className="updated">Last updated: 2026-05-09</p>
 
       <h2>What this extension does</h2>
       <p>
-        Booklage saves URLs you choose to a local visual collage in your browser.
+        AllMarks saves URLs you choose to a local visual collage in your browser.
         When you click the extension&apos;s icon, press <code>Ctrl+Shift+B</code>, or use the right-click
-        &quot;Save to Booklage&quot; menu, the extension reads the URL, page title, OGP description,
+        &quot;Save to AllMarks&quot; menu, the extension reads the URL, page title, OGP description,
         OGP image URL, site name, and favicon URL of the active tab (or the link you right-clicked)
         and writes them as a bookmark to your browser&apos;s IndexedDB inside the booklage.pages.dev origin.
       </p>
@@ -70,7 +70,7 @@ export default function ExtensionPrivacyPage(): React.ReactElement {
           </tr>
           <tr>
             <td><code>contextMenus</code></td>
-            <td>Add the right-click &quot;Save to Booklage&quot; entries.</td>
+            <td>Add the right-click &quot;Save to AllMarks&quot; entries.</td>
           </tr>
           <tr>
             <td><code>scripting</code></td>

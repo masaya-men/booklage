@@ -32,7 +32,7 @@ function ensurePill() {
   pill.className = 'booklage-pill'
   pill.innerHTML =
     '<span class="booklage-pill__icon" data-role="icon"></span>' +
-    '<span class="booklage-pill__brand">Booklage</span>' +
+    '<span class="booklage-pill__brand">AllMarks</span>' +
     '<span class="booklage-pill__sep">' + String.fromCharCode(183) + '</span>' +
     '<span class="booklage-pill__state" data-role="state">Saving</span>'
   document.documentElement.appendChild(pill)
@@ -129,7 +129,7 @@ window.addEventListener('message', (event) => {
 })
 
 // === PiP state reporter (booklage tab only) ===
-// Booklage's React app toggles <html data-booklage-pip="active"> when the
+// AllMarks's React app toggles <html data-booklage-pip="active"> when the
 // PiP window is open. We watch that attribute and notify the background SW
 // so it can suppress the cursor pill while PiP is providing visual feedback.
 if (location.hostname === 'booklage.pages.dev') {

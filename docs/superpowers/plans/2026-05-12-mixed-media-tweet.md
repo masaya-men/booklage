@@ -251,7 +251,7 @@ import type { MediaSlot } from '@/lib/embed/types'
  * cleanup spec retires photos[], persistPhotos() will be removed.
  */
 export async function persistMediaSlots(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   bookmarkId: string,
   mediaSlots: readonly MediaSlot[],
 ): Promise<void> {

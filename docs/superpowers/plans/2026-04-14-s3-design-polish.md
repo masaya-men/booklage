@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** リキッドグラス、4種カードスタイル、リッチインタラクション、テーマ連動を実装し、Booklageを「触って楽しい表現ツール」に引き上げる。
+**Goal:** リキッドグラス、4種カードスタイル、リッチインタラクション、テーマ連動を実装し、AllMarksを「触って楽しい表現ツール」に引き上げる。
 
 **Architecture:** B案（見た目インパクト先行）。まずリキッドグラス＋インタラクションを既存Glassカード上で動かし、次にカードサイズシステム、カードスタイル4種、テーマ連動、設定パネルの順で積み上げる。全てVanilla CSS + GSAP（Framer Motion禁止）。
 
@@ -1297,7 +1297,7 @@ width: number
 height: number
 ```
 
-- [ ] **Step 2: BooklageDB interface に preferences store を追加**
+- [ ] **Step 2: AllMarksDB interface に preferences store を追加**
 
 ```typescript
 /** User preferences stored in IndexedDB */
@@ -1312,8 +1312,8 @@ export interface UserPreferencesRecord {
   reducedMotion: boolean
 }
 
-// BooklageDB interface に追加:
-interface BooklageDB {
+// AllMarksDB interface に追加:
+interface AllMarksDB {
   bookmarks: BookmarkRecord
   folders: FolderRecord
   cards: CardRecord
@@ -1390,7 +1390,7 @@ export const DEFAULT_PREFERENCES: UserPreferencesRecord = {
 
 /** Get user preferences (returns defaults if not set) */
 export async function getPreferences(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
 ): Promise<UserPreferencesRecord> {
   const prefs = await db.get('preferences', 'main')
   return prefs ?? DEFAULT_PREFERENCES
@@ -1398,7 +1398,7 @@ export async function getPreferences(
 
 /** Save user preferences */
 export async function savePreferences(
-  db: IDBPDatabase<BooklageDB>,
+  db: IDBPDatabase<AllMarksDB>,
   prefs: Partial<Omit<UserPreferencesRecord, 'key'>>,
 ): Promise<void> {
   const current = await getPreferences(db)

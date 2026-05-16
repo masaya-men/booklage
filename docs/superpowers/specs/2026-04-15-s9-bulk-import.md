@@ -263,7 +263,7 @@ type OgpStatus = 'pending' | 'fetched' | 'failed'
 
 ## S9に含まないもの（将来スプリント）
 
-- Booklage専用Chrome拡張（Twitter/Instagram直接読み取り）→ S10以降
+- AllMarks専用Chrome拡張（Twitter/Instagram直接読み取り）→ S10以降
 - カスタムカーソル機能（リキッドグラス虫眼鏡 + コレクション）→ UX磨きスプリント
 - サイト全体のカスタムスクロールバー → UX磨きスプリント（※モーダル内は本スプリントで対応）
 - リストパネルの検索・フィルター機能 → 将来拡張
