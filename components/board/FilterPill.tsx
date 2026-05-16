@@ -58,10 +58,9 @@ export function FilterPill({ value, onChange, moods, counts }: Props): ReactElem
         aria-expanded={open}
         data-testid="filter-pill"
       >
-        <span className={styles.bracket}>[</span>
         <span className={styles.label}>{label(value, moods)}</span>
-        <span className={styles.count}>· {countFor(value, counts)}</span>
-        <span className={styles.bracket}>]</span>
+        <span className={styles.separator}>·</span>
+        <span className={styles.count}>{countFor(value, counts)}</span>
       </button>
       {open && (
         <div className={styles.menu} role="menu">

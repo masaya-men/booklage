@@ -286,8 +286,6 @@ export function ScrollMeter({
     <div className={wrapClassName} aria-hidden={hidden ? 'true' : undefined}>
       <div className={styles.meterStack}>
         <div className={styles.meterCounter} aria-hidden="true">
-          <span className={styles.meterBracket}>[</span>
-          {' '}
           <span ref={n1Ref}>{pad4(visibleRangeStart)}</span>
           {' '}
           <span className={styles.meterDim}>—</span>
@@ -297,8 +295,6 @@ export function ScrollMeter({
           <span className={styles.meterDim}>/</span>
           {' '}
           <span ref={totalSpanRef}>{pad4(totalCount)}</span>
-          {' '}
-          <span className={styles.meterBracket}>]</span>
         </div>
         <div
           ref={trackRef}
