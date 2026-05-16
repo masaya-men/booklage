@@ -967,3 +967,104 @@ spec: `docs/private/2026-05-11-allmarks-branding-spec.md` (gitignored)
 ### 次セッション (= 30)
 
 ムードボード全画面化 (= 30 分の小規模 sprint)。 詳細 `docs/CURRENT_GOAL.md`。
+
+
+## セッション 30 (2026-05-16) — 全画面化 visual pivot + Bug 調査 + 次戦略合意
+
+### 前半: 全画面化 (= 5 つの CSS 変更で Phase A → Phase C pivot)
+
+セッション 29 で計画した「30 分の小規模 sprint」。 destefanis homage の額縁付きデザインから AllMarks 個性 「自分の世界」 全画面表現への visual pivot。
+
+**変更**:
+1. `--bg-outer` `#ebebeb` → `#0a0a0a` (= canvas と同色で枠を消す)
+2. `--canvas-margin` `24px` → 当初 `0` → ユーザー希望「壁から離して」 で **`48px`** (= 純粋に内側 padding として機能、 色は canvas と同色なので「枠」 ではない)
+3. `--canvas-radius` `24px` → `0` (= 角丸撤廃、 ストレート edge)
+4. `BoardChrome` (= 左上 AllMarks wordmark + 下端 Guide/About/Privacy/Terms リンク) を一時非表示。 元々 margin に居場所があった、 margin 縮小で消えるため。 footer 全体デザイン (= 広告含む) を別 sprint で再設計後に差し戻す
+5. `CARD_GAP_DEFAULT_PX` `18` → **`97`** (= ユーザーが画面で調整してベスト値発見、 4 列 gallery 密度、 背景タイポ AllMarks が gap から透けて見える)
+
+**ユーザー判定**: 「整理ツール → 表現ツール」 ミッションを default で体現する転換 + Phase A 完全終了 + Phase C (個性化) 突入を宣言。
+
+**commit / deploy**:
+- `e8beadd` style(board): session 30 visual pivot — fullscreen canvas + gallery density
+- 本番 deploy 済 (= `booklage.pages.dev`)
+
+**memory 更新**:
+- `feedback_strict_reference.md` を全面書き直し: Phase A の destefanis 忠実コピー制約を「履歴コンテキスト」 に格下げ、 Phase C 個性注入解禁
+- `MEMORY.md` の該当 index 行も更新
+
+### 中盤: 戦略 4 つの議論 + 合意
+
+**ユーザー発意の話題**:
+1. 拡張機能を早めに submit すべきか?
+2. タグ付けの位置付け
+3. 広告の扱い
+4. 「骨組み先に作るべき (= サイジング汎用化、 等)」
+
+**Claude 回答**:
+1. **拡張機能 ストア submit は 5/31 ドメイン取得後に AllMarks v1.0 として 1 回で**。 ただし「使える状態」 への polish (= ローカル sideload 改善) は今すぐ全然 OK = ユーザー誤解を解いて合意
+2. **タグ**: manual tag (= IDB schema bump 必要、 不可逆 → 早期 schema 設計が foundation) と AI auto-tag (= MVP 後 feature) を分離。 タグ自体は AllMarks 移行後にマッチングアプリ風 UI で実装、 で合意
+3. **広告**: 配信は後で良いが **layout 予約 slot** は今 foundation に含める。 戦略 spec は既存 (= `project_ad_strategy_2026_05` memory)
+4. **骨組み 3 本柱** を提示 → 同意:
+   - サイジング汎用化 (= clamp(MIN, vw, BASE))
+   - manual tag schema (= IDB bump + CRUD + filter)
+   - 広告 placement 予約 slot
+   - 推奨順 (1) → (3) → (2)、 順次セッション
+
+**card-drag-edge-autoscroll の記録確認**: ユーザー懸念 → 既に `docs/private/IDEAS.md:1899` C 項目に記録済を発見。 訂正 + 報告。
+
+### 後半: Bug 調査 + 修正 (= systematic-debugging skill 適用)
+
+**ユーザー報告 2 件**:
+- Bug A: テキストカードを開くと「カードのまま飛んできて、 ライトボックスになるとテキストになる」 急変
+- Bug B: ライトボックス open / close の morph が震えている (= テキスト以外すべて)
+
+**Phase 1 (= root cause investigation) で 3 つの sub-bug に分解**:
+
+| sub-bug | 症状 | root cause |
+|---|---|---|
+| **A-1** | TextCard 急変 | `LightboxMedia` ([L1597-1639](components/board/Lightbox.tsx#L1597-L1639)) に text-only ケースなし、 L1638 placeholder div に fallback。 Clone は full TextCard、 swap で素 div へ急変 |
+| **A-2** | サムネ付きカード「奥に消える」 (= 断続) | `.media img` に aspect-ratio 駆動 wrapper なし、 embed は `.embedPosterBox` で事前 sizing 済だが一般 image card は素 `<img>`。 image load 完了前の `mediaEl.getBoundingClientRect()` がほぼゼロ → clone tween が zero rect に縮む。 Cache hit/miss で intermittent |
+| **B** | 全カード共通 morph 震え | clone tween が `top` / `left` / `width` / `height` を直接 animate (= layout property、 GPU 加速不可、 毎フレーム reflow + paint + composite)。 sub-pixel float 補間で増幅。 B-#17 の「radius 維持のための設計トレードオフ」 が代償化 |
+
+**fix 適用**:
+
+**A-2 fix** (= 即修正、 リスクなし):
+- `Lightbox.tsx` L1635 周辺: `aspectRatio` あれば `.imageBox` wrapper、 なければ素 `<img>` (= share view 互換)
+- `Lightbox.module.css` に `.imageBox` / `.imageBox img` 追加 (= `.embedPosterBox` と同じ width 式、 `object-fit: contain` で aspect ズレ時の画像切り抜き防止)
+
+**A-1 + B は次セッション持ち越し**: ユーザー判断「応急処置はムダ、 公開前なので根本解決から」。 次セッション 31 で TextCard 再設計と一緒に扱う (= 同 file 群、 一括効率)。
+
+**commit / deploy**:
+- `0fd7b8a` fix(lightbox): aspect-driven wrapper for general image cards
+- 本番 deploy 済
+
+### TextCard 再設計の方向合意 (= 次セッション 31 主題候補)
+
+ユーザーから reference 画像 3 枚 (= 白地黒字 editorial / 黒地白字 statement / 黒地白字 editorial) + 方向性提示:
+- 2 パターンを random 分配 (= 白地黒字 / 黒地白字)
+- タイトル typography が主役、 文字サイズは reference くらい (= 今より小さく抑えめ)
+- 装飾は最小 (= 角丸 + パディング + ホスト名小 + タイトル)
+- 「テキストカードをカードとして」 ボードと Lightbox で同じ装飾を共有 → A-1 自動解決
+
+詳細は `docs/private/IDEAS.md` D 項に記録。
+
+### 学び / 注意 / 教訓
+
+- **設計トレードオフの代償化**: B-#17 で「radius 維持のため transform:scale を避けて top/left/width/height 直接 animate」 を選んだが、 これが Bug B の root cause。 当時の判断は正当だが、 「視覚優先で性能を犠牲にした選択は後でユーザー知覚で顕在化する」 という教訓
+- **aspect-ratio CSS で load 完了前 sizing 確定**: B-#17-#2 で embed 向けに作った `.embedPosterBox` の汎用性、 同じ pattern が一般 image card にも必要だった。 「embed 専用」 だと思い込んでいた範囲が広がる
+- **systematic-debugging Phase 1 の重要性**: Bug A をユーザー報告 (= テキストカード問題) で診断したら、 第二 evidence (= サムネ付きも奥に消える) でほぼ別 bug が出てきた。 「root cause を **複数**特定する」 まで投げ出さない姿勢が大事
+- **応急処置を捨てる勇気**: ユーザー判断「公開前だから根本解決から」 は normal な development では non-trivial。 Solo dev だからこそ「動いてる方が安心」 という心理に流されず、 設計の clean さを優先できる
+- **「テキストカードを 1 つの世界に統一」 の architectural insight**: ユーザー発意の「カードのデザインをもっとしっかりして、 それをちゃんとカードとして扱えば単純になる」 は本質的に正しい。 ボードと Lightbox で別物として扱う複雑さの源を消す方向
+
+**vitest 488 / tsc / build clean** / **本番 deploy 3 回** (`https://booklage.pages.dev` 反映)。 PR / branch なし、 master 直 commit。
+
+### 次セッション (= 31) 主題
+
+**「Lightbox 周りまとめ sprint」**:
+1. TextCard 再設計 (= 2 パターン random、 typography 主役、 reference 画像準拠)
+2. Lightbox の `.media` で再設計 TextCard を大サイズ描画 → A-1 自動解決
+3. Bug B (= 震え) scope 測定 → 修正 (= B-a / B-b / B-c から選択)
+
+詳細 `docs/CURRENT_GOAL.md` + `docs/private/IDEAS.md` D・E 項。
+
+foundation 3 本柱 (= サイジング汎用化 / tag schema / 広告 placement) はセッション 32 以降へ後ろ倒し合意済。

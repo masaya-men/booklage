@@ -1,78 +1,85 @@
-# 次セッションのゴール (= セッション 30)
+# 次セッションのゴール (= セッション 31)
 
 ## ゴール
 
-**ムードボードを全画面化する** (= 額縁付き destefanis homage から、 AllMarks 個性 = 「自分の世界」 表現への visual pivot)。 30 分で実装、 実機確認、 気に入らなければロールバック可能な小規模 sprint。
+**Lightbox 周りまとめ sprint** — TextCard 再設計 + Lightbox 統合 + 震え修正 を 1 sprint で。
 
-## 前提 (= セッション 29 で揃った)
+3 タスクは互いに密結合 (= 同じ file 群を触る) なので、 一括着工して文脈効率最大化。 まず TextCard 再設計 から、 続けて Lightbox 統合、 最後に震え修正。
 
-- master HEAD: `feat/style/docs 6 commit shipped、 push 済`
-- セッション 29 の主要成果:
-  - ScrollMeter periodic full-scramble 実装
-  - PrecisionSlider 新規 (= 自前 pointer-based slider、 マウス 1000px で min→max)
-  - Gap 上限 60 → 300、 値は float 化
-  - Chrome v4 legibility (= stroke 0.75px / 0.6 黒 + soft halo、 globals.css に token 集約)
-  - ScrollMeter counter / FilterPill の括弧削除、 数字 brightness 統一
-  - **Booklage → AllMarks rebrand 完了** (= 113 ファイル、 UI / i18n / 拡張 / docs / memory)
-- 本番反映済 → `https://booklage.pages.dev` ハードリロードで最新
+## 前提 (= セッション 30 で揃った)
+
+- master HEAD: `0fd7b8a fix(lightbox): aspect-driven wrapper for general image cards`
+- セッション 30 の 2 commit:
+  - **`e8beadd`** visual pivot (= 全画面化 + gap=97 + Phase A→C 切替)
+  - **`0fd7b8a`** Bug A-2 (= サムネ付きカード「奥に消える」) 修正
+- 本番反映済 → `https://booklage.pages.dev`
 - vitest 488 / tsc / build clean
 
-## セッション 30 の進め方
+## セッション 31 の進め方
 
-### Phase 1: ムードボード全画面化 (= 短時間、 必須)
+### Phase 1: TextCard 再設計 (= 主題、 60-90 分)
 
-実装スコープ (= 全部 CSS):
+**ユーザー希望の方向** (= reference 画像 3 枚 + 言語で確定済、 詳細 `docs/private/IDEAS.md` D 項):
 
-```diff
- :root {
--  --bg-outer: #ebebeb;
-+  --bg-outer: #0a0a0a;   /* canvas と同色 = 視覚的に「全画面」 */
- }
+- **2 パターン random 分配**:
+  - 白地に黒字 (= editorial 風、 informative)
+  - 黒地に白字 (= statement / display 風、 印象に残る)
+- **タイトル typography が主役**、 文字サイズは reference 画像くらい (= 今より小さく、 抑えめ)
+- **装飾は最小** (= 角丸 + パディング + ホスト名 小 + タイトル の 4 要素)
+- ホスト名は控えめ、 矢印アイコン (`↓`) 等の素朴な装飾は OK
+- 角丸は既存 `--card-radius: 20px` 維持
+- 高コントラスト (= AllMarks の destefanis 系直球美)
 
- .canvas {
--  margin: 24px;
--  border-radius: 24px;
-+  margin: 0;
-+  border-radius: 0;
- }
-```
+**着工前に決めること**:
+1. **random 分配の単位** (= per card / per session、 deterministic vs runtime random)
+2. **文字サイズの具体値** (= reference 画像から計測 → user 好み微調整)
+3. **黒地カードの背景色** (= `#000` / `#0a0a0a` / `#101010`)
+4. **画像 2 系の all-caps display 路線**を含めるか、 別パターン扱いか
+5. **複数行タイトル時の挙動** (= 行高、 文字サイズ自動縮小、 等)
 
-`BoardRoot.module.css` / `BoardChrome.module.css` あたりを実機確認しながら調整。 カードの絶対座標は canvasWrap の内側基準なので変動なし。
+**実装スコープ**:
+- `components/board/cards/TextCard.tsx`: typography / layout 再設計
+- `components/board/cards/TextCard.module.css`: 2 色パターン + base style
+- random 分配ロジック (= cardId hash で deterministic 推奨)
+- 既存 e2e テスト (= `tests/e2e/`) の TextCard 関連を更新
 
-### Phase 2: chrome (= ヘッダー / scroll meter) の位置検証
+### Phase 2: Lightbox 統合 (= A-1 自動解決、 20-30 分)
 
-- TopHeader は viewport 上端絶対配置のはず → 全画面化でも問題なし、 検証だけ
-- ScrollMeter は canvas 下端基準 → margin 0 で全画面化すると viewport 下端ぴったりになる、 体感確認
+**変更**:
+- `components/board/Lightbox.tsx` の `LightboxMedia` 関数 ([L1597-1639](components/board/Lightbox.tsx#L1597-L1639)):
+  - L1638 placeholder div を削除
+  - 代わりに再設計 TextCard を**大サイズ** (= cardWidth: 600px 程度) で描画
+- clone morph はそのまま使える (= 小 TextCard → 大 TextCard、 同じ装飾なので急変なし) → **A-1 自動解決**
 
-### Phase 3: 判定 + spec 更新
+**選択肢**: `.text` 右パネルの扱い
+- そのまま残す (= 既存 2 列構造を維持、 .media の TextCard と .text のタイトル / 説明が duplicate になるので片方を整理)
+- text-only カードでは `.text` 非表示、 `.media` の TextCard だけ表示
+- セッション内で実際に見ながら決定
 
-- 全画面が良い感触なら **Phase A → Phase C 切替宣言** を memory / spec に記録
-- ロールバック判定なら revert で戻す (= 1 commit reverse、 1 deploy)
-- `feedback_strict_reference.md` (= 「destefanis 忠実コピー、 個性は Phase C」) のフェーズ宣言更新
+### Phase 3: Bug B (= 震え) 修正 (= 30-60 分、 scope による)
 
-## セッション 31 (= その次) の予告
+**root cause** (= セッション 30 で特定済、 詳細 IDEAS.md E 項):
+- clone tween が `top` / `left` / `width` / `height` を直接 animate (= layout property、 GPU 加速不可)
+- sub-pixel float 補間で増幅
 
-**autoplay + auto-cycle MVP**:
-- 動画 autoplay (= `<video>` + YouTube IFrame、 mute、 IntersectionObserver)
-- 複数写真 auto-cycle (= hover swap 機構 + 4-5 秒タイマー、 スタガー)
-- 「表示オプション」 トグル UI 新規 (= autoplay / 背景タイポ 等)
-- スコープ外: TikTok inline、 同時再生数の精密チューニング
-- 既存「ユーザー mix」 ビジョンとは 2-layer 構造で整合 (= ambient mute / promoted unmute)
+**修正案 3 つから選択**:
+- **B-a**: `transform: translate + scale` に変更 (= 軽実装、 ただし border-radius が animation 中歪む)
+- **B-b**: sub-pixel snap (= rect 値 `Math.round` 化) + `will-change` 追加 (= 最軽、 軽減程度 / 完全 fix 期待薄)
+- **B-c**: transform 路線 + clone の border-radius を child element に逃がす radius 維持 workaround (= 完全 fix、 refactor 規模大)
 
-## 着工前読み込み
-
-- `components/board/BoardChrome.tsx` + `.module.css` (= 額縁構造の中身)
-- `components/board/BoardRoot.module.css` (= canvas / canvasWrap の margin / radius)
-- `app/globals.css` (= `--bg-outer` `--canvas-margin` `--canvas-radius` 定義場所)
-- メモリ `reference_destefanis_visual_spec.md` (= 「白外周 + 中央 dark canvas」 が destefanis、 これと別れる宣言になる)
-
-## 触らない (= 短期スコープ外)
-
-- ④ AllMarks pin (= 全画面化と並行して着手しても良いが、 まず全画面化判定が先)
-- ⑥ 拡張機能 polish
-- LP リデザイン
-- B-#3 重複 URL バグ、 B-#7 サイジング縮小 clipping
+**判断手順**:
+1. まず Lightbox clone 周辺の refactor scope を測定 (= B-c の現実性確認)
+2. B-c が現実的 → B-c で完全 fix
+3. B-c が重い → B-a (= 多少 radius 歪んでも shake 消す方を優先) と B-b の併用
 
 ## 月末リマインダー (= 2026-05-31)
 
-**`allmarks.app` ドメイン取得確認**。 セッション開始時に user に確認を促す。 取得済 → Cloudflare Pages 新 project 作成・redirect 設定の sprint に進める。 未取得 → 取得を促す。
+**`allmarks.app` ドメイン取得確認**。 セッション開始時に user に確認を促す。 取得済 → Cloudflare Pages 新 project 作成 + 拡張機能 v1.0 submission sprint に進める。 未取得 → 取得を促す。
+
+## 触らない (= セッション 31 短期スコープ外)
+
+- foundation 3 本柱 (= サイジング汎用化 / tag schema / 広告 placement) — セッション 32 以降
+- 拡張機能 polish 3 項目 (= PiP 常駐 / SNS いいね連動 / 代替ショートカット) — セッション 32 以降
+- LP リデザイン (= IDEAS.md `project_lp_redesign_vision`)
+- Favicon (= AllMarks identity 決定後)
+- B-#3 重複 URL バグ、 B-#7 サイジング縮小 clipping

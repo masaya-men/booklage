@@ -20,35 +20,60 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-16 セッション 29 — 4 commit 本番 deploy 済)
+### 直近の状態 (2026-05-16 セッション 30 — 2 commit 本番 deploy 済)
 
-セッション 29 は当初 Phase 1 視覚 fine-tune + Phase 2 ③ Slider 精密化が主題だったが、 ユーザー追加要望で chrome 視認性 + Booklage→AllMarks rebrand まで完遂。
+セッション 30 は当初「全画面化 30 分 sprint」 だったが、 ユーザー追加要望で **Bug 調査 + 戦略議論 + TextCard 再設計合意** まで完遂。 全画面化は予定通り完成、 加えて次セッション 31 の主題が固まった。
 
-- セッション 29 の 4 commit:
-  - **`feat(scroll-meter): periodic full-scramble on idle counters`** — ScrollMeter counter が settle 後 5-15 秒に 1 回 full-scramble するように
-  - **`feat(slider): custom pointer-based precision slider for W/G`** — PrecisionSlider 新規 (= 自前 pointer 実装、 1000px で min→max、 float 値、 Gap max 60→300、 +10 test)
-  - **`style(chrome): v4 chrome legibility — stronger stroke + halo + missing islands`** — chrome formula を v3 → v4 (= stroke 0.75px / opacity 0.6 + soft halo)、 globals.css に `--chrome-text-*` token 集約、 ScrollMeter counter は chrome 完全未適用だったので新規追加
-  - **`chore: rebrand Booklage -> AllMarks across UI/i18n/docs/comments`** — 113 ファイル一括置換、 UI / i18n / 拡張 / 型名 / log prefix / docs / CLAUDE.md / memory 全部 AllMarks 統一
-- 本番反映済 → `https://booklage.pages.dev` をハードリロードで確認可能
+**セッション 30 の 2 commit**:
+1. **`e8beadd` style(board): session 30 visual pivot — fullscreen canvas + gallery density**
+   - `--bg-outer` `#ebebeb` → `#0a0a0a` / `--canvas-margin` `24px` → `48px` / `--canvas-radius` `24px` → `0`
+   - BoardChrome (= wordmark + footer) 一時非表示
+   - `CARD_GAP_DEFAULT_PX` `18` → `97` (= 4 列 gallery 密度、 ユーザー確定値)
+   - **Phase A → Phase C 切替** 宣言、 memory `feedback_strict_reference.md` 全面更新
+2. **`0fd7b8a` fix(lightbox): aspect-driven wrapper for general image cards**
+   - Bug A-2 修正 (= サムネ付きカード「奥に消える」 = `<img>` load 完了前の `.media` rect ゼロ問題)
+   - 一般 image card にも `.embedPosterBox` 相当の wrapper を導入
+
+- 本番反映済 → `https://booklage.pages.dev` をハードリロードで確認
 - vitest 488 / tsc / build clean
-- spec: `docs/superpowers/specs/2026-05-16-precision-slider-design.md`
 
-### 次セッションでやること
+**未着手で次セッション 31 に持ち越し**:
+- **Bug A-1 (= TextCard 急変)** — TextCard 再設計で根本解決へ
+- **Bug B (= 全カード morph 震え)** — `top/left/width/height` 直接 animate (= layout property) が root cause、 transform 路線への refactor scope 測定 + 修正
 
-次セッションのゴールは `docs/CURRENT_GOAL.md`。 セッション 29 で残り候補:
-- ④ Booklage pin (= ヘッダーロゴ要素、 未着工) — 推奨次タスク
-- ⑥ 拡張機能 polish
-- ⑤ カスタムマウスポインタ (= テーマシステム後)
-- LP リデザイン (= IDEAS §LP redesign vision)
+### 次セッション (= 31) でやること
+
+ゴール: **`docs/CURRENT_GOAL.md`**。 主題は **「Lightbox 周りまとめ sprint」**:
+
+1. **TextCard 再設計** (= 2 パターン random / typography 主役 / reference 画像準拠)
+2. **Lightbox の `.media` で再設計 TextCard を大サイズ描画** (= A-1 自動解決)
+3. **Bug B 修正** (= 震え) — scope 測定後に B-a (transform 路線) / B-b (sub-pixel snap) / B-c (transform + radius workaround) から選択
+
+詳細: `docs/private/IDEAS.md` の **D 項 (= TextCard 再設計)** + **E 項 (= Bug B)**。
+
+### foundation 3 本柱 (= セッション 32 以降)
+
+セッション 30 で合意した骨組み:
+1. **サイジング汎用化** (= clamp(MIN, vw, BASE)、 spec 既存 `docs/specs/2026-05-12-sizing-migration-spec.md`)
+2. **manual tag schema** (= IDB schema bump + tag CRUD + filter)
+3. **広告 placement 予約 slot** (= board / footer / PiP)
+
+推奨順 (1) → (3) → (2)。 詳細は `docs/private/IDEAS.md` 既存セクション + 戦略 spec。
+
+### 拡張機能 polish (= セッション 32 以降、 別 sprint)
+
+セッション 30 で 3 項目合意 (詳細 IDEAS.md F 項):
+- ✅ PiP 自動常駐 (= 高難度)
+- ✅ SNS いいね / ブクマ連動 (X / YouTube から、 設定で挙動切替)
+- ❌ 右クリック位置改善は不採用、 代替の ショートカット + floating action button で対応
 
 ### リブランド進行: Booklage → AllMarks (= 2026-05-16 コード rebrand 完了)
 
-- 2026-05-11 セッション 8 で名前変更を決定
 - 新ブランド: **AllMarks** / メインドメイン: **allmarks.app** (取得は月末 2026-05-31 予定)
 - 詳細 spec: `docs/private/2026-05-11-allmarks-branding-spec.md` (gitignored)
 - ✅ コード rebrand 完了 (= UI / i18n / 拡張 / docs / 型名 / log prefix 全部 AllMarks)
 - 🔒 **意図的に維持**: `DB_NAME='booklage-db'`, deploy URL `booklage.pages.dev`, wrangler `--project-name=booklage`, `package.json` "name", bookmarklet 内 programmatic ID, GitHub repo 名
-- 🔜 **ドメイン取得後**: Cloudflare Pages 新 project 作成 → 301 redirect → GitHub repo rename → 拡張機能再パッケージ
+- 🔜 **ドメイン取得後**: Cloudflare Pages 新 project 作成 → 301 redirect → GitHub repo rename → 拡張機能ストア submit (AllMarks v1.0 として 1 回で)
 
 ---
 
