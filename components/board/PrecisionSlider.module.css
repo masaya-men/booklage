@@ -9,11 +9,11 @@
   font-family: ui-monospace, Menlo, monospace;
   font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--chrome-text-color);
   user-select: none;
-  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.45);
+  -webkit-text-stroke: var(--chrome-text-stroke-width) var(--chrome-text-stroke-color);
   paint-order: stroke fill;
-  text-shadow: none;
+  text-shadow: var(--chrome-text-shadow);
 }
 
 .label {
@@ -25,7 +25,7 @@
   text-align: right;
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--chrome-text-color);
 }
 
 .track {

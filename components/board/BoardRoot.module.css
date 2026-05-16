@@ -78,16 +78,16 @@
 .sharePill {
   background: transparent;
   border: 0;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--chrome-text-color);
   padding: 10px 12px;
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
   letter-spacing: 0.04em;
   cursor: pointer;
-  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.45);
+  -webkit-text-stroke: var(--chrome-text-stroke-width) var(--chrome-text-stroke-color);
   paint-order: stroke fill;
-  text-shadow: none;
+  text-shadow: var(--chrome-text-shadow);
   transition:
     color 0.15s ease,
     transform 0.15s ease,
@@ -95,8 +95,8 @@
 }
 
 .sharePill:hover {
-  color: rgba(255, 255, 255, 1);
-  -webkit-text-stroke-color: rgba(0, 0, 0, 0.6);
+  color: var(--chrome-text-color-hover);
+  -webkit-text-stroke-color: var(--chrome-text-stroke-color-hover);
   transform: translateY(-1px);
 }
 

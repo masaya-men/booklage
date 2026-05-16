@@ -11,10 +11,10 @@
   align-items: center;
   gap: 4px;
   font-family: inherit;
-  color: rgba(255, 255, 255, 0.85);
-  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.45);
+  color: var(--chrome-text-color);
+  -webkit-text-stroke: var(--chrome-text-stroke-width) var(--chrome-text-stroke-color);
   paint-order: stroke fill;
-  text-shadow: none;
+  text-shadow: var(--chrome-text-shadow);
   transition:
     color 0.15s ease,
     transform 0.15s ease,
@@ -22,8 +22,8 @@
 }
 
 .pill:hover {
-  color: rgba(255, 255, 255, 1);
-  -webkit-text-stroke-color: rgba(0, 0, 0, 0.6);
+  color: var(--chrome-text-color-hover);
+  -webkit-text-stroke-color: var(--chrome-text-stroke-color-hover);
   transform: translateY(-1px);
 }
 
@@ -34,7 +34,7 @@
 }
 
 .bracket {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.6);
   font-family: ui-monospace, Menlo, monospace;
   font-size: 11px;
   letter-spacing: 0.06em;
@@ -49,7 +49,7 @@
 }
 
 .count {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
   font-family: ui-monospace, Menlo, monospace;
   font-size: 11px;
 }

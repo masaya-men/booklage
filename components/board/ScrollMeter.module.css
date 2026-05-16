@@ -42,15 +42,20 @@
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 11px;
   letter-spacing: 0.10em;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--chrome-text-color);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
   white-space: nowrap;
+  /* Session 29 v4 chrome — counter was missing legibility treatment, gets
+     it now to match the floating chrome of FilterPill / action row. */
+  -webkit-text-stroke: var(--chrome-text-stroke-width) var(--chrome-text-stroke-color);
+  paint-order: stroke fill;
+  text-shadow: var(--chrome-text-shadow);
 }
 
 .meterBracket,
 .meterDim {
-  color: rgba(255, 255, 255, 0.42);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .track {

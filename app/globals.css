@@ -325,6 +325,19 @@ ol {
   --text-signature: #444444;
   --card-radius: 20px;
 
+  /* === Chrome text legibility (session 29 v4 chrome) ===
+     Centralised tokens for the floating text-only chrome (FilterPill, action
+     buttons, sliders, ScrollMeter counter). v3 (session 28) used 0.5px /
+     0.45 stroke with no shadow — readable on the edge scrim but soft on
+     bright card surfaces. v4 strengthens stroke + adds a soft halo so the
+     same chrome reads cleanly on arbitrary backgrounds. */
+  --chrome-text-color: rgba(255, 255, 255, 0.92);
+  --chrome-text-color-hover: rgba(255, 255, 255, 1);
+  --chrome-text-stroke-width: 0.75px;
+  --chrome-text-stroke-color: rgba(0, 0, 0, 0.6);
+  --chrome-text-stroke-color-hover: rgba(0, 0, 0, 0.75);
+  --chrome-text-shadow: 0 0 4px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.45);
+
   /* === card hover micro-interaction (I-07-#2) ===
      Cross-fade duration + easing shared by the multi-slot hover swap
      (opacity transition on layered <img>s) AND the destefanis-style
