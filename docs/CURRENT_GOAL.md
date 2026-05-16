@@ -17,6 +17,11 @@
 ### Phase 1: Apple v3 視覚 fine-tune (= 必須、 短時間)
 
 ユーザーが本番をハードリロードして気になった所を Claude に伝える。 候補:
+
+**⭐ session 28 末ユーザー報告 (= 最優先 fine-tune)**:
+- **ScrollMeter counter の scramble 頻度** — 現状はスクロール中 (= visibleRange / totalCount が変化したタイミング) しか scramble せず、 settle 後は ±1 micro-jitter のみ。 ユーザー要望: settle 中も**たまに full scramble** を発火させたい (= 「震えるだけじゃない、 数字が大きく動く瞬間を周期的に入れる」)。 実装案: settle 後ランダムタイマー (e.g., 5-15 秒間隔で N1/N2/TOTAL のいずれかを 600-1500ms scramble) を仕込む。 [components/board/ScrollMeter.tsx](components/board/ScrollMeter.tsx) の rAF loop に「periodic scramble trigger」 を追加
+
+**その他の候補** (= 必要なら user 指示で着工):
 - counter readout の font-size / letter-spacing 微調整 (= 現在 11px / 0.10em、 視認性次第)
 - scrim 濃度 (= 0.32 → もっと薄く or 濃く) / scrim 高さ (= 80px → 60 or 100px)
 - chrome text の base opacity (= 0.85 → 0.78 or 0.9)
