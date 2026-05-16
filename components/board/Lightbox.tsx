@@ -1632,7 +1632,22 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
   }
 
   // image / website / fallbacks
+  // B-#17-#2 拡張 (session 30): 動画 embed と同じく、 一般 image card も
+  // aspect-ratio 駆動の wrapper で包む。 wrapper は CSS だけで sizing する
+  // ので <img> の load 完了を待たず rect が確定し、 「奥に消える」 (= clone
+  // tween が zero rect に向かって縮む) 現象が消える。 aspectRatio が
+  // 取れない (= share view 等) ケースは従来の素 <img> を維持。
   if (item.thumbnail) {
+    if (aspectRatio) {
+      return (
+        <div
+          className={styles.imageBox}
+          style={{ ['--item-aspect' as string]: aspectRatio } as React.CSSProperties}
+        >
+          <img src={item.thumbnail} alt={item.title} />
+        </div>
+      )
+    }
     return <img src={item.thumbnail} alt={item.title} />
   }
   return <div className={styles.placeholder}>{item.title}</div>

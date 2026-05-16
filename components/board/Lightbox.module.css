@@ -161,6 +161,38 @@
   font-family: var(--font-sans);
 }
 
+/* 一般 image card (= 非 embed / 非 video / thumbnail あり) 用の
+   aspect-driven wrapper。 .embedPosterBox の image 版。 image load 完了前
+   から box の size が CSS だけで確定するので、 clone tween が target にする
+   rect が zero にならない (= 「奥に消える」 症状の防止)。
+   width 式 = min(920px, 60vw, aspect × envelope) は embedPosterBox と
+   同じ envelope 計算。 大画面では 920px、 中画面では 60vw、 縦長画像では
+   envelope ベースで cap される。 */
+.imageBox {
+  position: relative;
+  width: min(
+    920px,
+    60vw,
+    calc(var(--item-aspect, 1) * var(--lightbox-media-max-h))
+  );
+  aspect-ratio: var(--item-aspect, 1);
+  max-height: var(--lightbox-media-max-h);
+  border-radius: var(--lightbox-media-radius);
+  overflow: hidden;
+}
+.imageBox img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  /* .media img の max-* rule を上書き — wrapper が既に envelope 計算済なので
+     img 自身は wrapper を fill するだけで良い。 cover でなく contain なのは
+     persisted aspect と実画像 aspect がわずかにズレた時に画像を切らないため。 */
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+}
+
 /* Horizontal video (16:9). Width fills available column up to 920px,
    height capped at the shared media envelope (clears close button + nav
    meter) — whichever constraint binds first. position:relative so an
