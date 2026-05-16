@@ -20,25 +20,24 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-15 セッション 27 末 — brainstorm のみ、 実装ゼロ)
+### 直近の状態 (2026-05-16 セッション 28 末 — Apple v3 chrome 実装 + 本番 deploy 済)
 
-- master HEAD: セッション 27 close-out commit (= spec 書き出し + handoff)
-- セッション 27 は **brainstorm + spec 書き出しのみ**、 コード変更ゼロ:
-  - **新規 spec**: `docs/superpowers/specs/2026-05-15-board-chrome-minimal-design.md` が確定済の board chrome 仕様
-  - **① ScrollMeter 下配置** 確定: 波形ロジックは現行維持、 viewport bottom 24px center、 counter readout `[ N1 — N2 / TOTAL ]` + D ハイブリッド動き (= N1/N2 600ms scramble、 TOTAL 1500ms scramble、 常時微振動)、 Lightbox open 時 fade out
-  - **② TopHeader Apple v3 採用** 確定: edge gradient scrim (= board ::before 上下 80px) + 文字 chrome (= white 0.85 + 0.5px paint-order stroke + text-shadow ゼロ)、 hover マイクロインタラクション必須、 mount intro fade 2.4 秒
-  - **動的反転は物理制約で棄却**: mix-blend-mode (= カラフル変色) / JS sampling (= 文字内 partial 不可) / backdrop-filter (= 副作用帯) 全部試して spec §2-4 に判断記録
-- セッション 27 でやらなかったこと: ③ Slider 精密化 / ④ Booklage pin / ⑤ カスタムマウス / ⑥ 拡張機能 (= ②③ 後)
-- Visual Companion (= `.superpowers/brainstorm/`) を多用、 session 27 末に server kill 済
-- 全 vitest + tsc + build clean (= 変更なしのため変わらず)
+- master HEAD: `1588d54 style(board-chrome): thin-stroke text chrome on all header islands (Apple v3 step 7)`
+- セッション 28 はセッション 27 spec の **完全消化 + 本番反映**、 3 commit:
+  - **`542a0dc`** TopHeader minimal + canvas edge scrim (= step 1-2、 chrome の下地)
+  - **`d0f98f8`** ScrollMeter portal to canvas bottom + counter readout (= step 3-6、 meter 系)
+  - **`1588d54`** thin-stroke text chrome on all header islands (= step 7、 各 chrome 要素の pill 削除 + stroke 化)
+- 本番反映済 → `https://booklage.pages.dev` をハードリロードで確認可能
+- vitest 478 / tsc / build clean
+- 残し物: ③ Slider 精密化 (= setPointerCapture + movementX×ratio) は持ち越し、 セッション 29 後半 or 29 主題候補
 
-### 次セッションは セッション 27 spec の実装
+### 次セッションは Apple v3 視覚 fine-tune + ③ Slider 精密化
 
-詳細は `docs/CURRENT_GOAL.md`。 spec §4 の 10 ステップを順に実装。
+詳細は `docs/CURRENT_GOAL.md`。 まずユーザーが本番実機で気になった所を伝えて 1 周直す → ③ Slider 精密化に進む。
 
 ### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
 
-CURRENT_GOAL.md にゴール + 実装手順が書いてあります。 spec 全文は `docs/superpowers/specs/2026-05-15-board-chrome-minimal-design.md`。
+CURRENT_GOAL.md にゴール + 進め方 (Phase 1 視覚 fine-tune / Phase 2 ③ Slider) が書いてあります。
 
 ### リブランド進行: Booklage → AllMarks
 
