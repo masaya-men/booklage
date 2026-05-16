@@ -1,54 +1,69 @@
-# 次セッションのゴール (= セッション 34)
+# 次セッションのゴール (= セッション 35)
 
 ## ゴール
 
-**テキストカード周りを完全な状態にする sprint** の **残 3 項目 (= Item 2-4)** を順に。 セッション 33 で Item 1 (= 矢印 + Hit Zone リデザイン) は本番反映 OK。 次はテキストカード本体の構造再設計。
+**transform-scale FLIP を完成させる**。 セッション 34 で着手したが「角丸 20px 固定」 と「テキスト一緒に拡大」 の両方が未達 → 頭すっきり状態で再着手。
 
-## 残 3 項目 (= user 起点、 セッション 33 の冒頭で確定)
+## 背景 (= 開始時にこれを読む)
 
-### Item 2: テキストのみカードの基本サイズ固定 + 構造シンプル化
+セッション 34 で得た学び:
 
-- **対象**: webpage (OGP image 取得不可) + tweet (テキストのみ)
-- **方針**: 現在は board の `TextCard` と Lightbox 専用の `LightboxTextDisplay` で **2 つ別実装**。 これを **1 つの共通カード**に統合する方向で user 合意済 (= 「基本カードサイズを決めてしまって、 それをそのままカードとして扱う」)
-- 既存ファイル: `lib/embed/text-card-color.ts` (= white / black 色振り分け、 user IDE で session 33 開始時開いていた)、 `components/board/cards/TextCard.tsx`、 `components/board/Lightbox.tsx` の `LightboxTextDisplay`
+- **destefanis 本家は Motion One spring で transform:scale で拡大** (= 私たちの「A 案」 そのもの)
+- 当時 (cf6b8d1 / session 23-24) は **radius 24→20 動的 morph + GPU AA の複合問題** で「角丸間に合ってない」 になり width/height tween に逃げた
+- session 32 で全 radius 20px 統一済 = morph 不要、 残るは **GPU AA の subtle 差のみ** = 当時より A 案成功率高い
+- user 判断: 「A 案再評価すべき」 → 試行 OK
 
-### Item 3: board のツイート文のみカードを black / white ランダム化
+セッション 34 で試した実装 (= rolled back):
 
-- **対象**: 文のみツイート (= `hasPhoto: false && hasVideo: false`) を board に出した時のカード
-- **方針**: 既存の `pickTextCardColor(cardId)` (= djb2 hash で white / black 2 variant deterministic に振り分け) を **tweet 経路にも適用**、 webpage TextCard と統一
-- 関連: board 側で tweet 文のみカード描画する箇所を grep して特定 → 同じ 2 色振り分けを適用
+- **v1** (= clone を MEDIA size、 scale-down 開始): ImageCard / Video OK、 TextCard は text 固定で jump
+- **v2** (= clone を SOURCE size、 scale-UP 拡大): 理論上 LargeTextCardScaler 内部 transform と一致するはず、 加えて border-radius を毎フレーム `20 / scaleX` で逆補正
+- user 確認: **テキスト jump 残り**、 **角丸が 20px に固定されず変動**
+- 仮説: `gsap.getProperty('scaleX')` が想定通り動いていない可能性高
 
-### Item 4: テキストのみカードを Lightbox にそのまま (= 同じカード) 移動 + 右エリアに元ページ遷移 / アカウント情報
-
-- **方針**: Item 2 で統合した共通テキストカードを Lightbox の左側にもそのまま表示 (= 「写真のように board card を拡大」 ではなく、 既存のテキストカード視覚をそのまま使う)。 右エリア (`.text`) には:
-  - 元ページを開くボタン
-  - アカウント情報 (= tweet なら author handle / name、 webpage ならドメイン)
-- 既存の `LargeBoardCardClone` / `LargeTextCardScaler` / `LightboxTextDisplay` の 3 経路を整理 (= 廃止 or 統合)
-
-## 月末リマインダー (= 2026-05-31 約 2 週間後)
-
-**`allmarks.app` ドメイン取得確認**。 Cloudflare Dashboard → Domain Registration → 約 ¥1,600/年。 取得後は新 Pages project → 301 redirect → GitHub repo rename → 拡張ストア submit。
+WIP の diff は `docs/private/session-34-flip-wip.diff` に保存 (= 116 行)、 そのまま貼り戻して微調整から始めるのが効率的。
 
 ## 開始時の動き
 
-1. user の最初の発言を待つ (= 揺れ確認 / Item 2 直行 / 別方向)
-2. Item 2 から進めるなら、 まず **現在の TextCard と LightboxTextDisplay の構造比較** + **「基本サイズ」 値の合意** から
-3. 大きい変更 (= 共通カード化、 component 統合、 100 行 + refactor) は必ず方針相談 (= memory `feedback_consult_before_big_changes`)
-4. 想像で進めない、 事実確認 (= memory `feedback_fact_based`)
-5. 4 項目は順番に (= memory user は混乱しやすい、 1 つずつ完成させる方針)
+1. user と挨拶
+2. `docs/private/session-34-flip-wip.diff` を読む
+3. **角丸 20px 固定** を真っ先に直す = scale compensation の動作確認
+4. 候補手段 (= まず 1 つ試して動作確認):
+   - GSAP `modifiers` で scale 値を inject + radius を同じ tween 内で更新
+   - 別の proxy object を同 tween に乗せて proxy.scale を radius 計算に使う
+   - `getComputedStyle(clone).transform` を matrix parse して scale 取り出す
+5. 角丸 OK 後に text grow 問題 (= v2 設計で text が想定通り拡大するかを実機確認)
 
-## セッション 33 で得た教訓
+## 角丸 fix の検証手順
 
-- z-index レイヤー方式は数値座標方式より圧倒的にシンプル (= user 提案で複雑度激減)
-- Visual Companion で画面スクショ + overlay は強力 (= base64 埋め込みで 5MB HTML、 bash concat で生成)
-- backdrop / stage の position: fixed 化は副作用小 (= clone host が canvasWrap 内のままで rect 計算は viewport ベースなので問題なし)
+実装したら playwright で animation frames を sample:
 
-## セッション 33 で残った残課題 (= Item 2-4 完了後に再着手)
+```js
+// 6 frames during open
+for (let i = 0; i < 6; i++) {
+  const sample = await page.evaluate(() => {
+    const clone = document.querySelector('[some clone selector]')
+    if (!clone) return { found: false }
+    const cs = getComputedStyle(clone)
+    const t = cs.transform  // matrix(...) で scale 取り出せる
+    return { transform: t, borderRadius: cs.borderRadius }
+  })
+  await page.waitForTimeout(60)
+}
+```
 
-- **Bug B 震えの「別の原因」 仮説調査** (= blur 以外の重い計算が原因仮説)
-- **必要なら 開閉アニメ自体の見直し** (= Option B = fade のみ、 大変更要相談)
-- **foundation 3 本柱** (= サイジング汎用化 / tag schema / 広告 slot)
+期待: **borderRadius が 20/scaleX で動的更新**されていること (= 視覚 radius は constant 20px)。
 
-## Visual Companion 副産物 (= 整理候補)
+## 残課題 (= transform FLIP 完成後)
 
-`.superpowers/brainstorm/6093-1778926800/content/` に 5.2MB × 4 個 ≈ 20MB の HTML 残存 + PNG 1 枚 (`サンプル用画像.png` / `lightbox.png`)。 gitignored だが ローカルディスク使用。 開始時に `rm -rf` してよい。
+Item 2 / 4 (= テキストのみカードの構造再設計、 Lightbox 右エリア整理) は時間あれば。 transform FLIP 完成だけでも 1 セッション分の価値あり。
+
+## 月末リマインダー (= 2026-05-31 約 2 週間後)
+
+`allmarks.app` ドメイン取得確認。 残り約 2 週間。
+
+## 引き継ぎ resources
+
+- `docs/private/session-34-flip-wip.diff` — v2 実装の生 diff
+- `docs/TODO_COMPLETED.md` セッション 34 セクション — 経緯と次の手段候補
+- session 32 modifier revert (= Lightbox.tsx comment 内) — 整数 snap の罠
+- cf6b8d1 commit message — GPU scale で躓いた当時の状況 (radius morph 同期問題)

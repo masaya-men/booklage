@@ -1266,3 +1266,61 @@ foundation 3 本柱 (= サイジング汎用化 / tag schema / 広告 placement)
 - Item 2: テキストのみカード (webpage + tweet) のサイズ固定 + 構造シンプル化
 - Item 3: board 上ツイート文のみカード を black / white ランダム化 (= webpage TextCard と統一)
 - Item 4: テキストのみカードを Lightbox にそのまま移動、 右エリアに元ページ遷移 / アカウント情報
+
+---
+
+## セッション 34 (2026-05-16) — Phase 1 完了 + transform-scale FLIP 試行 (= rolled back)
+
+### 確定 deploy 済 (= commit dd3d7c0)
+
+**Phase 1: テキストカード Lightbox 経路の整理 + サムネ復活**
+
+1. **Item 3 = 既に済んでいた判明**: 文のみツイートは board の `pickCard` で TextCard 経路、 `pickTextCardColor(cardId)` で white/black ランダム振り分けが session 31 から効いていた。 何もしなくて OK
+2. **session 32 「全部 LightboxTextDisplay」 判断を逆転** (board mirror routing):
+   - 一般 webpage で **thumbnail あり (= noomoagency 等) → Lightbox でも image 表示** に復活 ([Lightbox.tsx:1737-1751](components/board/Lightbox.tsx#L1737-L1751))
+   - thumbnail なし → `LargeTextCardScaler` (= 既存 dead code 化していた関数を本流化) で TextCard を Lightbox で拡大
+   - これに伴い `LightboxImageWithFallback` が dead code 化 → 中身を `LightboxTextDisplay` → `LargeTextCardScaler` fallback に書き換えて生き返らせた
+3. **inner card-radius を 0 上書き**: scale 拡大時に inner TextCard の 24px radius が visually 53px に膨らむ問題、 outer `.imageBox` の 20px に統一 ([Lightbox.tsx:1907-1913](components/board/Lightbox.tsx#L1907-L1913))
+4. **TextCard に `omitMeta?: boolean` prop 追加**: Lightbox で TextCard を transform:scale で拡大すると 16×16 favicon が bitmap blur に → omitMeta で favicon + hostname 行を非表示にして「がびがびファビコン」 問題解消
+5. **DefaultText の `hideTitle` 削除**: 右パネル h1 (= title) を text-only でも表示するように (= Item 4 の右パネル全文表示につながる)
+
+**user 確認**:
+- noomoagency (= クラゲ thumbnail) → Lightbox で綺麗に出る ✅
+- pushmatrix (= title 空) → hostname fallback で問題なし
+- 角丸 20px 統一 ✅
+
+### 試行して rolled back (= 未 commit、 diff は `docs/private/session-34-flip-wip.diff` に保存)
+
+**session 23-24 で width/height tween に切り替えた根拠を再評価し、 transform:scale FLIP に戻そうとした**:
+
+- 当時の理由 (cf6b8d1 commit message): GPU scale tween が「角丸が間に合っていない」 感覚を生む = radius 24→20 動的 morph + GPU bilinear AA の複合問題
+- 現在 (session 32 以降): radius 全 20px 統一済 → morph 不要、 残るは GPU AA の subtle 差のみ
+- user 判断: 「条件変わったから A 案再評価すべき」 = 試行 OK
+
+**v1 実装** (= clone を MEDIA size で作って scale-down 開始):
+- ImageCard / Video カード → 拡大滑らか OK ✅
+- TextCard → 文字が clone の inner で固定 (= 拡大しない、 末端で jump)
+- close 時の border-radius は scale で視覚的に縮む = user「丸さ減ったあと最後にカクッ」
+
+**v2 実装** (= clone を SOURCE size に保ち、 transform:scale で UP に拡大):
+- 理論上は LargeTextCardScaler の内部 transform:scale と一致するので、 inner text の最終 size も一致 = swap jump 消えるはず
+- 加えて border-radius を毎フレーム `20 / current scaleX` で逆補正
+- user 確認: **テキストはまだ jump 残り**、 **角丸も常に 20px にならず変化する** = scale compensation が想定通り動いていない
+
+**user 判断**: 次セッションで頭すっきりの状態で再着手。 今 deploy 中は Phase 1 安定版 (= dd3d7c0) に戻している。
+
+### 次セッション (= 35) への引き継ぎ
+
+A 案 (transform-scale FLIP) 再着手の優先順:
+1. **まず角丸 = 20px 固定** が transform 中も維持される実装。 `gsap.getProperty('scaleX')` が想定通り動かない可能性高、 alternative:
+   - GSAP `modifiers` 経由で scale 値を inject + radius を同時更新 (← session 32 で「box が px discrete jump」 と revert された案だが、 radius のみ更新なら問題ないかも)
+   - 別の proxy object を同じ tween に乗せて proxy.scale を読む
+   - CSS `getComputedStyle(clone).transform` を matrix parse して scale を取り出す
+2. 角丸 OK 後に text grow 問題解決 (= v2 設計で正しく動くか確認、 ダメなら別案)
+
+参照: `docs/private/session-34-flip-wip.diff` (= v2 実装の生 diff、 116 行)、 cf6b8d1 commit message (= 当時 GPU scale で躓いた経緯)、 session 32 modifier revert 経緯 (= Lightbox.tsx 内 comment にも残る)
+
+### 検証
+
+- tsc clean / vitest 487/488 (= channel.test.ts は flaky で 2 回目 pass、 私の変更とは無関係)
+- build clean / 本番反映済 = `https://booklage.pages.dev` ハードリロードで Phase 1 stable 状態が見える
