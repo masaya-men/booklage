@@ -16,13 +16,12 @@
   border-radius: var(--canvas-radius);
   background: var(--bg-dark);
   overflow: hidden;
-  /* Session 28: TopHeader is now position:absolute so the grid row it
-     occupied collapses to 0 height — `auto 1fr` still leaves the second
-     row filling the canvas, and canvasWrap inhabits it without further
-     change. Kept the grid declaration in place so Lightbox / sibling
-     absolute layers continue to share the same stacking context. */
-  display: grid;
-  grid-template-rows: auto 1fr;
+  /* Session 28: TopHeader is now position:absolute so the previous
+     `display: grid; grid-template-rows: auto 1fr` layout no longer
+     applies — canvasWrap would have ended up in row 1 (auto = 0
+     height) since TopHeader is no longer in flow, collapsing the
+     entire cards area. With canvasWrap also positioned absolute
+     (inset:0) below, the canvas is a pure positioning ancestor. */
 }
 
 /* Apple iOS Photos / visionOS edge gradient scrim — top.
@@ -68,9 +67,9 @@
 }
 
 .canvasWrap {
-  position: relative;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  min-height: 0;
 }
 
 /* Session 28 Apple v3 chrome: text-only Share label with a thin paint-order
