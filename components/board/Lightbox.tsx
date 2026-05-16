@@ -9,6 +9,8 @@ import { fetchTikTokPlayback } from '@/lib/embed/tiktok-meta'
 import { t } from '@/lib/i18n/t'
 import { normalizeItem, type LightboxItem } from '@/lib/share/lightbox-item'
 import type { ShareCard } from '@/lib/share/types'
+import { TextCard } from './cards/TextCard'
+import { TEXT_CARD_MIN_ASPECT } from '@/lib/embed/text-card-measure'
 import { LightboxNavChevron } from './LightboxNavChevron'
 import { LightboxNavMeter } from './LightboxNavMeter'
 import { useSmoothWheelScroll } from '@/lib/scroll/use-smooth-wheel-scroll'
@@ -232,15 +234,27 @@ function createLightboxClone(sourceCard: HTMLElement, rect: CloneRect): HTMLElem
   //   - any width/height the parent flow had baked in
   clone.style.cssText = ''
   clone.style.position = 'absolute'
-  clone.style.top = `${rect.top}px`
-  clone.style.left = `${rect.left}px`
-  clone.style.width = `${rect.width}px`
-  clone.style.height = `${rect.height}px`
+  // Snap start rect to integer pixels — getBoundingClientRect() returns
+  // sub-pixel floats which GSAP then interpolates between, amplifying
+  // browser-side rounding jitter into the morph (session 31 Bug B-b).
+  // The clone is a temporary visual proxy so 1px alignment is invisible.
+  clone.style.top = `${Math.round(rect.top)}px`
+  clone.style.left = `${Math.round(rect.left)}px`
+  clone.style.width = `${Math.round(rect.width)}px`
+  clone.style.height = `${Math.round(rect.height)}px`
   clone.style.margin = '0'
   clone.style.visibility = 'visible'
   clone.style.borderRadius = '24px'
   clone.style.overflow = 'hidden'
   clone.style.pointerEvents = 'none'
+  // GPU compositing hints — force the clone onto its own paint layer so
+  // the per-frame width/height reflow doesn't drag the whole canvas
+  // through a layout/paint pass. willChange covers Chromium; the
+  // translateZ keeps Safari honest. backfaceVisibility avoids a paint
+  // flash on browsers that promote the layer mid-tween.
+  clone.style.willChange = 'top, left, width, height'
+  clone.style.transform = 'translateZ(0)'
+  clone.style.backfaceVisibility = 'hidden'
   clone.setAttribute('aria-hidden', 'true')
   // Drop ids / refs that might collide with the source if either side
   // queries them by selector.
@@ -550,10 +564,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       }
       if (clone && closeOriginHost) {
         tl.to(clone, {
-          top: closeOriginHost.top,
-          left: closeOriginHost.left,
-          width: closeOriginHost.width,
-          height: closeOriginHost.height,
+          // Bug B-b: snap target rect to integer pixels to suppress GSAP
+          // sub-pixel interpolation jitter on layout-property tweens.
+          top: Math.round(closeOriginHost.top),
+          left: Math.round(closeOriginHost.left),
+          width: Math.round(closeOriginHost.width),
+          height: Math.round(closeOriginHost.height),
           duration: CLOSE_TWEEN_DUR,
           ease: CLOSE_TWEEN_EASE,
         }, CLOSE_FRAME_DELAY)
@@ -803,10 +819,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       const tl = gsap.timeline()
       if (clone && mediaRectHost) {
         tl.to(clone, {
-          top: mediaRectHost.top,
-          left: mediaRectHost.left,
-          width: mediaRectHost.width,
-          height: mediaRectHost.height,
+          // Bug B-b: snap target rect to integer pixels to suppress GSAP
+          // sub-pixel interpolation jitter on layout-property tweens.
+          top: Math.round(mediaRectHost.top),
+          left: Math.round(mediaRectHost.left),
+          width: Math.round(mediaRectHost.width),
+          height: Math.round(mediaRectHost.height),
           duration: dur,
           ease: OPEN_EASE,
           onComplete: () => {
@@ -1175,7 +1193,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         <div ref={textRef} className={styles.text}>
           {tweetId
             ? <TweetText item={view} meta={tweetMeta} />
-            : <DefaultText item={view} host={host} />}
+            : <DefaultText item={view} host={host} hideTitle={!view.thumbnail} />}
         </div>
       </div>
     </div>
@@ -1244,9 +1262,13 @@ function cleanInstagramText(item: LightboxItem): {
 function DefaultText({
   item,
   host,
+  hideTitle = false,
 }: {
   readonly item: LightboxItem
   readonly host: string
+  /** Suppress the `<h1>` title when the title is already shown inside the
+   *  large TextCard on the media side (text-only card, session 31). */
+  readonly hideTitle?: boolean
 }): ReactElement {
   const isInstagram = detectUrlType(item.url) === 'instagram'
 
@@ -1275,7 +1297,7 @@ function DefaultText({
 
   return (
     <>
-      <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>
+      {!hideTitle && <h1 id="lightbox-title" className={styles.title}>{item.title}</h1>}
       {item.description && <p className={styles.description}>{item.description}</p>}
       <div className={styles.metaCtaGroup}>
         <div className={styles.meta}>{host && <span>{host}</span>}</div>
@@ -1650,7 +1672,42 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
     }
     return <img src={item.thumbnail} alt={item.title} />
   }
-  return <div className={styles.placeholder}>{item.title}</div>
+  // Text-only card. Re-render the board's TextCard at a larger cardWidth
+  // inside the same aspect-driven wrapper used for image cards — same look
+  // small→big, so the clone→media swap is visually continuous (resolves
+  // session 30 Bug A-1). cardId fallback to url keeps the deterministic
+  // color variant stable for share-view items that lack a persisted cardId.
+  const textAspect = aspectRatio ?? TEXT_CARD_MIN_ASPECT
+  const fakeBoardItem: BoardItem = {
+    bookmarkId: item.bookmarkId ?? item.url,
+    cardId: item.cardId ?? item.url,
+    title: item.title,
+    description: item.description ?? undefined,
+    thumbnail: undefined,
+    url: item.url,
+    aspectRatio: textAspect,
+    gridIndex: 0,
+    orderIndex: 0,
+    cardWidth: 600,
+    customCardWidth: false,
+    isRead: false,
+    isDeleted: false,
+    tags: [],
+    displayMode: null,
+  }
+  return (
+    <div
+      className={styles.imageBox}
+      style={{ ['--item-aspect' as string]: textAspect } as React.CSSProperties}
+    >
+      <TextCard
+        item={fakeBoardItem}
+        cardWidth={600}
+        cardHeight={Math.round(600 / textAspect)}
+        displayMode="visual"
+      />
+    </div>
+  )
 }
 
 /** Pre-play poster wrap used by every embed type (YouTube / TikTok /

@@ -20,36 +20,37 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-16 セッション 30 — 2 commit 本番 deploy 済)
+### 直近の状態 (2026-05-16 セッション 31 — 1 commit 本番 deploy 済)
 
-セッション 30 は当初「全画面化 30 分 sprint」 だったが、 ユーザー追加要望で **Bug 調査 + 戦略議論 + TextCard 再設計合意** まで完遂。 全画面化は予定通り完成、 加えて次セッション 31 の主題が固まった。
+セッション 31 は **「Lightbox 周りまとめ sprint」** を 1 sprint で完遂:
 
-**セッション 30 の 2 commit**:
-1. **`e8beadd` style(board): session 30 visual pivot — fullscreen canvas + gallery density**
-   - `--bg-outer` `#ebebeb` → `#0a0a0a` / `--canvas-margin` `24px` → `48px` / `--canvas-radius` `24px` → `0`
-   - BoardChrome (= wordmark + footer) 一時非表示
-   - `CARD_GAP_DEFAULT_PX` `18` → `97` (= 4 列 gallery 密度、 ユーザー確定値)
-   - **Phase A → Phase C 切替** 宣言、 memory `feedback_strict_reference.md` 全面更新
-2. **`0fd7b8a` fix(lightbox): aspect-driven wrapper for general image cards**
-   - Bug A-2 修正 (= サムネ付きカード「奥に消える」 = `<img>` load 完了前の `.media` rect ゼロ問題)
-   - 一般 image card にも `.embedPosterBox` 相当の wrapper を導入
+**セッション 31 の主要変更 (= 1 commit に集約)**:
+1. **TextCard 再設計** (= 2 パターン deterministic 分配、 typography 40% 縮小、 reference 画像準拠)
+   - `lib/embed/text-card-color.ts` 新規 (djb2 hash で cardId → white | black、 「置かれた色で固定」)
+   - `lib/embed/title-typography.ts` 全モード約 40% 縮小 + maxLines 緩和
+   - `lib/embed/text-card-measure.ts` を `measureTextCardLayout` に刷新 (9:16 上限で ellipsis)
+   - `TextCard.module.css` に `.white` / `.black` variant 追加、 favicon は黒地時馴染ませ
+2. **Lightbox 統合** (= Bug A-1 自動解決)
+   - `LightboxItem` に `cardId?` 追加 → board と Lightbox で同色 variant 維持
+   - `LightboxMedia` の placeholder div を削除、 `.imageBox` aspect wrapper の中で大 TextCard (cardWidth=600) 再描画
+   - `DefaultText` に `hideTitle` prop 追加 → text-only card で h1 重複表示抑制
+3. **Bug B 震え修正 (= B-b 軽量 fix を適用)**
+   - `createLightboxClone` で start rect を `Math.round` 化 + `willChange` + `translateZ(0)` + `backfaceVisibility: hidden`
+   - open / close 両 tween の target rect も `Math.round` 化
+   - 完全 fix (= B-c transform + radius child 化) は scope 大、 体感残れば次セッションで本格対応
 
 - 本番反映済 → `https://booklage.pages.dev` をハードリロードで確認
-- vitest 488 / tsc / build clean
+- vitest 488 (= flaky channel test 除き全 pass) / tsc / build clean
 
-**未着手で次セッション 31 に持ち越し**:
-- **Bug A-1 (= TextCard 急変)** — TextCard 再設計で根本解決へ
-- **Bug B (= 全カード morph 震え)** — `top/left/width/height` 直接 animate (= layout property) が root cause、 transform 路線への refactor scope 測定 + 修正
+### 次セッション (= 32) でやること
 
-### 次セッション (= 31) でやること
+ゴール: **`docs/CURRENT_GOAL.md`**。 セッション 31 で Lightbox 周りひと段落、 **foundation 3 本柱** から本腰:
 
-ゴール: **`docs/CURRENT_GOAL.md`**。 主題は **「Lightbox 周りまとめ sprint」**:
+1. **サイジング汎用化** (= clamp(MIN, vw, BASE)、 spec `docs/specs/2026-05-12-sizing-migration-spec.md`)
+2. **広告 placement 予約 slot** (= board / footer / PiP)
+3. **manual tag schema** (= IDB schema bump + tag CRUD + filter)
 
-1. **TextCard 再設計** (= 2 パターン random / typography 主役 / reference 画像準拠)
-2. **Lightbox の `.media` で再設計 TextCard を大サイズ描画** (= A-1 自動解決)
-3. **Bug B 修正** (= 震え) — scope 測定後に B-a (transform 路線) / B-b (sub-pixel snap) / B-c (transform + radius workaround) から選択
-
-詳細: `docs/private/IDEAS.md` の **D 項 (= TextCard 再設計)** + **E 項 (= Bug B)**。
+推奨順 (1) → (2) → (3)。 もしくは Bug B 震えが本番で体感残っていれば **B-c 本格修正** を先に。 次セッション開始時に user 確認。
 
 ### foundation 3 本柱 (= セッション 32 以降)
 

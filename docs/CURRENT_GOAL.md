@@ -1,85 +1,59 @@
-# 次セッションのゴール (= セッション 31)
+# 次セッションのゴール (= セッション 32)
 
 ## ゴール
 
-**Lightbox 周りまとめ sprint** — TextCard 再設計 + Lightbox 統合 + 震え修正 を 1 sprint で。
+**foundation 3 本柱 sprint 着手** — もしくは Bug B 震えの本番体感を確認して、 残っていれば B-c 本格 fix を先に。
 
-3 タスクは互いに密結合 (= 同じ file 群を触る) なので、 一括着工して文脈効率最大化。 まず TextCard 再設計 から、 続けて Lightbox 統合、 最後に震え修正。
+セッション 31 で Lightbox 周りはひと段落 (= TextCard 再設計 + Lightbox 統合 + Bug B 軽量 fix の 3 タスク完遂、 本番 deploy 済)。 触らないリストにあった foundation 3 本柱に本腰を入れる sprint。
 
-## 前提 (= セッション 30 で揃った)
+## 前提 (= セッション 31 で揃った)
 
-- master HEAD: `0fd7b8a fix(lightbox): aspect-driven wrapper for general image cards`
-- セッション 30 の 2 commit:
-  - **`e8beadd`** visual pivot (= 全画面化 + gap=97 + Phase A→C 切替)
-  - **`0fd7b8a`** Bug A-2 (= サムネ付きカード「奥に消える」) 修正
+- master HEAD: セッション 31 close-out commit
+- セッション 31 の主要変更:
+  - **TextCard 再設計** (= 白地 / 黒地 2 パターン deterministic 分配、 typography 40% 縮小、 9:16 上限 + ellipsis)
+  - **Lightbox 統合** (= `.media` で大 TextCard、 Bug A-1 自動解決)
+  - **Bug B 軽量 fix (B-b)** (= sub-pixel snap + will-change + GPU hint)
 - 本番反映済 → `https://booklage.pages.dev`
 - vitest 488 / tsc / build clean
 
-## セッション 31 の進め方
+## セッション 32 の進め方
 
-### Phase 1: TextCard 再設計 (= 主題、 60-90 分)
+### Phase 0: 本番動作確認 (= セッション開始時 user 確認)
 
-**ユーザー希望の方向** (= reference 画像 3 枚 + 言語で確定済、 詳細 `docs/private/IDEAS.md` D 項):
+- `https://booklage.pages.dev` をハードリロードして:
+  1. TextCard の 2 色 (= 白地 / 黒地) deterministic 分配が見えるか
+  2. Lightbox を開いた時 TextCard が「同じ世界」 (= 急変なし) で morph するか
+  3. **Bug B 震え** が体感で残っているかどうか
+- 震え残っていれば → **B-c 本格修正を先に**:
+  - clone の border-radius を child element に逃がして、 親を transform:scale 化
+  - GSAP timeline を `top/left/width/height` から `transform` ベースへ書き換え
+  - refactor scope: `createLightboxClone` + open / close tween 全部、 中規模
+- 震え気にならない → **foundation 3 本柱** に進む
 
-- **2 パターン random 分配**:
-  - 白地に黒字 (= editorial 風、 informative)
-  - 黒地に白字 (= statement / display 風、 印象に残る)
-- **タイトル typography が主役**、 文字サイズは reference 画像くらい (= 今より小さく、 抑えめ)
-- **装飾は最小** (= 角丸 + パディング + ホスト名 小 + タイトル の 4 要素)
-- ホスト名は控えめ、 矢印アイコン (`↓`) 等の素朴な装飾は OK
-- 角丸は既存 `--card-radius: 20px` 維持
-- 高コントラスト (= AllMarks の destefanis 系直球美)
+### Phase 1 (= foundation を始めるなら): サイジング汎用化
 
-**着工前に決めること**:
-1. **random 分配の単位** (= per card / per session、 deterministic vs runtime random)
-2. **文字サイズの具体値** (= reference 画像から計測 → user 好み微調整)
-3. **黒地カードの背景色** (= `#000` / `#0a0a0a` / `#101010`)
-4. **画像 2 系の all-caps display 路線**を含めるか、 別パターン扱いか
-5. **複数行タイトル時の挙動** (= 行高、 文字サイズ自動縮小、 等)
+- spec: `docs/specs/2026-05-12-sizing-migration-spec.md`
+- Phase 2-6 が残っている (= Phase 1 は session 15 で完了済)
+- 全プロジェクト共通思想: `C:\Users\masay\.claude\design-philosophy-sizing.md`
+- 核心: 「開発者画面 = 1489px が anchor + 上限」、 clamp(MIN, vw, BASE) で proportional scaling
 
-**実装スコープ**:
-- `components/board/cards/TextCard.tsx`: typography / layout 再設計
-- `components/board/cards/TextCard.module.css`: 2 色パターン + base style
-- random 分配ロジック (= cardId hash で deterministic 推奨)
-- 既存 e2e テスト (= `tests/e2e/`) の TextCard 関連を更新
+### Phase 2 (= 順次): 広告 placement 予約 slot
 
-### Phase 2: Lightbox 統合 (= A-1 自動解決、 20-30 分)
+- 戦略 memory: `project_ad_strategy_2026_05`
+- まず slot 確保だけ (= 配信は後)
 
-**変更**:
-- `components/board/Lightbox.tsx` の `LightboxMedia` 関数 ([L1597-1639](components/board/Lightbox.tsx#L1597-L1639)):
-  - L1638 placeholder div を削除
-  - 代わりに再設計 TextCard を**大サイズ** (= cardWidth: 600px 程度) で描画
-- clone morph はそのまま使える (= 小 TextCard → 大 TextCard、 同じ装飾なので急変なし) → **A-1 自動解決**
+### Phase 3 (= 順次): manual tag schema
 
-**選択肢**: `.text` 右パネルの扱い
-- そのまま残す (= 既存 2 列構造を維持、 .media の TextCard と .text のタイトル / 説明が duplicate になるので片方を整理)
-- text-only カードでは `.text` 非表示、 `.media` の TextCard だけ表示
-- セッション内で実際に見ながら決定
-
-### Phase 3: Bug B (= 震え) 修正 (= 30-60 分、 scope による)
-
-**root cause** (= セッション 30 で特定済、 詳細 IDEAS.md E 項):
-- clone tween が `top` / `left` / `width` / `height` を直接 animate (= layout property、 GPU 加速不可)
-- sub-pixel float 補間で増幅
-
-**修正案 3 つから選択**:
-- **B-a**: `transform: translate + scale` に変更 (= 軽実装、 ただし border-radius が animation 中歪む)
-- **B-b**: sub-pixel snap (= rect 値 `Math.round` 化) + `will-change` 追加 (= 最軽、 軽減程度 / 完全 fix 期待薄)
-- **B-c**: transform 路線 + clone の border-radius を child element に逃がす radius 維持 workaround (= 完全 fix、 refactor 規模大)
-
-**判断手順**:
-1. まず Lightbox clone 周辺の refactor scope を測定 (= B-c の現実性確認)
-2. B-c が現実的 → B-c で完全 fix
-3. B-c が重い → B-a (= 多少 radius 歪んでも shake 消す方を優先) と B-b の併用
+- IDB schema bump 必要 (= 不可逆、 慎重)
+- セッション 17 の VersionError 事故を教訓に、 dev で v→v+1 を必ず実機検証
 
 ## 月末リマインダー (= 2026-05-31)
 
 **`allmarks.app` ドメイン取得確認**。 セッション開始時に user に確認を促す。 取得済 → Cloudflare Pages 新 project 作成 + 拡張機能 v1.0 submission sprint に進める。 未取得 → 取得を促す。
 
-## 触らない (= セッション 31 短期スコープ外)
+## 触らない (= セッション 32 短期スコープ外)
 
-- foundation 3 本柱 (= サイジング汎用化 / tag schema / 広告 placement) — セッション 32 以降
-- 拡張機能 polish 3 項目 (= PiP 常駐 / SNS いいね連動 / 代替ショートカット) — セッション 32 以降
+- 拡張機能 polish 3 項目 (= PiP 常駐 / SNS いいね連動 / 代替ショートカット) — 拡張機能 sprint で別途
 - LP リデザイン (= IDEAS.md `project_lp_redesign_vision`)
 - Favicon (= AllMarks identity 決定後)
-- B-#3 重複 URL バグ、 B-#7 サイジング縮小 clipping
+- B-#3 重複 URL バグ、 B-#7 サイジング縮小 clipping (= foundation Phase 1 と一部重なる可能性、 そのとき判断)

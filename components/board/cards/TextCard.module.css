@@ -6,8 +6,18 @@
   flex-direction: column;
   border-radius: var(--card-radius);
   overflow: hidden;
-  background: var(--card-white);
   padding: 20px 22px;
+}
+
+/* Color variants — session 31. Two patterns are assigned deterministically
+ * by cardId hash so the same card keeps the same look between sessions.
+ * Off-black (#0a0a0a) sits ~4% above the board's pure-black background so the
+ * card edge stays visible without losing the destefanis-system depth. */
+.textCard.white {
+  background: var(--card-white);
+}
+.textCard.black {
+  background: #0a0a0a;
 }
 
 .metaTop,
@@ -16,8 +26,16 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
   letter-spacing: 0.01em;
+}
+
+.textCard.white .metaTop,
+.textCard.white .metaBottom {
+  color: rgba(0, 0, 0, 0.55);
+}
+.textCard.black .metaTop,
+.textCard.black .metaBottom {
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .metaTop {
@@ -37,6 +55,14 @@
   -webkit-user-drag: none;
 }
 
+/* Black variant: favicons published on white backgrounds clash with the
+ * dark card. Surround with a soft tint and tone down the saturation so it
+ * reads as a quiet inline mark rather than a popping color block. */
+.textCard.black .favicon {
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0.7;
+}
+
 .domain {
   white-space: nowrap;
   overflow: hidden;
@@ -47,8 +73,14 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  color: #0a0a0a;
   word-break: break-word;
+}
+
+.textCard.white .title {
+  color: #0a0a0a;
+}
+.textCard.black .title {
+  color: #fafafa;
 }
 
 /* Headline: large display, takes most of the card */
@@ -57,8 +89,9 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   flex: 1;
-  display: flex;
-  align-items: center;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  align-items: flex-start;
 }
 
 /* Editorial: regular sans, multi-line */
@@ -66,12 +99,10 @@
   font-family: var(--font-sans);
   font-weight: 500;
   letter-spacing: -0.01em;
-  color: #1a1a1a;
 }
 
 /* Index: monospace small, many lines */
 .index .title {
   font-family: var(--font-mono);
   font-weight: 400;
-  color: #2a2a2a;
 }

@@ -29,6 +29,7 @@ describe('normalizeItem', () => {
       thumbnail: 'https://example.com/t.jpg',
       kind: 'board',
       bookmarkId: 'b-1',
+      cardId: 'c-1',
       photos: undefined,
       aspectRatio: 1.5,
     })
@@ -57,6 +58,7 @@ describe('normalizeItem', () => {
       thumbnail: null,
       kind: 'board',
       bookmarkId: 'b-2',
+      cardId: 'c-2',
       photos: undefined,
       aspectRatio: 1,
     })

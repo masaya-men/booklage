@@ -11,6 +11,10 @@ export type LightboxItem = {
   /** Board-side only: stable bookmark id (used as effect dep / persist key).
    *  Undefined for share-card view. I-07 Phase 1. */
   readonly bookmarkId?: string
+  /** Board-side only: stable card id (drives TextCard's deterministic
+   *  color variant so opening the lightbox doesn't flip the variant).
+   *  Undefined for share-card view; fallback hashing uses `url`. */
+  readonly cardId?: string
   /** Board-side only: all photo URLs for multi-image tweets (Twitter/X up to
    *  4, Bluesky up to 4). photos[0] equals thumbnail. Undefined or
    *  zero-length when single-image or video-only. I-07 Phase 1. */
@@ -40,6 +44,7 @@ export function normalizeItem(item: BoardItem | ShareCard): LightboxItem {
       thumbnail: item.thumbnail ?? null,
       kind: 'board',
       bookmarkId: item.bookmarkId,
+      cardId: item.cardId,
       photos: item.photos,
       mediaSlots: item.mediaSlots,
       aspectRatio: item.aspectRatio,

@@ -1067,4 +1067,67 @@ spec: `docs/private/2026-05-11-allmarks-branding-spec.md` (gitignored)
 
 詳細 `docs/CURRENT_GOAL.md` + `docs/private/IDEAS.md` D・E 項。
 
+---
+
+## セッション 31 (2026-05-16) — Lightbox 周りまとめ sprint (= 全 3 タスク完遂、 1 commit deploy)
+
+### 前半: 5 つの未確定事項を確認 → 仕様確定
+
+ユーザーと spec 詰め。 5 点合意:
+
+1. **色分配** → cardId hash で deterministic、 カード作成時に決まり以降固定 (= 「置かれたときに決まった色で固定」)
+2. **文字サイズ** → 既存 `pickTitleTypography` base から **40% 縮小** (= reference 画像くらい抑えめ)
+3. **黒地カードの色** → `#0a0a0a` (= board 背景 `#000` とギリ見分けつく off-black)
+4. **all-caps display 路線 (画像 2 タイプ)** → 採用しない、 白地 / 黒地の **2 パターンだけ**
+5. **長タイトル時の挙動** → **9:16 上限まで縦伸び → そこで ellipsis で切る** (= 動的縮小路線は隣カードと統一感壊すので不採用)
+
+### Phase 1: TextCard 再設計 — 実装
+
+- `lib/embed/text-card-color.ts` を新規追加 = djb2 hash で cardId → 'white' | 'black' deterministic 分配
+- `lib/embed/title-typography.ts` base font size 全モード約 40% 縮小:
+  - headline `56 / 48 / 40` → `34 / 29 / 24`
+  - editorial `22` → `18`
+  - index `14` → `13`
+  - lineHeight も `fontSize × 1.18-1.5` の比率で再計算、 `maxLines` を伸ばす (= 9:16 上限まで縦に伸びる前提)
+- `lib/embed/text-card-measure.ts` を `measureTextCardLayout` API へ刷新 = `{ aspectRatio, maxLines, clamped }` を返す。 自然高さ > 9:16 上限なら **aspect を `9/16` に clamp + 表示行数を再計算 + clamped:true** で ellipsis 制御
+- `components/board/cards/TextCard.tsx`: `pickTextCardColor` 適用、 `WebkitLineClamp: maxLines` で truncation、 useEffect の persist key 更新
+- `components/board/cards/TextCard.module.css`: `.white` / `.black` variant 追加、 favicon は黒地時 `rgba(255,255,255,0.08)` 背景 + opacity 0.7 で馴染ませる
+
+### Phase 2: Lightbox 統合 — A-1 自動解決
+
+- `lib/share/lightbox-item.ts` に `cardId?: string` を追加。 `normalizeItem` で `BoardItem.cardId` → `LightboxItem.cardId` を流す (= board と Lightbox で同じ色 variant を維持)
+- `components/board/Lightbox.tsx` の `LightboxMedia` 関数末尾の placeholder div を削除、 代わりに **`.imageBox` aspect-driven wrapper の中で `TextCard` を cardWidth=600 で再描画**。 fake BoardItem は `cardId ?? url` fallback で share view も同色決定論
+- **Bug A-1 自動解決**: clone (board の TextCard) → 大 TextCard、 同じ装飾なので急変なし。 placeholder div への急変が消える
+- `DefaultText` に `hideTitle?: boolean` prop 追加、 text-only card (= `!view.thumbnail`) で `hideTitle={true}` を渡し `.text` 右パネルの h1 重複表示を抑制。 description / host / source link は維持
+
+### Phase 3: Bug B 震え修正 — B-b (= 軽量 fix) を適用
+
+セッション 30 時点で root cause 特定済 = `clone` tween が `top/left/width/height` 直接 animate (= layout property)、 sub-pixel float 補間でジッタ増幅。 B-c (= transform 路線 + radius を child element に逃がす完全 fix) は scope 大なので、 まず B-b で軽量化:
+
+- `createLightboxClone` で start rect を `Math.round` で整数化、 `willChange: 'top, left, width, height'` + `transform: translateZ(0)` + `backfaceVisibility: 'hidden'` 追加 (= GPU compositing hint)
+- open / close 両 tween の target rect も `Math.round` 化 (= GSAP sub-pixel 補間ジッタを抑制)
+
+完全 fix にはならない (= layout property 直接 animate の本質は変わらず) ので、 体感で残れば次セッションで B-c 本格対応。
+
+### 学び / 注意 / 教訓
+
+- **既存 test を破壊するときの差分管理**: `title-typography.test.ts` の `expect(fontSize).toBeGreaterThanOrEqual(40)` は base 40% 縮小で当然失敗 → 期待値を `>= 24` に書き換え + コメントで「session 31 redesign のため」 と理由明記
+- **`toEqual` と undefined keys**: vitest の `toEqual` は undefined 値のキーを「未定義」 と同視するので、 元 `normalizeItem` の `mediaSlots: undefined` も `photos: undefined` も expected に書かなくて通っていた。 新 `cardId: 'c-1'` を追加した瞬間、 cardId だけ expected に書く必要が生じる (= undefined 同視ルールの罠)
+- **「同じ世界を board と Lightbox で共有」 architectural insight の検証**: TextCard を 1 つに統一すれば clone morph で素の placeholder 急変が物理的に起こり得ない。 セッション 30 のユーザー判断「公開前だから根本解決から」 が正しかった
+- **flaky test を判別する手間**: `tests/lib/channel.test.ts` の BroadcastChannel test は session 31 全実行で 1 度 fail / 1 度 pass。 タイミング依存の flaky と判定 (= 私の変更とは無関係)、 単体再実行で 2/2 pass を確認
+
+**vitest 488 (= flaky 1 件除く全 pass) / tsc / pnpm build clean** / **本番 deploy 済** (`https://booklage.pages.dev` 反映)。 master 直 commit、 1 commit で 3 タスク + test 期待値更新を含む。
+
+### 次セッション (= 32) 主題候補
+
+セッション 31 で Lightbox 周りはひと段落。 触らないリストにある **foundation 3 本柱** からスタートが筋:
+
+1. **サイジング汎用化** (= clamp(MIN, vw, BASE)、 spec `docs/specs/2026-05-12-sizing-migration-spec.md`)
+2. **広告 placement 予約 slot** (= board / footer / PiP)
+3. **manual tag schema** (= IDB schema bump + tag CRUD + filter)
+
+推奨順 (1) → (2) → (3)。 もしくは Bug B 震えが体感残っていれば **B-c (transform + radius child 化) を本格修正** する選択肢もあり。
+
+月末 (= 2026-05-31) ドメイン `allmarks.app` 取得確認も次セッション開始時のリマインダー。
+
 foundation 3 本柱 (= サイジング汎用化 / tag schema / 広告 placement) はセッション 32 以降へ後ろ倒し合意済。

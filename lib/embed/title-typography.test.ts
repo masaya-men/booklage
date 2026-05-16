@@ -7,7 +7,10 @@ describe('pickTitleTypography', () => {
   it('picks headline mode for short title (≤ 24 chars)', () => {
     const result = pickTitleTypography({ ...baseInput, title: 'Dispersion' })
     expect(result.mode).toBe('headline')
-    expect(result.fontSize).toBeGreaterThanOrEqual(40)
+    // Session 31 redesign: base headline sizes shrunk ~40% so they read as
+    // "reference-image faithful" typography rather than the previous oversized
+    // display. The smallest headline tier (>= 25 units) lands at 24px.
+    expect(result.fontSize).toBeGreaterThanOrEqual(24)
   })
 
   it('picks editorial mode for medium title (25-80 chars)', () => {

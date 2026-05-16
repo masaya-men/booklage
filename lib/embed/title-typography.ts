@@ -43,21 +43,25 @@ export function pickTitleTypography(input: Input): TitleTypographyResult {
   let lineHeight: number
   let maxLines: number
 
+  // Sizes are 40% smaller than the pre-redesign baseline (session 31):
+  // tighter, reference-image-faithful typography that still keeps editorial
+  // and index modes legible on a board card. lineHeight stays proportional
+  // to fontSize so multi-line titles breathe consistently.
   if (units <= 48) {
     mode = 'headline'
-    fontSize = units <= 12 ? 56 : units <= 24 ? 48 : 40
-    lineHeight = fontSize * 1.05
-    maxLines = 2
+    fontSize = units <= 12 ? 34 : units <= 24 ? 29 : 24
+    lineHeight = Math.round(fontSize * 1.18)
+    maxLines = 6
   } else if (units <= 160) {
     mode = 'editorial'
-    fontSize = 22
-    lineHeight = fontSize * 1.4
-    maxLines = 3
+    fontSize = 18
+    lineHeight = Math.round(fontSize * 1.4)
+    maxLines = 8
   } else {
     mode = 'index'
-    fontSize = 14
-    lineHeight = fontSize * 1.5
-    maxLines = 5
+    fontSize = 13
+    lineHeight = Math.round(fontSize * 1.5)
+    maxLines = 12
   }
 
   return { mode, fontSize, lineHeight, maxLines }

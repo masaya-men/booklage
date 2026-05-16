@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { DisplayMode } from '@/lib/board/types'
 import { getFaviconUrl, hostnameFromUrl } from '@/lib/embed/favicon'
 import { pickTitleTypography } from '@/lib/embed/title-typography'
-import { measureTextCardAspectRatio } from '@/lib/embed/text-card-measure'
+import { measureTextCardLayout } from '@/lib/embed/text-card-measure'
+import { pickTextCardColor } from '@/lib/embed/text-card-color'
 import styles from './TextCard.module.css'
 
 type Props = {
@@ -44,30 +45,40 @@ export function TextCard({
   const title = cleanTitle(rawTitle)
   const typography = pickTitleTypography({ title, cardWidth, cardHeight })
 
-  // Measure actual rendered height with pretext so masonry can size the card
-  // tall enough to show the full title without clipping. pretext is synchronous
-  // (~1ms for typical titles) so we persist inline in useEffect — no need for
-  // idle-callback deferral. ref-key prevents re-measurement on unrelated renders.
+  // Deterministic color variant from cardId. Locked at card creation time —
+  // the same cardId always resolves to the same variant across sessions.
+  const colorVariant = useMemo(() => pickTextCardColor(item.cardId), [item.cardId])
+
+  // Resolve the visible line count via pretext measurement. When the title's
+  // natural height would exceed the 9:16 ceiling, `maxLines` is clamped and
+  // `clamped` flips to true — the title then renders with -webkit-line-clamp
+  // ellipsis truncation. pretext is synchronous (~1ms typical) so we run it
+  // during render and treat the SSR null branch as "use typography defaults."
+  const layoutResult = measureTextCardLayout({ title, cardWidth, typography })
+  const displayMaxLines = layoutResult?.maxLines ?? typography.maxLines
+
   const lastMeasuredKeyRef = useRef<string>('')
   useEffect(() => {
     if (!persistMeasuredAspect && !reportIntrinsicHeight) return
+    if (!layoutResult) return
     const key = `${cardWidth}:${typography.mode}:${typography.fontSize}:${title}`
     if (lastMeasuredKeyRef.current === key) return
-    const aspect = measureTextCardAspectRatio({ title, cardWidth, typography })
     lastMeasuredKeyRef.current = key
-    if (aspect == null || aspect <= 0) return
+    const aspect = layoutResult.aspectRatio
+    if (aspect <= 0) return
     reportIntrinsicHeight?.(item.bookmarkId, cardWidth / aspect)
     if (Math.abs(aspect - item.aspectRatio) < ASPECT_EPSILON) return
     void persistMeasuredAspect?.(item.cardId, aspect)
-  }, [item.cardId, item.bookmarkId, item.aspectRatio, title, cardWidth, typography, persistMeasuredAspect, reportIntrinsicHeight])
+  }, [item.cardId, item.bookmarkId, item.aspectRatio, title, cardWidth, typography, layoutResult, persistMeasuredAspect, reportIntrinsicHeight])
 
-  const titleStyle = {
+  const titleStyle: CSSProperties = {
     fontSize: `${typography.fontSize}px`,
     lineHeight: `${typography.lineHeight}px`,
+    WebkitLineClamp: displayMaxLines,
   }
 
   return (
-    <div className={`${styles.textCard} ${styles[typography.mode]}`}>
+    <div className={`${styles.textCard} ${styles[typography.mode]} ${styles[colorVariant]}`}>
       {faviconUrl && typography.mode !== 'headline' && (
         <div className={styles.metaTop}>
           <img src={faviconUrl} alt="" className={styles.favicon} draggable={false} />
