@@ -73,20 +73,37 @@
   min-height: 0;
 }
 
+/* Session 28 Apple v3 chrome: text-only Share label with a thin paint-order
+   stroke for legibility. No pill bg / border — sits floating over the
+   canvas edge scrim alongside the rest of the actions group. */
 .sharePill {
   background: transparent;
-  border: none;
-  color: var(--share-pill-text);
-  padding: 6px 14px;
-  font-size: 13px;
+  border: 0;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
   font-family: inherit;
-  letter-spacing: 0.01em;
-  border-radius: 999px;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  transition: color var(--share-transition-fast);
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.45);
+  paint-order: stroke fill;
+  text-shadow: none;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease,
+    -webkit-text-stroke-color 0.15s ease;
 }
 
 .sharePill:hover {
-  color: var(--share-accent);
+  color: rgba(255, 255, 255, 1);
+  -webkit-text-stroke-color: rgba(0, 0, 0, 0.6);
+  transform: translateY(-1px);
+}
+
+.sharePill:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 

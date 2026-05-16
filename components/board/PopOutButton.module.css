@@ -1,3 +1,6 @@
+/* Session 28 Apple v3 chrome: stripped pill — icon floats over the canvas
+   with a thin paint-order stroke on the SVG (via filter, since the
+   text-stroke property only affects glyphs). Hit area still 32×32. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -6,17 +9,30 @@
   height: 32px;
   padding: 0;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.78);
+  border: 0;
+  color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  /* Drop-shadow with a hairline dark halo replicates the paint-order
+     stroke effect used on the text chrome — keeps the icon legible
+     against any card behind without introducing a pill background. */
+  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.45));
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease,
+    filter 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 1);
-  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.6));
+}
+
+.button:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
 .button:disabled {

@@ -1,11 +1,20 @@
+/* Session 28 Apple v3 chrome: the slider row floats over the canvas like
+   the rest of the actions group. Labels (W / G) and the live value get
+   the same paint-order stroke as the text-only chrome buttons. The
+   range input itself keeps its custom track/thumb styling below. */
 .row {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  padding: 10px 0;
   font-family: ui-monospace, Menlo, monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
   user-select: none;
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.45);
+  paint-order: stroke fill;
+  text-shadow: none;
 }
 
 .label {
@@ -15,9 +24,9 @@
 .value {
   min-width: 28px;
   text-align: right;
-  color: rgba(255, 255, 255, 0.7);
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Range input. Track styled via ::-webkit-slider-runnable-track and

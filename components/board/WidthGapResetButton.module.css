@@ -1,33 +1,37 @@
+/* Session 28 Apple v3 chrome: stripped pill (no bg / border / radius). */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 26px;
-  padding: 0 12px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
   font-family: ui-monospace, Menlo, monospace;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
   letter-spacing: 0.16em;
-  color: rgba(255, 255, 255, 0.65);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.85);
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.45);
+  paint-order: stroke fill;
+  text-shadow: none;
   cursor: pointer;
   transition:
-    color 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    background 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.15s ease,
+    transform 0.15s ease,
+    -webkit-text-stroke-color 0.15s ease,
     opacity 200ms ease-out;
 }
 
 .button:hover:not(:disabled) {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.24);
+  color: rgba(255, 255, 255, 1);
+  -webkit-text-stroke-color: rgba(0, 0, 0, 0.6);
+  transform: translateY(-1px);
 }
 
 .button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.32);
+  outline: 1px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
 .button:disabled {
