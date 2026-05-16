@@ -25,6 +25,26 @@ const SCRAMBLE_MS_TOTAL = 1500
 const JITTER_PROB_RANGE = 0.06
 const JITTER_PROB_TOTAL = 0.10
 
+/** Periodic full-scramble trigger (session 29 user feedback): even when the
+ *  meter has settled, occasionally fire a full scramble on one of the three
+ *  digit groups so the counter feels alive in long idle periods. The
+ *  interval is a random 5-15s and the scramble window matches the existing
+ *  range/total durations (600-1500ms picked randomly). */
+const PERIODIC_INTERVAL_MIN_MS = 5000
+const PERIODIC_INTERVAL_MAX_MS = 15000
+const PERIODIC_SCRAMBLE_MIN_MS = 600
+const PERIODIC_SCRAMBLE_MAX_MS = 1500
+
+function nextPeriodicDelay(): number {
+  return PERIODIC_INTERVAL_MIN_MS
+    + Math.random() * (PERIODIC_INTERVAL_MAX_MS - PERIODIC_INTERVAL_MIN_MS)
+}
+
+function nextScrambleDuration(): number {
+  return PERIODIC_SCRAMBLE_MIN_MS
+    + Math.random() * (PERIODIC_SCRAMBLE_MAX_MS - PERIODIC_SCRAMBLE_MIN_MS)
+}
+
 type Props = {
   /** Total scrollable content height of the board (cards + padding). */
   readonly contentHeight: number
@@ -102,6 +122,9 @@ export function ScrollMeter({
   const n1ScrambleUntilRef = useRef<number>(0)
   const n2ScrambleUntilRef = useRef<number>(0)
   const totalScrambleUntilRef = useRef<number>(0)
+  // Periodic full-scramble timer — initialised on first frame so the first
+  // trigger fires 5-15s after mount, not immediately.
+  const nextPeriodicAtRef = useRef<number>(0)
 
   useEffect(() => {
     if (visibleRangeStart !== n1SettledRef.current) {
@@ -160,6 +183,24 @@ export function ScrollMeter({
 
         const h = baseH * swell
         el.style.height = `${Math.max(1, h).toFixed(1)}px`
+      }
+
+      // ---- Periodic full-scramble trigger (session 29 user feedback) ----
+      // Pick a random digit group and re-arm its scramble deadline at a
+      // random 5-15s interval so the counter stays alive even when idle.
+      if (nextPeriodicAtRef.current === 0) {
+        nextPeriodicAtRef.current = now + nextPeriodicDelay()
+      } else if (now >= nextPeriodicAtRef.current) {
+        const target = Math.floor(Math.random() * 3)
+        const until = now + nextScrambleDuration()
+        if (target === 0) {
+          n1ScrambleUntilRef.current = Math.max(n1ScrambleUntilRef.current, until)
+        } else if (target === 1) {
+          n2ScrambleUntilRef.current = Math.max(n2ScrambleUntilRef.current, until)
+        } else {
+          totalScrambleUntilRef.current = Math.max(totalScrambleUntilRef.current, until)
+        }
+        nextPeriodicAtRef.current = now + nextPeriodicDelay()
       }
 
       // ---- Counter scramble + micro-jitter ----
