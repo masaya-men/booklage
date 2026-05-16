@@ -1,4 +1,4 @@
-# 開発ToDo (旧 AllMarks → リブランド: AllMarks 進行中)
+# 開発ToDo (AllMarks — 旧 Booklage、 2026-05-16 コード rebrand 済)
 
 > 完了済みタスク → [TODO_COMPLETED.md](./TODO_COMPLETED.md)
 > アイデア・将来構想・代替案 → `docs/private/IDEAS.md` (非公開、 gitignored)
@@ -20,31 +20,35 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-16 セッション 28 末 — Apple v3 chrome 実装 + 本番 deploy 済)
+### 直近の状態 (2026-05-16 セッション 29 — 4 commit 本番 deploy 済)
 
-- master HEAD: `1588d54 style(board-chrome): thin-stroke text chrome on all header islands (Apple v3 step 7)`
-- セッション 28 はセッション 27 spec の **完全消化 + 本番反映**、 3 commit:
-  - **`542a0dc`** TopHeader minimal + canvas edge scrim (= step 1-2、 chrome の下地)
-  - **`d0f98f8`** ScrollMeter portal to canvas bottom + counter readout (= step 3-6、 meter 系)
-  - **`1588d54`** thin-stroke text chrome on all header islands (= step 7、 各 chrome 要素の pill 削除 + stroke 化)
+セッション 29 は当初 Phase 1 視覚 fine-tune + Phase 2 ③ Slider 精密化が主題だったが、 ユーザー追加要望で chrome 視認性 + Booklage→AllMarks rebrand まで完遂。
+
+- セッション 29 の 4 commit:
+  - **`feat(scroll-meter): periodic full-scramble on idle counters`** — ScrollMeter counter が settle 後 5-15 秒に 1 回 full-scramble するように
+  - **`feat(slider): custom pointer-based precision slider for W/G`** — PrecisionSlider 新規 (= 自前 pointer 実装、 1000px で min→max、 float 値、 Gap max 60→300、 +10 test)
+  - **`style(chrome): v4 chrome legibility — stronger stroke + halo + missing islands`** — chrome formula を v3 → v4 (= stroke 0.75px / opacity 0.6 + soft halo)、 globals.css に `--chrome-text-*` token 集約、 ScrollMeter counter は chrome 完全未適用だったので新規追加
+  - **`chore: rebrand Booklage -> AllMarks across UI/i18n/docs/comments`** — 113 ファイル一括置換、 UI / i18n / 拡張 / 型名 / log prefix / docs / CLAUDE.md / memory 全部 AllMarks 統一
 - 本番反映済 → `https://booklage.pages.dev` をハードリロードで確認可能
-- vitest 478 / tsc / build clean
-- 残し物: ③ Slider 精密化 (= setPointerCapture + movementX×ratio) は持ち越し、 セッション 29 後半 or 29 主題候補
+- vitest 488 / tsc / build clean
+- spec: `docs/superpowers/specs/2026-05-16-precision-slider-design.md`
 
-### 次セッションは Apple v3 視覚 fine-tune + ③ Slider 精密化
+### 次セッションでやること
 
-詳細は `docs/CURRENT_GOAL.md`。 まずユーザーが本番実機で気になった所を伝えて 1 周直す → ③ Slider 精密化に進む。
+次セッションのゴールは `docs/CURRENT_GOAL.md`。 セッション 29 で残り候補:
+- ④ Booklage pin (= ヘッダーロゴ要素、 未着工) — 推奨次タスク
+- ⑥ 拡張機能 polish
+- ⑤ カスタムマウスポインタ (= テーマシステム後)
+- LP リデザイン (= IDEAS §LP redesign vision)
 
-### 次セッションでやることは `docs/CURRENT_GOAL.md` を読む
-
-CURRENT_GOAL.md にゴール + 進め方 (Phase 1 視覚 fine-tune / Phase 2 ③ Slider) が書いてあります。
-
-### リブランド進行: AllMarks → AllMarks
+### リブランド進行: Booklage → AllMarks (= 2026-05-16 コード rebrand 完了)
 
 - 2026-05-11 セッション 8 で名前変更を決定
-- 新ブランド: **AllMarks** / メインドメイン: **allmarks.app** (取得は月末)
+- 新ブランド: **AllMarks** / メインドメイン: **allmarks.app** (取得は月末 2026-05-31 予定)
 - 詳細 spec: `docs/private/2026-05-11-allmarks-branding-spec.md` (gitignored)
-- **現状コードは全て「AllMarks」 のまま**。 ドメイン取得後に一気に置換予定
+- ✅ コード rebrand 完了 (= UI / i18n / 拡張 / docs / 型名 / log prefix 全部 AllMarks)
+- 🔒 **意図的に維持**: `DB_NAME='booklage-db'`, deploy URL `booklage.pages.dev`, wrangler `--project-name=booklage`, `package.json` "name", bookmarklet 内 programmatic ID, GitHub repo 名
+- 🔜 **ドメイン取得後**: Cloudflare Pages 新 project 作成 → 301 redirect → GitHub repo rename → 拡張機能再パッケージ
 
 ---
 
