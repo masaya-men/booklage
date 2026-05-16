@@ -11,7 +11,12 @@
    over it) and *below* the stage (text panel + close button + media
    still render in front of the clone as the morph completes). */
 .backdrop {
-  position: absolute;
+  /* Session 33: position:absolute → fixed。 元は .canvas 内に閉じ込めて
+     外側 24px の白い outer frame は素のままにする設計だったが、 user 要求
+     で「閉じるエリア / ナビエリアを viewport 端まで届かせる」 → backdrop
+     も含めて viewport 全面に拡張。 outer frame の白は dim で覆われるが、
+     その代わり画面端どこを click しても close を受け取れる。 */
+  position: fixed;
   inset: 0;
   z-index: 100;
   background: var(--lightbox-backdrop);
@@ -42,7 +47,9 @@
    pointer events, which lets clicks on the empty area pass through to
    the backdrop's onClick=close handler below. */
 .stage {
-  position: absolute;
+  /* Session 33: position:absolute → fixed。 backdrop と合わせて viewport
+     全面に拡張。 nav hot zone (.navHotzone) を viewport 端まで届かせる目的。 */
+  position: fixed;
   inset: 0;
   z-index: 300;
   pointer-events: none;
@@ -741,46 +748,58 @@
 }
 
 /* ---- Nav chevron (left/right) ---- */
-.navChevron {
+/* Nav hotzone (session 33): viewport の左右 7vw を click 領域にして、 矢印
+   chevron を視覚装飾としてその中央に置く。 元の 48×48 circular button を
+   廃止し、 (a) 円グレー背景のノイズ感を除去、 (b) クリック有効領域を大幅に
+   拡張、 (c) 媒体や text panel の click は Layer 1 (= frame.onClick=close)
+   に sink する z-index レイヤー方式 (= user 提案セッション 33)。 */
+.navHotzone {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  /* backdrop-filter removed 2026-05-16 session 32: navChevron は Lightbox open
-     中ずっと paint され、 高 DPR 環境で viewport 内を動く clone の背後で blur
-     再計算が毎フレーム発生 → frame drop。 background は元の控えめ 10% で復元
-     (= user 「濃すぎる」 報告)。 */
-  background: rgba(255, 255, 255, 0.10);
+  top: 0;
+  bottom: 0;
+  width: clamp(60px, 7vw, 140px);
+  background: transparent;
   color: rgba(255, 255, 255, 0.92);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  /* session 32 user 決定: 常時表示。 元は hover-reveal だったが user が
-     「矢印が表示されない」 と認識 → 一貫性のため常時 visible に切替。 */
-  opacity: 1;
-  /* .stage の pointer-events:none を override。 これがないとボタンがクリック
-     できない (= user 「常時表示になったがクリックできない」 報告 session 32)。 */
+  /* .stage の pointer-events:none を override。 frame より上の z で
+     左右の nav 領域として click を最優先で受け取る。 */
   pointer-events: auto;
-  transition: opacity 140ms cubic-bezier(0.33, 1, 0.68, 1),
-              transform 140ms cubic-bezier(0.33, 1, 0.68, 1);
-  z-index: 2;
+  z-index: 3;
   padding: 0;
 }
 
-.navChevronPrev { left: 24px; }
-.navChevronNext { right: 24px; }
+.navHotzonePrev { left: 0; }
+.navHotzoneNext { right: 0; }
 
-.navChevron:hover {
-  transform: translateY(-50%) scale(1.06);
+.navHotzone:focus { outline: none; }
+.navHotzone:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: -8px;
+  border-radius: 4px;
 }
 
-.navChevron:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.65);
-  outline-offset: 2px;
+/* chevron icon: 14×14 SVG を 32×32 装飾コンテナに入れて、 hover 中だけ
+   D 案 pulse loop (= scale 1.0 → 1.35 → 1.0、 900ms ease-in-out)。 */
+.navChevronIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  transition: transform 200ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.navHotzone:hover .navChevronIcon {
+  animation: chevronPulse 900ms ease-in-out infinite;
+}
+
+@keyframes chevronPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.35); }
 }
 
 /* ---- Nav meter (HUD-style Gaussian waveform + animated counter) ---- */

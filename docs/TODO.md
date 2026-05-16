@@ -20,40 +20,30 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-16 セッション 32 — 8 commit 本番 deploy 済)
+### 直近の状態 (2026-05-16 セッション 33 — Lightbox ナビ + Hit Zone リデザイン deploy 済)
 
-セッション 32 は **「Lightbox の TextCard 表示 + 震え対策 sprint」**。 user / Claude 双方で混乱があり何度も deploy を重ねたが、 末で方針 decided:
+セッション 33 は **「テキストカード周りを完全な状態にする」 sprint の 1/4 (= Item 1)**。 user 起点で 4 項目があるうち、 矢印 + Hit Zone 部分のみ完成:
 
-**セッション 32 の deployed 変更 (= 1 commit に集約予定)**:
-1. **webpage の Lightbox は全部 LightboxTextDisplay 専用 component** (= B 案)
-   - 「webpage は OG image 有無に関わらず全部テキストカード風」 という user 決定
-   - 「タイトル中央大 + 上に favicon + ドメイン」 のシンプルな専用 card
-   - 画像引き伸ばし問題 (= 「巨大ぼやけ image」、 「ファビコンの拡大版」) が完全消滅
-   - 動画 (YouTube/TikTok/Instagram) と Tweet 写真/動画は既存経路維持
-2. **左右ナビ矢印 (navChevron) 常時表示 + クリック可能**
-   - 元 hover-reveal を廃止、 user 「表示されない」 報告に対応
-   - stage の pointer-events:none を override
-   - 背景 0.10 で控えめ (= user 「濃すぎる」 報告で元値に戻す)
-3. **backdrop-filter blur 削除** (= navChevron / embedOpenBadge / tweetWatchOnXBadge)
-   - 既知 trap (memory `reference_backdrop_filter_paint_trap`)、 高 DPR で動く clone 背後の paint 負荷削減
-   - 揺れの部分減効果
-4. **clone の border-radius を hardcode 24px → CSS var (20px) に統一**
-   - 過去 7bb0529 で取りこぼされた radius 移行を完成 (= user 「丸さすら違う」 報告)
-5. **X ツイートの OGP title boilerplate strip** (= `cleanTitle(title, url)` 共通化、 board + Lightbox 両方適用)
-6. **Tweet text-only 判定を hasPhoto / hasVideo flag ベースに** (= photoUrl に profile pic 混入する誤判定回避)
+1. **円グレー背景削除 + 矢印 hover アニメ (= D 案 pulse loop)**
+2. **左右ナビ hit zone 拡大** (= `clamp(60px, 7vw, 140px)` 透明帯、 矢印は装飾扱い)
+3. **z-index 3 層レイヤー方式** (= user 提案): Layer 1 全面 close / Layer 2 機能要素 / Layer 3 ナビ
+4. **`.frame onClick=requestClose`** で text panel 余白も含めて click=閉じる
+5. **媒体 / source link / dots / メーター は `stopPropagation`** で個別 hit 維持
+6. **`.backdrop` / `.stage` を `position:fixed` で viewport 全体に拡張** (= 「画面端まで届かない」 user 報告に対応)
 
-- 本番反映済 → `https://booklage.pages.dev` をハードリロードで確認
+- spec: `docs/specs/2026-05-16-lightbox-nav-hit-zone-design.md`
+- 本番反映済 → `https://booklage.pages.dev` をハードリロードで確認 OK 済
 - vitest 488 / tsc / build clean
 
-### 次セッション (= 33) でやること
+### 次セッション (= 34) でやること
 
-ゴール: **`docs/CURRENT_GOAL.md`**。 一度頭の整理してから再着手:
+ゴール: **`docs/CURRENT_GOAL.md`**。 テキストカード残 3 項目を順番に:
 
-1. **Bug B 震えの「別の原因」 仮説調査** (= user 仮説: blur 以外の重い計算が原因)
-   - blur 削除では部分改善のみ、 残候補は scroll position / react re-render / transform 等
-2. **必要なら 開閉アニメ自体を廃止** (= 「ピクセル固定」 を文字通りに取るなら fade のみに)
-   - 大変更なので必ず user 相談してから着手
-3. その後 foundation 3 本柱に進む
+1. **Item 2**: テキストのみカード (webpage + tweet) の基本カードサイズを固定 + 構造シンプル化 (= 現在の TextCard / LightboxTextDisplay を 1 つの共通カードに統合する方向性合意済)
+2. **Item 3**: board 上のツイート文のみカード も black / white ランダム振り分け (= 既存 `pickTextCardColor(cardId)` を tweet 経路にも適用、 webpage TextCard と統一)
+3. **Item 4**: テキストのみカードを Lightbox にそのまま (= 同じカード) 移動、 右エリアに元ページ遷移 + アカウント情報
+
+Bug B 震えと Lightbox 開閉アニメ見直しは Item 2-4 完了後に再着手。 foundation 3 本柱はその後。
 
 ### foundation 3 本柱 (= セッション 32 以降)
 

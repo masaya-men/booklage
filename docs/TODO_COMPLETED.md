@@ -1181,3 +1181,88 @@ foundation 3 本柱 (= サイジング汎用化 / tag schema / 広告 placement)
 - 軽量 fix (B-b、 session 31 軽量) + backdrop-filter blur 削除 (session 32) で部分改善
 - user 「少しは減ったがまだ気になる」、 user 仮説: 「blur 以外の重い計算が原因」
 - 次セッションで原因仮説 + 必要なら開閉アニメ自体の見直し
+
+---
+
+## セッション 33 (2026-05-16) — Lightbox ナビ矢印 + Hit Zone リデザイン (Item 1 / 全 4 項目)
+
+**user 起点**: 「テキストカード周りを完全な状態にしたい」。 関連 4 項目を順に進める方針:
+
+1. ライトボックスやじるしの円グレー背景削除 + ホバー時アニメ
+2. テキストのみカード (= webpage / tweet) の基本サイズ固定 + 構造シンプル化
+3. board 上ツイート文のみカードを black / white ランダム化
+4. テキストのみカードを Lightbox にそのまま移動 + 右に元ページ遷移 / アカウント情報
+
+セッション 33 ではこのうち **Item 1 + 関連 hit zone リデザイン** を完成。 残 Item 2-4 は次セッション (= 34) へ。
+
+### Visual Companion で 6 回 mockup iteration
+
+- v1 (arrow-hover.html): 矢印 hover animation の 4 案を視覚比較 → user **D 案 (= pulse loop)** 選択
+- v2 (hit-area.html): hit area 幅 3 案 (= 80px / 18vw / 25%) を視覚比較 → user 「画面端 / 右パネル等を分けて塗った画像」 で具体要望
+- v3 (hit-area-v2.html): user の塗り画像を構造に当てはめた解釈モック → 「ライトボックスの実画面に重ねた版で見たい」
+- v4 (hit-area-real-vN.html): 実画面スクショ (= 3835×1740 PNG) を base64 で HTML に埋め込み、 hit zone overlay。 brainstorm server が画像 file を serve しないため base64 + bash concat で生成 (5.2MB HTML)
+- v5 (hit-area-real-v3): 赤帯を画面上端まで伸ばす
+- v6 (hit-area-real-v4): 下端の青削除 (= dot インジケータ誤爆防止、 user 提案)
+- v7 (hit-area-real-v5): 緑 (source link) 周囲に safe zone 追加 (= user 提案「元ページボタンの周りだけ押しやすく」)、 ✕ ボタン領域を上青に統合
+- v8 (hit-area-real-v6): 動画上端と青の被りを修正
+- v9 (hit-area-real-v7): user 提案 **z-index レイヤー方式** で再構成 → 確定
+
+### 確定方針 (= spec `docs/specs/2026-05-16-lightbox-nav-hit-zone-design.md`)
+
+**z-index 3 層構造** (= user 提案):
+- **Layer 1 (= 最下層)**: 青 = 全面 click で閉じる
+- **Layer 2 (= 中間)**: 動画 / 画像 / ✕ / 元ページボタン / dots / メーター = 個別 click を受け取り close 発火を吸収
+- **Layer 3 (= 最前面)**: 赤 = 左右 `clamp(60px, 7vw, 140px)` のナビ hit zone
+
+矢印:
+- 円形グレー背景 (`rgba(255,255,255,0.10)`) **削除**
+- 通常時は SVG だけ (= 14×14 stroke=2、 現状形維持)
+- hover で D 案 pulse loop (= `scale(1) → scale(1.35) → scale(1)`、 900ms ease-in-out infinite)
+
+### 実装変更 (= 3 ファイル + 1 spec)
+
+1. **`components/board/Lightbox.module.css`**:
+   - `.navChevron` (円形 button) を **削除**
+   - `.navHotzone` 追加 (= 7vw 透明 hit zone、 z-index 3 within stage)
+   - `.navChevronIcon` 追加 (= 32×32 装飾コンテナ)
+   - `@keyframes chevronPulse` 追加
+   - `.backdrop` / `.stage` を `position: absolute` → **`fixed`** に変更 (= user 「画面端まで届かない」 報告対応、 hit zone を viewport 全体に拡張)
+2. **`components/board/LightboxNavChevron.tsx`**: button が hit zone 本体、 chevron は装飾子として `<span className={styles.navChevronIcon}>` で wrap
+3. **`components/board/Lightbox.tsx`**:
+   - `.frame` に `onClick={requestClose}` 追加 (= Layer 1 全面 close 実装)
+   - `.media` に `onClick={(e) => e.stopPropagation()}` (= 媒体 click 吸収)
+   - source link (= 3 箇所、 Instagram / DefaultText / TweetText) に `onClick stopPropagation` (= リンク機能維持)
+
+`requestClose` は `closingRef` guard 既存 → close button + frame 両方発火しても double-fire 安全。
+
+### 副作用 / 視覚変化
+
+- `.backdrop` / `.stage` を `position: fixed` にしたことで、 元は canvas 内 (= 外側 24px 白い outer frame を維持) だった Lightbox dim が **viewport 全面** を覆う形になった。 user **OK 判定**。
+- これにより、 Lightbox open 中は outer frame の白い余白も dim で覆われる (= 全画面 takeover 感)
+
+### user の核心要望と達成
+
+| user 発言 | 実装 |
+|---------|------|
+| 円グレー背景がノイズ | 完全削除 |
+| 矢印が拡大縮小しながらアニメ | D 案 pulse loop |
+| 画面端の広いエリアでナビ click | clamp(60, 7vw, 140) hit zone |
+| ✕ と青を分けず一帯で閉じる | ✕ も Layer 2、 上一帯は Layer 1 で全部 close |
+| 元ページボタン周りは押しやすく | Layer 2 で個別 hit + stopPropagation で誤発火吸収 |
+| カードサイズ / 媒体サイズに依らず一定幅 | 7vw viewport-based、 frame 内 media とも横方向で分離 |
+| 画面端まで連続 | backdrop / stage を `position: fixed` で viewport 拡張 |
+
+### 検証
+
+- vitest 488 / tsc / build clean (= 全 pass、 セッション開始時から数値変動なし)
+- 本番反映済 (= `https://booklage.pages.dev`、 user ハードリロード確認 OK)
+
+### Visual Companion 副産物 (= 削除候補)
+
+`.superpowers/brainstorm/6093-1778926800/content/` 配下に 5.2MB × 4 個 ≈ 20MB の HTML 残存 (= mockup v1-v9 と PNG 1 枚)。 gitignored なので push には影響しないが、 ローカルディスクを使うので次セッション開始時に整理してよい。
+
+### 次セッション (= 34) で扱う 残 3 項目
+
+- Item 2: テキストのみカード (webpage + tweet) のサイズ固定 + 構造シンプル化
+- Item 3: board 上ツイート文のみカード を black / white ランダム化 (= webpage TextCard と統一)
+- Item 4: テキストのみカードを Lightbox にそのまま移動、 右エリアに元ページ遷移 / アカウント情報

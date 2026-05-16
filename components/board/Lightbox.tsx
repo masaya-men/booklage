@@ -1153,7 +1153,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           />
         </>
       )}
-      <div ref={frameRef} className={styles.frame}>
+      {/* Session 33: Layer 1 (= 全面 close zone)。 frame 自体のどこを
+          click しても閉じる。 子の interactive 要素 (.media / source link 等)
+          は stopPropagation で「閉じる」 を吸収する z-index レイヤー方式。
+          closingRef が requestClose の double-fire を防ぐので、 close 押下
+          → close button + frame 両方発火しても安全。 */}
+      <div ref={frameRef} className={styles.frame} onClick={requestClose}>
         {/* Close button is now a child of .frame, anchored to its top-right
             corner (offset slightly above and outside via CSS). This makes
             the ✕ visually "attached" to the lightbox unit — the user reads
@@ -1174,7 +1179,14 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         >
           <span className={styles.closeIcon} aria-hidden="true">✕</span>
         </button>
-        <div ref={mediaRef} className={styles.media}>
+        <div
+          ref={mediaRef}
+          className={styles.media}
+          /* Session 33: 媒体 (動画 / 画像 / iframe) の click は .frame の
+             close 発火を吸収する。 動画 controls / image zoom 等は内部要素が
+             個別に hit を取るので機能維持。 */
+          onClick={(e): void => e.stopPropagation()}
+        >
           {tweetId
             ? <TweetMedia
                 item={view}
@@ -1296,6 +1308,7 @@ function DefaultText({
             target="_blank"
             rel="noopener noreferrer"
             className={styles.sourceLink}
+            onClick={(e): void => e.stopPropagation()}
           >
             {t('board.lightbox.openSource')} →
           </a>
@@ -1315,6 +1328,7 @@ function DefaultText({
           target="_blank"
           rel="noopener noreferrer"
           className={styles.sourceLink}
+          onClick={(e): void => e.stopPropagation()}
         >
           {t('board.lightbox.openSource')} →
         </a>
@@ -1670,6 +1684,7 @@ function TweetText({
           target="_blank"
           rel="noopener noreferrer"
           className={styles.sourceLink}
+          onClick={(e): void => e.stopPropagation()}
         >
           {t('board.lightbox.openSource')} →
         </a>
