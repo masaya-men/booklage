@@ -1214,7 +1214,7 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         <div ref={textRef} className={styles.text}>
           {tweetId
             ? <TweetText item={view} meta={tweetMeta} hideBody={isTweetTextOnly(tweetMeta, tweetSlots)} />
-            : <DefaultText item={view} host={host} hideTitle={shouldRenderLargeTextCard(view)} />}
+            : <DefaultText item={view} host={host} />}
         </div>
       </div>
     </div>
@@ -1731,17 +1731,28 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
   }
 
   // 一般 webpage (= youtube / tiktok / instagram / tweet を除く)。
-  // session 32 user 決定 (B 案): OG image の有無に関わらず全部 LightboxTextDisplay
-  // で描画する。 「テキストカード風」 = タイトルと favicon + ドメインのみ。 画像を
-  // 引き伸ばして表示しない (= 巨大ぼやけ image 問題の根絶)。
+  // session 34: board と mirror 化。 thumbnail があれば Lightbox でも image
+  // 表示 (= LightboxImageWithFallback)、 image load 失敗 / 256px 未満なら
+  // TextCard に fallback。 thumbnail 自体無いなら最初から TextCard。
+  // (session 32 の「全部 TextCard」 判断を覆して board ImageCard / TextCard と
+  // 同じ routing に揃える。)
   const textAspect = aspectRatio ?? TEXT_CARD_MIN_ASPECT
-  return (
-    <LightboxTextDisplay
-      title={cleanTitle(item.title, item.url)}
-      url={item.url}
-      aspect={textAspect}
-    />
-  )
+  const fakeBoardItem: BoardItem = {
+    ...toBoardShapeForFallback(item, textAspect),
+    title: cleanTitle(item.title, item.url),
+    cardWidth: 280,
+  }
+  if (item.thumbnail) {
+    return (
+      <LightboxImageWithFallback
+        item={item}
+        aspectRatio={aspectRatio}
+        fakeBoardItem={fakeBoardItem}
+        textAspect={textAspect}
+      />
+    )
+  }
+  return <LargeTextCardScaler fakeItem={fakeBoardItem} aspect={textAspect} />
 }
 
 /** 右パネルで h1 を抑制すべきか — Lightbox で左に大 TextDisplay を描画する
@@ -1955,13 +1966,19 @@ function LargeTextCardScaler({
           width: `${boardW}px`,
           height: `${boardH}px`,
           transformOrigin: 'top left',
-        }}
+          // session 34: inner TextCard の var(--card-radius) (= board 24px) が
+          // transform:scale で拡大されると外側 .imageBox の 20px clip より大きくなり
+          // 「20 より丸い」 視覚になる。 0 上書きで inner を矩形化し、 .imageBox の
+          // overflow:hidden + 20px radius が最終形を決める (= LargeBoardCardClone と同じ手)。
+          ['--card-radius' as string]: '0',
+        } as React.CSSProperties}
       >
         <TextCard
           item={fakeItem}
           cardWidth={boardW}
           cardHeight={boardH}
           displayMode="visual"
+          omitMeta
         />
       </div>
     </div>
@@ -2000,13 +2017,7 @@ function LightboxImageWithFallback({
   )
 
   if (shouldFallback) {
-    return (
-      <LightboxTextDisplay
-        title={cleanTitle(item.title, item.url)}
-        url={item.url}
-        aspect={textAspect}
-      />
-    )
+    return <LargeTextCardScaler fakeItem={fakeBoardItem} aspect={textAspect} />
   }
   if (aspectRatio) {
     return (

@@ -17,6 +17,12 @@ type Props = {
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly reportIntrinsicHeight?: (cardId: string, heightPx: number) => void
   readonly displayMode: DisplayMode
+  /** Session 34: Lightbox で TextCard を transform:scale で拡大表示する経路では、
+   *  16×16 favicon が 3 倍拡大されて bitmap blur (= 「がびがびファビコン」) になる。
+   *  meta 行は右パネルで同じ情報が出ているので冗長でもあり、 Lightbox では
+   *  omitMeta=true で metaTop/metaBottom 行を非表示にしてタイトルだけ拡大する。
+   *  board の通常描画では omitMeta は付けない (= favicon は board サイズで native 表示)。 */
+  readonly omitMeta?: boolean
 }
 
 /** Two aspect ratios are considered "effectively equal" under this threshold.
@@ -29,6 +35,7 @@ export function TextCard({
   cardHeight = 360,
   persistMeasuredAspect,
   reportIntrinsicHeight,
+  omitMeta = false,
 }: Props): ReactNode {
   const hostname = hostnameFromUrl(item.url)
   const faviconUrl = hostname ? getFaviconUrl(hostname) : null
@@ -70,7 +77,7 @@ export function TextCard({
 
   return (
     <div className={`${styles.textCard} ${styles[typography.mode]} ${styles[colorVariant]}`}>
-      {faviconUrl && typography.mode !== 'headline' && (
+      {faviconUrl && typography.mode !== 'headline' && !omitMeta && (
         <div className={styles.metaTop}>
           <img src={faviconUrl} alt="" className={styles.favicon} draggable={false} />
           <span className={styles.domain}>{hostname}</span>
@@ -81,7 +88,7 @@ export function TextCard({
         {title}
       </div>
 
-      {faviconUrl && typography.mode === 'headline' && (
+      {faviconUrl && typography.mode === 'headline' && !omitMeta && (
         <div className={styles.metaBottom}>
           <img src={faviconUrl} alt="" className={styles.favicon} draggable={false} />
           <span className={styles.domain}>{hostname}</span>
