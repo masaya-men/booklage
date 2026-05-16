@@ -906,8 +906,11 @@ export function BoardRoot() {
     <div className={styles.outerFrame}>
       {/* Outer-frame chrome — wordmark (top-left) + link strip (bottom).
           Sits in the white margin around the dark canvas, gives users a way
-          back to the marketing site without intruding on the board. */}
-      <BoardChrome />
+          back to the marketing site without intruding on the board.
+          Session 30: 全画面化 sprint で一時非表示。 余白がなくなり居場所を失った
+          ため、 footer 全体デザイン (= 広告含む) を別 sprint で再設計してから
+          差し戻す。 復活させるには下行のコメントアウトを外す。 */}
+      {/* <BoardChrome /> */}
       {/* Provisional onboarding affordance for early testers — drag the
           pill into the browser bookmark bar to install AllMarks. Revisit
           once the marketing site handles install on its own. */}

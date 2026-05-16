@@ -373,13 +373,15 @@ ol {
   --lightbox-backdrop: rgba(0, 0, 0, 0.5);
   --lightbox-backdrop-blur: 8px;
 
-  /* === Outer-frame design (v17) ===
-     白い外周に dark canvas が浮かぶ枠付きデザイン。
-     canvas-margin = ウィンドウ端から dark canvas までの余白。
-     canvas-radius = dark canvas の角丸。 */
-  --bg-outer: #ebebeb;
-  --canvas-margin: 24px;
-  --canvas-radius: 24px;
+  /* === Outer-frame design (v17 → session 30 全画面化) ===
+     セッション 30 で 額縁付き destefanis homage から 全画面 (= 「自分の世界」)
+     に visual pivot。 --bg-outer は canvas と同色にし、 margin / radius を 0
+     にして dark canvas が viewport 端から端まで広がる構成。 BoardChrome
+     (wordmark + footer リンク) は一時非表示、 footer 全体デザイン (= 広告含む)
+     は別 sprint で再設計。 元の値: #ebebeb / 24px / 24px。 */
+  --bg-outer: #0a0a0a;
+  --canvas-margin: 48px;
+  --canvas-radius: 0px;
 }
 
 /* ── Light Mode Overrides ──────────────────────────────────── */

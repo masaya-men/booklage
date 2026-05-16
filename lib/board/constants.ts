@@ -111,20 +111,19 @@ export const COLUMN_MASONRY = {
 } as const
 
 /** Board-wide card width and gap controlled by the header sliders.
- *  CARD_WIDTH_DEFAULT_PX = 267 derives from the pre-slider 5-column
- *  layout at the developer's canvasWrap width (1429px measured live):
- *    effectiveLayoutWidth = 1429 - 2 * SIDE_PADDING_PX(9) = 1411
- *    5W + 4 * 18 (gap) <= 1411  =>  W <= 267.8  →  267 (floor)
- *  Skyline layout drops a card with strict `>`, so 268 (= 1412 row
- *  total) misses the 5th column by 1px. 267 leaves a 4px safety
- *  margin and reliably fits five columns. Earlier 280 assumed window
- *  inner width 1489, missing the canvas-margin (24px each side) +
- *  scrollbar control. Reset button restores both to these defaults. */
+ *  CARD_WIDTH_DEFAULT_PX = 267 was originally derived for a dense
+ *  5-column layout at the developer's canvasWrap width with G=18.
+ *  Session 30 (= 全画面化 visual pivot) では default を 「最密 5 列
+ *  thumbnail wall」 から 「4 列 + 大きな gap でカード呼吸 + 背景タイポ
+ *  透過」 に転換。 W は据置 267 (= カード 1 枚の親密感は維持)、
+ *  G を 18 → 97 に拡大して 4 列 gallery 密度に。 ミッション 「整理ツール
+ *  ではなく 表現ツール」 (CLAUDE.md) を default で体現する転換。
+ *  Reset button restores both to these defaults. */
 export const BOARD_SLIDERS = {
   CARD_WIDTH_DEFAULT_PX: 267,
   CARD_WIDTH_MIN_PX: 120,
   CARD_WIDTH_MAX_PX: 720,
-  CARD_GAP_DEFAULT_PX: 18,
+  CARD_GAP_DEFAULT_PX: 97,
   CARD_GAP_MIN_PX: 0,
   CARD_GAP_MAX_PX: 300,
 } as const
