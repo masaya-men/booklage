@@ -1,59 +1,78 @@
-# 次セッションのゴール (= セッション 29)
+# 次セッションのゴール (= セッション 30)
 
 ## ゴール
 
-**セッション 28 で本番反映した Apple v3 chrome の視覚 fine-tune** + **③ Slider 精密化** の着工。 まずは booklage.pages.dev でユーザーが実機確認し、 直したい所を 1 周してから、 ③ slider に進む流れ。
+**ムードボードを全画面化する** (= 額縁付き destefanis homage から、 AllMarks 個性 = 「自分の世界」 表現への visual pivot)。 30 分で実装、 実機確認、 気に入らなければロールバック可能な小規模 sprint。
 
-## 前提 (セッション 28 で揃った)
+## 前提 (= セッション 29 で揃った)
 
-- master HEAD: `1588d54 style(board-chrome): thin-stroke text chrome on all header islands (Apple v3 step 7)`
-- spec `docs/superpowers/specs/2026-05-15-board-chrome-minimal-design.md` §4 の 10 ステップ完全消化、 3 commit に分けて実装
-- 本番 deploy 済 — `https://booklage.pages.dev` ハードリロードで最新
-- vitest 478 / tsc / build clean
-- ③ Slider 精密化 / ④ AllMarks pin / ⑥ 拡張機能 polish は持ち越し中
+- master HEAD: `feat/style/docs 6 commit shipped、 push 済`
+- セッション 29 の主要成果:
+  - ScrollMeter periodic full-scramble 実装
+  - PrecisionSlider 新規 (= 自前 pointer-based slider、 マウス 1000px で min→max)
+  - Gap 上限 60 → 300、 値は float 化
+  - Chrome v4 legibility (= stroke 0.75px / 0.6 黒 + soft halo、 globals.css に token 集約)
+  - ScrollMeter counter / FilterPill の括弧削除、 数字 brightness 統一
+  - **Booklage → AllMarks rebrand 完了** (= 113 ファイル、 UI / i18n / 拡張 / docs / memory)
+- 本番反映済 → `https://booklage.pages.dev` ハードリロードで最新
+- vitest 488 / tsc / build clean
 
-## セッション 29 の進め方 (= 2 phase 想定)
+## セッション 30 の進め方
 
-### Phase 1: Apple v3 視覚 fine-tune (= 必須、 短時間)
+### Phase 1: ムードボード全画面化 (= 短時間、 必須)
 
-ユーザーが本番をハードリロードして気になった所を Claude に伝える。 候補:
+実装スコープ (= 全部 CSS):
 
-**⭐ session 28 末ユーザー報告 (= 最優先 fine-tune)**:
-- **ScrollMeter counter の scramble 頻度** — 現状はスクロール中 (= visibleRange / totalCount が変化したタイミング) しか scramble せず、 settle 後は ±1 micro-jitter のみ。 ユーザー要望: settle 中も**たまに full scramble** を発火させたい (= 「震えるだけじゃない、 数字が大きく動く瞬間を周期的に入れる」)。 実装案: settle 後ランダムタイマー (e.g., 5-15 秒間隔で N1/N2/TOTAL のいずれかを 600-1500ms scramble) を仕込む。 [components/board/ScrollMeter.tsx](components/board/ScrollMeter.tsx) の rAF loop に「periodic scramble trigger」 を追加
+```diff
+ :root {
+-  --bg-outer: #ebebeb;
++  --bg-outer: #0a0a0a;   /* canvas と同色 = 視覚的に「全画面」 */
+ }
 
-**その他の候補** (= 必要なら user 指示で着工):
-- counter readout の font-size / letter-spacing 微調整 (= 現在 11px / 0.10em、 視認性次第)
-- scrim 濃度 (= 0.32 → もっと薄く or 濃く) / scrim 高さ (= 80px → 60 or 100px)
-- chrome text の base opacity (= 0.85 → 0.78 or 0.9)
-- ScrollMeter の幅 (= 現在 360px、 360 だと canvas 中央寄り、 もっと細くするか?)
-- counter scramble 動き (= TOTAL 1500ms が長すぎる感じ等)
-- 「intro fade (= mount 後 2.4 秒 高 opacity + glow → ambient)」 が **spec にあるが未実装** (= 必要かを user に確認、 必要なら実装)
-- divider dot 「·」 が 2 slot レイアウトで削除済 (= space-between で代替)。 戻したい場合に再追加
+ .canvas {
+-  margin: 24px;
+-  border-radius: 24px;
++  margin: 0;
++  border-radius: 0;
+ }
+```
 
-### Phase 2: ③ Slider 精密化 + 板に馴染ませる
+`BoardRoot.module.css` / `BoardChrome.module.css` あたりを実機確認しながら調整。 カードの絶対座標は canvasWrap の内側基準なので変動なし。
 
-Phase 1 が終わったら着工。 IDEAS.md §セッション 23 D + E (= 数値表記の遊び + slow slider 根本治療) 参照。 実装方針:
-- `setPointerCapture` + `movementX × ratio` でカスタム slider を組み、 native `<input type=range>` を脱却
-- visual も Apple v3 路線で文字 chrome 化 (= W/G label + value は既に stroke 化済、 thumb / track の path を引き直す)
-- spec を最初に書く方が良い (= writing-plans skill 起動)
+### Phase 2: chrome (= ヘッダー / scroll meter) の位置検証
+
+- TopHeader は viewport 上端絶対配置のはず → 全画面化でも問題なし、 検証だけ
+- ScrollMeter は canvas 下端基準 → margin 0 で全画面化すると viewport 下端ぴったりになる、 体感確認
+
+### Phase 3: 判定 + spec 更新
+
+- 全画面が良い感触なら **Phase A → Phase C 切替宣言** を memory / spec に記録
+- ロールバック判定なら revert で戻す (= 1 commit reverse、 1 deploy)
+- `feedback_strict_reference.md` (= 「destefanis 忠実コピー、 個性は Phase C」) のフェーズ宣言更新
+
+## セッション 31 (= その次) の予告
+
+**autoplay + auto-cycle MVP**:
+- 動画 autoplay (= `<video>` + YouTube IFrame、 mute、 IntersectionObserver)
+- 複数写真 auto-cycle (= hover swap 機構 + 4-5 秒タイマー、 スタガー)
+- 「表示オプション」 トグル UI 新規 (= autoplay / 背景タイポ 等)
+- スコープ外: TikTok inline、 同時再生数の精密チューニング
+- 既存「ユーザー mix」 ビジョンとは 2-layer 構造で整合 (= ambient mute / promoted unmute)
 
 ## 着工前読み込み
 
-- `docs/superpowers/specs/2026-05-15-board-chrome-minimal-design.md` (= 視覚 fine-tune の基準値)
-- `components/board/ScrollMeter.tsx` / `.module.css` (= counter readout のパラメータ位置)
-- `components/board/SliderControl.module.css` (= 既存 slider の構造)
-- `docs/private/IDEAS.md` §セッション 23 D + E (= slider 精密化方針)
+- `components/board/BoardChrome.tsx` + `.module.css` (= 額縁構造の中身)
+- `components/board/BoardRoot.module.css` (= canvas / canvasWrap の margin / radius)
+- `app/globals.css` (= `--bg-outer` `--canvas-margin` `--canvas-radius` 定義場所)
+- メモリ `reference_destefanis_visual_spec.md` (= 「白外周 + 中央 dark canvas」 が destefanis、 これと別れる宣言になる)
 
 ## 触らない (= 短期スコープ外)
 
-- リブランド (= AllMarks ドメイン取得後、 月末 2026-05-31 リマインダー)
-- ④ AllMarks pin / ⑥ 拡張機能 polish (= ② ③ 後)
-- ⑤ カスタムマウスポインタ (= テーマシステム未確定なので保留)
-- B-#7 自由サイジング縮小 clipping (= 体感バグ、 後日)
-- B-#17-#3 Lightbox internal nav clone 移行 (= 中期)
+- ④ AllMarks pin (= 全画面化と並行して着手しても良いが、 まず全画面化判定が先)
+- ⑥ 拡張機能 polish
+- LP リデザイン
+- B-#3 重複 URL バグ、 B-#7 サイジング縮小 clipping
 
-## 着工 NG 条件
+## 月末リマインダー (= 2026-05-31)
 
-- 動的反転 (mix-blend-mode / JS sampling / backdrop-filter v4-v6) の再検討 → spec §2-4 で物理制約と判断記録済、 蒸し返さない
-- backdrop blur / Motion One spring polish (= session 25-27 で全部外した、 28 でも外したまま)
-- LiquidGlass を chrome に戻す (= テーマ切替時の話、 default chrome では使わない)
+**`allmarks.app` ドメイン取得確認**。 セッション開始時に user に確認を促す。 取得済 → Cloudflare Pages 新 project 作成・redirect 設定の sprint に進める。 未取得 → 取得を促す。

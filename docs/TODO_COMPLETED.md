@@ -895,3 +895,75 @@ chrome 行に並ぶ 6 種ボタンから pill 装飾を全削除、 paint-order 
 - canvas `::before/::after` scrim と LiquidGlass / FrameBorder の z-index 衝突は今回ゼロ (= cards default < scrim 80 < Lightbox 100 < TopHeader 110)、 ただし将来 LiquidGlass を chrome に戻すと再検討要
 
 **vitest / tsc / build clean** / **本番 deploy 済** (`https://booklage.pages.dev` 反映)。 PR / branch なし、 master 直 commit (= solo dev、 worktree 非使用)。
+
+---
+
+## 2026-05-16 セッション 29 — Phase 1 fine-tune + Phase 2 PrecisionSlider + Booklage→AllMarks 全面リブランド
+
+セッション 28 の Apple v3 chrome 本番反映を受けて、 当初は Phase 1 視覚 fine-tune + Phase 2 ③ Slider 精密化が主題だったが、 ユーザー要望追加で chrome 視認性大幅強化 + Booklage → AllMarks 全面リブランドまで完遂。 計 6 commit shipped。
+
+### 1. ScrollMeter periodic full-scramble (`feat(scroll-meter): periodic full-scramble on idle counters`)
+
+ユーザー報告 = 「現状はスクロール中しか scramble せず、 settle 後は ±1 micro-jitter のみ。 settle 中も**たまに full scramble** を発火させたい」。 実装: rAF loop に `nextPeriodicAtRef` を追加、 5-15 秒間隔で N1/N2/TOTAL のいずれかを 600-1500ms full-scramble。 既存の scroll-driven scramble とは `Math.max` で重畳のみ。
+
+### 2. PrecisionSlider 新規 (`feat(slider): custom pointer-based precision slider for W/G`)
+
+IDEAS §セッション 23 D + E 「マウスより遅く動く + 1 ずつ狙える」 の根本治療。 native `<input type=range>` を廃止して自前 pointer-based slider 実装:
+
+- `setPointerCapture` + `movementX × ratio` で値変化、 ratio = (max - min) / 1000 = マウス 1000px で min→max を移動
+- 内部値は float、 表示は `Math.round(value)` の 4 桁 zero-pad (`0280`)
+- Gap 上限 60 → 300 (= 「カードを意図的にスカスカに並べた表現」 を解放)
+- `WidthGapResetButton` の atDefault 判定は `===` → `Math.abs(diff) < 0.5` のトレランス比較に
+- 共通部品 `PrecisionSlider` を新規、 `SizeSlider` / `GapSlider` は薄ラッパー
+- arrow / Home / End キーで a11y 最低限の操作互換
+- spec: `docs/superpowers/specs/2026-05-16-precision-slider-design.md`
+- 10 test 追加、 vitest 478 → 488
+
+### 3. Chrome v4 legibility (`style(chrome): v4 chrome legibility — stronger stroke + halo + missing islands`)
+
+ユーザー要望 = 「全部一律にくっきり」 + 「左上のタグ修正漏れ」。 chrome formula を v3 (0.5px / 0.45 黒 / shadow なし) → v4 (0.75px / 0.6 黒 + soft halo) に強化、 `globals.css` に `--chrome-text-*` token を集約 (= 今後の調整は 1 箇所で済む)。 FilterPill / ResetAllButton / WidthGapResetButton / PrecisionSlider / sharePill / ScrollMeter counter の 6 箇所を vars に揃え、 ScrollMeter counter は chrome 完全未適用 (= 修正漏れ) だったので新規適用。 FilterPill の bracket (0.4→0.6) と count (0.5→0.7)、 ScrollMeter の bracket/dim (0.42→0.6) も dim 緩和。
+
+### 4. Booklage → AllMarks 全面リブランド (`chore: rebrand Booklage -> AllMarks across UI/i18n/docs/comments`)
+
+ユーザー要望 = 「あらゆるところで旧名称が使われているので Claude の認識も含めて統一したい」。 113 ファイル一括置換:
+
+**User-visible** = APP_NAME fallback / Watermark primary + secondary / LP / share / save toast / 15 言語 i18n messages/*.json / Chrome 拡張 (extension/ + chrome-extension/) manifest / popup / options / PWA public/manifest.json + sw.js / Console messages
+
+**Internal** = TypeScript 型名 BooklageDB → AllMarksDB / Console log prefix [booklage] → [allmarks] / 全コメント / JSDoc / docs / CLAUDE.md / MYCOLLAGE_FULL_SPEC.md / Claude memory ファイル群
+
+**意図的に維持** (= 動作 / データ保護):
+- `DB_NAME = 'booklage-db'` (= 既存ユーザー IDB データ保護)
+- `booklage.pages.dev` URL 全般 (= ドメイン取得 2026-05-31 まで)
+- `wrangler --project-name=booklage` (= Cloudflare Pages project)
+- `package.json` "name" (= tooling 影響リスク)
+- Bookmarklet 内の `data-booklageExtension` / `booklage:save-via-extension` 等の programmatic ID (= 既存ユーザー bookmarklet との cross-process API 維持)
+- GitHub repo 名 (= github.com/masaya-men/booklage)
+
+spec: `docs/private/2026-05-11-allmarks-branding-spec.md` (gitignored)
+
+### 5. ScrollMeter / FilterPill 括弧削除 + count brightness 統一 (`style(chrome): drop brackets, brighten FilterPill count`)
+
+ユーザー質問「タグの括弧や件数、 スクロールメータの括弧などはなぜ意図的に色が違うのか？合わせては?」 から、 構造のタイポグラフィ階層論を共有しつつ、 ユーザー希望に従って括弧削除 + 数字 brightness 統一を実施。
+
+- FilterPill: `[ ALL · 234 ]` → `ALL · 234` (= 括弧削除、 数字をラベルと同明度)
+- ScrollMeter: `[ 0001 — 0012 / 0234 ]` → `0001 — 0012 / 0234` (= 括弧削除)
+- FilterPill `·` は唯一残る構造区切りとして dim 維持 (= `ALL 234` で label と数字がくっつかないため)
+- ScrollMeter `—` `/` は 3 つの数字 (N1/N2/総数) の構造区切りとして dim 維持
+
+### 6. TODO 状態更新 (`docs(session-29): TODO 状態更新`)
+
+セッション 29 の 4-5 commit 反映、 rebrand の意図的に維持リスト明示、 次セッション推奨タスク候補追記。
+
+### 学び / 注意 / 教訓
+
+- **chrome token 集約**: `globals.css` に `--chrome-text-*` token を入れたことで、 今後 stroke 値 / shadow / 色を調整するときは 1 箇所で済む。 v3 から v4 への formula 更新コストが 5+ ファイルの繰り返し編集 → 6 箇所が vars 参照だけになった
+- **PrecisionSlider の ratio = (max - min) / 1000**: W と G で「マウスを動かす距離は同じ感覚」 を出すには range-aware ratio が必須。 定数 ratio (= 例 0.5) だと W と G で大きく手感が違う。 これがユーザー要求「1 ずつ狙える」 を構造的に解決した
+- **AllMarks rebrand の「変えない」 リスト**: 113 ファイル中で 100+ は容易に置換できるが、 6 種の技術 ID (DB_NAME / deploy URL / wrangler / package / bookmarklet ID / repo) は動作 / データ影響があるので絶対に変えない。 この境界判断は migration 設計の一般原則
+- **構造的 dim 配色**: bracket / 区切り文字を dim にする手法はタイポグラフィ階層付けの王道だが、 ユーザーが「合わせたい」 と言うなら従う。 ScrollMeter の `—` `/` は 3 数字の構造的区切りなので削除 / 統一しない判断は spec 的に正当 (= 削除すると意味不明)
+- **rebrand 後の自己参照崩壊**: 「Booklage → AllMarks」 のような自己参照を含む文章が一括置換で壊れる (= 「AllMarks → AllMarks」 になる)。 TODO.md / memory project_allmarks.md で発生、 手動で再構築要
+
+**vitest 488 / tsc / build clean** / **本番 deploy 5 回 / push 済** (`https://booklage.pages.dev` 反映)。 PR / branch なし、 master 直 commit (= solo dev、 worktree 非使用)。
+
+### 次セッション (= 30)
+
+ムードボード全画面化 (= 30 分の小規模 sprint)。 詳細 `docs/CURRENT_GOAL.md`。
