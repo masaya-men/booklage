@@ -9,8 +9,10 @@ import { fetchTikTokPlayback } from '@/lib/embed/tiktok-meta'
 import { t } from '@/lib/i18n/t'
 import { normalizeItem, type LightboxItem } from '@/lib/share/lightbox-item'
 import type { ShareCard } from '@/lib/share/types'
-import { TextCard } from './cards/TextCard'
+import { TextCard, MinimalCard, pickCard } from './cards'
 import { TEXT_CARD_MIN_ASPECT } from '@/lib/embed/text-card-measure'
+import { cleanTitle } from '@/lib/embed/clean-title'
+import { getFaviconUrl, hostnameFromUrl } from '@/lib/embed/favicon'
 import { LightboxNavChevron } from './LightboxNavChevron'
 import { LightboxNavMeter } from './LightboxNavMeter'
 import { useSmoothWheelScroll } from '@/lib/scroll/use-smooth-wheel-scroll'
@@ -244,7 +246,11 @@ function createLightboxClone(sourceCard: HTMLElement, rect: CloneRect): HTMLElem
   clone.style.height = `${Math.round(rect.height)}px`
   clone.style.margin = '0'
   clone.style.visibility = 'visible'
-  clone.style.borderRadius = '24px'
+  // 7bb0529 で --card-radius / --lightbox-media-radius は 20px に統一されたが、
+  // この hardcode が取りこぼされて 24px のまま残っていた → board card (20)、
+  // clone (24)、 .media (20) の三者でラジアスがずれ、 user 「角丸ぷくぷく」
+  // 報告の主因 (session 32)。 CSS var 参照に切り替えて将来の調整にも追従させる。
+  clone.style.borderRadius = 'var(--lightbox-media-radius)'
   clone.style.overflow = 'hidden'
   clone.style.pointerEvents = 'none'
   // GPU compositing hints — force the clone onto its own paint layer so
@@ -511,9 +517,9 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       // === B-#17 destefanis clone-based close ===
       // Build a fresh clone of the source card at the current .media
       // rect, hide .media, animate the clone back to the source rect.
-      // border-radius stays static at 24px throughout (clone inherits
-      // the source card's CSS), so the close-frame AA flicker that
-      // motivated this refactor cannot occur.
+      // border-radius は --lightbox-media-radius (= 現在 20px) で固定。
+      // clone / source card / .media の三者で同じ var を参照するため morph
+      // 中に角丸の jump / 連続変動は出ない。
       const mediaRect = mediaEl.getBoundingClientRect()
 
       // Kill any in-flight open tween on the chrome / media so close
@@ -563,9 +569,12 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         }, 0)
       }
       if (clone && closeOriginHost) {
+        // session 32: modifier 案 (= 毎フレーム整数 px snap) は user 確認で
+        // 「box が px 単位 discrete jump して角丸グニャグニャ感」 と判明し
+        // revert。 mid-tween は float のまま smooth に伸ばし、 始終端だけ
+        // 整数 snap する session 31 B-b の挙動に戻す。 user は震えの真因は
+        // GSAP interpolation ではなく「別の原因」 と仮説、 別途調査要。
         tl.to(clone, {
-          // Bug B-b: snap target rect to integer pixels to suppress GSAP
-          // sub-pixel interpolation jitter on layout-property tweens.
           top: Math.round(closeOriginHost.top),
           left: Math.round(closeOriginHost.left),
           width: Math.round(closeOriginHost.width),
@@ -818,9 +827,9 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
 
       const tl = gsap.timeline()
       if (clone && mediaRectHost) {
+        // session 32: modifier revert (= 角丸グニャグニャ報告)、 始終端 snap のみ。
+        // close と対称。
         tl.to(clone, {
-          // Bug B-b: snap target rect to integer pixels to suppress GSAP
-          // sub-pixel interpolation jitter on layout-property tweens.
           top: Math.round(mediaRectHost.top),
           left: Math.round(mediaRectHost.left),
           width: Math.round(mediaRectHost.width),
@@ -1192,8 +1201,8 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         </div>
         <div ref={textRef} className={styles.text}>
           {tweetId
-            ? <TweetText item={view} meta={tweetMeta} />
-            : <DefaultText item={view} host={host} hideTitle={!view.thumbnail} />}
+            ? <TweetText item={view} meta={tweetMeta} hideBody={isTweetTextOnly(tweetMeta, tweetSlots)} />
+            : <DefaultText item={view} host={host} hideTitle={shouldRenderLargeTextCard(view)} />}
         </div>
       </div>
     </div>
@@ -1369,18 +1378,67 @@ function TweetMedia({
     }
   }
 
-  // Legacy fallbacks — slots was empty (e.g. text-only tweet, or meta failed
-  // to resolve and the bookmark also has no photos[]).
+  // Text-only tweet を最優先で判定 (= session 32 Fix 2-b)。 X の syndication API
+  // は profile pic / embedded card preview を photoUrl に入れて返すことがあるので、
+  // photoUrl 真値の有無では判定せず、 hasPhoto / hasVideo フラグで text-only を確定する。
+  if (isTweetTextOnly(meta, slots)) {
+    const text = meta?.text ?? cleanTweetTitle(item.title)
+    const aspect = item.aspectRatio ?? TEXT_CARD_MIN_ASPECT
+    const fakeBoardItem: BoardItem = {
+      bookmarkId: item.bookmarkId ?? item.url,
+      cardId: item.cardId ?? item.url,
+      title: text,
+      description: item.description ?? undefined,
+      thumbnail: undefined,
+      url: item.url,
+      aspectRatio: aspect,
+      gridIndex: 0,
+      orderIndex: 0,
+      cardWidth: item.cardWidth ?? 280,
+      customCardWidth: false,
+      isRead: false,
+      isDeleted: false,
+      tags: [],
+      displayMode: null,
+    }
+    return <LightboxTextDisplay title={text} url={item.url} aspect={aspect} />
+  }
+
+  // Legacy fallbacks — slots が空 + hasPhoto/hasVideo は true のケース。
   if (meta?.videoUrl) {
     return <TweetVideoPlayer item={item} meta={meta} />
   }
-  if (meta?.photoUrl ?? item.thumbnail) {
-    return <img src={meta?.photoUrl ?? item.thumbnail!} alt={item.title} />
+  if (meta?.photoUrl) {
+    return <img src={meta.photoUrl} alt={item.title} />
   }
-  if (meta?.text) {
-    return <p className={styles.tweetTextOnly}>{meta.text}</p>
+  // meta 失敗 + thumbnail だけ残ってる稀ケース。
+  if (item.thumbnail) {
+    return <img src={item.thumbnail} alt={item.title} />
   }
   return <div className={styles.placeholder}>{item.title}</div>
+}
+
+/** X の OGP `og:title` は "Xユーザーの 〜 さん:「本文」 / X" のような
+ *  boilerplate 付き format。 syndication API が meta.text を返さなかった時の
+ *  fallback で item.title を素のまま表示すると boilerplate が出てしまうので、
+ *  「」 内の本文だけ抜き出す。 match しない (= 旧 format 等) はそのまま返す。 */
+function cleanTweetTitle(rawTitle: string): string {
+  const m = rawTitle.match(/「([\s\S]+)」/)
+  if (m) return m[1].trim()
+  return rawTitle
+}
+
+/** Tweet が 「文字だけ」 か。 photoUrl / videoUrl 単独では信頼できない —
+ *  X の syndication API は profile pic / embedded card preview を photoUrl に
+ *  入れて返すことがあり、 「写真ツイートではない」 のに URL だけ存在するケースが
+ *  ある。 hasPhoto / hasVideo は X の正規 boolean フラグなのでこちらを真の指標と
+ *  する。 slots (v13 media slots) が空 AND hasPhoto/hasVideo が false なら
+ *  text-only と確定。 TweetMedia と TweetText の両方で同じ判定を共有する。 */
+function isTweetTextOnly(meta: TweetMeta | null, slots: readonly MediaSlot[]): boolean {
+  if (slots.length > 0) return false
+  if (meta?.hasVideo) return false
+  if (meta?.hasPhoto) return false
+  return true
 }
 
 /** Dot indicator for Lightbox carousel. Larger and more clickable than the
@@ -1577,9 +1635,13 @@ function TweetVideoPlayer({
 function TweetText({
   item,
   meta,
+  hideBody = false,
 }: {
   readonly item: LightboxItem
   readonly meta: TweetMeta | null
+  /** Suppress the tweet body paragraph when text-only tweets render their
+   *  text inside the left-side large TextCard (session 32 Fix 2). */
+  readonly hideBody?: boolean
 }): ReactNode {
   const authorName = meta?.authorName ?? ''
   const authorHandle = meta?.authorHandle ?? ''
@@ -1601,7 +1663,7 @@ function TweetText({
           </div>
         </div>
       )}
-      <p className={styles.tweetBody}>{text}</p>
+      {!hideBody && <p className={styles.tweetBody}>{text}</p>}
       <div className={styles.metaCtaGroup}>
         <a
           href={item.url}
@@ -1653,61 +1715,295 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
     if (shortcode) return <InstagramEmbed shortcode={shortcode} thumbnail={thumb} title={item.title} aspectRatio={aspectRatio} />
   }
 
-  // image / website / fallbacks
-  // B-#17-#2 拡張 (session 30): 動画 embed と同じく、 一般 image card も
-  // aspect-ratio 駆動の wrapper で包む。 wrapper は CSS だけで sizing する
-  // ので <img> の load 完了を待たず rect が確定し、 「奥に消える」 (= clone
-  // tween が zero rect に向かって縮む) 現象が消える。 aspectRatio が
-  // 取れない (= share view 等) ケースは従来の素 <img> を維持。
-  if (item.thumbnail) {
-    if (aspectRatio) {
-      return (
-        <div
-          className={styles.imageBox}
-          style={{ ['--item-aspect' as string]: aspectRatio } as React.CSSProperties}
-        >
-          <img src={item.thumbnail} alt={item.title} />
-        </div>
-      )
-    }
-    return <img src={item.thumbnail} alt={item.title} />
-  }
-  // Text-only card. Re-render the board's TextCard at a larger cardWidth
-  // inside the same aspect-driven wrapper used for image cards — same look
-  // small→big, so the clone→media swap is visually continuous (resolves
-  // session 30 Bug A-1). cardId fallback to url keeps the deterministic
-  // color variant stable for share-view items that lack a persisted cardId.
+  // 一般 webpage (= youtube / tiktok / instagram / tweet を除く)。
+  // session 32 user 決定 (B 案): OG image の有無に関わらず全部 LightboxTextDisplay
+  // で描画する。 「テキストカード風」 = タイトルと favicon + ドメインのみ。 画像を
+  // 引き伸ばして表示しない (= 巨大ぼやけ image 問題の根絶)。
   const textAspect = aspectRatio ?? TEXT_CARD_MIN_ASPECT
-  const fakeBoardItem: BoardItem = {
+  return (
+    <LightboxTextDisplay
+      title={cleanTitle(item.title, item.url)}
+      url={item.url}
+      aspect={textAspect}
+    />
+  )
+}
+
+/** 右パネルで h1 を抑制すべきか — Lightbox で左に大 TextDisplay を描画する
+ *  item では h1 と左カードの title が重複するので suppress。 session 32 user 決定:
+ *  一般 webpage は OG image 有無に関わらず全部大 TextDisplay → 常に true。
+ *  専用 embed (YouTube/TikTok/Instagram) と tweet は別経路なので false。 */
+function shouldRenderLargeTextCard(item: LightboxItem): boolean {
+  const urlType = detectUrlType(item.url)
+  if (urlType === 'youtube' || urlType === 'tiktok' || urlType === 'instagram') return false
+  if (urlType === 'tweet') return false
+  return true
+}
+
+/** Lightbox 用に LightboxItem を BoardItem 互換形に詰め直す。 pickCard 判定と
+ *  大 TextCard 描画の両方で同じ fake item を使う。 cardWidth は board 側で
+ *  rendering されていたものをそのまま保ち、 Lightbox 側で transform:scale して
+ *  拡大表示することで「写真のように board card を拡大」 (session 32) を実現。 */
+function toBoardShapeForFallback(item: LightboxItem, aspectRatio: number): BoardItem {
+  return {
     bookmarkId: item.bookmarkId ?? item.url,
     cardId: item.cardId ?? item.url,
     title: item.title,
     description: item.description ?? undefined,
-    thumbnail: undefined,
+    thumbnail: item.thumbnail ?? undefined,
     url: item.url,
-    aspectRatio: textAspect,
+    aspectRatio,
     gridIndex: 0,
     orderIndex: 0,
-    cardWidth: 600,
+    cardWidth: item.cardWidth ?? 280,
     customCardWidth: false,
     isRead: false,
     isDeleted: false,
     tags: [],
     displayMode: null,
   }
+}
+
+/** Lightbox 専用テキストカード (session 32 user 提案 = 「カード自体に表示されている
+ *  文字の見た目もテキストカードのようにしたらどうですか」)。
+ *  board の TextCard を scale-up する複雑な方式 (= clone / ResizeObserver) は
+ *  全部レイアウト崩れを起こした。 代わりに Lightbox サイズに合わせた専用カードを
+ *  CSS だけで描画する。 構造: favicon + ドメイン (上、 控えめ) + 大タイトル (中央)。
+ *  X ツイートのタイトルは cleanTitle 経由で OGP boilerplate を除く。 */
+function LightboxTextDisplay({
+  title,
+  url,
+  aspect,
+}: {
+  readonly title: string
+  readonly url: string
+  readonly aspect: number
+}): ReactElement {
+  const hostname = hostnameFromUrl(url) ?? ''
+  const favicon = hostname ? getFaviconUrl(hostname) : null
   return (
     <div
       className={styles.imageBox}
-      style={{ ['--item-aspect' as string]: textAspect } as React.CSSProperties}
+      style={{ ['--item-aspect' as string]: aspect } as React.CSSProperties}
     >
-      <TextCard
-        item={fakeBoardItem}
-        cardWidth={600}
-        cardHeight={Math.round(600 / textAspect)}
-        displayMode="visual"
-      />
+      <div className={styles.lightboxTextCard}>
+        {favicon && (
+          <div className={styles.lightboxTextMeta}>
+            <img
+              src={favicon}
+              alt=""
+              className={styles.lightboxTextFavicon}
+              draggable={false}
+            />
+            <span className={styles.lightboxTextDomain}>{hostname}</span>
+          </div>
+        )}
+        <div className={styles.lightboxTextTitle}>{title}</div>
+      </div>
     </div>
   )
+}
+
+/** user 提案 (session 32) の clone 案: board の source card を cloneNode で
+ *  そのままコピーし、 `.imageBox` の中に置いて transform:scale で拡大表示する。
+ *  「写真のように board card を拡大」 を pixel identical で実現。 source card が
+ *  DOM にない (= share view 等) 場合は LargeTextCardScaler に fallback。
+ *  inner の `--card-radius` を 0 上書きして、 scale で TextCard root の radius
+ *  が拡大される問題 (= user 「丸さすら違う」 報告) を回避 — 視覚 radius は
+ *  outer .imageBox の var(--lightbox-media-radius) と overflow:hidden で確定する。 */
+function LargeBoardCardClone({
+  item,
+  fakeItem,
+  aspect,
+}: {
+  readonly item: LightboxItem
+  readonly fakeItem: BoardItem
+  readonly aspect: number
+}): ReactElement {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [useFallback, setUseFallback] = useState<boolean>(false)
+
+  useLayoutEffect(() => {
+    if (useFallback) return
+    const box = boxRef.current
+    const inner = innerRef.current
+    if (!box || !inner) return
+
+    const bookmarkId = item.bookmarkId
+    if (!bookmarkId) { setUseFallback(true); return }
+    const source = document.querySelector<HTMLElement>(`[data-bookmark-id="${bookmarkId}"]`)
+    if (!source) { setUseFallback(true); return }
+
+    const sourceRect = source.getBoundingClientRect()
+    const boardW = sourceRect.width
+    const boardH = sourceRect.height
+    if (boardW <= 0 || boardH <= 0) { setUseFallback(true); return }
+
+    const clone = source.cloneNode(true) as HTMLElement
+    clone.style.cssText = ''
+    clone.style.position = 'absolute'
+    clone.style.top = '0'
+    clone.style.left = '0'
+    clone.style.width = `${boardW}px`
+    clone.style.height = `${boardH}px`
+    clone.style.margin = '0'
+    clone.style.visibility = 'visible'
+    clone.style.transformOrigin = 'top left'
+    clone.style.pointerEvents = 'none'
+    clone.style.setProperty('--card-radius', '0')
+    inner.appendChild(clone)
+
+    // hover-revealed chrome を strip (= open animation clone と同じ)。
+    const SELECTORS_TO_STRIP = [
+      '[data-testid="card-delete-button"]',
+      '[data-testid="card-reset-size-button"]',
+      '[data-testid^="resize-handle-"]',
+    ]
+    for (const sel of SELECTORS_TO_STRIP) {
+      clone.querySelectorAll(sel).forEach((n) => n.remove())
+    }
+
+    const update = (): void => {
+      const w = box.offsetWidth
+      if (w <= 0) return
+      const scale = w / boardW
+      clone.style.transform = `scale(${scale})`
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(box)
+
+    return (): void => {
+      observer.disconnect()
+      clone.remove()
+    }
+  }, [item.bookmarkId, useFallback])
+
+  if (useFallback) {
+    return <LargeTextCardScaler fakeItem={fakeItem} aspect={aspect} />
+  }
+
+  return (
+    <div
+      ref={boxRef}
+      className={styles.imageBox}
+      style={{ ['--item-aspect' as string]: aspect } as React.CSSProperties}
+    >
+      <div ref={innerRef} style={{ position: 'relative', width: '100%', height: '100%' }} />
+    </div>
+  )
+}
+
+/** share view 等で source card DOM が無いとき用の fallback。 board と同じ
+ *  cardWidth で TextCard を再描画 + ResizeObserver で wrapper scale。 */
+function LargeTextCardScaler({
+  fakeItem,
+  aspect,
+}: {
+  readonly fakeItem: BoardItem
+  readonly aspect: number
+}): ReactElement {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const boardW = fakeItem.cardWidth
+  const boardH = boardW / aspect
+
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    const inner = innerRef.current
+    if (!box || !inner) return
+    const update = (): void => {
+      const w = box.offsetWidth
+      if (w <= 0) return
+      const scale = w / boardW
+      inner.style.transform = `scale(${scale})`
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(box)
+    return (): void => observer.disconnect()
+  }, [boardW])
+
+  return (
+    <div
+      ref={boxRef}
+      className={styles.imageBox}
+      style={{ ['--item-aspect' as string]: aspect } as React.CSSProperties}
+    >
+      <div
+        ref={innerRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: `${boardW}px`,
+          height: `${boardH}px`,
+          transformOrigin: 'top left',
+        }}
+      >
+        <TextCard
+          item={fakeItem}
+          cardWidth={boardW}
+          cardHeight={boardH}
+          displayMode="visual"
+        />
+      </div>
+    </div>
+  )
+}
+
+/** ImageCard 経路で thumbnail を <img> 描画するが、 load 失敗時 OR load 成功
+ *  しても image が小さすぎる (= favicon / icon サイズ) 場合は大 TextCard へ
+ *  fallback する。 board の ImageCard が MinimalCard に落ちる挙動と等価 +
+ *  Lightbox 拡大時に荒い favicon が巨大表示される問題への対策。 */
+function LightboxImageWithFallback({
+  item,
+  aspectRatio,
+  fakeBoardItem,
+  textAspect,
+}: {
+  readonly item: LightboxItem
+  readonly aspectRatio: number | undefined
+  readonly fakeBoardItem: BoardItem
+  readonly textAspect: number
+}): ReactElement {
+  const [shouldFallback, setShouldFallback] = useState<boolean>(false)
+  const handleError = useCallback((): void => { setShouldFallback(true) }, [])
+  // 256px 未満の image は favicon / icon サイズと判定して TextCard fallback。
+  // Lightbox の .media は 600px 強の幅で描画するため、 256px 未満を拡大すると
+  // 露骨に荒くなる (user 報告の「巨大な荒い favicon」 の根本原因)。
+  const handleLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>): void => {
+      const img = e.currentTarget
+      if (img.naturalWidth > 0 && img.naturalHeight > 0
+        && img.naturalWidth < 256 && img.naturalHeight < 256) {
+        setShouldFallback(true)
+      }
+    },
+    [],
+  )
+
+  if (shouldFallback) {
+    return (
+      <LightboxTextDisplay
+        title={cleanTitle(item.title, item.url)}
+        url={item.url}
+        aspect={textAspect}
+      />
+    )
+  }
+  if (aspectRatio) {
+    return (
+      <div
+        className={styles.imageBox}
+        style={{ ['--item-aspect' as string]: aspectRatio } as React.CSSProperties}
+      >
+        <img src={item.thumbnail!} alt={item.title} onError={handleError} onLoad={handleLoad} />
+      </div>
+    )
+  }
+  return <img src={item.thumbnail!} alt={item.title} onError={handleError} onLoad={handleLoad} />
 }
 
 /** Pre-play poster wrap used by every embed type (YouTube / TikTok /

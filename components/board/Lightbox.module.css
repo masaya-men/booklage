@@ -294,10 +294,9 @@
   align-items: center;
   gap: 8px;
   padding: 12px 22px;
-  background: rgba(0, 0, 0, 0.55);
+  /* backdrop-filter removed 2026-05-16 session 32 — see navChevron note. */
+  background: rgba(0, 0, 0, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
   border-radius: 999px;
   color: #ffffff;
   font-size: 14px;
@@ -527,15 +526,62 @@
   top: 16px;
   right: 16px;
   padding: 8px 14px;
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* backdrop-filter removed 2026-05-16 session 32 — see navChevron note. */
+  background: rgba(0, 0, 0, 0.82);
   color: #fff;
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
   border-radius: 999px;
   letter-spacing: 0.01em;
+}
+
+/* Lightbox 専用テキストカード (session 32 user 提案):
+   board の TextCard を scale-up する複雑な方式 (clone / ResizeObserver) は
+   レイアウト崩れを引き起こした。 代わりに Lightbox サイズに合わせた専用
+   カードを新規描画する。 favicon + ドメイン (上、 控えめ) + タイトル (中央、 大)。 */
+.lightboxTextCard {
+  position: absolute;
+  inset: 0;
+  background: var(--card-white);
+  display: flex;
+  flex-direction: column;
+  padding: 40px 48px;
+  overflow: hidden;
+}
+.lightboxTextMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.55);
+  font-family: var(--font-sans);
+}
+.lightboxTextFavicon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+.lightboxTextDomain {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lightboxTextTitle {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: #0a0a0a;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 10;
 }
 
 /* Centerpiece for text-only tweets (no photo, no video). Body text becomes
@@ -702,16 +748,23 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
+  /* backdrop-filter removed 2026-05-16 session 32: navChevron は Lightbox open
+     中ずっと paint され、 高 DPR 環境で viewport 内を動く clone の背後で blur
+     再計算が毎フレーム発生 → frame drop。 background は元の控えめ 10% で復元
+     (= user 「濃すぎる」 報告)。 */
   background: rgba(255, 255, 255, 0.10);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   color: rgba(255, 255, 255, 0.92);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
+  /* session 32 user 決定: 常時表示。 元は hover-reveal だったが user が
+     「矢印が表示されない」 と認識 → 一貫性のため常時 visible に切替。 */
+  opacity: 1;
+  /* .stage の pointer-events:none を override。 これがないとボタンがクリック
+     できない (= user 「常時表示になったがクリックできない」 報告 session 32)。 */
+  pointer-events: auto;
   transition: opacity 140ms cubic-bezier(0.33, 1, 0.68, 1),
               transform 140ms cubic-bezier(0.33, 1, 0.68, 1);
   z-index: 2;
@@ -720,15 +773,6 @@
 
 .navChevronPrev { left: 24px; }
 .navChevronNext { right: 24px; }
-
-/* Reveal on backdrop hover, focus, or hover of the chevron itself.
-   Sibling combinator since .navChevron now lives inside .stage rather
-   than .backdrop (post-split, session 25). */
-.backdrop.open:hover ~ .stage .navChevron,
-.navChevron:hover,
-.navChevron:focus-visible {
-  opacity: 1;
-}
 
 .navChevron:hover {
   transform: translateY(-50%) scale(1.06);

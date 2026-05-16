@@ -1131,3 +1131,53 @@ spec: `docs/private/2026-05-11-allmarks-branding-spec.md` (gitignored)
 月末 (= 2026-05-31) ドメイン `allmarks.app` 取得確認も次セッション開始時のリマインダー。
 
 foundation 3 本柱 (= サイジング汎用化 / tag schema / 広告 placement) はセッション 32 以降へ後ろ倒し合意済。
+
+---
+
+## 2026-05-16 セッション 32 — Lightbox の TextCard 表示 + 震え対策、 user と方針すり合わせ sprint
+
+セッション 32 は **「Lightbox 周りまとめの続き」** から始まり、 user 報告で複数バグが連続発覚、 複数 deploy を重ねて末で方針 decided な session。 user / Claude 双方で混乱があり、 大きな refactor を相談なしに進めて user 「怖い」 と feedback を受けた。 教訓を memory に保存。
+
+### 完遂された主な変更 (= 末で deploy)
+
+1. **webpage の Lightbox 表示を専用 component LightboxTextDisplay に統一** (= B 案)
+   - 「webpage は OG image 有無に関わらず全部テキストカード風」 という user 決定 (= 2026-05-16 session 末)
+   - 「タイトル中央大 + 上に favicon + ドメイン」 のシンプル card
+   - 画像引き伸ばし問題 (= 「巨大ぼやけ image」「ファビコンの拡大版」 等) が完全消滅
+   - 動画 (YouTube/TikTok/Instagram) + Tweet 写真/動画は既存経路維持
+2. **左右ナビ矢印 (navChevron) 常時表示 + クリック可能**
+   - 元 hover-reveal を廃止 (= user 「表示されない」 報告に対応)
+   - `pointer-events: auto` を navChevron に追加 (= stage の pointer-events:none を override)
+   - 背景は 0.10 で控えめ (= user 「濃すぎる」 報告で 0.18 から元値復元)
+3. **backdrop-filter blur 削除** (= navChevron / embedOpenBadge / tweetWatchOnXBadge)
+   - 既知 trap (memory `reference_backdrop_filter_paint_trap`) 対応、 高 DPR で動く clone 背後の paint 負荷削減
+   - 揺れの部分減効果あり (= user 「少しは減ったがまだ気になる」)
+4. **clone の border-radius を hardcode 24px → CSS var (20px) に統一**
+   - 過去 7bb0529 で取りこぼされた radius 移行 (= user 「丸さすら違う」 報告)
+5. **X ツイートの OGP title boilerplate strip** (= `cleanTitle(title, url)` lib/embed に共通化)
+   - board + Lightbox 両方で「Xユーザーの 〜 さん:「本文」/ X」 → 「本文」 のみ
+6. **Tweet text-only 判定を hasPhoto/hasVideo flag ベース に**
+   - photoUrl に profile pic 混入する誤判定回避 (= user 「巨大 X ロゴ」 報告対応)
+
+### 試したが破棄したアプローチ (= 教訓のため記録)
+
+1. **ResizeObserver scaler 案**: board の TextCard を cardWidth=280 で描画して transform:scale で拡大
+   - 失敗理由: `.imageBox` の width が動的 (= min(920, 60vw)) なのを無視して固定 600px scale → 親と inner のサイズ不一致でレイアウト崩壊
+2. **clone をそのまま `.media` に置く案 (LargeBoardCardClone)**: source card の DOM cloneNode → scaler
+   - 失敗理由: clone DOM 内部の TextCard の border-radius が scale で 拡大、 layout 計算が依然崩壊
+3. **clone の transform:scale animation 案 (Bug B fix)**: createLightboxClone を transform-only に refactor
+   - 失敗理由: scale で border-radius が動的変動 → 「角丸ぐにゃぐにゃ」 user 不満
+4. **GSAP modifiers per-frame integer snap**: width/height tween に毎フレーム px snap
+   - 失敗理由: discrete jump で「カクカク」 感、 「角丸グニャグニャ」 user 不満
+
+### Claude の失敗 (= 次セッションで繰り返さない)
+
+- **大きい変更を user 相談なしに進めた** → user 「怖い」 → memory `feedback_consult_before_big_changes` 新規保存
+- **想像で修正を進めた** → user 「事実確認せず推測で進めるな」 → clone borderRadius は session 31 から残ってた hardcode、 私が「session 31 で 24→20 にした」 と誤推測で説明
+- **動かない実装を続けて deploy** → user 環境で何度も壊れる、 user 「変わらない」 「もう一回失敗」
+
+### Bug B 揺れの現状 (= 残課題)
+
+- 軽量 fix (B-b、 session 31 軽量) + backdrop-filter blur 削除 (session 32) で部分改善
+- user 「少しは減ったがまだ気になる」、 user 仮説: 「blur 以外の重い計算が原因」
+- 次セッションで原因仮説 + 必要なら開閉アニメ自体の見直し

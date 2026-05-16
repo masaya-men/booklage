@@ -31,7 +31,9 @@ describe('normalizeItem', () => {
       bookmarkId: 'b-1',
       cardId: 'c-1',
       photos: undefined,
+      mediaSlots: undefined,
       aspectRatio: 1.5,
+      cardWidth: 240,
     })
   })
 
@@ -60,7 +62,9 @@ describe('normalizeItem', () => {
       bookmarkId: 'b-2',
       cardId: 'c-2',
       photos: undefined,
+      mediaSlots: undefined,
       aspectRatio: 1,
+      cardWidth: 240,
     })
   })
 

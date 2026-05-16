@@ -20,37 +20,40 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-16 セッション 31 — 1 commit 本番 deploy 済)
+### 直近の状態 (2026-05-16 セッション 32 — 8 commit 本番 deploy 済)
 
-セッション 31 は **「Lightbox 周りまとめ sprint」** を 1 sprint で完遂:
+セッション 32 は **「Lightbox の TextCard 表示 + 震え対策 sprint」**。 user / Claude 双方で混乱があり何度も deploy を重ねたが、 末で方針 decided:
 
-**セッション 31 の主要変更 (= 1 commit に集約)**:
-1. **TextCard 再設計** (= 2 パターン deterministic 分配、 typography 40% 縮小、 reference 画像準拠)
-   - `lib/embed/text-card-color.ts` 新規 (djb2 hash で cardId → white | black、 「置かれた色で固定」)
-   - `lib/embed/title-typography.ts` 全モード約 40% 縮小 + maxLines 緩和
-   - `lib/embed/text-card-measure.ts` を `measureTextCardLayout` に刷新 (9:16 上限で ellipsis)
-   - `TextCard.module.css` に `.white` / `.black` variant 追加、 favicon は黒地時馴染ませ
-2. **Lightbox 統合** (= Bug A-1 自動解決)
-   - `LightboxItem` に `cardId?` 追加 → board と Lightbox で同色 variant 維持
-   - `LightboxMedia` の placeholder div を削除、 `.imageBox` aspect wrapper の中で大 TextCard (cardWidth=600) 再描画
-   - `DefaultText` に `hideTitle` prop 追加 → text-only card で h1 重複表示抑制
-3. **Bug B 震え修正 (= B-b 軽量 fix を適用)**
-   - `createLightboxClone` で start rect を `Math.round` 化 + `willChange` + `translateZ(0)` + `backfaceVisibility: hidden`
-   - open / close 両 tween の target rect も `Math.round` 化
-   - 完全 fix (= B-c transform + radius child 化) は scope 大、 体感残れば次セッションで本格対応
+**セッション 32 の deployed 変更 (= 1 commit に集約予定)**:
+1. **webpage の Lightbox は全部 LightboxTextDisplay 専用 component** (= B 案)
+   - 「webpage は OG image 有無に関わらず全部テキストカード風」 という user 決定
+   - 「タイトル中央大 + 上に favicon + ドメイン」 のシンプルな専用 card
+   - 画像引き伸ばし問題 (= 「巨大ぼやけ image」、 「ファビコンの拡大版」) が完全消滅
+   - 動画 (YouTube/TikTok/Instagram) と Tweet 写真/動画は既存経路維持
+2. **左右ナビ矢印 (navChevron) 常時表示 + クリック可能**
+   - 元 hover-reveal を廃止、 user 「表示されない」 報告に対応
+   - stage の pointer-events:none を override
+   - 背景 0.10 で控えめ (= user 「濃すぎる」 報告で元値に戻す)
+3. **backdrop-filter blur 削除** (= navChevron / embedOpenBadge / tweetWatchOnXBadge)
+   - 既知 trap (memory `reference_backdrop_filter_paint_trap`)、 高 DPR で動く clone 背後の paint 負荷削減
+   - 揺れの部分減効果
+4. **clone の border-radius を hardcode 24px → CSS var (20px) に統一**
+   - 過去 7bb0529 で取りこぼされた radius 移行を完成 (= user 「丸さすら違う」 報告)
+5. **X ツイートの OGP title boilerplate strip** (= `cleanTitle(title, url)` 共通化、 board + Lightbox 両方適用)
+6. **Tweet text-only 判定を hasPhoto / hasVideo flag ベースに** (= photoUrl に profile pic 混入する誤判定回避)
 
 - 本番反映済 → `https://booklage.pages.dev` をハードリロードで確認
-- vitest 488 (= flaky channel test 除き全 pass) / tsc / build clean
+- vitest 488 / tsc / build clean
 
-### 次セッション (= 32) でやること
+### 次セッション (= 33) でやること
 
-ゴール: **`docs/CURRENT_GOAL.md`**。 セッション 31 で Lightbox 周りひと段落、 **foundation 3 本柱** から本腰:
+ゴール: **`docs/CURRENT_GOAL.md`**。 一度頭の整理してから再着手:
 
-1. **サイジング汎用化** (= clamp(MIN, vw, BASE)、 spec `docs/specs/2026-05-12-sizing-migration-spec.md`)
-2. **広告 placement 予約 slot** (= board / footer / PiP)
-3. **manual tag schema** (= IDB schema bump + tag CRUD + filter)
-
-推奨順 (1) → (2) → (3)。 もしくは Bug B 震えが本番で体感残っていれば **B-c 本格修正** を先に。 次セッション開始時に user 確認。
+1. **Bug B 震えの「別の原因」 仮説調査** (= user 仮説: blur 以外の重い計算が原因)
+   - blur 削除では部分改善のみ、 残候補は scroll position / react re-render / transform 等
+2. **必要なら 開閉アニメ自体を廃止** (= 「ピクセル固定」 を文字通りに取るなら fade のみに)
+   - 大変更なので必ず user 相談してから着手
+3. その後 foundation 3 本柱に進む
 
 ### foundation 3 本柱 (= セッション 32 以降)
 

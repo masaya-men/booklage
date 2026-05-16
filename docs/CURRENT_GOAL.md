@@ -1,59 +1,56 @@
-# 次セッションのゴール (= セッション 32)
+# 次セッションのゴール (= セッション 33)
 
 ## ゴール
 
-**foundation 3 本柱 sprint 着手** — もしくは Bug B 震えの本番体感を確認して、 残っていれば B-c 本格 fix を先に。
+**Lightbox 周りの実装方針 を頭の中で整理してから再着手**。 セッション 32 で複数の修正を試みたが、 user/Claude 双方が混乱して何度も deploy 直し → ようやく user 同意の方向が見えてきた段階で session close。 次セッションでは「セッション 32 末に decided な方向」 を素直に深堀りする。
 
-セッション 31 で Lightbox 周りはひと段落 (= TextCard 再設計 + Lightbox 統合 + Bug B 軽量 fix の 3 タスク完遂、 本番 deploy 済)。 触らないリストにあった foundation 3 本柱に本腰を入れる sprint。
+## セッション 32 末で decided / deployed (= 本番反映済)
 
-## 前提 (= セッション 31 で揃った)
+- **webpage は OG image 有無に関わらず全部「テキストカード風」 表示** (= LightboxTextDisplay 専用 component)
+- **左右ナビ矢印 (navChevron) は常時表示 + クリック可能** (= 元の hover-reveal を廃止、 stage の pointer-events:none を override)
+- **navChevron 背景は元の控えめ 10% で復元** (= user 「濃すぎる」 報告)
+- **navChevron + embedOpenBadge + tweetWatchOnXBadge の backdrop-filter blur 削除** (= 高 DPR 環境で動く clone 背後の paint 負荷削減 = 揺れ部分減効果)
+- **clone の border-radius を hardcode 24px → var(--lightbox-media-radius) (= 20px)** (= 過去 7bb0529 で取りこぼされた移行を完成)
+- **X ツイートの OGP title boilerplate (「Xユーザーの 〜 さん:「本文」 / X」) を strip** (= cleanTitle 共通化、 board + Lightbox 両方適用)
+- **Tweet text-only 判定を meta.hasPhoto / hasVideo flag ベース に変更** (= photoUrl に profile pic 混入する誤判定を回避)
+- **Bug B 震えは modifier 削除 = session 31 軽量 fix 状態** (= 「smooth float 微震え」 残、 user 「気になる」)
 
-- master HEAD: セッション 31 close-out commit
-- セッション 31 の主要変更:
-  - **TextCard 再設計** (= 白地 / 黒地 2 パターン deterministic 分配、 typography 40% 縮小、 9:16 上限 + ellipsis)
-  - **Lightbox 統合** (= `.media` で大 TextCard、 Bug A-1 自動解決)
-  - **Bug B 軽量 fix (B-b)** (= sub-pixel snap + will-change + GPU hint)
-- 本番反映済 → `https://booklage.pages.dev`
-- vitest 488 / tsc / build clean
+## セッション 32 の主な失敗 (= 次セッションで繰り返さない教訓)
 
-## セッション 32 の進め方
+- **大きい変更を user 相談なしに進めた** (= ResizeObserver scaler / clone をそのまま `.media` 化 等、 user 「怖い」 と)
+  - 教訓: memory `feedback_consult_before_big_changes` 参照
+- **想像で修正を進めた** (= clone の borderRadius=24px は session 31 から残ってたのに、 私が「session 31 で 24→20 にした」 と誤った推測で説明)
+  - 教訓: 必ず git log / コード で事実確認してから報告
+- **動かない実装を続けて deploy** (= ResizeObserver scale wrapper / clone 案 が user 環境で何度も壊れた、 最後に「専用 component を新規」 で安定)
 
-### Phase 0: 本番動作確認 (= セッション開始時 user 確認)
+## セッション 33 でやりたいこと
 
-- `https://booklage.pages.dev` をハードリロードして:
-  1. TextCard の 2 色 (= 白地 / 黒地) deterministic 分配が見えるか
-  2. Lightbox を開いた時 TextCard が「同じ世界」 (= 急変なし) で morph するか
-  3. **Bug B 震え** が体感で残っているかどうか
-- 震え残っていれば → **B-c 本格修正を先に**:
-  - clone の border-radius を child element に逃がして、 親を transform:scale 化
-  - GSAP timeline を `top/left/width/height` から `transform` ベースへ書き換え
-  - refactor scope: `createLightboxClone` + open / close tween 全部、 中規模
-- 震え気にならない → **foundation 3 本柱** に進む
+### 必須 (= 残課題)
 
-### Phase 1 (= foundation を始めるなら): サイジング汎用化
+1. **Bug B 震えの「別の原因」 仮説調査** (= user 仮説: 「ブラーや計算重さが原因」)
+   - 既に削除済 blur: backdrop / navChevron / embedOpenBadge / tweetWatchOnXBadge
+   - 残候補: scroll position 計算、 react re-render、 transform matrix、 等
+   - 平易な言葉で user と一緒に推測 + 検証
 
-- spec: `docs/specs/2026-05-12-sizing-migration-spec.md`
-- Phase 2-6 が残っている (= Phase 1 は session 15 で完了済)
-- 全プロジェクト共通思想: `C:\Users\masay\.claude\design-philosophy-sizing.md`
-- 核心: 「開発者画面 = 1489px が anchor + 上限」、 clamp(MIN, vw, BASE) で proportional scaling
+2. **(必要なら) 開閉アニメ廃止** (= user 「ピクセル固定」 が文字通りなら、 開閉 morph 自体を廃止して即 hand-off + fade に変える Option B)
+   - これは大変更なので必ず user 相談してから
 
-### Phase 2 (= 順次): 広告 placement 予約 slot
+### 残りのバグ (TODO.md 既存)
 
-- 戦略 memory: `project_ad_strategy_2026_05`
-- まず slot 確保だけ (= 配信は後)
+- B-#3 重複 URL バグ、 B-#7 サイジング縮小 clipping、 B-#8 PiP click scroll 中央寄せ、 B-#12 拡大時 viewport overflow 破綻、 B-#10 モバイル UX、 B-#13 TopHeader brushup
 
-### Phase 3 (= 順次): manual tag schema
+### foundation 3 本柱 (= 元々セッション 32 で着手予定だった)
 
-- IDB schema bump 必要 (= 不可逆、 慎重)
-- セッション 17 の VersionError 事故を教訓に、 dev で v→v+1 を必ず実機検証
+- サイジング汎用化 (Phase 2-6)、 広告 placement 予約 slot、 manual tag schema
+- Lightbox 揺れが decided されてから着手で OK
 
 ## 月末リマインダー (= 2026-05-31)
 
-**`allmarks.app` ドメイン取得確認**。 セッション開始時に user に確認を促す。 取得済 → Cloudflare Pages 新 project 作成 + 拡張機能 v1.0 submission sprint に進める。 未取得 → 取得を促す。
+**`allmarks.app` ドメイン取得確認**。 セッション開始時に user に確認を促す。
 
-## 触らない (= セッション 32 短期スコープ外)
+## セッション 33 開始時の進め方
 
-- 拡張機能 polish 3 項目 (= PiP 常駐 / SNS いいね連動 / 代替ショートカット) — 拡張機能 sprint で別途
-- LP リデザイン (= IDEAS.md `project_lp_redesign_vision`)
-- Favicon (= AllMarks identity 決定後)
-- B-#3 重複 URL バグ、 B-#7 サイジング縮小 clipping (= foundation Phase 1 と一部重なる可能性、 そのとき判断)
+1. user の最初の発言を待つ (= 揺れ確認結果 / 別 issue / 別方向 等)
+2. もし揺れ確認 → user と一緒に「重い計算がどこにあるか」 を平易に推測
+3. **大きい変更前は必ず方針確認** (= memory `feedback_consult_before_big_changes`)
+4. 事実確認なしに「想像で」 修正しない (= memory `feedback_fact_based`)

@@ -29,6 +29,12 @@ export type LightboxItem = {
    *  clone-to-media swap is visually unbroken. Falls back to 16:9 when
    *  undefined (share cards have no persisted aspect). B-#17-#2. */
   readonly aspectRatio?: number
+  /** Board-side only: the cardWidth the board card was rendered at.
+   *  Lightbox uses this to re-render TextCard at the *exact same* cardWidth
+   *  and then up-scale the wrapper via transform:scale — board と Lightbox で
+   *  font サイズ / padding / レイアウトが完全同一になる (session 32 fix)。
+   *  Undefined for share-card view; fallback to a sensible default. */
+  readonly cardWidth?: number
 }
 
 function isBoardItem(item: BoardItem | ShareCard): item is BoardItem {
@@ -48,6 +54,7 @@ export function normalizeItem(item: BoardItem | ShareCard): LightboxItem {
       photos: item.photos,
       mediaSlots: item.mediaSlots,
       aspectRatio: item.aspectRatio,
+      cardWidth: item.cardWidth,
     }
   }
   return {

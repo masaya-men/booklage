@@ -7,6 +7,7 @@ import { getFaviconUrl, hostnameFromUrl } from '@/lib/embed/favicon'
 import { pickTitleTypography } from '@/lib/embed/title-typography'
 import { measureTextCardLayout } from '@/lib/embed/text-card-measure'
 import { pickTextCardColor } from '@/lib/embed/text-card-color'
+import { cleanTitle } from '@/lib/embed/clean-title'
 import styles from './TextCard.module.css'
 
 type Props = {
@@ -16,16 +17,6 @@ type Props = {
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly reportIntrinsicHeight?: (cardId: string, heightPx: number) => void
   readonly displayMode: DisplayMode
-}
-
-/** Strip `http(s)://` from titles that are raw URLs to prevent the protocol
- * prefix from dominating headline serif display. The hostname/path remains
- * the informative part of the text. */
-function cleanTitle(title: string): string {
-  if (/^https?:\/\//i.test(title)) {
-    return title.replace(/^https?:\/\//i, '')
-  }
-  return title
 }
 
 /** Two aspect ratios are considered "effectively equal" under this threshold.
@@ -42,7 +33,7 @@ export function TextCard({
   const hostname = hostnameFromUrl(item.url)
   const faviconUrl = hostname ? getFaviconUrl(hostname) : null
   const rawTitle = item.title || hostname || item.url
-  const title = cleanTitle(rawTitle)
+  const title = cleanTitle(rawTitle, item.url)
   const typography = pickTitleTypography({ title, cardWidth, cardHeight })
 
   // Deterministic color variant from cardId. Locked at card creation time —
