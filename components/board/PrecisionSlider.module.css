@@ -1,0 +1,92 @@
+/* Session 29 Apple v3 chrome: custom pointer-based slider replacing
+   native <input type=range>. Labels (W / G) and the live value carry the
+   same paint-order stroke as the rest of the text-only chrome. */
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  user-select: none;
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.45);
+  paint-order: stroke fill;
+  text-shadow: none;
+}
+
+.label {
+  letter-spacing: 0.16em;
+}
+
+.value {
+  min-width: 36px;
+  text-align: right;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.track {
+  position: relative;
+  width: 200px;
+  height: 32px;
+  cursor: default;
+  touch-action: none;
+  outline: none;
+}
+
+.track:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.32);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.trackLine {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  margin-top: -1px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  cursor: grab;
+  transition:
+    width 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    margin-top 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    margin-left 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.track:hover .thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  margin-left: -7px;
+  background: #fff;
+}
+
+.track[data-dragging] {
+  cursor: grabbing;
+}
+
+.track[data-dragging] .thumb {
+  background: #fff;
+  cursor: grabbing;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+}

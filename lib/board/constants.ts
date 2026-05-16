@@ -126,7 +126,7 @@ export const BOARD_SLIDERS = {
   CARD_WIDTH_MAX_PX: 720,
   CARD_GAP_DEFAULT_PX: 18,
   CARD_GAP_MIN_PX: 0,
-  CARD_GAP_MAX_PX: 60,
+  CARD_GAP_MAX_PX: 300,
 } as const
 
 /**
