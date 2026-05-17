@@ -553,11 +553,20 @@
 .lightboxTextCard {
   position: absolute;
   inset: 0;
-  background: var(--card-white);
   display: flex;
   flex-direction: column;
   padding: 40px 48px;
   overflow: hidden;
+}
+/* session 37: board TextCard と同じ white / black variant (pickTextCardColor 由来)
+   を Lightbox 側でも再現。 同じ cardId なら board と Lightbox で同じ色になる。
+   _white は default、 _black は #0a0a0a (= board TextCard.black と同色) + 反転
+   text color。 cardId 不明時は white にフォールバック。 */
+.lightboxTextCard_white {
+  background: var(--card-white);
+}
+.lightboxTextCard_black {
+  background: #0a0a0a;
 }
 .lightboxTextMeta {
   display: flex;
@@ -568,11 +577,20 @@
   color: rgba(0, 0, 0, 0.55);
   font-family: var(--font-sans);
 }
+.lightboxTextCard_black .lightboxTextMeta {
+  color: rgba(255, 255, 255, 0.55);
+}
 .lightboxTextFavicon {
   width: 24px;
   height: 24px;
   border-radius: 4px;
   flex: 0 0 auto;
+}
+/* board TextCard.black と同じ「favicon が白背景出版でカード色とぶつかる」 対策。
+   薄いタイル + 彩度落としで quiet inline mark にする。 */
+.lightboxTextCard_black .lightboxTextFavicon {
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0.7;
 }
 .lightboxTextDomain {
   white-space: nowrap;
@@ -592,6 +610,9 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 10;
+}
+.lightboxTextCard_black .lightboxTextTitle {
+  color: rgba(255, 255, 255, 0.92);
 }
 
 /* Centerpiece for text-only tweets (no photo, no video). Body text becomes

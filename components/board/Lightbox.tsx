@@ -12,6 +12,7 @@ import type { ShareCard } from '@/lib/share/types'
 import { TextCard, MinimalCard, pickCard } from './cards'
 import { TEXT_CARD_MIN_ASPECT } from '@/lib/embed/text-card-measure'
 import { cleanTitle } from '@/lib/embed/clean-title'
+import { pickTextCardColor } from '@/lib/embed/text-card-color'
 import { getFaviconUrl, hostnameFromUrl } from '@/lib/embed/favicon'
 import { LightboxNavChevron } from './LightboxNavChevron'
 import { LightboxNavMeter } from './LightboxNavMeter'
@@ -1513,7 +1514,7 @@ function TweetMedia({
       tags: [],
       displayMode: null,
     }
-    return <LightboxTextDisplay title={text} url={item.url} aspect={aspect} />
+    return <LightboxTextDisplay title={text} url={item.url} aspect={aspect} cardId={item.cardId} />
   }
 
   // Legacy fallbacks — slots が空 + hasPhoto/hasVideo は true のケース。
@@ -1898,24 +1899,34 @@ function toBoardShapeForFallback(item: LightboxItem, aspectRatio: number): Board
  *  board の TextCard を scale-up する複雑な方式 (= clone / ResizeObserver) は
  *  全部レイアウト崩れを起こした。 代わりに Lightbox サイズに合わせた専用カードを
  *  CSS だけで描画する。 構造: favicon + ドメイン (上、 控えめ) + 大タイトル (中央)。
- *  X ツイートのタイトルは cleanTitle 経由で OGP boilerplate を除く。 */
+ *  X ツイートのタイトルは cleanTitle 経由で OGP boilerplate を除く。
+ *
+ *  session 37: board の TextCard と同じ pickTextCardColor(cardId) hash で
+ *  white / black variant を決める。 これで「board 上は黒地のテキストカードなのに
+ *  Lightbox を開くと白地に変わる」 という user 報告を解消 (= 同じ cardId は
+ *  board / Lightbox で同じ色)。 cardId が無い (= share view) のときは白で
+ *  fallback。 */
 function LightboxTextDisplay({
   title,
   url,
   aspect,
+  cardId,
 }: {
   readonly title: string
   readonly url: string
   readonly aspect: number
+  readonly cardId?: string
 }): ReactElement {
   const hostname = hostnameFromUrl(url) ?? ''
   const favicon = hostname ? getFaviconUrl(hostname) : null
+  const colorVariant = pickTextCardColor(cardId ?? '')
+  const cardClassName = `${styles.lightboxTextCard} ${styles[`lightboxTextCard_${colorVariant}`] ?? ''}`
   return (
     <div
       className={styles.imageBox}
       style={{ ['--item-aspect' as string]: aspect } as React.CSSProperties}
     >
-      <div className={styles.lightboxTextCard}>
+      <div className={cardClassName} data-variant={colorVariant}>
         {favicon && (
           <div className={styles.lightboxTextMeta}>
             <img
