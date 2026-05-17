@@ -1557,8 +1557,59 @@ board の [TextCard](components/board/cards/TextCard.tsx) は session 31 で `pi
   - 視覚スクショ confirmed
 - prod 反映済 → user の既存 IDB の cardId が black hash なら、 ハードリロード後に board と同じ黒地で表示される
 
+### Phase 3 (= session 内追加 fix): text card open-swap jump 解消
+
+user 報告: 「ツイートカードも、 他のテキストカードと同様にライトボックスになってから一段表示が学っと変わる」。
+
+#### 調査 (= Playwright slow capture + DOM 計測)
+
+[playwright-test-jump-slow.js](C:/Users/masay/AppData/Local/Temp/playwright-test-jump-slow.js) で 30ms 連写、 open 中の clone と swap 先 media の構造を比較:
+
+| | open 中の clone | swap 先 media |
+|---|---|---|
+| 構造 | 板の TextCard 複製 + `wrapCloneWithScaleHost` で metaTop/metaBottom strip | `LightboxTextDisplay` (= 別 component) |
+| header 行 | なし (= 削除済) | 「x.com」 + 24px favicon |
+| title | TextCard の 18px が CSS zoom で約 3.3x = 60px 見え | 40px native 固定 |
+
+→ swap 瞬間: **「x.com」 行が突然出現 + title が 60 → 40px に縮む**。 これが「学っと」 jump の正体。
+
+#### 修正
+
+[Lightbox.tsx:1517](components/board/Lightbox.tsx#L1517) を 1 行 swap:
+```diff
+- return <LightboxTextDisplay title={text} url={item.url} aspect={aspect} cardId={item.cardId} />
++ return <LargeTextCardScaler fakeItem={fakeBoardItem} aspect={aspect} />
+```
+
+`fakeBoardItem` は直前で構築済 (session 32 から残っていた使われない準備、 ここで生きた)。 これで text-only tweet も**非ツイートのテキストカードと同じ経路**を通る → clone も media も同じ TextCard component (omitMeta=true) → 構造一致 → swap jump が**原理的にゼロ**になる。
+
+#### 影響範囲 (= user に事前確認した「壊さない」 担保)
+
+| 経路 | 影響 |
+|---|---|
+| 動画 / 画像付き tweet | 完全に別経路 (= `slots.length > 0` で先に return)、 ノータッチ |
+| 非ツイートのテキストカード | 既存の LargeTextCardScaler 経路、 何も変えない |
+| 板の TextCard / 通常画像 lightbox | 一切触らない |
+
+`LightboxTextDisplay` 関数 + 関連 CSS (`.lightboxTextCard*`, `.lightboxTextMeta`, `.lightboxTextFavicon`, `.lightboxTextTitle`, `.lightboxTextDomain`) は dead code 化したが、 別 spec で cleanup 予定 (= 今は defensive に残置)。
+
+#### 検証
+
+- tsc clean + vitest 493/493 (channel.test.ts は既知 flake、 再実行で pass)
+- Playwright prod 検証: clone と media が同構造で swap → 「x.com」 行の突然出現 / title 縮みなし
+
+#### 副次的に揃ったこと
+
+- 板で見える内容と Lightbox で見える内容が**同じ構造 + 同じ色 variant** (= phase 2 で揃えた white/black variant も TextCard 内部の `pickTextCardColor(cardId)` でそのまま動く)
+- session 35 で確立した「テキストカードがそのまま伸び伸び拡大」 の核心仕様にツイートも統合された
+
+### memory 更新
+
+- なし。 既存 memory (`feedback_check_reference_before_patching.md`, `reference_cardwidth_dual_management.md`, `feedback_user_observation_reveals_intent.md`) は引き続き有効
+
 ### commits
 
 - `560b33f` fix(tweet): session 37 phase 1 — fix lightbox favicon ballooning + parse animated_gif + unified_card
 - `d73c95c` fix(lightbox): session 37 phase 2 — match TextCard color variant in Lightbox text view
-- prod deploys: `https://4b01a066.booklage.pages.dev` → `https://1c1fbbf4.booklage.pages.dev` → `https://booklage.pages.dev`
+- `efcac1d` fix(lightbox): session 37 phase 3 — route text-only tweet to LargeTextCardScaler (eliminates open-swap jump)
+- prod deploys: `4b01a066` → `1c1fbbf4` → `d262bb34` → `https://booklage.pages.dev`
