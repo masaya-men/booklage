@@ -187,14 +187,17 @@
   border-radius: var(--lightbox-media-radius);
   overflow: hidden;
 }
-.imageBox img {
+.imageBox > img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
   /* .media img の max-* rule を上書き — wrapper が既に envelope 計算済なので
      img 自身は wrapper を fill するだけで良い。 cover でなく contain なのは
-     persisted aspect と実画像 aspect がわずかにズレた時に画像を切らないため。 */
+     persisted aspect と実画像 aspect がわずかにズレた時に画像を切らないため。
+     直接子のみに scope (session 37): LightboxTextDisplay の favicon (= 孫)
+     や LargeBoardCardClone の inner img (= 孫) まで巻き込んで巨大化させて
+     いた regression を防ぐ。 */
   max-width: none;
   max-height: none;
   border-radius: 0;
