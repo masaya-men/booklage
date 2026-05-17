@@ -20,32 +20,27 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-17 セッション 36 — 文字 jump 完全決着 / 根本原因 = cardWidth 二重管理ズレ)
+### 直近の状態 (2026-05-17 セッション 37 — ツイート Lightbox 3 連 fix 完全決着 / 主犯は CSS scoping bug)
 
-セッション 36 で **session 35 から続いた title font ジャンプの根本原因発見 + 解消**:
+セッション 37 で session 36 末に発覚した「ツイート Lightbox で profile image 巨大ガビガビ + 動画ツイート未再生」 を**根本原因 3 つ同時に確定 + 全部 fix**。 4 URL 全て prod で動作確認済:
 
-1. **失敗 1 (A 案 = omitMeta 撤去)**: 私が「session 35 末の感覚で A が筋」 と独断、 実装したら user 即否定 — favicon が巨大化 / title 省略 / 「テキストカードがそのまま拡大できなくなった」 = omitMeta は core 仕様だった
-2. **失敗 2 (B 案 = clone から URL 行 strip)**: omitMeta revert + clone strip 実装、 deploy。 まだ jump 残存
-3. **徹底調査で根本原因確定**: BoardItem.cardWidth (= IDB 保存値、 user resize なければ 280) と board の実 rendering width (= `customWidths[id] ?? cardWidthPx` = size slider 値) が **乖離するケースあり**。 LargeTextCardScaler が IDB 値で TextCard 再描画 → swap 瞬間に typography mode が変わって「かくっ」
-4. **修正 (C 案相当 = DOM 実測)**: LargeTextCardScaler の boardW を `document.querySelector(data-bookmark-id).getBoundingClientRect().width` で実測 → size 決定ロジック (slider / 個別 resize / 混在) と独立で必ず一致
+1. **主犯 (= CSS scoping bug)**: [Lightbox.module.css](components/board/Lightbox.module.css#L190) `.imageBox img` の descendant 選択子が孫要素の `lightboxTextFavicon` まで巻き込んで 32x32 → 464x464 (= 14.5x) 膨張。 X favicon が画面占有して「巨大ガビガビ X ロゴ」 化、 同時に title を overflow:hidden で押し出して「文章表示できてない」 (URL 4) 化。 session 30 の image lightbox 対応で混入、 session 32 で LightboxTextDisplay 追加から罠化していた。 → `.imageBox > img` (直接子) に scope して救済。 通常画像 lightbox は無変更
+2. **共犯 1 (= animated_gif 未対応)**: [tweet-meta.ts](lib/embed/tweet-meta.ts) が `'video' / 'photo'` のみ走査、 X の GIF tweet (= mediaDetails[].type='animated_gif', mp4 variant 持ち) を silently drop。 → `pushMediaSlot` helper 切り出し + 統合扱い
+3. **共犯 2 (= unified_card 未対応)**: X の今や標準フォーマット、 媒体は `card.binding_values.unified_card.string_value` (= JSON 二重 encode) の `media_entities`。 → `decodeUnifiedCardMediaEntities` で抽出、 mediaDetails 空かつ unified_card のときだけ補完 (= 通常経路無変更、 mix 防止)
 
-**本番反映済** → `https://booklage.pages.dev` ハードリロードで動作。 user 実機「やっと出来てます」 確認。
+**本番反映済** → `https://booklage.pages.dev` 。 commit `560b33f`。 vitest 493/493 (+5 new) / tsc clean / Playwright 4 URL 全 OK。 narrative + 学び詳細は [TODO_COMPLETED.md](./TODO_COMPLETED.md) セッション 37 セクション。
 
-**新規発覚 / 次セッション持ち越し**: ツイートカード (= X) で thumbnail が profile image / mediaSlot 解析失敗のケース → Lightbox で X ロゴだけが巨大ガビガビ表示。 動画ツイートでも動画が出てこない。 user 提示の再現 URL:
-- https://x.com/konrad_designs/status/2054511169461727508
-- https://x.com/EnterProAI/status/2046946956455379344
-- https://x.com/lovart_ai/status/2049735758127276237
+**multi-playback vision との関係**: parser が animated_gif + unified_card の動画 url を取得できるようになったので、 board で動画再生し続ける機能の**土台**が揃った。 board card autoplay loop + 複数選択 UI は別タスク (= IDEAS.md 既存記載)。
 
-- tsc clean / vitest 488/488
+### 次セッション (= 38) でやること
 
-### 次セッション (= 37) でやること
+選択肢:
+1. **multi-playback vision の board card autoplay 着手** — Fix 2, 3 で得た mediaSlots を board 側で活用、 動画カードが板の上で常時再生する render layer。 user の理想の核に向かう本筋
+2. **テキストカード Lightbox 構造再設計** — session 36 で持ち越した「テキストのみカードの構造再設計 / Lightbox 右エリア整理」 (= TODO 旧 Item 2 / 4)
+3. **B-#3 重複 URL でサムネ等が出ない問題** — 短時間タスク
+4. **B-#13 TopHeader brushup (ScrollMeter 下配置)** — 視覚調整系
 
-ゴール: **`docs/CURRENT_GOAL.md`**。 ツイート (X) Lightbox 経路の集中対応:
-
-1. 上記 3 URL を board に投入 → 再現確認 (= board 上の見た目 / mediaSlots / thumbnail 解析状況を実機 + DevTools で観察)
-2. 経路特定: TweetMedia / LightboxImageWithFallback / 動画 mediaSlot のどこで profile image fallback に落ちているか
-3. 修正方針を user と合意してから着手 (= session 36 の「独断 A 推し」 反省を活かす)
-4. (時間あれば) 残 Item = テキストのみカードの構造再設計 / Lightbox 右エリア整理
+user 希望次第。 セッション開始時に user に選んでもらう。
 
 ### foundation 3 本柱 (= セッション 32 以降)
 
@@ -79,7 +74,6 @@
 
 ### 表示・サムネ系
 
-- **B-#19 ツイート (X) Lightbox で profile image が巨大ガビガビ + 動画が出ない** (session 36 末発覚、 次セッション 37 集中対応) — TweetMedia / mediaSlot 経路で thumbnail を profile image に fallback、 動画も再生されず。 再現 URL: `https://x.com/konrad_designs/status/2054511169461727508`, `https://x.com/EnterProAI/status/2046946956455379344`, `https://x.com/lovart_ai/status/2049735758127276237`
 - **B-#3 重複 URL でサムネ等が出ない問題** — 同 URL 重複追加時の表示挙動を確認・修正 (セッション 20 では真因未調査、 個別 session で着手)
 - **MinimalCard polish** — 64px favicon が S サイズ (160px) で大きく見える可能性。 Visual Companion でモック比較してサイズ判定 (セッション 20 で実装後、 視覚調整は次回)
 - **Task 12: 全件再 check 設定 UI** — viewport revalidation で日常運用は OK だが、 ユーザーが 「いま全件チェック」 を 1 クリックで kick できる設定パネル。 設定パネル自体が未実装なので別 spec 立ち上げ要
