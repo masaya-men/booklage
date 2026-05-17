@@ -1514,7 +1514,14 @@ function TweetMedia({
       tags: [],
       displayMode: null,
     }
-    return <LightboxTextDisplay title={text} url={item.url} aspect={aspect} cardId={item.cardId} />
+    // session 37 phase 3: text-only tweet も非ツイートのテキストカードと同じ
+    // LargeTextCardScaler 経路に統一。 clone (= 板の TextCard) と media が同じ
+    // component (= TextCard + omitMeta=true) になるので、 open swap の瞬間に発生
+    // していた「x.com 行が突然出現 + title 60px → 40px に縮む」 jump が原理的に
+    // 消える。 board の TextCard で動いている色 variant / typography / 文字 crisp
+    // 拡大の全ノウハウを継承。 LightboxTextDisplay は dead code 化したが defensive
+    // に残置 (= 別 spec で cleanup 予定)。
+    return <LargeTextCardScaler fakeItem={fakeBoardItem} aspect={aspect} />
   }
 
   // Legacy fallbacks — slots が空 + hasPhoto/hasVideo は true のケース。
