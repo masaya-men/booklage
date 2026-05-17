@@ -1324,3 +1324,62 @@ A 案 (transform-scale FLIP) 再着手の優先順:
 
 - tsc clean / vitest 487/488 (= channel.test.ts は flaky で 2 回目 pass、 私の変更とは無関係)
 - build clean / 本番反映済 = `https://booklage.pages.dev` ハードリロードで Phase 1 stable 状態が見える
+
+
+## セッション 35 (2026-05-17) — 本家 destefanis 真の実装判明 + 文字カード zoom hybrid + cardWidth ハードコード fix
+
+### 当初予定との大幅な路線変更
+
+セッション 35 のゴールは「transform-scale FLIP 完成」だったが、 user の懐疑「本家がどうやってるか確認した?」 から実機ソース確認に踏み込み、 **大前提が誤読だったと判明**:
+
+- destefanis 本家 `app.js` 396-407: `Motion.animate(clone, { width, height, transform: translate3d }, springTransition)` = **width/height tween + translate のみ、 transform:scale は一切使っていない**
+- session 30 memory「本家は transform:scale + spring で center へ scale up」 は誤読
+- 私たちの master HEAD (= Phase 1 安定版) は実は本家と同じ方式 = transform:scale FLIP は本家へ近づく動きではなく **離れる動き** だった
+
+→ **方針転換**: transform:scale FLIP 不採用確定、 文字カード特有の「文字も一緒に拡大」 問題は別の hybrid 方式で解く
+
+### 採用方式: 外側 width/height tween + 文字カード内側 scale-host
+
+本家流 + AllMarks オリジナリティの hybrid:
+
+1. **外側 clone (width/height tween)** = 本家 destefanis と同方式 (= 何も変えない)
+2. **文字カードのみ内側に scale-host を挿入** → 「文字も一緒に拡大」 を実現
+3. **scale-host は CSS `zoom`** (= 当初 transform:scale を試したが文字 raster blur → user 報告「どんどん悪く見える」 → zoom 切替、 browser 再レイアウト + font-size 真の値で再描画 = 文字常に crisp)
+4. **`cardWidth=280` ハードコード削除** → source の実 width で typography tier 揃った (= 過去ここで「箱は同じ視覚 width だが内側 font tier が違う」 jump が起きていた)
+
+### コード変更 (= [components/board/Lightbox.tsx](components/board/Lightbox.tsx))
+
+- `wrapCloneWithScaleHost` 新規 helper (≈ line 291) — 文字カード検出 + scale-host 挿入
+- OPEN tween (≈ line 884) / CLOSE tween (≈ line 626) の onUpdate で zoom を外側 width に追従更新
+- `LargeTextCardScaler` 内部 `transform:scale` → `zoom` 化 (≈ line 2037)
+- `fakeBoardItem.cardWidth: 280` ハードコード削除 (≈ line 1834)
+
+### memory 訂正 (= 次セッションで同じ誤読を繰り返さない)
+
+- [reference_destefanis_visual_spec.md](C:/Users/masay/.claude/projects/c--Users-masay-Desktop--------/memory/reference_destefanis_visual_spec.md) — 本家 transform:scale → width/height tween と訂正
+- [reference_flip_scale_compensation.md](C:/Users/masay/.claude/projects/c--Users-masay-Desktop--------/memory/reference_flip_scale_compensation.md) — transform:scale FLIP 不採用確定、 hybrid scale-host を正解として記録
+- MEMORY.md index も訂正済
+
+### 残課題 (= 次セッション 36 で着手)
+
+user 観察: cardWidth fix 後も swap 瞬間に title font が「かくっ」 と変化する。 user 仮説 = **board (URL あり) / .media (URL なし、 omitMeta) のレイアウト差**。 妥当な見立て。
+
+直接原因: TextCard の `display: flex; flex-direction: column` + `.title` の `flex: 1` (headline mode) で、 meta 行有無により title container の vertical サイズが変化 → text の visual 位置・line layout が swap 瞬間に切り替わる。
+
+次セッション 36 の選択肢:
+
+- **A 案**: `.media` でも URL 表示する (= omitMeta 撤去) — シンプル、 右パネルと URL 重複が tradeoff
+- **B 案**: アニメ clone から URL 行を strip — 重複なし、 click 瞬間に URL がパッと消える
+- **C 案**: URL 行を cross-fade で opacity tween + typography 揺れ別調整 — リッチ、 工数大
+
+session 35 の感覚では A が筋。 ただし board → lightbox の文脈遷移 / 右パネルとの情報重複の議論を 36 でやってから確定。
+
+### 検証
+
+- tsc clean / vitest 488/488 全通過
+- 本番 3 回 deploy: scale-host 初版 → zoom 化 → cardWidth hardcode 削除
+- user 実機確認: 文字 crisp + typography tier 揃った OK、 残るは URL 有無による layout 差のみ
+
+### commits
+
+(close-out commit で TODO + CURRENT_GOAL + Lightbox.tsx をまとめて記録)

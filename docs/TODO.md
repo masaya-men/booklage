@@ -20,29 +20,28 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-16 セッション 34 — Phase 1 deploy 済、 transform-scale FLIP は次セッション持ち越し)
+### 直近の状態 (2026-05-17 セッション 35 — 本家方式確定 + 文字カード zoom hybrid 実装 + URL レイアウト差残)
 
-セッション 34 は **テキストカード sprint の Item 2-4 のうち、 Phase 1 (= board mirror routing) のみ確定**:
+セッション 35 で **「本家 destefanis は transform:scale でなく width/height tween」 と確定** + **文字カード hybrid scale-host (zoom 方式) 完成** + **cardWidth=280 ハードコード削除**:
 
-1. **Item 3 = 既に済んでいた判明** (= session 31 で pickTextCardColor が TextCard 経路全部に効いていた、 文のみツイートも対象)
-2. **board mirror routing**: thumbnail あり webpage は Lightbox でも image 表示、 thumbnail なし は TextCard (= `LargeTextCardScaler` 本流化)
-3. **inner card-radius 0 上書き** + **TextCard `omitMeta`** prop で「がびがびファビコン」 問題解消
-4. **DefaultText の hideTitle 削除** で右パネル h1 が text-only でも出るように
+1. **本家 destefanis の実装確認**: `app.js` 396-407 で width/height tween + translate のみ、 transform:scale 不使用が判明 → session 30 memory 誤読を訂正
+2. **transform:scale FLIP 不採用確定**: 過去 2 回失敗 + 本家と離れる方向 → 不採用、 hybrid scale-host が正解
+3. **scale-host = 文字カード専用 hybrid**: 外側 width/height tween (本家と同) + 内側 scale-host で「文字も一緒に拡大」 を実現
+4. **CSS `zoom` 採用**: 当初 transform:scale で文字 raster blur → user 報告「どんどん悪く」 → zoom 切替、 browser 再レイアウト + 真 font-size 再描画 = 文字常に crisp
+5. **`cardWidth: 280` ハードコード削除**: source の実 width 素通しで typography tier 揃った
 
-**rolled back** (= 次セッションで再着手):
-- 「拡大時にテキストも一緒に大きくなる」 対応で transform:scale FLIP に戻そうと試行
-- v1 / v2 両方とも user 確認で text jump + 角丸 20px 固定が達成できず
-- diff は `docs/private/session-34-flip-wip.diff` に保存、 引き継ぎ詳細は `TODO_COMPLETED.md` セッション 34 セクション参照
+**本番反映済** → `https://booklage.pages.dev` ハードリロードで動作。
 
-- 本番反映済 (= Phase 1 安定版) → `https://booklage.pages.dev` をハードリロードで OK
-- tsc clean / vitest 487/488 (= channel.test.ts は既存 flaky で無関係)
+**残課題**: swap 瞬間の title font 「かくっ」 jump。 user 仮説 = board (URL あり) / .media (URL なし、 omitMeta) の layout 差。 次セッションで決着。
 
-### 次セッション (= 35) でやること
+- tsc clean / vitest 488/488
 
-ゴール: **`docs/CURRENT_GOAL.md`**。 transform-scale FLIP 再着手 + 残 Item 2/4 整理:
+### 次セッション (= 36) でやること
 
-1. **まず角丸 = 20px 固定** が transform 中も維持される実装 (= scale compensation を正しく動かす)
-2. 角丸 OK 後に text grow 問題解決
+ゴール: **`docs/CURRENT_GOAL.md`**。 URL 有無による title layout jump 決着 + 残 Item 2/4 整理:
+
+1. **A/B/C 案から決める**: A=`.media` に URL 表示 (= omitMeta 撤去) / B=clone から URL strip / C=cross-fade
+2. **採用案を実装** → tsc + vitest → 本番 deploy → user 実機確認
 3. (時間あれば) Item 2/4 = テキストのみカードの構造再設計 + Lightbox 右エリア整理
 
 ### foundation 3 本柱 (= セッション 32 以降)

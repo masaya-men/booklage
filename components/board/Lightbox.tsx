@@ -282,6 +282,53 @@ function createLightboxClone(sourceCard: HTMLElement, rect: CloneRect): HTMLElem
   return clone
 }
 
+// session 35: 文字カード専用 hybrid。 外側 clone は本家 destefanis 同様 width/height
+// tween のままにし、 文字カードのときだけ内側に scale-host を仕込んで「文字も
+// 一緒に拡大」 を実現する。 画像/動画カードでは img が naturally に object-fit:cover
+// で fit するため scale-host 不要 (= raster 画像を scale up すると bitmap blur)。
+//
+// 拡大方式は CSS `zoom`。 当初 `transform: scale` を試したが、 文字が raster scale
+// で描画されて 「拡大率に比例して文字がボケる」 と user 報告 (session 35 後半)。
+// `zoom` は **拡大後のサイズで browser が再レイアウト + font-size を真の zoom 倍で
+// 再描画** = 文字は常にベクター品質で crisp。 非公式プロパティだが Chrome / Safari
+// / Firefox (2024+) / Edge 全部対応済。 子要素 absolute 座標も zoom 倍されるので
+// 内部 layout は変わらず (= 等比拡大)。
+function wrapCloneWithScaleHost(
+  clone: HTMLElement,
+  sourceW: number,
+  sourceH: number,
+  initialScale: number,
+): HTMLElement | null {
+  // text card 検出。 CSS modules でクラス名がハッシュ化されても "textCard" 部分は残る。
+  const isTextCard = clone.querySelector('[class*="textCard"]') !== null
+  if (!isTextCard) return null
+  if (sourceW <= 0 || sourceH <= 0) return null
+
+  // 内側の --card-radius は 0 に上書き。 視覚 radius は外側 clone の overflow:hidden
+  // + border-radius (= --lightbox-media-radius) で確定させる (= LargeBoardCardClone
+  // と同じ戦略)。
+  clone.style.setProperty('--card-radius', '0')
+
+  const scaleHost = document.createElement('div')
+  scaleHost.setAttribute('data-clone-scale-host', 'true')
+  scaleHost.style.position = 'absolute'
+  scaleHost.style.top = '0'
+  scaleHost.style.left = '0'
+  scaleHost.style.width = `${sourceW}px`
+  scaleHost.style.height = `${sourceH}px`
+  // zoom = scale ratio (browser side で再レイアウト + 文字 crisp 再描画)。
+  scaleHost.style.zoom = `${initialScale}`
+  scaleHost.style.pointerEvents = 'none'
+
+  // clone の現在の子をすべて scale-host に移す。 firstChild で順次取り出し。
+  while (clone.firstChild) {
+    scaleHost.appendChild(clone.firstChild)
+  }
+  clone.appendChild(scaleHost)
+
+  return scaleHost
+}
+
 /** Optional nav controls — when provided, chevron + dots + arrow-key
  *  nav become available. Caller (BoardRoot or SharedView) owns the
  *  index state and loop logic; Lightbox just forwards user gestures. */
@@ -538,11 +585,24 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       // because the host lives inside .canvasWrap (position:absolute)
       // rather than at body root.
       let clone: HTMLElement | null = null
+      let scaleHost: HTMLElement | null = null
       const host = liveSourceEl ? ensureCloneHost() : null
       const closeOriginHost = host ? toHostRelativeRect(closeOrigin, host) : null
       const mediaRectHost = host ? toHostRelativeRect(mediaRect, host) : null
-      if (liveSourceEl && host && mediaRectHost) {
+      if (liveSourceEl && host && mediaRectHost && closeOriginHost) {
         clone = createLightboxClone(liveSourceEl, mediaRectHost)
+        // session 35: close は media 大 → source 小 に縮む。 scale-host は source 寸法
+        // 固定 + 初期 scale = media/source (= 大)、 tween 中 scale = currentW/sourceW
+        // で 1.0 (= source size 実寸) に着地。
+        const initialScale = closeOriginHost.width > 0
+          ? mediaRectHost.width / closeOriginHost.width
+          : 1
+        scaleHost = wrapCloneWithScaleHost(
+          clone,
+          closeOriginHost.width,
+          closeOriginHost.height,
+          initialScale,
+        )
         host.appendChild(clone)
       }
       mediaEl.style.opacity = '0'
@@ -574,6 +634,9 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
         // revert。 mid-tween は float のまま smooth に伸ばし、 始終端だけ
         // 整数 snap する session 31 B-b の挙動に戻す。 user は震えの真因は
         // GSAP interpolation ではなく「別の原因」 と仮説、 別途調査要。
+        const sourceW = closeOriginHost.width
+        const capturedClone = clone
+        const capturedScaleHost = scaleHost
         tl.to(clone, {
           top: Math.round(closeOriginHost.top),
           left: Math.round(closeOriginHost.left),
@@ -581,6 +644,16 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           height: Math.round(closeOriginHost.height),
           duration: CLOSE_TWEEN_DUR,
           ease: CLOSE_TWEEN_EASE,
+          onUpdate: () => {
+            // session 35: 文字カードの hybrid scale-host を outer width に追従。
+            // zoom = currentOuterW / sourceW → 大 (= media) から 1.0 (= source) へ縮む。
+            // zoom で文字 crisp (= transform:scale だと raster blur)。
+            if (!capturedScaleHost || sourceW <= 0) return
+            const w = gsap.getProperty(capturedClone, 'width') as number
+            if (typeof w === 'number' && w > 0) {
+              capturedScaleHost.style.zoom = `${w / sourceW}`
+            }
+          },
         }, CLOSE_FRAME_DELAY)
       }
       if (backdrop) {
@@ -820,15 +893,23 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
       const host = sourceCard ? ensureCloneHost() : null
       const sourceRectHost = host ? toHostRelativeRect(sourceRect, host) : null
       const mediaRectHost = host ? toHostRelativeRect(mediaRect, host) : null
+      let scaleHost: HTMLElement | null = null
       if (sourceCard && host && sourceRectHost) {
         clone = createLightboxClone(sourceCard, sourceRectHost)
+        // session 35: 文字カード hybrid。 内側に scale-host を仕込んで、 外側
+        // width/height tween と同期で内容も拡大させる。 文字以外 (image/video) は
+        // null が返り、 従来通りの挙動 (= img が自然 fit) を維持。
+        scaleHost = wrapCloneWithScaleHost(clone, sourceRectHost.width, sourceRectHost.height, 1)
         host.appendChild(clone)
       }
 
       const tl = gsap.timeline()
-      if (clone && mediaRectHost) {
+      if (clone && mediaRectHost && sourceRectHost) {
         // session 32: modifier revert (= 角丸グニャグニャ報告)、 始終端 snap のみ。
         // close と対称。
+        const startW = sourceRectHost.width
+        const capturedClone = clone
+        const capturedScaleHost = scaleHost
         tl.to(clone, {
           top: Math.round(mediaRectHost.top),
           left: Math.round(mediaRectHost.left),
@@ -836,6 +917,16 @@ export function Lightbox({ item, originRect, sourceCardId, onClose, onSourceShou
           height: Math.round(mediaRectHost.height),
           duration: dur,
           ease: OPEN_EASE,
+          onUpdate: () => {
+            // session 35: scale-host があるとき (= 文字カード) のみ、 外側 width に
+            // 合わせて内側 zoom を更新。 image/video は scale-host=null = skip。
+            // zoom で文字 crisp (= transform:scale だと raster blur)。
+            if (!capturedScaleHost || startW <= 0) return
+            const w = gsap.getProperty(capturedClone, 'width') as number
+            if (typeof w === 'number' && w > 0) {
+              capturedScaleHost.style.zoom = `${w / startW}`
+            }
+          },
           onComplete: () => {
             // Instant swap: paint .media at opacity 1 in the same
             // frame the clone is removed. For still images the two
@@ -1737,10 +1828,15 @@ function LightboxMedia({ item }: { readonly item: LightboxItem }): ReactNode {
   // (session 32 の「全部 TextCard」 判断を覆して board ImageCard / TextCard と
   // 同じ routing に揃える。)
   const textAspect = aspectRatio ?? TEXT_CARD_MIN_ASPECT
+  // session 35: cardWidth は toBoardShapeForFallback の `item.cardWidth ?? 280` を
+  // 使う (= source board card の実 width)。 以前ここに `cardWidth: 280` 上書きが
+  // あり、 source typography (source 実 width で選択) と .media typography (280 で
+  // 選択) が tier 不一致になって swap で font ジャンプしていた。 上書き削除で
+  // source の実 width を素通し → animation clone と .media が同じ typography で
+  // 揃う = jump 消失。
   const fakeBoardItem: BoardItem = {
     ...toBoardShapeForFallback(item, textAspect),
     title: cleanTitle(item.title, item.url),
-    cardWidth: 280,
   }
   if (item.thumbnail) {
     return (
@@ -1943,7 +2039,9 @@ function LargeTextCardScaler({
       const w = box.offsetWidth
       if (w <= 0) return
       const scale = w / boardW
-      inner.style.transform = `scale(${scale})`
+      // session 35: transform:scale → zoom。 transform:scale は raster blur (= 文字
+      // 「画質荒い」 user 報告)、 zoom は browser が再レイアウト + 文字 crisp 再描画。
+      inner.style.zoom = `${scale}`
     }
     update()
     const observer = new ResizeObserver(update)
@@ -1965,11 +2063,10 @@ function LargeTextCardScaler({
           left: 0,
           width: `${boardW}px`,
           height: `${boardH}px`,
-          transformOrigin: 'top left',
           // session 34: inner TextCard の var(--card-radius) (= board 24px) が
-          // transform:scale で拡大されると外側 .imageBox の 20px clip より大きくなり
-          // 「20 より丸い」 視覚になる。 0 上書きで inner を矩形化し、 .imageBox の
-          // overflow:hidden + 20px radius が最終形を決める (= LargeBoardCardClone と同じ手)。
+          // 拡大されると外側 .imageBox の 20px clip より大きくなり 「20 より丸い」
+          // 視覚になる。 0 上書きで inner を矩形化し、 .imageBox の overflow:hidden +
+          // 20px radius が最終形を決める (= LargeBoardCardClone と同じ手)。
           ['--card-radius' as string]: '0',
         } as React.CSSProperties}
       >
