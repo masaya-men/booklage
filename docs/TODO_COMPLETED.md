@@ -1612,4 +1612,68 @@ user 報告: 「ツイートカードも、 他のテキストカードと同様
 - `560b33f` fix(tweet): session 37 phase 1 — fix lightbox favicon ballooning + parse animated_gif + unified_card
 - `d73c95c` fix(lightbox): session 37 phase 2 — match TextCard color variant in Lightbox text view
 - `efcac1d` fix(lightbox): session 37 phase 3 — route text-only tweet to LargeTextCardScaler (eliminates open-swap jump)
+
+---
+
+## セッション 38 (2026-05-17) — テキストカード close jump 解消 (X favicon 全フロー一貫表示)
+
+### 出発点
+
+session 37 phase 3 で「open swap の title 一段ジャンプ」 は決着したが、 user が prod 確認した際に新たに気づいた:
+
+- **close 着地で X favicon が「ぽん」 と出現**する。 ライトボックスから板に戻る瞬間、 X.com アイコンが左上に突然現れて目に付く
+
+### 真因
+
+session 36 + 37 の積み重ねで「ライトボックスは title だけ伸び伸び拡大」 仕様を作っていた:
+- [Lightbox.tsx:2116](components/board/Lightbox.tsx#L2116) `LargeTextCardScaler` で `omitMeta` を立てて metaTop/metaBottom (= X favicon + ドメイン行) を非表示
+- [Lightbox.tsx:313-318](components/board/Lightbox.tsx#L313-L318) `wrapCloneWithScaleHost` で clone からも DOM strip (= swap 瞬間の title 位置一致のため)
+
+→ open / 中 / close clone の全フェーズで X が消える → close 着地で source card (= X 表示状態) が現れる瞬間に「X 出現 jump」 が必然的に発生。
+
+### 探索した修正案 (= ultrathink で 4 案検討)
+
+| 案 | 内容 | 評価 |
+|---|---|---|
+| A | 現状維持 | X jump 残る、 仕様の trade-off |
+| B | strip 削除のみ | title 位置ジャンプが復活 (session 36 退行) — NG |
+| C | 対称 fade (clone の X opacity を tween) | 30-50 行追加、 favicon overlay 注入、 複雑度中 |
+| D | close 着地時に source の X だけ fade-in | 15 行追加、 close 限定、 React DOM 直接操作 — anti-pattern 気味 |
+
+### 採用案 (= user 提案)
+
+**E: ライトボックスにも X + x.com を表示しちゃう**。 board → 開く → ライトボックス → 閉じる の全フローで X が**一貫して見える**ようにする = どこにも jump や fade ロジック不要。
+
+実装は session 36 で追加した 2 つを撤去するだけ:
+
+1. [Lightbox.tsx:2116](components/board/Lightbox.tsx#L2116) — `LargeTextCardScaler` 内の `omitMeta` を削除 → Lightbox.media が TextCard をフル表示 (= X favicon + ドメイン行も含む)
+2. [Lightbox.tsx:313-318](components/board/Lightbox.tsx#L313-L318) — `wrapCloneWithScaleHost` の metaTop/metaBottom strip を撤去 → clone も X を保持したまま拡大/縮小
+
+新規ロジック追加ゼロ、 純粋な削除 + コメント更新のみ。 user 提案が一番シンプルだった。
+
+### 副次効果
+
+- **ライトボックス内で「これは X.com のブクマだ」 が一目でわかる UX**: 情報的にも好ましい (= 削除した方が誤って失われていた attribution が復活)
+- **title の表示領域はわずかに縮む**が、 1 段分なので違和感は出ていない
+- **clone と Lightbox.media が引き続き同じ TextCard (= 同 DOM 構造)** なので session 37 phase 3 の swap 一致は維持
+
+### 検証
+
+- tsc clean / vitest 493/493
+- prod deploy 済 → `https://booklage.pages.dev` でハードリロード確認 → user OK
+
+### 学び
+
+- **user 提案の「ふつうの解」 が最良案だったケース**。 Claude は 4 案 (A/B/C/D) を検討して D 推奨と出していたが、 user は「もう Lightbox にも X 出しちゃえばいい」 と一発で問題を消去する解を提示
+- 既存「title 大きく拡大」 仕様への愛着が Claude の選択肢を狭めていた = session 36 の判断を温存しようとしすぎていた
+- 「壊さないように修正を積む」 より「複雑度を生んだ判断を撤回する」 方が良い場面がある
+
+### memory 更新
+
+- なし
+
+### commits (= 本セッション close-out 時に作成予定)
+
+- session 38 phase 1 fix(lightbox): show X favicon + domain in Lightbox text view + clone (close jump 解消)
+- session 38 docs: narrative + TODO 更新 + CURRENT_GOAL 次セッション用
 - prod deploys: `4b01a066` → `1c1fbbf4` → `d262bb34` → `https://booklage.pages.dev`

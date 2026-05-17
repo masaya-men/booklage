@@ -310,12 +310,11 @@ function wrapCloneWithScaleHost(
   // と同じ戦略)。
   clone.style.setProperty('--card-radius', '0')
 
-  // session 36: アニメ中の clone から URL 行 (favicon + domain) を DOM strip。
-  // swap 先の LargeTextCardScaler は omitMeta=true で同じ行を出さない (= session 35
-  // で「テキストカードが伸び伸び拡大」 を実現した核心仕様)。 clone と swap 先で
-  // layout を一致させて、 swap 瞬間の title 「かくっ」 jump を消す。 CSS modules で
-  // class 名がハッシュ化されても "metaTop"/"metaBottom" の部分文字列は残る。
-  clone.querySelectorAll('[class*="metaTop"], [class*="metaBottom"]').forEach((n) => n.remove())
+  // session 38: session 36 の metaTop/metaBottom DOM strip を撤去。 user 提案で
+  // Lightbox 側 LargeTextCardScaler の omitMeta も外し、 板 → 開く → Lightbox →
+  // 閉じる の全フローで X favicon + ドメイン行が一貫して見える方針に変更。
+  // strip ナシでも clone と .media は同じ TextCard (= 同じ DOM 構造) で
+  // layout 一致するため、 swap 瞬間の title jump は引き続き発生しない。
 
   const scaleHost = document.createElement('div')
   scaleHost.setAttribute('data-clone-scale-host', 'true')
@@ -2113,7 +2112,6 @@ function LargeTextCardScaler({
           cardWidth={boardW}
           cardHeight={boardH}
           displayMode="visual"
-          omitMeta
         />
       </div>
     </div>

@@ -20,27 +20,25 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-17 セッション 37 — ツイート Lightbox 3 連 fix 完全決着 / 主犯は CSS scoping bug)
+### 直近の状態 (2026-05-17 セッション 38 — テキストカード close jump 解消)
 
-セッション 37 で session 36 末に発覚した「ツイート Lightbox で profile image 巨大ガビガビ + 動画ツイート未再生」 を**根本原因 3 つ同時に確定 + 全部 fix**。 4 URL 全て prod で動作確認済:
+session 37 phase 3 直後に user が prod で気づいた「閉じる時 X が左上にぽんと出現する」 を解消。 user 提案で **「Lightbox にも X favicon + x.com を表示しちゃう」** 案を採用 — 板 → 開く → ライトボックス → 閉じる の全フローで X が一貫表示。 session 36 で追加した 2 つの strip 処理を撤去するだけの純削除パッチ。
 
-1. **主犯 (= CSS scoping bug)**: [Lightbox.module.css](components/board/Lightbox.module.css#L190) `.imageBox img` の descendant 選択子が孫要素の `lightboxTextFavicon` まで巻き込んで 32x32 → 464x464 (= 14.5x) 膨張。 X favicon が画面占有して「巨大ガビガビ X ロゴ」 化、 同時に title を overflow:hidden で押し出して「文章表示できてない」 (URL 4) 化。 session 30 の image lightbox 対応で混入、 session 32 で LightboxTextDisplay 追加から罠化していた。 → `.imageBox > img` (直接子) に scope して救済。 通常画像 lightbox は無変更
-2. **共犯 1 (= animated_gif 未対応)**: [tweet-meta.ts](lib/embed/tweet-meta.ts) が `'video' / 'photo'` のみ走査、 X の GIF tweet (= mediaDetails[].type='animated_gif', mp4 variant 持ち) を silently drop。 → `pushMediaSlot` helper 切り出し + 統合扱い
-3. **共犯 2 (= unified_card 未対応)**: X の今や標準フォーマット、 媒体は `card.binding_values.unified_card.string_value` (= JSON 二重 encode) の `media_entities`。 → `decodeUnifiedCardMediaEntities` で抽出、 mediaDetails 空かつ unified_card のときだけ補完 (= 通常経路無変更、 mix 防止)
+- [Lightbox.tsx:2116](components/board/Lightbox.tsx#L2116) — `omitMeta` 削除
+- [Lightbox.tsx:313-318](components/board/Lightbox.tsx#L313-L318) — clone の metaTop/metaBottom strip 撤去
+- 副次効果: ライトボックスで attribution (= X.com 由来) が明示される UX 改善
+- tsc clean / vitest 493/493 / prod deploy 済 → `https://booklage.pages.dev` で user 確認 OK
+- 詳細 narrative: [TODO_COMPLETED.md](./TODO_COMPLETED.md) セッション 38 セクション
 
-**本番反映済** → `https://booklage.pages.dev` 。 commit `560b33f`。 vitest 493/493 (+5 new) / tsc clean / Playwright 4 URL 全 OK。 narrative + 学び詳細は [TODO_COMPLETED.md](./TODO_COMPLETED.md) セッション 37 セクション。
+### 次セッション (= 39) でやること
 
-**multi-playback vision との関係**: parser が animated_gif + unified_card の動画 url を取得できるようになったので、 board で動画再生し続ける機能の**土台**が揃った。 board card autoplay loop + 複数選択 UI は別タスク (= IDEAS.md 既存記載)。
+**user 指定**: **ScrollMeter ガチャガチャ動く問題**を解決する (= 下記 B-#20)。
 
-### 次セッション (= 38) でやること
-
-選択肢:
-1. **multi-playback vision の board card autoplay 着手** — Fix 2, 3 で得た mediaSlots を board 側で活用、 動画カードが板の上で常時再生する render layer。 user の理想の核に向かう本筋
-2. **テキストカード Lightbox 構造再設計** — session 36 で持ち越した「テキストのみカードの構造再設計 / Lightbox 右エリア整理」 (= TODO 旧 Item 2 / 4)
-3. **B-#3 重複 URL でサムネ等が出ない問題** — 短時間タスク
-4. **B-#13 TopHeader brushup (ScrollMeter 下配置)** — 視覚調整系
-
-user 希望次第。 セッション開始時に user に選んでもらう。
+着手余裕があれば backlog から:
+1. multi-playback vision の board card autoplay 着手
+2. テキストカード Lightbox 構造再設計
+3. B-#3 重複 URL でサムネ等が出ない問題
+4. B-#13 TopHeader brushup
 
 ### foundation 3 本柱 (= セッション 32 以降)
 
@@ -110,6 +108,12 @@ user 希望次第。 セッション開始時に user に選んでもらう。
 
 - **B-#13 TopHeader brushup** (memory `project_board_header_brushup.md` 参照)
    - 暫定配置、 将来 brushup 方向: **ScrollMeter を下配置** (Lightbox の表現と統一)
+
+- **B-#20 ScrollMeter ガチャガチャ動く問題** (session 38 で user 指摘、 次セッション着手予定)
+   - 症状: 板 / Lightbox / 戻る のタイミングで ScrollMeter の位置や表示状態が「ガチャガチャ」 切り替わって落ち着かない
+   - **user 仮説**: Lightbox 時も普段と**場所を一緒**にして、 **クロスフェード**で表示状態を変化させる
+   - 確認事項: Lightbox header / 他 chrome / 矢印 nav 等と**位置干渉しないか**を実装前にチェック
+   - 着手時の順番: 現状 ScrollMeter の実装場所 + Lightbox 開閉での state 遷移を読む → 提案 → user 合意 → 実装
 
 ---
 
