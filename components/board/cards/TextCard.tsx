@@ -17,11 +17,11 @@ type Props = {
   readonly persistMeasuredAspect?: (cardId: string, aspectRatio: number) => Promise<void>
   readonly reportIntrinsicHeight?: (cardId: string, heightPx: number) => void
   readonly displayMode: DisplayMode
-  /** Session 34: Lightbox で TextCard を transform:scale で拡大表示する経路では、
-   *  16×16 favicon が 3 倍拡大されて bitmap blur (= 「がびがびファビコン」) になる。
-   *  meta 行は右パネルで同じ情報が出ているので冗長でもあり、 Lightbox では
-   *  omitMeta=true で metaTop/metaBottom 行を非表示にしてタイトルだけ拡大する。
-   *  board の通常描画では omitMeta は付けない (= favicon は board サイズで native 表示)。 */
+  /** Session 36: Lightbox の `.media` (LargeTextCardScaler) では URL 行を非表示にして
+   *  title だけが伸び伸び拡大される (= session 35 で確定した「テキストカードがそのまま拡大」
+   *  の核心仕様)。 board の通常描画では omitMeta は付けない。
+   *  なお swap 時の title font ジャンプ対策として、 アニメ clone 側でも metaTop/
+   *  metaBottom 要素を DOM strip して同じ layout を作る (= wrapCloneWithScaleHost)。 */
   readonly omitMeta?: boolean
 }
 

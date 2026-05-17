@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ComponentType, type ReactElement, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ComponentType, type ReactElement, type ReactNode } from 'react'
 import { gsap } from 'gsap'
 import type { BoardItem } from '@/lib/storage/use-board-data'
 import type { TikTokPlayback, TweetMeta, MediaSlot } from '@/lib/embed/types'
@@ -308,6 +308,13 @@ function wrapCloneWithScaleHost(
   // + border-radius (= --lightbox-media-radius) で確定させる (= LargeBoardCardClone
   // と同じ戦略)。
   clone.style.setProperty('--card-radius', '0')
+
+  // session 36: アニメ中の clone から URL 行 (favicon + domain) を DOM strip。
+  // swap 先の LargeTextCardScaler は omitMeta=true で同じ行を出さない (= session 35
+  // で「テキストカードが伸び伸び拡大」 を実現した核心仕様)。 clone と swap 先で
+  // layout を一致させて、 swap 瞬間の title 「かくっ」 jump を消す。 CSS modules で
+  // class 名がハッシュ化されても "metaTop"/"metaBottom" の部分文字列は残る。
+  clone.querySelectorAll('[class*="metaTop"], [class*="metaBottom"]').forEach((n) => n.remove())
 
   const scaleHost = document.createElement('div')
   scaleHost.setAttribute('data-clone-scale-host', 'true')
@@ -2018,7 +2025,14 @@ function LargeBoardCardClone({
 }
 
 /** share view 等で source card DOM が無いとき用の fallback。 board と同じ
- *  cardWidth で TextCard を再描画 + ResizeObserver で wrapper scale。 */
+ *  cardWidth で TextCard を再描画 + ResizeObserver で wrapper scale。
+ *  session 36: boardW は source DOM の **実 rendering width** を `getBoundingClientRect()`
+ *  で実測する。 fakeItem.cardWidth は IDB 保存値 (= user resize していなければ default
+ *  280) で、 size slider で全体 width が変わっているケース (tier 1=200 等) では
+ *  実 rendering width と一致しない。 一致しない状態で TextCard 再描画すると、
+ *  typography mode (= pickTitleTypography の cardWidth ベース判定) が swap 瞬間に
+ *  変わって title 「かくっ」 jump を生む (session 36 調査で根本原因と判明)。
+ *  source DOM が無い (share view / culling) ときは fakeItem.cardWidth に fallback。 */
 function LargeTextCardScaler({
   fakeItem,
   aspect,
@@ -2028,7 +2042,13 @@ function LargeTextCardScaler({
 }): ReactElement {
   const boxRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
-  const boardW = fakeItem.cardWidth
+  const boardW = useMemo<number>(() => {
+    if (typeof document === 'undefined') return fakeItem.cardWidth
+    const source = document.querySelector<HTMLElement>(`[data-bookmark-id="${fakeItem.bookmarkId}"]`)
+    if (!source) return fakeItem.cardWidth
+    const w = source.getBoundingClientRect().width
+    return w > 0 ? w : fakeItem.cardWidth
+  }, [fakeItem.bookmarkId, fakeItem.cardWidth])
   const boardH = boardW / aspect
 
   useLayoutEffect(() => {

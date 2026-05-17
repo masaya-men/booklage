@@ -1,49 +1,38 @@
-# 次セッションのゴール (= セッション 36)
+# 次セッションのゴール (= セッション 37)
 
 ## ゴール
 
-**URL 有無による title font ジャンプを決着**。 session 35 で「文字カード hybrid scale-host」 + zoom 化 + cardWidth tier 揃いまで完成、 残る swap 瞬間の「かくっ」 は board (URL あり) / `.media` (URL なし、 omitMeta) の layout 差が原因 (= user 仮説、 妥当)。
-
-## 背景 (= 開始時にこれを読む)
-
-session 35 で完成した hybrid:
-
-- 外側 clone (width/height tween) = 本家 destefanis と同方式
-- 内側 scale-host with CSS `zoom` = 文字 crisp で「box と一緒に拡大」
-- `cardWidth=280` ハードコード削除 → source の実 width で typography tier 揃った
-
-残課題: `.media` (LargeTextCardScaler) は `omitMeta=true` で URL 行非表示、 アニメ clone (= cloneNode of source) は URL 行表示 → swap 瞬間に layout が「URL 行あり → なし」 で変化 → title の `flex: 1` で container サイズが変わって text 位置 / line layout が「かくっ」。
+**ツイート (X) Lightbox 経路の集中対応**。 session 36 末 user 発覚: ツイートカードを Lightbox で開くと profile image (= X ロゴ等) が巨大ガビガビ表示、 動画ツイートでも動画が出ない。 文字 jump 系は session 36 で完全決着済。
 
 ## 開始時の動き
 
 1. user と挨拶
-2. 3 案から user と相談して決める:
+2. user 提示の再現 URL を board に投入して **実機 + DevTools 観察**:
+   - https://x.com/konrad_designs/status/2054511169461727508
+   - https://x.com/EnterProAI/status/2046946956455379344
+   - https://x.com/lovart_ai/status/2049735758127276237
+3. board 上で何のカード経路 (TextCard / ImageCard / VideoThumbCard / Tweet 専用) で描画されているか確認
+4. Lightbox で開いた時に **どこで profile image fallback に落ちているか** を特定 (= TweetMedia / LightboxImageWithFallback / mediaSlots のいずれか)
+5. 修正方針を user と合意してから実装 (= session 36 反省 = 独断 A 推しで失敗した経験から、 視覚に影響する変更は事前に「画面でどう見えるか」 を user に確認)
 
-| 案 | 内容 | tradeoff |
-|---|---|---|
-| **A** | `.media` でも URL 表示 (= omitMeta 撤去) | シンプル、 右パネルと URL 重複 |
-| **B** | アニメ clone から URL 行 strip (= cloneNode 後 metaTop/metaBottom 削除) | 重複なし、 click 瞬間に URL 消失 |
-| **C** | URL 行 cross-fade (opacity tween) + typography 揺れ別調整 | リッチ、 工数大 |
+## 調査の出発点 (= ファイル参照)
 
-session 35 の感覚: **A が筋**。 ただし board → lightbox の文脈遷移 / 右パネル情報重複を user と議論してから確定。
+- [components/board/Lightbox.tsx](components/board/Lightbox.tsx) `LightboxMedia` (≈ 1794) — 経路 routing
+- ツイート専用: `isTweet` (= 412) + `TweetMedia` (= 1431 付近) + `mediaSlots` 関連
+- 一般 webpage: `LightboxImageWithFallback` (= 2089) — 256px 未満 fallback 閾値
+- mediaSlots 解析: [lib/embed/](lib/embed/) 配下の tweet-meta + oEmbed 経路
+- thumbnail 解析: BoardItem.thumbnail / BoardItem.mediaSlots / BoardItem.photos
 
-3. 決まったら実装 → tsc + vitest → 本番 deploy → user 実機確認
+## 残課題 (= ツイート fix 後、 時間あれば)
 
-## 残課題 (= URL fix 後)
-
-Item 2 / 4 (= テキストのみカード構造再設計、 Lightbox 右エリア整理) は時間あれば。
+- Item 2 / 4 = テキストのみカードの構造再設計 / Lightbox 右エリア整理 (= TODO.md 参照)
 
 ## 月末リマインダー (= 2026-05-31 約 2 週間後)
 
-`allmarks.app` ドメイン取得確認。 残り約 2 週間。
+`allmarks.app` ドメイン取得確認。
 
 ## 引き継ぎ resources
 
-- `docs/TODO_COMPLETED.md` セッション 35 セクション — narrative + 残課題詳細
-- memory `reference_destefanis_visual_spec.md` — 本家実装の最新事実 (width/height tween、 transform:scale 不使用)
-- memory `reference_flip_scale_compensation.md` — transform:scale FLIP 不採用確定 + hybrid scale-host 設計
-- `components/board/Lightbox.tsx`:
-  - `wrapCloneWithScaleHost` (≈ line 291)
-  - OPEN tween (≈ line 884) / CLOSE tween (≈ line 626)
-  - `LargeTextCardScaler` (≈ line 2017)
-  - cardWidth fix (≈ line 1830)
+- [docs/TODO_COMPLETED.md](docs/TODO_COMPLETED.md) セッション 36 セクション — narrative + 学び
+- memory [reference_cardwidth_dual_management.md](C:/Users/masay/.claude/projects/c--Users-masay-Desktop--------/memory/reference_cardwidth_dual_management.md) — cardWidth 二重管理罠 (= session 37 でも参考になる: ツイートカードでも同様の「IDB 保存値 vs 実 rendering」 ズレが隠れている可能性)
+- memory [feedback_user_observation_reveals_intent.md](C:/Users/masay/.claude/projects/c--Users-masay-Desktop--------/memory/feedback_user_observation_reveals_intent.md) — 撤去前に why を再点検

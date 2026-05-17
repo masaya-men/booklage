@@ -20,29 +20,32 @@
 
 ## 現在の状態 (次セッションはここから読む)
 
-### 直近の状態 (2026-05-17 セッション 35 — 本家方式確定 + 文字カード zoom hybrid 実装 + URL レイアウト差残)
+### 直近の状態 (2026-05-17 セッション 36 — 文字 jump 完全決着 / 根本原因 = cardWidth 二重管理ズレ)
 
-セッション 35 で **「本家 destefanis は transform:scale でなく width/height tween」 と確定** + **文字カード hybrid scale-host (zoom 方式) 完成** + **cardWidth=280 ハードコード削除**:
+セッション 36 で **session 35 から続いた title font ジャンプの根本原因発見 + 解消**:
 
-1. **本家 destefanis の実装確認**: `app.js` 396-407 で width/height tween + translate のみ、 transform:scale 不使用が判明 → session 30 memory 誤読を訂正
-2. **transform:scale FLIP 不採用確定**: 過去 2 回失敗 + 本家と離れる方向 → 不採用、 hybrid scale-host が正解
-3. **scale-host = 文字カード専用 hybrid**: 外側 width/height tween (本家と同) + 内側 scale-host で「文字も一緒に拡大」 を実現
-4. **CSS `zoom` 採用**: 当初 transform:scale で文字 raster blur → user 報告「どんどん悪く」 → zoom 切替、 browser 再レイアウト + 真 font-size 再描画 = 文字常に crisp
-5. **`cardWidth: 280` ハードコード削除**: source の実 width 素通しで typography tier 揃った
+1. **失敗 1 (A 案 = omitMeta 撤去)**: 私が「session 35 末の感覚で A が筋」 と独断、 実装したら user 即否定 — favicon が巨大化 / title 省略 / 「テキストカードがそのまま拡大できなくなった」 = omitMeta は core 仕様だった
+2. **失敗 2 (B 案 = clone から URL 行 strip)**: omitMeta revert + clone strip 実装、 deploy。 まだ jump 残存
+3. **徹底調査で根本原因確定**: BoardItem.cardWidth (= IDB 保存値、 user resize なければ 280) と board の実 rendering width (= `customWidths[id] ?? cardWidthPx` = size slider 値) が **乖離するケースあり**。 LargeTextCardScaler が IDB 値で TextCard 再描画 → swap 瞬間に typography mode が変わって「かくっ」
+4. **修正 (C 案相当 = DOM 実測)**: LargeTextCardScaler の boardW を `document.querySelector(data-bookmark-id).getBoundingClientRect().width` で実測 → size 決定ロジック (slider / 個別 resize / 混在) と独立で必ず一致
 
-**本番反映済** → `https://booklage.pages.dev` ハードリロードで動作。
+**本番反映済** → `https://booklage.pages.dev` ハードリロードで動作。 user 実機「やっと出来てます」 確認。
 
-**残課題**: swap 瞬間の title font 「かくっ」 jump。 user 仮説 = board (URL あり) / .media (URL なし、 omitMeta) の layout 差。 次セッションで決着。
+**新規発覚 / 次セッション持ち越し**: ツイートカード (= X) で thumbnail が profile image / mediaSlot 解析失敗のケース → Lightbox で X ロゴだけが巨大ガビガビ表示。 動画ツイートでも動画が出てこない。 user 提示の再現 URL:
+- https://x.com/konrad_designs/status/2054511169461727508
+- https://x.com/EnterProAI/status/2046946956455379344
+- https://x.com/lovart_ai/status/2049735758127276237
 
 - tsc clean / vitest 488/488
 
-### 次セッション (= 36) でやること
+### 次セッション (= 37) でやること
 
-ゴール: **`docs/CURRENT_GOAL.md`**。 URL 有無による title layout jump 決着 + 残 Item 2/4 整理:
+ゴール: **`docs/CURRENT_GOAL.md`**。 ツイート (X) Lightbox 経路の集中対応:
 
-1. **A/B/C 案から決める**: A=`.media` に URL 表示 (= omitMeta 撤去) / B=clone から URL strip / C=cross-fade
-2. **採用案を実装** → tsc + vitest → 本番 deploy → user 実機確認
-3. (時間あれば) Item 2/4 = テキストのみカードの構造再設計 + Lightbox 右エリア整理
+1. 上記 3 URL を board に投入 → 再現確認 (= board 上の見た目 / mediaSlots / thumbnail 解析状況を実機 + DevTools で観察)
+2. 経路特定: TweetMedia / LightboxImageWithFallback / 動画 mediaSlot のどこで profile image fallback に落ちているか
+3. 修正方針を user と合意してから着手 (= session 36 の「独断 A 推し」 反省を活かす)
+4. (時間あれば) 残 Item = テキストのみカードの構造再設計 / Lightbox 右エリア整理
 
 ### foundation 3 本柱 (= セッション 32 以降)
 
@@ -76,6 +79,7 @@
 
 ### 表示・サムネ系
 
+- **B-#19 ツイート (X) Lightbox で profile image が巨大ガビガビ + 動画が出ない** (session 36 末発覚、 次セッション 37 集中対応) — TweetMedia / mediaSlot 経路で thumbnail を profile image に fallback、 動画も再生されず。 再現 URL: `https://x.com/konrad_designs/status/2054511169461727508`, `https://x.com/EnterProAI/status/2046946956455379344`, `https://x.com/lovart_ai/status/2049735758127276237`
 - **B-#3 重複 URL でサムネ等が出ない問題** — 同 URL 重複追加時の表示挙動を確認・修正 (セッション 20 では真因未調査、 個別 session で着手)
 - **MinimalCard polish** — 64px favicon が S サイズ (160px) で大きく見える可能性。 Visual Companion でモック比較してサイズ判定 (セッション 20 で実装後、 視覚調整は次回)
 - **Task 12: 全件再 check 設定 UI** — viewport revalidation で日常運用は OK だが、 ユーザーが 「いま全件チェック」 を 1 クリックで kick できる設定パネル。 設定パネル自体が未実装なので別 spec 立ち上げ要

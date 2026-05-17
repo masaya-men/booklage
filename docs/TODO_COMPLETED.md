@@ -1383,3 +1383,83 @@ session 35 の感覚では A が筋。 ただし board → lightbox の文脈遷
 ### commits
 
 (close-out commit で TODO + CURRENT_GOAL + Lightbox.tsx をまとめて記録)
+
+
+---
+
+## セッション 36 (2026-05-17) — 文字 jump 完全決着 (3 案を経て根本原因 = cardWidth 二重管理ズレ確定)
+
+### 何が起きたか
+
+session 35 末で残った「swap 瞬間に title font がかくっと変化」 を 3 アプローチ経由でついに完全解消。 副作用として「user 否定から元実装の意図を読む」 学びを得た。
+
+### 失敗 1: A 案 (omitMeta 撤去) — 私の独断、 user 即否定
+
+CURRENT_GOAL.md と session 35 narrative に「session 35 の感覚で A が筋」 と書いて、 そのまま実装。 [Lightbox.tsx](components/board/Lightbox.tsx) `LargeTextCardScaler` から `omitMeta` prop を削除 + [TextCard.tsx](components/board/cards/TextCard.tsx) の prop 定義も削除 (= 死にコード扱い) → deploy。 user 実機確認で:
+
+- favicon が巨大化してガビガビ (= 16px Google favicon を zoom 3x で 48px 描画、 raster blur 確定)
+- title が「pushmatr…」 で省略 (= board の URL 行ありレイアウトで描画 → headline mode の metaBottom が下スペース取って title が縮む)
+- user 言: 「やりたいこと違うよね？テキストカードせっかくそのまま拡大できるようになったのに」
+
+omitMeta は session 34 のメモでは「favicon bitmap blur 回避」 とだけ記録されていた。 実は user 体験では「title が伸び伸び拡大される」 = session 35 で確立した core UX を成立させていた。 私はメモの理由だけ見て独断で撤去した = 反省ポイント。
+
+### 失敗 2: B 案 (clone から URL 行 strip) — 半分正解、 まだ残る
+
+omitMeta を revert (= TextCard.tsx に prop 定義復活 + Lightbox.tsx で omitMeta=true 戻し) + `wrapCloneWithScaleHost` 内で `[class*="metaTop"], [class*="metaBottom"]` を DOM strip して、 clone と swap 先の layout を一致させた。 deploy → user 実機: **まだ「かくっ」 残る、 徹底調査せよ** と指示。
+
+### 徹底調査で根本原因確定
+
+[Lightbox.tsx](components/board/Lightbox.tsx) OPEN tween + LargeTextCardScaler + [CardsLayer.tsx](components/board/CardsLayer.tsx) `buildSkylineCard` + [BoardRoot.tsx](components/board/BoardRoot.tsx) `persistentCustomWidths` を順に追って、 board の cardWidth が **二重管理** されていることを発見。
+
+| カード状態 | 実 rendering width (= 画面に映る) | IDB 保存値 (`it.cardWidth`) |
+|---|---|---|
+| user 手動 resize 済 | `customWidths[id] = it.cardWidth` | `it.cardWidth` ✅ 一致 |
+| **resize してない** | **`cardWidthPx` (= size slider 値、 例 200)** | **`280` (= IDB default)** ❌ ズレる |
+
+LargeTextCardScaler の `boardW = fakeItem.cardWidth = item.cardWidth ?? 280` は IDB 保存値 → resize していないカード + size slider 非 default のとき、 board 実 width 200 ≠ swap 先 boardW 280 で **typography mode が変わる**。 `pickTitleTypography` は cardWidth で headline / editorial / index を判定するので、 200 と 280 で mode が違うと fontSize / lineHeight / flex 配置が全部変わる = swap で「かくっ」。
+
+session 35 の `cardWidth: 280` ハードコード削除 fix は「user が resize 済」 ケースしか cover していなかった。
+
+### 修正: source DOM の実 width を実測 (C 案相当)
+
+```typescript
+const boardW = useMemo<number>(() => {
+  if (typeof document === 'undefined') return fakeItem.cardWidth
+  const source = document.querySelector<HTMLElement>(`[data-bookmark-id="${fakeItem.bookmarkId}"]`)
+  if (!source) return fakeItem.cardWidth
+  const w = source.getBoundingClientRect().width
+  return w > 0 ? w : fakeItem.cardWidth
+}, [fakeItem.bookmarkId, fakeItem.cardWidth])
+```
+
+これで:
+- size 決定ロジック (slider / 個別 resize / 混在 / 将来の新ロジック) と独立
+- 画面に映る実 width を直接拾う = 必ず source と一致
+- source DOM が無い (= share view / culling) ケースだけ IDB fallback
+
+LargeBoardCardClone (≈ line 1964) で同じ手法を既に使っており、 実績ある手。
+
+### コード変更
+
+- [components/board/Lightbox.tsx](components/board/Lightbox.tsx) `LargeTextCardScaler` (≈ line 2037): boardW を DOM 実測に変更、 useMemo + useMemo import 追加
+- [components/board/Lightbox.tsx](components/board/Lightbox.tsx) `wrapCloneWithScaleHost` (≈ line 296): clone から metaTop/metaBottom 行 strip (= B 案残骸、 layout 一致補強として残す)
+- [components/board/cards/TextCard.tsx](components/board/cards/TextCard.tsx): omitMeta prop 復活 + Lightbox.tsx で omitMeta=true 維持
+
+### 検証
+
+- tsc clean / vitest 488/488 全通過
+- 本番 3 回 deploy: A 案 (= omitMeta 撤去、 user 否定) → B 案 (= revert + clone strip、 不十分) → C 案 (= DOM 実測、 user 「やった！ やっと出来てます！」)
+- 実機: size slider tier 変更 / 個別 resize / 混在ケース全部 OK
+
+### memory 更新
+
+- 新規: [reference_cardwidth_dual_management.md](C:/Users/masay/.claude/projects/c--Users-masay-Desktop--------/memory/reference_cardwidth_dual_management.md) — cardWidth 二重管理の罠 + DOM 実測解
+- 新規: [feedback_user_observation_reveals_intent.md](C:/Users/masay/.claude/projects/c--Users-masay-Desktop--------/memory/feedback_user_observation_reveals_intent.md) — user 「もとはこうだったのに」 = 既存実装は core 仕様の可能性、 撤去前に why を再点検
+
+### 新規発覚 (= session 37 持ち越し)
+
+ツイート (X) Lightbox で thumbnail が profile image / mediaSlot 解析失敗のケース → X ロゴだけ巨大ガビガビ表示、 動画ツイートでも動画が出ない。 user 提示の再現 URL 3 つを TODO.md `B-#19` に記録済。 session 37 で集中対応。
+
+### commits
+
+(close-out commit でこの narrative + TODO.md + CURRENT_GOAL.md + Lightbox.tsx + TextCard.tsx をまとめて記録)
